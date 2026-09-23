@@ -1,0 +1,10 @@
+project_id = "callmate-ai"
+
+# One backend function serves the whole app. It exposes the REST routes the web
+# app calls, and it also receives the provider webhook at
+# POST /functions/v1/api/webhooks/sarvam. verify_jwt is false because the app and
+# the provider both reach it without a Supabase session: the app is gated by our
+# own backend logic, and the webhook is authenticated by signature verification.
+[functions.api]
+verify_jwt = false
+entrypoint = "./functions/api/index.ts"

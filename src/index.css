@@ -1,0 +1,292 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+  Light-only product. The `dark` custom variant is intentionally scoped to the
+  `.dark` class, which is never added anywhere in the app. Removing this line
+  would let Tailwind's default `prefers-color-scheme` dark variant activate and
+  break the brand colours on devices with dark OS settings.
+*/
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 10px);
+  --radius-3xl: calc(var(--radius) + 18px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Brand palette — semantic meaning is documented in src/core/constants/brand.ts */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-blue: var(--blue);
+  --color-blue-foreground: var(--blue-foreground);
+  --color-blue-soft: var(--blue-soft);
+  --color-purple: var(--purple);
+  --color-purple-foreground: var(--purple-foreground);
+  --color-purple-soft: var(--purple-soft);
+  --color-amber: var(--amber);
+  --color-amber-foreground: var(--amber-foreground);
+  --color-amber-soft: var(--amber-soft);
+  --color-coral: var(--coral);
+  --color-coral-foreground: var(--coral-foreground);
+  --color-coral-soft: var(--coral-soft);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-canvas: var(--canvas);
+
+  --font-sans:
+    "Plus Jakarta Sans", ui-rounded, "SF Pro Rounded", "Nunito", system-ui,
+    -apple-system, "Segoe UI", sans-serif;
+
+  --shadow-card: 0 1px 2px rgb(23 32 51 / 0.04), 0 8px 24px rgb(23 32 51 / 0.05);
+  --shadow-raised: 0 2px 4px rgb(23 32 51 / 0.05), 0 16px 40px rgb(23 32 51 / 0.08);
+  --shadow-brand: 0 10px 24px rgb(24 201 122 / 0.28);
+}
+
+:root {
+  --radius: 1rem;
+  --canvas: #f8fafc;
+  --background: #f8fafc;
+  --foreground: #172033;
+  --ink: #172033;
+  --ink-soft: #6b7280;
+  --card: #ffffff;
+  --card-foreground: #172033;
+  --popover: #ffffff;
+  --popover-foreground: #172033;
+
+  --brand: #18c97a;
+  --brand-foreground: #ffffff;
+  --brand-soft: #e6f9f0;
+  --primary: #18c97a;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f1f5f9;
+  --secondary-foreground: #172033;
+  --muted: #f1f5f9;
+  --muted-foreground: #6b7280;
+  --accent: #eef4ff;
+  --accent-foreground: #172033;
+
+  --destructive: #ff6b6b;
+  --destructive-foreground: #ffffff;
+  --coral: #ff6b6b;
+  --coral-foreground: #ffffff;
+  --coral-soft: #ffecec;
+
+  --blue: #4c7dff;
+  --blue-foreground: #ffffff;
+  --blue-soft: #eaefff;
+  --purple: #8b5cf6;
+  --purple-foreground: #ffffff;
+  --purple-soft: #f2ecff;
+  --amber: #ffc857;
+  --amber-foreground: #7a4d00;
+  --amber-soft: #fff6e3;
+
+  --border: #e8edf3;
+  --input: #e8edf3;
+  --ring: #18c97a;
+
+  --chart-1: #18c97a;
+  --chart-2: #4c7dff;
+  --chart-3: #8b5cf6;
+  --chart-4: #ffc857;
+  --chart-5: #ff6b6b;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink antialiased;
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-bold tracking-tight;
+  }
+
+  button,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand/40;
+  }
+}
+
+@layer utilities {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .min-tap {
+    min-height: 44px;
+  }
+
+  .text-display {
+    @apply text-4xl leading-[1.1] font-extrabold tracking-tight;
+  }
+
+  .text-hero {
+    @apply text-3xl leading-tight font-extrabold tracking-tight;
+  }
+
+  .text-title {
+    @apply text-xl leading-snug font-bold tracking-tight;
+  }
+
+  .text-body {
+    @apply text-[15px] leading-relaxed;
+  }
+
+  .text-caption {
+    @apply text-[13px] leading-snug font-medium;
+  }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes shimmer-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slide-up-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ring-pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes confetti-drop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--drift, 0px), 240px, 0) rotate(540deg);
+  }
+}
+
+.animate-float-soft {
+  animation: float-soft 4s ease-in-out infinite;
+}
+
+.animate-pop-in {
+  animation: pop-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-slide-up {
+  animation: slide-up-fade 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-ring-pulse {
+  animation: ring-pulse 2.2s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
