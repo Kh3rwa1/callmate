@@ -1,7 +1,57 @@
 import assert from 'node:assert';
 import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
 
 const BASE = 'http://127.0.0.1:8787';
+let childProc = null;
+
+function cleanup() {
+  if (childProc && !childProc.killed) {
+    try {
+      if (childProc.pid) {
+        process.kill(-childProc.pid, 'SIGTERM');
+      }
+    } catch {
+      try {
+        childProc.kill('SIGTERM');
+      } catch {}
+    }
+    childProc = null;
+  }
+}
+
+process.on('exit', cleanup);
+process.on('SIGINT', () => { cleanup(); process.exit(1); });
+process.on('SIGTERM', () => { cleanup(); process.exit(1); });
+
+async function ensureServer() {
+  try {
+    const res = await fetch(`${BASE}/health`);
+    if (res.ok) {
+      console.log('Using running server at ' + BASE);
+      return;
+    }
+  } catch {}
+
+  console.log('Starting local wrangler dev server on port 8787...');
+  childProc = spawn('npx', ['wrangler', 'dev', '--port', '8787', '--ip', '127.0.0.1'], {
+    stdio: 'ignore',
+    detached: true,
+  });
+
+  const start = Date.now();
+  while (Date.now() - start < 30000) {
+    try {
+      const res = await fetch(`${BASE}/health`);
+      if (res.ok) {
+        console.log('✓ Wrangler dev server is ready.');
+        return;
+      }
+    } catch {}
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error('Timed out waiting for wrangler dev server to become healthy');
+}
 
 async function req(path, options = {}) {
   const url = `${BASE}${path}`;
@@ -17,6 +67,7 @@ async function req(path, options = {}) {
 }
 
 async function run() {
+  await ensureServer();
   console.log('--- Starting Cloudflare Worker E2E Tests ---');
 
   // 1. Health check
@@ -207,7 +258,13 @@ async function run() {
   console.log('\n🎉 ALL CLOUDFLARE BACKEND TESTS PASSED SUCCESSFULLY! 🎉\n');
 }
 
-run().catch((err) => {
-  console.error('\n❌ Test failure:', err);
-  process.exit(1);
-});
+run()
+  .catch((err) => {
+    console.error('\n❌ Test failure:', err);
+    cleanup();
+    process.exit(1);
+  })
+  .finally(() => {
+    cleanup();
+    process.exit(0);
+  });
