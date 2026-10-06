@@ -71,7 +71,15 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
     });
     try {
       final biz = ref.read(businessProvider).value;
-      await _voice.startTestSession(agentVariables: {'business_name': biz?.name ?? '', 'mode': 'owner_test'});
+      final name = ref.read(employeeNameProvider);
+      await _voice.startTestSession(agentVariables: {
+        'business_name': biz?.name ?? '',
+        'agent_name': name,
+        'gender': 'female',
+        'voice': 'female',
+        'speaker': 'meera',
+        'mode': 'owner_test',
+      });
     } on VoiceAgentException catch (e) {
       if (mounted) {
         setState(() {

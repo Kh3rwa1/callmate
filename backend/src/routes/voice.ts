@@ -33,6 +33,9 @@ voiceApp.post('/test-session', async (c) => {
       business_name: business?.name || 'CallPilot Business',
       agent_name: agent?.name || 'Riya',
       agent_role: agent?.role || 'Assistant',
+      gender: 'female',
+      voice: 'female',
+      speaker: 'meera',
       mode: 'owner_test',
     },
     user_identifier: user.id,
@@ -82,10 +85,10 @@ async function generateAIReply(
   businessName: string,
   userMessage: string
 ): Promise<{ reply: string; audioBase64?: string }> {
-  const systemPrompt = `You are ${agentName}, a professional, calm, grounded, and polite ${agentRole} at ${businessName}.
-You are speaking on a live phone call with a customer or applicant.
+  const systemPrompt = `You are ${agentName}, a polite, professional, and calm female admissions coordinator and AI assistant at ${businessName}.
+You are speaking live on a phone call with a customer or applicant.
 Tone & Persona Guidelines:
-1. Speak in a calm, natural, professional executive phone tone.
+1. Speak in a calm, natural, polite, and warm female executive phone voice.
 2. Keep your response to 1 or 2 concise, clear sentences.
 3. Address the caller's specific question directly and accurately.
 4. Never use exclamation marks. Do not sound theatrical, dramatic, or robotic.

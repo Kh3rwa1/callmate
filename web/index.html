@@ -63,16 +63,62 @@
         const cleanText = (text || '').replace(/!+/g, '.').trim();
         if (!cleanText) return;
 
+        function isMale(name) {
+          const n = (name || '').toLowerCase();
+          const maleKeywords = [
+            'aman', 'rishi', 'daniel', 'fred', 'alex', 'david', 'mark', 'george',
+            'oliver', 'arthur', 'eddy', 'reed', 'rocko', 'ralph', 'albert', 'guy',
+            'male', 'bad news', 'bahh', 'bells', 'boing', 'bubbles', 'cellos',
+            'jester', 'junior', 'organ', 'superstar', 'trinoids', 'whisper', 'zarvox',
+            'ravi', 'pradeep', 'karan'
+          ];
+          return maleKeywords.some(m => n.includes(m));
+        }
+
+        function selectFemaleVoice() {
+          const voices = window.speechSynthesis.getVoices() || [];
+          if (!voices.length) return null;
+
+          // 1. Primary: Indian English / Indic Female voices (Tara on macOS, Heera/Neerja on Windows)
+          const indianFemaleNames = ['tara', 'veena', 'heera', 'neerja', 'lekha', 'priya', 'aditi'];
+          for (const target of indianFemaleNames) {
+            const match = voices.find(v => v.name.toLowerCase().includes(target));
+            if (match) return match;
+          }
+
+          // Check any en-IN or hi-IN voice that is not male
+          const indicFemale = voices.find(v => 
+            (v.lang.startsWith('en-IN') || v.lang.startsWith('hi-IN') || v.name.toLowerCase().includes('india')) &&
+            !isMale(v.name)
+          );
+          if (indicFemale) return indicFemale;
+
+          // 2. High-quality Western Female voices (Samantha, Karen, Fiona, Victoria, Zira)
+          const westernFemaleNames = ['samantha', 'karen', 'moira', 'fiona', 'tessa', 'victoria', 'zira', 'kathy', 'sandy', 'shelley', 'flo'];
+          for (const target of westernFemaleNames) {
+            const match = voices.find(v => v.name.toLowerCase().includes(target));
+            if (match) return match;
+          }
+
+          // 3. Any voice containing "female"
+          const anyFemale = voices.find(v => v.name.toLowerCase().includes('female'));
+          if (anyFemale) return anyFemale;
+
+          // 4. Any English voice that is not known to be male
+          const nonMale = voices.find(v => v.lang.startsWith('en') && !isMale(v.name));
+          if (nonMale) return nonMale;
+
+          return voices[0];
+        }
+
         const utter = new SpeechSynthesisUtterance(cleanText);
-        utter.rate = 0.92; // Calm, relaxed conversational pace
-        utter.pitch = 0.88; // Grounded, executive pitch (avoids dramatic high-pitched squeakiness)
+        utter.rate = 0.95; // Calm, conversational pace
+        utter.pitch = 1.0; // Natural warm female pitch
         utter.lang = 'en-IN';
 
-        const voices = window.speechSynthesis.getVoices() || [];
-        const preferredVoice = voices.find(v => v.lang.startsWith('en-IN') || v.name.includes('India')) ||
-                               voices.find(v => v.lang.startsWith('en') && !v.name.includes('Zira') && !v.name.includes('David'));
-        if (preferredVoice) {
-          utter.voice = preferredVoice;
+        const femaleVoice = selectFemaleVoice();
+        if (femaleVoice) {
+          utter.voice = femaleVoice;
         }
 
         window.speechSynthesis.speak(utter);

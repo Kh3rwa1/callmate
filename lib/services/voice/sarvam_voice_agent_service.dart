@@ -153,7 +153,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       userIdentifierType: UserIdentifierType.custom,
       interactionType: InteractionType.call,
       sampleRate: 16000,
-      agentVariables: {...session.agentVariables, ...agentVariables},
+      agentVariables: {'gender': 'female', 'voice': 'female', 'speaker': 'meera', ...session.agentVariables, ...agentVariables},
     );
 
     final headers = session.sessionToken.isNotEmpty
