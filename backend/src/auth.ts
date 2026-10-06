@@ -33,7 +33,7 @@ function base64UrlDecode(str: string): Uint8Array {
 }
 
 export async function signJWT(
-  payload: Omit<JWTPayload, 'iat' | 'exp'>,
+  payload: Omit<JWTPayload, 'iat' | 'exp' | 'iss' | 'aud'>,
   secret: string,
   expiresInSeconds: number
 ): Promise<string> {
@@ -41,6 +41,9 @@ export async function signJWT(
   const now = Math.floor(Date.now() / 1000);
   const fullPayload: JWTPayload = {
     ...payload,
+    iss: 'callpilot',
+    aud: 'callpilot-app',
+    jti: crypto.randomUUID(),
     iat: now,
     exp: now + expiresInSeconds,
   };
@@ -57,12 +60,25 @@ export async function signJWT(
   return `${headerPart}.${payloadPart}.${signaturePart}`;
 }
 
-export async function verifyJWT(token: string, secret: string): Promise<JWTPayload | null> {
+export async function verifyJWT(
+  token: string,
+  secret: string,
+  expectedType?: 'access' | 'refresh' | 'session'
+): Promise<JWTPayload | null> {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
 
     const [headerPart, payloadPart, signaturePart] = parts;
+
+    // 1. Verify header alg === 'HS256'
+    const headerBytes = base64UrlDecode(headerPart);
+    const header = JSON.parse(new TextDecoder().decode(headerBytes));
+    if (!header || header.alg !== 'HS256') {
+      return null;
+    }
+
+    // 2. Verify HMAC SHA-256 signature
     const key = await getKey(secret);
     const enc = new TextEncoder();
     const dataToVerify = enc.encode(`${headerPart}.${payloadPart}`);
@@ -71,11 +87,20 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
     const valid = await crypto.subtle.verify('HMAC', key, signature as ArrayBufferView, dataToVerify);
     if (!valid) return null;
 
+    // 3. Verify payload claims
     const payloadBytes = base64UrlDecode(payloadPart);
     const payload = JSON.parse(new TextDecoder().decode(payloadBytes)) as JWTPayload;
 
     const now = Math.floor(Date.now() / 1000);
     if (payload.exp && payload.exp < now) return null;
+
+    if (payload.iss !== 'callpilot' || payload.aud !== 'callpilot-app') {
+      return null;
+    }
+
+    if (expectedType && payload.type !== expectedType) {
+      return null;
+    }
 
     return payload;
   } catch {
@@ -84,7 +109,11 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
 }
 
 export function getJwtSecret(c: Context<any>): string {
-  return c.env.JWT_SIGNING_KEY || 'callpilot-default-jwt-secret-key-change-in-env';
+  const secret = c.env.JWT_SIGNING_KEY;
+  if (!secret || typeof secret !== 'string' || secret.trim().length < 32) {
+    throw new Error('JWT_SIGNING_KEY is missing or shorter than 32 characters. Server refusing to operate.');
+  }
+  return secret.trim();
 }
 
 export async function authMiddleware(c: Context<{ Bindings: Env; Variables: { user: AuthUser } }>, next: Next) {
@@ -95,10 +124,10 @@ export async function authMiddleware(c: Context<{ Bindings: Env; Variables: { us
 
   const token = authHeader.substring(7).trim();
   const secret = getJwtSecret(c);
-  const payload = await verifyJWT(token, secret);
+  const payload = await verifyJWT(token, secret, 'access');
 
-  if (!payload || payload.type !== 'access') {
-    return c.json({ message: 'Your session expired. Please log in again.', code: 'token_expired' }, 401);
+  if (!payload) {
+    return c.json({ message: 'Your session expired or token is invalid. Please log in again.', code: 'token_expired' }, 401);
   }
 
   c.set('user', {

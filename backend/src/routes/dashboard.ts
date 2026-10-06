@@ -78,7 +78,7 @@ dashApp.get('/usage', async (c) => {
       `INSERT INTO usage (id, business_id, plan_name, included_minutes, renews_at, price_inr, minutes_used, calls_made, rate_per_minute_inr)
        VALUES (?, ?, 'Founding Plan', 1000, datetime('now', '+30 days'), 4999, 0, 0, 6)`
     ).bind(id, user.business_id).run();
-    row = await c.env.DB.prepare('SELECT * FROM usage WHERE id = ?').bind(id).first<any>();
+    row = await c.env.DB.prepare('SELECT * FROM usage WHERE id = ? AND business_id = ?').bind(id, user.business_id).first<any>();
   }
 
   return c.json({

@@ -12,7 +12,7 @@ import { campaignsApp } from './routes/campaigns';
 import { fcApp } from './routes/followups_callbacks';
 import { knowledgeApp } from './routes/knowledge';
 import { dashApp } from './routes/dashboard';
-import { voiceApp } from './routes/voice';
+import { voiceApp, handleSarvamWebhook } from './routes/voice';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -42,7 +42,7 @@ app.get('/health', (c) => c.json({ status: 'ok' }));
 app.route('/auth', authApp);
 
 // Public Sarvam completed call webhook
-app.post('/webhooks/sarvam', (c) => voiceApp.fetch(c.req.raw, c.env, c.executionCtx));
+app.post('/webhooks/sarvam', handleSarvamWebhook);
 
 // Voice proxy (has its own session token verification in route)
 app.all('/voice/sarvam-proxy/*', (c) => voiceApp.fetch(c.req.raw, c.env, c.executionCtx));
@@ -63,12 +63,14 @@ protectedApp.route('/voice', voiceApp);
 
 app.route('/', protectedApp);
 
-// Global Error Handler
+// Global Error Handler - 1.6: Return generic messages to clients, log server-side with request ID
 app.onError((err, c) => {
-  console.error('[Unhandled Server Error]:', err);
+  const requestId = crypto.randomUUID();
+  console.error(`[Unhandled Server Error] [RequestID: ${requestId}]:`, err);
   return c.json({
-    message: err.message || 'Internal Server Error',
+    message: 'An internal server error occurred.',
     code: 'server_error',
+    request_id: requestId,
   }, 500);
 });
 

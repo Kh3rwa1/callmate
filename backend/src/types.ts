@@ -27,6 +27,9 @@ export interface JWTPayload {
   phone: string;
   business_id: string;
   type: 'access' | 'refresh' | 'session';
+  iss?: string;
+  aud?: string;
+  jti?: string;
   exp: number; // unix timestamp in seconds
   iat: number;
 }

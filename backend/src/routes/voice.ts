@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, Context } from 'hono';
 import { Env, AuthUser } from '../types';
 import { signJWT, verifyJWT, getJwtSecret } from '../auth';
 
@@ -11,6 +11,22 @@ voiceApp.post('/test-session', async (c) => {
 
   const business = await c.env.DB.prepare('SELECT * FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
   const agent = await c.env.DB.prepare('SELECT * FROM agents WHERE business_id = ?').bind(user.business_id).first<any>();
+
+  // Check concurrent sessions cap: max 5 active sessions per business (active within last 1 hour)
+  const activeCount = await c.env.DB.prepare(
+    `SELECT COUNT(*) as cnt FROM voice_sessions
+     WHERE business_id = ? AND status = 'active' AND started_at > datetime('now', '-1 hour')`
+  ).bind(user.business_id).first<{ cnt: number }>();
+
+  if (activeCount && activeCount.cnt >= 5) {
+    return c.json({ message: 'Maximum concurrent voice sessions reached for your business.', code: 'session_limit_exceeded' }, 429);
+  }
+
+  const sessionId = `vsess_${crypto.randomUUID()}`;
+  await c.env.DB.prepare(
+    `INSERT INTO voice_sessions (id, business_id, user_id, status, started_at)
+     VALUES (?, ?, ?, 'active', datetime('now'))`
+  ).bind(sessionId, user.business_id, user.id).run();
 
   // Short-lived session token (valid for 1 hour) specifically for the voice proxy
   const sessionToken = await signJWT(
@@ -302,10 +318,75 @@ Tone & Persona Guidelines:
   return { reply: replyText, audioBase64 };
 }
 
-// ALL /voice/sarvam-proxy/*
-// Secure proxy for Sarvam SDK runtime calls and WebSockets
-voiceApp.all('/sarvam-proxy/*', async (c) => {
-  // Validate session token in Authorization header
+// Helper: JSON Schema Validator for call_output.schema.json
+function validateCallOutput(output: any): { valid: boolean; normalized: any } {
+  if (!output || typeof output !== 'object') {
+    return {
+      valid: false,
+      normalized: {
+        score: 0,
+        temperature: 'cold',
+        intent: 'unknown',
+        summary: 'Invalid output payload - flagged for review',
+        next_action: 'human_followup',
+        whatsapp_followup_required: false,
+        flagged_for_review: true,
+      },
+    };
+  }
+
+  const validIntents = ['interested', 'exploring', 'not_interested', 'callback_requested', 'unknown'];
+  const validTemps = ['hot', 'warm', 'cold'];
+  const validNextActions = ['human_followup', 'send_whatsapp', 'whatsapp_and_callback', 'book_appointment', 'retry_call', 'none'];
+
+  const rawScore = output.lead_score ?? output.qualification_score;
+  const score = typeof rawScore === 'number' && Number.isInteger(rawScore) ? rawScore : null;
+  const intent = output.intent;
+  const temp = output.temperature || output.lead_temperature;
+  const summary = output.summary;
+  const nextAction = output.next_action;
+  const waRequired = output.whatsapp_followup_required;
+
+  const isValid =
+    score !== null && score >= 0 && score <= 100 &&
+    validIntents.includes(intent) &&
+    validTemps.includes(temp) &&
+    typeof summary === 'string' && summary.length <= 400 &&
+    validNextActions.includes(nextAction) &&
+    typeof waRequired === 'boolean';
+
+  if (!isValid) {
+    return {
+      valid: false,
+      normalized: {
+        score: 0,
+        temperature: 'cold',
+        intent: 'unknown',
+        summary: typeof summary === 'string' ? summary.slice(0, 400) : 'Invalid output - flagged for review',
+        next_action: 'human_followup',
+        whatsapp_followup_required: false,
+        flagged_for_review: true,
+      },
+    };
+  }
+
+  return {
+    valid: true,
+    normalized: {
+      score,
+      temperature: temp,
+      intent,
+      summary,
+      next_action: nextAction,
+      whatsapp_followup_required: waRequired,
+      flagged_for_review: false,
+    },
+  };
+}
+
+// Proxy handler for Sarvam SDK runtime calls
+async function handleSarvamProxy(c: Context<{ Bindings: Env; Variables: { user: AuthUser } }>) {
+  // 1. Only accept JWTs where type === 'session'
   const authHeader = c.req.header('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return c.json({ message: 'Missing session authorization for voice proxy.', code: 'unauthorized' }, 401);
@@ -313,28 +394,56 @@ voiceApp.all('/sarvam-proxy/*', async (c) => {
 
   const token = authHeader.substring(7).trim();
   const secret = getJwtSecret(c);
-  const payload = await verifyJWT(token, secret);
+  const payload = await verifyJWT(token, secret, 'session');
 
-  if (!payload) {
-    return c.json({ message: 'Invalid or expired voice session token.', code: 'session_expired' }, 401);
+  if (!payload || payload.type !== 'session') {
+    return c.json({ message: 'Invalid or expired voice session token. Only session tokens permitted.', code: 'session_expired' }, 401);
   }
 
-  const sarvamTargetBase = (c.env.SARVAM_PROXY_BASE || 'https://apps.sarvam.ai/api/app-runtime').replace(/\/$/, '');
+  // 2. Strict path allow-list: only Sarvam app-runtime paths SDK needs
   const reqUrl = new URL(c.req.url);
-  const subPath = reqUrl.pathname.replace(/^\/voice\/sarvam-proxy\/?/, '/');
-  const targetUrl = `${sarvamTargetBase}${subPath}${reqUrl.search}`;
+  const subPath = reqUrl.pathname.replace(/^\/(voice\/)?sarvam-proxy\/?/, '');
 
-  const forwardHeaders = new Headers(c.req.raw.headers);
-  forwardHeaders.delete('Authorization');
-  forwardHeaders.delete('Host');
+  const isAllowed =
+    /^(api\/app-runtime\/)?orgs\/[a-zA-Z0-9_-]+\/workspaces\/[a-zA-Z0-9_-]+\/apps\/[a-zA-Z0-9_-]+\/url\/?$/.test(subPath) ||
+    /^(api\/app-runtime\/)?(chat|ws|sessions)(\/[a-zA-Z0-9_-]+)*\/?$/.test(subPath);
 
-  // Inject Sarvam API Key securely server-side
+  if (!isAllowed) {
+    return c.json({ message: 'Forbidden proxy destination.', code: 'forbidden_path' }, 403);
+  }
+
+  // 3. Per-business rate limit (max 60 req/min)
+  const countRow = await c.env.DB.prepare(
+    `SELECT COUNT(*) as cnt FROM voice_proxy_rate_limits
+     WHERE business_id = ? AND created_at > datetime('now', '-1 minute')`
+  ).bind(payload.business_id).first<{ cnt: number }>();
+
+  if (countRow && countRow.cnt >= 60) {
+    return c.json({ message: 'Voice proxy rate limit exceeded.', code: 'rate_limited' }, 429);
+  }
+
+  await c.env.DB.prepare(
+    `INSERT INTO voice_proxy_rate_limits (id, business_id, created_at) VALUES (?, ?, datetime('now'))`
+  ).bind(crypto.randomUUID(), payload.business_id).run();
+
+  // 4. Do not forward client headers blindly; build clean header set and inject X-API-Key
+  const forwardHeaders = new Headers();
+  forwardHeaders.set('Accept', c.req.header('Accept') || 'application/json');
+  const contentType = c.req.header('Content-Type');
+  if (contentType) forwardHeaders.set('Content-Type', contentType);
+  const userAgent = c.req.header('User-Agent');
+  if (userAgent) forwardHeaders.set('User-Agent', userAgent);
+
   const sarvamApiKey = c.env.SARVAM_API_KEY || '';
   if (sarvamApiKey) {
     forwardHeaders.set('X-API-Key', sarvamApiKey);
+    forwardHeaders.set('api-subscription-key', sarvamApiKey);
   }
 
-  // Handle WebSocket upgrade or regular HTTP streaming request
+  const sarvamTargetBase = (c.env.SARVAM_PROXY_BASE || 'https://apps.sarvam.ai/api/app-runtime').replace(/\/$/, '');
+  const cleanSubPath = subPath.startsWith('api/app-runtime/') ? subPath.replace('api/app-runtime/', '') : subPath;
+  const targetUrl = `${sarvamTargetBase}/${cleanSubPath}${reqUrl.search}`;
+
   const isWebSocket = c.req.header('Upgrade')?.toLowerCase() === 'websocket';
 
   try {
@@ -342,107 +451,137 @@ voiceApp.all('/sarvam-proxy/*', async (c) => {
       method: c.req.method,
       headers: forwardHeaders,
       body: isWebSocket || c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : c.req.raw.body,
-      // @ts-ignore Cloudflare Workers specific options
-      cf: {
-        cacheTtl: 0,
-      },
     });
-
     return response;
   } catch (err: any) {
-    console.error(`[Voice Proxy Error]: ${err?.message || err}`);
-    return c.json({ message: 'Voice connection to Sarvam failed.', error: String(err) }, 502);
+    const reqId = crypto.randomUUID();
+    console.error(`[Voice Proxy Error] [RequestID: ${reqId}]:`, err?.message || err);
+    return c.json({ message: 'Voice connection to Sarvam failed.', request_id: reqId }, 502);
   }
-});
+}
 
-// POST /webhooks/sarvam
-// Public webhook endpoint for Sarvam call completions (HMAC signature verified)
-voiceApp.post('/webhooks/sarvam', async (c) => {
+// ALL /sarvam-proxy/* and /voice/sarvam-proxy/*
+voiceApp.all('/sarvam-proxy/*', handleSarvamProxy);
+voiceApp.all('/voice/sarvam-proxy/*', handleSarvamProxy);
+
+// Webhook handler for Sarvam call completions
+async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user: AuthUser } }>) {
   const secret = c.env.SARVAM_WEBHOOK_SECRET;
-  const rawBody = await c.req.text();
-
-  // Signature verification if secret configured
   const signature = c.req.header('X-Sarvam-Signature') || c.req.header('X-Signature');
-  if (secret && signature) {
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      'raw',
-      enc.encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify']
-    );
-    const valid = await crypto.subtle.verify(
-      'HMAC',
-      key,
-      new Uint8Array(signature.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []),
-      enc.encode(rawBody)
-    );
-    if (!valid) {
-      return c.json({ message: 'Invalid webhook signature.' }, 403);
+
+  // Signature verification is MANDATORY. Reject with 401 if header or secret is missing.
+  if (!secret || !signature) {
+    return c.json({ message: 'Unauthorized webhook call. Missing signature or secret.', code: 'unauthorized' }, 401);
+  }
+
+  // Reject stale timestamps (> 5 min)
+  const timestampHeader = c.req.header('X-Sarvam-Timestamp') || c.req.header('X-Timestamp');
+  if (timestampHeader) {
+    const ts = parseInt(timestampHeader, 10);
+    const now = Math.floor(Date.now() / 1000);
+    if (isNaN(ts) || Math.abs(now - ts) > 300) {
+      return c.json({ message: 'Webhook timestamp is stale or invalid.', code: 'stale_timestamp' }, 401);
     }
+  }
+
+  const rawBody = await c.req.text();
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const sigBuf = await crypto.subtle.sign('HMAC', key, enc.encode(rawBody));
+  const hexSig = Array.from(new Uint8Array(sigBuf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+
+  // Constant-time compare
+  const cleanSig = signature.replace(/^sha256=/, '').trim();
+  let isValid = false;
+  if (cleanSig.length === hexSig.length) {
+    const a = enc.encode(cleanSig);
+    const b = enc.encode(hexSig);
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) {
+      diff |= a[i] ^ b[i];
+    }
+    isValid = (diff === 0);
+  }
+
+  if (!isValid && timestampHeader) {
+    const altBuf = await crypto.subtle.sign('HMAC', key, enc.encode(`${timestampHeader}.${rawBody}`));
+    const altHex = Array.from(new Uint8Array(altBuf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    if (cleanSig.length === altHex.length) {
+      const a = enc.encode(cleanSig);
+      const b = enc.encode(altHex);
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) {
+        diff |= a[i] ^ b[i];
+      }
+      isValid = (diff === 0);
+    }
+  }
+
+  if (!isValid) {
+    return c.json({ message: 'Invalid webhook signature.', code: 'invalid_signature' }, 401);
   }
 
   let data: any;
   try {
     data = JSON.parse(rawBody);
   } catch {
-    return c.json({ message: 'Malformed JSON payload.' }, 400);
+    return c.json({ message: 'Malformed JSON payload.', code: 'malformed_json' }, 400);
   }
 
-  const interactionId = data.interaction_id || data.call_id || `int_${crypto.randomUUID().slice(0, 8)}`;
-  const explicitCallId = data.call_id || data.agent_variables?.call_id;
+  const rawId = data.interaction_id || data.call_id || data.agent_variables?.call_id;
+  if (!rawId) {
+    return c.json({ message: 'Missing call or interaction identifier.', code: 'missing_identifier' }, 400);
+  }
 
-  // Check idempotency / existing call in D1
-  const existingCall = explicitCallId
-    ? await c.env.DB.prepare('SELECT id, status FROM calls WHERE id = ?').bind(explicitCallId).first<any>()
-    : await c.env.DB.prepare('SELECT id, status FROM calls WHERE interaction_id = ?').bind(interactionId).first<any>();
+  // Never trust business_id or lead_id from the payload.
+  // Resolve call through interaction_id or call_id against our own calls table:
+  const call = await c.env.DB.prepare(
+    `SELECT * FROM calls WHERE id = ? OR interaction_id = ?`
+  ).bind(rawId, rawId).first<any>();
 
-  if (existingCall && existingCall.status === 'completed') {
+  if (!call) {
+    return c.json({ message: 'Call not found.', code: 'call_not_found' }, 404);
+  }
+
+  // Replayed interaction_id is a no-op
+  if (call.status === 'completed') {
     return c.json({ message: 'Already processed.', status: 'idempotent' }, 200);
   }
 
-  const leadId = data.lead_id || data.agent_variables?.lead_id;
-  let lead: any = null;
-  if (leadId) {
-    lead = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(leadId).first<any>();
-  }
+  // Derive business_id and lead_id strictly from our DB row
+  const businessId = call.business_id;
+  const leadId = call.lead_id;
+  const callId = call.id;
 
-  const businessId = data.business_id || data.agent_variables?.business_id || lead?.business_id;
+  // Validate payload against schema: if invalid: score 0, temperature cold, flag for review, return 200
+  const rawOutput = data.output_variables || data.extracted_variables || data.extracted_data || data;
+  const validation = validateCallOutput(rawOutput);
+  const norm = validation.normalized;
 
-  if (!businessId || !leadId) {
-    return c.json({ message: 'Missing lead_id or business_id in payload.' }, 400);
-  }
-
-  const leadName = lead?.name || data.lead_name || 'Customer';
-  const leadPhone = lead?.phone || data.lead_phone || '';
-
-  // Extract structured AI output variables produced by Sarvam agent
-  const out = data.output_variables || data.extracted_variables || data.extracted_data || {};
-  const rawScore = typeof out.lead_score === 'number' ? out.lead_score : (typeof out.qualification_score === 'number' ? out.qualification_score : null);
-  const score = rawScore !== null ? Math.max(0, Math.min(100, Math.round(rawScore))) : 0;
-  const rawTemp = out.temperature || out.lead_temperature;
-  const temperature = rawTemp === 'hot' || score >= 75 ? 'hot' : (rawTemp === 'warm' || score >= 45 ? 'warm' : 'cold');
-  const intent = out.intent || (score >= 70 ? 'interested' : 'exploring');
-  const summary = out.summary || data.summary || 'Call completed.';
-  const nextAction = out.next_action || 'none';
+  const lead = await c.env.DB.prepare('SELECT name, phone FROM leads WHERE id = ? AND business_id = ?').bind(leadId, businessId).first<any>();
+  const leadName = lead?.name || call.lead_name || 'Customer';
   const durationSeconds = data.duration_seconds || data.duration || 60;
   const callStatus = data.status === 'completed' || data.call_status === 'completed' ? 'completed' : 'no_answer';
 
-  const objections = JSON.stringify(out.objections || []);
-  const positiveSignals = JSON.stringify(out.positive_signals || []);
+  const objections = JSON.stringify(data.output_variables?.objections || []);
+  const positiveSignals = JSON.stringify(data.output_variables?.positive_signals || []);
   const transcript = JSON.stringify(data.transcript || []);
-  const callbackAt = out.callback_at || null;
+  const callbackAt = data.output_variables?.callback_at || null;
 
-  const callId = existingCall?.id || explicitCallId || `call_${crypto.randomUUID().slice(0, 12)}`;
   let followUpId: string | null = null;
-
   const statements: D1PreparedStatement[] = [];
 
-  // 1. Create FollowUp if required
-  if (out.whatsapp_followup_required || out.whatsapp_message) {
+  // Create FollowUp if required
+  if (norm.whatsapp_followup_required || data.output_variables?.whatsapp_message) {
     followUpId = `fu_${crypto.randomUUID().slice(0, 12)}`;
-    const msg = out.whatsapp_message || `Hi ${leadName.split(' ')[0]} 👋 Thanks for speaking with us!`;
+    const msg = data.output_variables?.whatsapp_message || `Hi ${leadName.split(' ')[0]} 👋 Thanks for speaking with us!`;
     statements.push(
       c.env.DB.prepare(
         `INSERT INTO followups (id, business_id, lead_id, call_id, message, status, created_at)
@@ -451,64 +590,46 @@ voiceApp.post('/webhooks/sarvam', async (c) => {
     );
   }
 
-  // 2. Insert or Update Call
-  if (existingCall) {
-    statements.push(
-      c.env.DB.prepare(
-        `UPDATE calls SET
-          status = ?, duration_seconds = ?, recording_url = ?, transcript = ?,
-          score = ?, temperature = ?, intent = ?, summary = ?, objections = ?,
-          positive_signals = ?, next_action = ?, follow_up_id = ?, callback_at = ?,
-          interaction_id = ?, completed_at = datetime('now')
-         WHERE id = ?`
-      ).bind(
-        callStatus, durationSeconds, data.recording_url || null, transcript,
-        score, temperature, intent, summary, objections,
-        positiveSignals, nextAction, followUpId, callbackAt, interactionId,
-        callId
-      )
-    );
-  } else {
-    statements.push(
-      c.env.DB.prepare(
-        `INSERT INTO calls (
-          id, business_id, lead_id, lead_name, lead_phone, status, duration_seconds,
-          recording_url, transcript, score, temperature, intent, summary, objections,
-          positive_signals, next_action, follow_up_id, callback_at, interaction_id,
-          started_at, completed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-' || ? || ' seconds'), datetime('now'))`
-      ).bind(
-        callId, businessId, leadId, leadName, leadPhone, callStatus, durationSeconds,
-        data.recording_url || null, transcript, score, temperature, intent, summary,
-        objections, positiveSignals, nextAction, followUpId, callbackAt, interactionId,
-        durationSeconds
-      )
-    );
-  }
+  // Update Call with AND business_id = ?
+  statements.push(
+    c.env.DB.prepare(
+      `UPDATE calls SET
+        status = ?, duration_seconds = ?, recording_url = ?, transcript = ?,
+        score = ?, temperature = ?, intent = ?, summary = ?, objections = ?,
+        positive_signals = ?, next_action = ?, follow_up_id = ?, callback_at = ?,
+        completed_at = datetime('now')
+       WHERE id = ? AND business_id = ?`
+    ).bind(
+      callStatus, durationSeconds, data.recording_url || null, transcript,
+      norm.score, norm.temperature, norm.intent, norm.summary, objections,
+      positiveSignals, norm.next_action, followUpId, callbackAt,
+      callId, businessId
+    )
+  );
 
-  // 3. Update Lead
+  // Update Lead with AND business_id = ?
   statements.push(
     c.env.DB.prepare(
       `UPDATE leads SET
         status = 'called', temperature = ?, score = ?, summary = ?,
         objections = ?, next_action = ?, callback_at = ?, updated_at = datetime('now')
-       WHERE id = ?`
-    ).bind(temperature, score, summary, objections, nextAction, callbackAt, leadId)
+       WHERE id = ? AND business_id = ?`
+    ).bind(norm.temperature, norm.score, norm.summary, objections, norm.next_action, callbackAt, leadId, businessId)
   );
 
-  // 4. Create Callback if scheduled
+  // Create Callback if scheduled
   if (callbackAt) {
     const callbackId = `cb_${crypto.randomUUID().slice(0, 12)}`;
     statements.push(
       c.env.DB.prepare(
         `INSERT INTO callbacks (id, business_id, lead_id, lead_name, scheduled_at, note, status, created_at)
          VALUES (?, ?, ?, ?, ?, ?, 'scheduled', datetime('now'))`
-      ).bind(callbackId, businessId, leadId, leadName, callbackAt, `Callback requested from call: ${summary}`)
+      ).bind(callbackId, businessId, leadId, leadName, callbackAt, `Callback requested: ${norm.summary}`)
     );
   }
 
-  // 5. Create Notification for Hot Lead
-  if (temperature === 'hot') {
+  // Create Notification for Hot Lead
+  if (norm.temperature === 'hot') {
     const notifId = `notif_${crypto.randomUUID().slice(0, 12)}`;
     statements.push(
       c.env.DB.prepare(
@@ -516,16 +637,25 @@ voiceApp.post('/webhooks/sarvam', async (c) => {
          VALUES (?, ?, 'hot_lead', '🔥 Hot lead', ?, ?, 'View Result', 0, datetime('now'))`
       ).bind(
         notifId, businessId,
-        `${leadName} is very interested (${score}/100)`,
+        `${leadName} is very interested (${norm.score}/100)`,
         `/calls/${callId}/result`
       )
     );
   }
 
-  // Execute in D1 batch
   await c.env.DB.batch(statements);
 
-  return c.json({ success: true, call_id: callId, status: 'processed', temperature, score });
-});
+  return c.json({
+    success: true,
+    call_id: callId,
+    status: validation.valid ? 'processed' : 'flagged_for_review',
+    temperature: norm.temperature,
+    score: norm.score,
+  }, 200);
+}
 
-export { voiceApp };
+// POST /webhooks/sarvam
+voiceApp.post('/webhooks/sarvam', handleSarvamWebhook);
+
+export { voiceApp, handleSarvamWebhook };
+

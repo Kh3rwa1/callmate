@@ -116,7 +116,7 @@ leadsApp.post('/leads', async (c) => {
      VALUES (?, ?, ?, ?, ?, ?, 'new', ?, datetime('now'), datetime('now'))`
   ).bind(id, user.business_id, name, phone, interest, source, attributes).run();
 
-  const created = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(id).first();
+  const created = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatLead(created));
 });
 
@@ -232,8 +232,18 @@ leadsApp.patch('/leads/:id', async (c) => {
     callbackAt, attributes, id, user.business_id
   ).run();
 
-  const updated = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ?').bind(id).first();
+  const updated = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatLead(updated));
+});
+
+// DELETE /leads/:id
+leadsApp.delete('/leads/:id', async (c) => {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const existing = await c.env.DB.prepare('SELECT id FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
+  if (!existing) return c.json({ message: 'Lead not found.', code: 'not_found' }, 404);
+  await c.env.DB.prepare('DELETE FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id).run();
+  return c.json({ success: true });
 });
 
 export { leadsApp };

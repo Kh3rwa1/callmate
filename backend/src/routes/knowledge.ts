@@ -88,7 +88,7 @@ knowledgeApp.post('/knowledge', async (c) => {
      VALUES (?, ?, ?, ?, ?, 'ready', 1.0, ?, ?, datetime('now'), datetime('now'))`
   ).bind(id, user.business_id, type, title, detail, content, fileUrl).run();
 
-  const created = await c.env.DB.prepare('SELECT * FROM knowledge_sources WHERE id = ?').bind(id).first();
+  const created = await c.env.DB.prepare('SELECT * FROM knowledge_sources WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatKnowledge(created));
 });
 
@@ -98,6 +98,25 @@ knowledgeApp.delete('/knowledge/:id', async (c) => {
   const id = c.req.param('id');
   await c.env.DB.prepare('DELETE FROM knowledge_sources WHERE id = ? AND business_id = ?').bind(id, user.business_id).run();
   return c.json({ success: true });
+});
+
+// GET /r2/* (Tenant-isolated R2 access)
+knowledgeApp.get('/r2/*', async (c) => {
+  const user = c.get('user');
+  const path = c.req.path.replace(/^\/(knowledge\/)?r2\//, '');
+  if (!path.startsWith(`${user.business_id}/`)) {
+    return c.json({ message: 'Access denied: foreign business resource.', code: 'forbidden' }, 403);
+  }
+  if (!c.env.KNOWLEDGE_BUCKET) {
+    return c.json({ message: 'Storage not configured.', code: 'not_found' }, 404);
+  }
+  const obj = await c.env.KNOWLEDGE_BUCKET.get(path);
+  if (!obj) return c.json({ message: 'File not found.', code: 'not_found' }, 404);
+  return new Response(obj.body, {
+    headers: {
+      'Content-Type': obj.httpMetadata?.contentType || 'application/octet-stream',
+    },
+  });
 });
 
 export { knowledgeApp };

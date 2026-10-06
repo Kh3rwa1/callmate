@@ -18,9 +18,12 @@ Errors: `{ "message": "User-presentable text", "code": "..." }`.
 ## Auth
 | Method | Path | Body | Returns |
 |---|---|---|---|
-| POST | `/auth/register` | `{phone, business_name}` | `{access_token, refresh_token}` |
+| POST | `/auth/otp/request` | `{phone}` | `{success: true, message: "..."}` |
+| POST | `/auth/register` | `{phone, otp, business_name}` | `{access_token, refresh_token}` |
 | POST | `/auth/login` | `{phone, otp}` | `{access_token, refresh_token}` |
 | POST | `/auth/refresh` | `{refresh_token}` | `{access_token, refresh_token}` |
+| POST | `/auth/logout` | `{refresh_token}` | `{success: true}` |
+| DELETE | `/auth/account` | *(Bearer token)* | `{success: true}` |
 
 ## Business & agent
 | GET/PATCH | `/business` | `Business` |

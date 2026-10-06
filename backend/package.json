@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:migrate": "wrangler d1 execute callpilot-db --local --file=./migrations/0001_initial.sql",
+    "db:migrate": "wrangler d1 execute callpilot-db --local --file=./migrations/0001_initial.sql && wrangler d1 execute callpilot-db --local --file=./migrations/0003_otp_and_security.sql",
     "db:seed": "wrangler d1 execute callpilot-db --local --file=./migrations/0002_seed.sql",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test_e2e.mjs"

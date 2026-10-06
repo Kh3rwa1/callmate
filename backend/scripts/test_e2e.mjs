@@ -80,10 +80,18 @@ async function run() {
   // 2. Auth: Register
   console.log('2. Auth Register...');
   const testPhone = `98${Math.floor(10000000 + Math.random() * 90000000)}`;
+  const otpReq = await req('/auth/otp/request', {
+    method: 'POST',
+    body: JSON.stringify({ phone: testPhone }),
+  });
+  assert.strictEqual(otpReq.status, 200, `OTP request failed: ${JSON.stringify(otpReq.data)}`);
+  const otp = otpReq.data.debug_otp;
+
   const reg = await req('/auth/register', {
     method: 'POST',
     body: JSON.stringify({
       phone: testPhone,
+      otp,
       business_name: 'Apex Academy Test',
     }),
   });
@@ -92,7 +100,7 @@ async function run() {
   assert.ok(reg.data.refresh_token, 'Missing refresh_token');
   let accessToken = reg.data.access_token;
   let refreshToken = reg.data.refresh_token;
-  console.log('   ✓ Register passed (issued JWTs)');
+  console.log('   ✓ Register passed with verified OTP (issued JWTs)');
 
   // 3. Auth: Refresh
   console.log('3. Auth Refresh...');
@@ -221,13 +229,14 @@ async function run() {
       { speaker: 'agent', text: 'Great! Our evening batches start next Monday. Can our academic head call you at 4 PM tomorrow?' },
       { speaker: 'user', text: 'Yes, please arrange that call.' },
     ],
-    extracted_variables: {
-      lead_temperature: 'hot',
-      qualification_score: 92,
+    output_variables: {
+      lead_score: 92,
+      intent: 'interested',
+      temperature: 'hot',
       summary: 'Rohan is eager to join Class 12 Physics evening batch. Agreed to counselor callback tomorrow at 4 PM.',
-      next_action: 'counsellor_callback',
+      next_action: 'whatsapp_and_callback',
       callback_at: new Date(Date.now() + 86400000).toISOString(),
-      key_topics: ['Class 12 Physics', 'Evening batch', 'Tuition fees'],
+      whatsapp_followup_required: true,
       whatsapp_message: 'Hi Rohan, thanks for speaking with Apex Academy! Counselor callback is scheduled for tomorrow at 4 PM.',
     },
   });

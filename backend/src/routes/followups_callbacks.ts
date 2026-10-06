@@ -125,7 +125,8 @@ fcApp.post('/callbacks', async (c) => {
   if (!leadId) return c.json({ message: 'lead_id is required.', code: 'invalid_request' }, 400);
 
   const lead = await c.env.DB.prepare('SELECT name, phone FROM leads WHERE id = ? AND business_id = ?').bind(leadId, user.business_id).first<any>();
-  const leadName = lead?.name || 'Customer';
+  if (!lead) return c.json({ message: 'Lead not found.', code: 'not_found' }, 404);
+  const leadName = lead.name || 'Customer';
 
   const id = `cb_${crypto.randomUUID().slice(0, 12)}`;
 
@@ -134,11 +135,11 @@ fcApp.post('/callbacks', async (c) => {
       `INSERT INTO callbacks (id, business_id, lead_id, lead_name, scheduled_at, note, status, created_at)
        VALUES (?, ?, ?, ?, ?, ?, 'scheduled', datetime('now'))`
     ).bind(id, user.business_id, leadId, leadName, scheduledAt, note),
-    c.env.DB.prepare('UPDATE leads SET callback_at = ? WHERE id = ?').bind(scheduledAt, leadId),
+    c.env.DB.prepare('UPDATE leads SET callback_at = ? WHERE id = ? AND business_id = ?').bind(scheduledAt, leadId, user.business_id),
   ]);
 
-  const created = await c.env.DB.prepare('SELECT * FROM callbacks WHERE id = ?').bind(id).first();
-  return c.json(formatCallback({ ...created, lead_phone: lead?.phone }));
+  const created = await c.env.DB.prepare('SELECT * FROM callbacks WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
+  return c.json(formatCallback({ ...created, lead_phone: lead.phone }));
 });
 
 fcApp.patch('/callbacks/:id', async (c) => {

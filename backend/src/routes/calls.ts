@@ -122,8 +122,8 @@ callsApp.post('/leads/:id/call', async (c) => {
   `).bind(callId, user.business_id, lead.id, lead.name, lead.phone).run();
 
   await c.env.DB.prepare(`
-    UPDATE leads SET status = 'calling', updated_at = datetime('now') WHERE id = ?
-  `).bind(leadId).run();
+    UPDATE leads SET status = 'calling', updated_at = datetime('now') WHERE id = ? AND business_id = ?
+  `).bind(leadId, user.business_id).run();
 
   // Trigger real Sarvam Outbound Call via API
   const sarvamApiKey = c.env.SARVAM_API_KEY;
@@ -164,14 +164,14 @@ callsApp.post('/leads/:id/call', async (c) => {
       sarvamResult = await sarvamRes.json().catch(() => null);
       if (sarvamResult?.interaction_id || sarvamResult?.id || sarvamResult?.attempt_id) {
         const interactionId = sarvamResult.interaction_id || sarvamResult.id || sarvamResult.attempt_id;
-        await c.env.DB.prepare('UPDATE calls SET interaction_id = ? WHERE id = ?').bind(interactionId, callId).run();
+        await c.env.DB.prepare('UPDATE calls SET interaction_id = ? WHERE id = ? AND business_id = ?').bind(interactionId, callId, user.business_id).run();
       }
     } catch (err: any) {
       console.error('[Sarvam Outbound Call Error]:', err?.message || err);
     }
   }
 
-  const created = await c.env.DB.prepare('SELECT * FROM calls WHERE id = ?').bind(callId).first();
+  const created = await c.env.DB.prepare('SELECT * FROM calls WHERE id = ? AND business_id = ?').bind(callId, user.business_id).first();
   return c.json({
     call: formatCall(created),
     sarvam_dispatched: !!sarvamResult,

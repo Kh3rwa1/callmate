@@ -107,7 +107,7 @@ businessApp.patch('/agent', async (c) => {
       `INSERT INTO agents (id, business_id, name, role, status, template_id, created_at, updated_at)
        VALUES (?, ?, ?, ?, 'active', 'generic_sales_v1', datetime('now'), datetime('now'))`
     ).bind(agentId, user.business_id, body.name || 'Maya', body.role || 'Sales Assistant').run();
-    existing = await c.env.DB.prepare('SELECT * FROM agents WHERE id = ?').bind(agentId).first<any>();
+    existing = await c.env.DB.prepare('SELECT * FROM agents WHERE id = ? AND business_id = ?').bind(agentId, user.business_id).first<any>();
   }
 
   const name = body.name !== undefined ? body.name : existing.name;

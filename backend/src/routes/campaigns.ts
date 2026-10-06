@@ -63,6 +63,18 @@ campaignsApp.post('/campaigns', async (c) => {
   const hoursEnd = body.calling_hours_end ?? 19;
   const options = JSON.stringify(body.options || {});
 
+  // Tenant isolation: verify EVERY lead_id belongs to user.business_id
+  if (leadIds.length > 0) {
+    const placeholders = leadIds.map(() => '?').join(',');
+    const check = await c.env.DB.prepare(
+      `SELECT COUNT(*) as cnt FROM leads WHERE business_id = ? AND id IN (${placeholders})`
+    ).bind(user.business_id, ...leadIds).first<{ cnt: number }>();
+
+    if (!check || check.cnt !== leadIds.length) {
+      return c.json({ message: 'One or more leads do not belong to your business.', code: 'foreign_lead_forbidden' }, 400);
+    }
+  }
+
   const id = `cmp_${crypto.randomUUID().slice(0, 12)}`;
   const totalLeads = leadIds.length;
   // Estimate cost: leadCount * 0.68 * 2.2 * 6 INR
@@ -84,7 +96,7 @@ campaignsApp.post('/campaigns', async (c) => {
     }
   }
 
-  const created = await c.env.DB.prepare('SELECT * FROM campaigns WHERE id = ?').bind(id).first();
+  const created = await c.env.DB.prepare('SELECT * FROM campaigns WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatCampaign(created));
 });
 
@@ -97,15 +109,15 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
   if (!existing) return c.json({ message: 'Campaign not found.', code: 'not_found' }, 404);
 
   await c.env.DB.prepare(
-    `UPDATE campaigns SET status = 'running', started_at = datetime('now') WHERE id = ?`
-  ).bind(id).run();
+    `UPDATE campaigns SET status = 'running', started_at = datetime('now') WHERE id = ? AND business_id = ?`
+  ).bind(id, user.business_id).run();
 
-  // Fetch campaign leads
+  // Fetch campaign leads with strict tenant isolation: AND l.business_id = ?
   const campaignLeads = await c.env.DB.prepare(`
     SELECT l.* FROM campaign_leads cl
     JOIN leads l ON cl.lead_id = l.id
-    WHERE cl.campaign_id = ?
-  `).bind(id).all<any>();
+    WHERE cl.campaign_id = ? AND l.business_id = ?
+  `).bind(id, user.business_id).all<any>();
 
   const sarvamApiKey = c.env.SARVAM_API_KEY;
   const orgId = c.env.SARVAM_ORG_ID || 'org_callpilot';
@@ -127,7 +139,7 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
         VALUES (?, ?, ?, ?, ?, 'calling', datetime('now'))
       `).bind(callId, user.business_id, lead.id, lead.name, lead.phone).run();
 
-      await c.env.DB.prepare(`UPDATE leads SET status = 'calling', updated_at = datetime('now') WHERE id = ?`).bind(lead.id).run();
+      await c.env.DB.prepare(`UPDATE leads SET status = 'calling', updated_at = datetime('now') WHERE id = ? AND business_id = ?`).bind(lead.id, user.business_id).run();
 
       try {
         const sarvamRes = await fetch(`https://apps.sarvam.ai/api/outbounds/v1/orgs/${orgId}/workspaces/${workspaceId}/outbounds`, {
@@ -158,7 +170,7 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
         const resData = await sarvamRes.json().catch(() => null) as any;
         if (resData?.interaction_id || resData?.id || resData?.attempt_id) {
           const interactionId = resData.interaction_id || resData.id || resData.attempt_id;
-          await c.env.DB.prepare('UPDATE calls SET interaction_id = ? WHERE id = ?').bind(interactionId, callId).run();
+          await c.env.DB.prepare('UPDATE calls SET interaction_id = ? WHERE id = ? AND business_id = ?').bind(interactionId, callId, user.business_id).run();
         }
       } catch (err: any) {
         console.error(`[Sarvam Campaign Outbound Error] Lead ${lead.id}:`, err?.message || err);
@@ -166,7 +178,7 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
     }
   }
 
-  const updated = await c.env.DB.prepare('SELECT * FROM campaigns WHERE id = ?').bind(id).first();
+  const updated = await c.env.DB.prepare('SELECT * FROM campaigns WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatCampaign(updated));
 });
 
@@ -179,7 +191,7 @@ campaignsApp.post('/campaigns/:id/stop', async (c) => {
     `UPDATE campaigns SET status = 'paused', completed_at = datetime('now') WHERE id = ? AND business_id = ?`
   ).bind(id, user.business_id).run();
 
-  const updated = await c.env.DB.prepare('SELECT * FROM campaigns WHERE id = ?').bind(id).first();
+  const updated = await c.env.DB.prepare('SELECT * FROM campaigns WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatCampaign(updated));
 });
 
