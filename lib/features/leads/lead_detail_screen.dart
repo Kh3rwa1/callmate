@@ -96,14 +96,11 @@ class _Body extends ConsumerWidget {
             Expanded(
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 8)),
-                onPressed: () {
-                  final d = PhoneUtils.normalize(l.phone);
-                  if (d != null) launchUrl(Uri.parse('tel:+$d'));
-                },
+                onPressed: () => _handleCall(context, ref, l, ref.read(agentProvider).value?.name ?? 'Riya'),
                 icon: const Icon(Icons.call_rounded, size: 18),
                 label: const FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text('Call', maxLines: 1, style: TextStyle(fontSize: 14)),
+                  child: Text('AI Call', maxLines: 1, style: TextStyle(fontSize: 14)),
                 ),
               ),
             ),
@@ -293,3 +290,79 @@ class _Signal extends StatelessWidget {
     ),
   );
 }
+
+Future<void> _handleCall(BuildContext context, WidgetRef ref, Lead l, String agentName) async {
+  final action = await showModalBottomSheet<String>(
+    context: context,
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Call ${l.name}', style: Theme.of(ctx).textTheme.titleLarge),
+            const SizedBox(height: 4),
+            Text(PhoneUtils.display(l.phone), style: Theme.of(ctx).textTheme.bodyMedium),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: AppColors.brandSoft,
+                child: Icon(Icons.smart_toy_rounded, color: AppColors.brand),
+              ),
+              title: Text('AI Call with $agentName (Sarvam AI)'),
+              subtitle: const Text('Agent calls lead phone directly with voice AI'),
+              onTap: () => Navigator.pop(ctx, 'ai_call'),
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: AppColors.infoSoft,
+                child: Icon(Icons.mic_rounded, color: AppColors.info),
+              ),
+              title: Text('Talk in-app with $agentName'),
+              subtitle: const Text('Live conversational voice session in-app'),
+              onTap: () => Navigator.pop(ctx, 'in_app'),
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: AppColors.surfaceMuted,
+                child: Icon(Icons.call_rounded, color: AppColors.inkSoft),
+              ),
+              title: const Text('Manual Phone Call'),
+              subtitle: const Text('Open phone dialer using your SIM card'),
+              onTap: () => Navigator.pop(ctx, 'sim_call'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  if (!context.mounted || action == null) return;
+
+  if (action == 'ai_call') {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Calling ${l.name} via Sarvam AI voice agent... 📞')),
+      );
+      await ref.read(callRepoProvider).triggerCall(l.id);
+      ref.invalidate(leadCallsProvider(l.id));
+      ref.read(dataVersionProvider.notifier).bump();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$agentName is calling ${l.name}! Call logged in activity.')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyError(e))),
+      );
+    }
+  } else if (action == 'in_app') {
+    context.push('/voice-test');
+  } else if (action == 'sim_call') {
+    final d = PhoneUtils.normalize(l.phone);
+    if (d != null) launchUrl(Uri.parse('tel:+$d'));
+  }
+}
+

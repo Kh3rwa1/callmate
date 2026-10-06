@@ -43,6 +43,7 @@ abstract class CallRepository {
   Future<Page<Call>> list({CallFilter filter = CallFilter.all, String? cursor, int limit = 20});
   Future<Call> get(String id);
   Future<List<Call>> forLead(String leadId);
+  Future<Call> triggerCall(String leadId);
 }
 
 enum CallFilter { all, connected, noAnswer, hot }

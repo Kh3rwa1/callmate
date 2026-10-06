@@ -5,21 +5,15 @@ import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sarvamconv_ai_sdk/sarvamconv_ai_sdk.dart';
 
+import '../../core/config/app_env.dart';
+import '../../core/widgets/state_views.dart';
 import '../../data/models/misc.dart';
 import '../../data/repositories/repositories.dart';
 import 'voice_agent_service.dart';
 
 /// Real in-app voice using the official `sarvamconv_ai_sdk` (v1.0.x).
 ///
-/// SECURITY: no Sarvam API key is ever passed. We follow Sarvam's documented
-/// proxy pattern: `SamvaadAgent(baseUrl: <our proxy>, headers: {Authorization})`.
-/// Our backend validates the short-lived session token and injects X-API-Key.
-///
-/// Only SDK APIs present in the installed package are used:
-/// SamvaadAgent(config, audioInterface, textCallback, eventCallback, baseUrl, headers),
-/// start(), waitForConnect(), stop(), sendAudio(), sendText(), isConnected,
-/// DefaultAudioInterface, InteractionConfig, ServerTextChunkMsg/ServerTextMsg,
-/// ServerInteractionConnectedEvent / ServerInteractionEndEvent / ServerUserInterruptEvent.
+/// Connects through the Cloudflare Worker voice proxy, or directly to Sarvam AI.
 class SarvamVoiceAgentService implements VoiceAgentService {
   SarvamVoiceAgentService(this._sessions);
 
@@ -55,7 +49,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
   Future<void> startTestSession({Map<String, dynamic> agentVariables = const {}}) async {
     if (_agent != null) return;
     if (kIsWeb) {
-      throw const VoiceAgentException('Live voice runs on the Android & iOS app. Use demo mode in the browser.');
+      throw const VoiceAgentException('Live voice runs on the Android & iOS app.');
     }
     _set(VoiceConnectionState.connecting);
 
@@ -65,13 +59,30 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       throw const VoiceAgentException('Microphone access is needed to talk to your AI employee.', permissionDenied: true);
     }
 
-    final VoiceTestSession session;
+    VoiceTestSession? session;
     try {
       session = await _sessions.createTestSession();
-    } catch (_) {
-      _set(VoiceConnectionState.error);
-      throw const VoiceAgentException("Your AI employee couldn't connect. Check your connection and try again.");
+    } catch (e) {
+      debugPrint('[SarvamVoiceAgent] Server session creation error: $e');
+      // If server session failed but direct Sarvam key is provided, allow direct fallback
+      if (AppEnv.sarvamApiKey.isNotEmpty) {
+        session = VoiceTestSession(
+          sessionToken: '',
+          orgId: AppEnv.sarvamOrgId,
+          workspaceId: AppEnv.sarvamWorkspaceId,
+          appId: AppEnv.sarvamAppId,
+          proxyBaseUrl: 'https://apps.sarvam.ai/api/app-runtime/',
+        );
+      } else {
+        _set(VoiceConnectionState.error);
+        throw VoiceAgentException("Your AI employee couldn't connect to backend. Please check connection ($e).");
+      }
     }
+
+    final rawBaseUrl = session.proxyBaseUrl.isEmpty
+        ? 'https://apps.sarvam.ai/api/app-runtime/'
+        : session.proxyBaseUrl;
+    final proxyBaseUrl = rawBaseUrl.endsWith('/') ? rawBaseUrl : '$rawBaseUrl/';
 
     final config = InteractionConfig(
       orgId: session.orgId,
@@ -85,11 +96,19 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       agentVariables: {...session.agentVariables, ...agentVariables},
     );
 
+    final headers = session.sessionToken.isNotEmpty
+        ? {'Authorization': 'Bearer ${session.sessionToken}'}
+        : null;
+    final apiKey = session.sessionToken.isEmpty && AppEnv.sarvamApiKey.isNotEmpty
+        ? AppEnv.sarvamApiKey
+        : null;
+
     _audio = _MutableAudioInterface(DefaultAudioInterface(inputSampleRate: 16000), onOutput: _onAgentAudio);
     _agent = SamvaadAgent(
       config: config,
-      baseUrl: session.proxyBaseUrl,
-      headers: {'Authorization': 'Bearer ${session.sessionToken}'},
+      baseUrl: proxyBaseUrl,
+      headers: headers,
+      apiKey: apiKey,
       audioInterface: _audio,
       textCallback: _onText,
       eventCallback: _onEvent,
@@ -97,8 +116,8 @@ class SarvamVoiceAgentService implements VoiceAgentService {
 
     try {
       await _agent!.start();
-      final ok = await _agent!.waitForConnect(timeout: const Duration(seconds: 12));
-      if (!ok) throw const VoiceAgentException('timeout');
+      final ok = await _agent!.waitForConnect(timeout: const Duration(seconds: 15));
+      if (!ok) throw const VoiceAgentException('Connection to Sarvam AI timed out. Please try again.');
       _set(VoiceConnectionState.listening);
       unawaited(
         _agent!.waitForDisconnect().then((_) {
@@ -107,9 +126,10 @@ class SarvamVoiceAgentService implements VoiceAgentService {
           }
         }),
       );
-    } catch (_) {
+    } catch (err) {
+      debugPrint('[SarvamVoiceAgent] Failed to connect: $err');
       await _teardown(VoiceConnectionState.error);
-      throw const VoiceAgentException("Your AI employee couldn't connect. Check your connection and try again.");
+      throw VoiceAgentException("Sarvam voice connection error: ${friendlyError(err)}");
     }
   }
 

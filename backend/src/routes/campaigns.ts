@@ -96,16 +96,75 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
   const existing = await c.env.DB.prepare('SELECT * FROM campaigns WHERE id = ? AND business_id = ?').bind(id, user.business_id).first<any>();
   if (!existing) return c.json({ message: 'Campaign not found.', code: 'not_found' }, 404);
 
-  // In production with Sarvam API key:
-  // Trigger Sarvam Outbound Campaign API or schedule queue
-  if (c.env.SARVAM_API_KEY && c.env.SARVAM_WORKSPACE_ID) {
-    // If real Sarvam credentials present, can trigger Sarvam Campaign API
-    console.log(`[Sarvam] Initiating outbound campaign ${id} for tenant ${user.business_id}`);
-  }
-
   await c.env.DB.prepare(
     `UPDATE campaigns SET status = 'running', started_at = datetime('now') WHERE id = ?`
   ).bind(id).run();
+
+  // Fetch campaign leads
+  const campaignLeads = await c.env.DB.prepare(`
+    SELECT l.* FROM campaign_leads cl
+    JOIN leads l ON cl.lead_id = l.id
+    WHERE cl.campaign_id = ?
+  `).bind(id).all<any>();
+
+  const sarvamApiKey = c.env.SARVAM_API_KEY;
+  const orgId = c.env.SARVAM_ORG_ID || 'org_callpilot';
+  const workspaceId = c.env.SARVAM_WORKSPACE_ID || 'ws_callpilot';
+  const appId = c.env.SARVAM_ADMISSIONS_APP_ID || 'app_callpilot_voice';
+
+  if (sarvamApiKey && !sarvamApiKey.startsWith('mock-')) {
+    const business = await c.env.DB.prepare('SELECT * FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
+    const agent = await c.env.DB.prepare('SELECT * FROM agents WHERE business_id = ?').bind(user.business_id).first<any>();
+    const url = new URL(c.req.url);
+    const webhookUrl = `${url.origin}/webhooks/sarvam`;
+
+    for (const lead of campaignLeads.results) {
+      const callId = `call_${crypto.randomUUID().slice(0, 12)}`;
+
+      // Insert active call record
+      await c.env.DB.prepare(`
+        INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, status, started_at)
+        VALUES (?, ?, ?, ?, ?, 'calling', datetime('now'))
+      `).bind(callId, user.business_id, lead.id, lead.name, lead.phone).run();
+
+      await c.env.DB.prepare(`UPDATE leads SET status = 'calling', updated_at = datetime('now') WHERE id = ?`).bind(lead.id).run();
+
+      try {
+        const sarvamRes = await fetch(`https://apps.sarvam.ai/api/outbounds/v1/orgs/${orgId}/workspaces/${workspaceId}/outbounds`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': sarvamApiKey,
+          },
+          body: JSON.stringify({
+            app_config: { app_id: appId },
+            user_config: { phone_number: lead.phone },
+            agent_variables: {
+              call_id: callId,
+              campaign_id: id,
+              lead_id: lead.id,
+              lead_name: lead.name,
+              business_name: business?.name || 'CallPilot Business',
+              agent_name: agent?.name || 'Riya',
+              agent_role: agent?.role || 'Assistant',
+              course_interest: lead.course_interest || lead.interest || '',
+            },
+            webhook_config: {
+              webhook_url: webhookUrl,
+            },
+          }),
+        });
+
+        const resData = await sarvamRes.json().catch(() => null) as any;
+        if (resData?.interaction_id || resData?.id || resData?.attempt_id) {
+          const interactionId = resData.interaction_id || resData.id || resData.attempt_id;
+          await c.env.DB.prepare('UPDATE calls SET interaction_id = ? WHERE id = ?').bind(interactionId, callId).run();
+        }
+      } catch (err: any) {
+        console.error(`[Sarvam Campaign Outbound Error] Lead ${lead.id}:`, err?.message || err);
+      }
+    }
+  }
 
   const updated = await c.env.DB.prepare('SELECT * FROM campaigns WHERE id = ?').bind(id).first();
   return c.json(formatCampaign(updated));

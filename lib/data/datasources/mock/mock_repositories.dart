@@ -247,6 +247,11 @@ class MockCallRepository implements CallRepository {
   @override
   Future<List<Call>> forLead(String leadId) =>
       _lag(() => b.calls.where((c) => c.leadId == leadId).toList()..sort((a, b) => b.startedAt.compareTo(a.startedAt)), 150);
+
+  @override
+  Future<Call> triggerCall(String leadId) => _lag(() {
+    return b.simulateCall(LeadTemperature.hot, leadId: leadId);
+  }, 300);
 }
 
 class MockCampaignRepository implements CampaignRepository {

@@ -20,7 +20,7 @@ voiceApp.post('/test-session', async (c) => {
   );
 
   const url = new URL(c.req.url);
-  const proxyBaseUrl = `${url.origin}/voice/sarvam-proxy`;
+  const proxyBaseUrl = `${url.origin}/voice/sarvam-proxy/`;
 
   return c.json({
     session_token: sessionToken,
@@ -56,9 +56,9 @@ voiceApp.all('/sarvam-proxy/*', async (c) => {
     return c.json({ message: 'Invalid or expired voice session token.', code: 'session_expired' }, 401);
   }
 
-  const sarvamTargetBase = c.env.SARVAM_PROXY_BASE || 'https://apps.sarvam.ai/api/app-runtime';
+  const sarvamTargetBase = (c.env.SARVAM_PROXY_BASE || 'https://apps.sarvam.ai/api/app-runtime').replace(/\/$/, '');
   const reqUrl = new URL(c.req.url);
-  const subPath = reqUrl.pathname.replace(/^\/voice\/sarvam-proxy/, '');
+  const subPath = reqUrl.pathname.replace(/^\/voice\/sarvam-proxy\/?/, '/');
   const targetUrl = `${sarvamTargetBase}${subPath}${reqUrl.search}`;
 
   const forwardHeaders = new Headers(c.req.raw.headers);
@@ -127,14 +127,15 @@ voiceApp.post('/webhooks/sarvam', async (c) => {
     return c.json({ message: 'Malformed JSON payload.' }, 400);
   }
 
-  const interactionId = data.interaction_id || data.call_id;
-  if (!interactionId) {
-    return c.json({ message: 'interaction_id is required.' }, 400);
-  }
+  const interactionId = data.interaction_id || data.call_id || `int_${crypto.randomUUID().slice(0, 8)}`;
+  const explicitCallId = data.call_id || data.agent_variables?.call_id;
 
-  // Check idempotency in D1
-  const existing = await c.env.DB.prepare('SELECT id FROM calls WHERE interaction_id = ?').bind(interactionId).first();
-  if (existing) {
+  // Check idempotency / existing call in D1
+  const existingCall = explicitCallId
+    ? await c.env.DB.prepare('SELECT id, status FROM calls WHERE id = ?').bind(explicitCallId).first<any>()
+    : await c.env.DB.prepare('SELECT id, status FROM calls WHERE interaction_id = ?').bind(interactionId).first<any>();
+
+  if (existingCall && existingCall.status === 'completed') {
     return c.json({ message: 'Already processed.', status: 'idempotent' }, 200);
   }
 
@@ -170,7 +171,7 @@ voiceApp.post('/webhooks/sarvam', async (c) => {
   const transcript = JSON.stringify(data.transcript || []);
   const callbackAt = out.callback_at || null;
 
-  const callId = `call_${crypto.randomUUID().slice(0, 12)}`;
+  const callId = existingCall?.id || explicitCallId || `call_${crypto.randomUUID().slice(0, 12)}`;
   let followUpId: string | null = null;
 
   const statements: D1PreparedStatement[] = [];
@@ -187,22 +188,40 @@ voiceApp.post('/webhooks/sarvam', async (c) => {
     );
   }
 
-  // 2. Insert Call
-  statements.push(
-    c.env.DB.prepare(
-      `INSERT INTO calls (
-        id, business_id, lead_id, lead_name, lead_phone, status, duration_seconds,
-        recording_url, transcript, score, temperature, intent, summary, objections,
-        positive_signals, next_action, follow_up_id, callback_at, interaction_id,
-        started_at, completed_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-' || ? || ' seconds'), datetime('now'))`
-    ).bind(
-      callId, businessId, leadId, leadName, leadPhone, callStatus, durationSeconds,
-      data.recording_url || null, transcript, score, temperature, intent, summary,
-      objections, positiveSignals, nextAction, followUpId, callbackAt, interactionId,
-      durationSeconds
-    )
-  );
+  // 2. Insert or Update Call
+  if (existingCall) {
+    statements.push(
+      c.env.DB.prepare(
+        `UPDATE calls SET
+          status = ?, duration_seconds = ?, recording_url = ?, transcript = ?,
+          score = ?, temperature = ?, intent = ?, summary = ?, objections = ?,
+          positive_signals = ?, next_action = ?, follow_up_id = ?, callback_at = ?,
+          interaction_id = ?, completed_at = datetime('now')
+         WHERE id = ?`
+      ).bind(
+        callStatus, durationSeconds, data.recording_url || null, transcript,
+        score, temperature, intent, summary, objections,
+        positiveSignals, nextAction, followUpId, callbackAt, interactionId,
+        callId
+      )
+    );
+  } else {
+    statements.push(
+      c.env.DB.prepare(
+        `INSERT INTO calls (
+          id, business_id, lead_id, lead_name, lead_phone, status, duration_seconds,
+          recording_url, transcript, score, temperature, intent, summary, objections,
+          positive_signals, next_action, follow_up_id, callback_at, interaction_id,
+          started_at, completed_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-' || ? || ' seconds'), datetime('now'))`
+      ).bind(
+        callId, businessId, leadId, leadName, leadPhone, callStatus, durationSeconds,
+        data.recording_url || null, transcript, score, temperature, intent, summary,
+        objections, positiveSignals, nextAction, followUpId, callbackAt, interactionId,
+        durationSeconds
+      )
+    );
+  }
 
   // 3. Update Lead
   statements.push(

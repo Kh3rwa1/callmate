@@ -79,10 +79,10 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
           _state = VoiceConnectionState.error;
         });
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() {
-          _error = "${ref.read(employeeNameProvider)} couldn't connect. Check your connection and try again.";
+          _error = "${ref.read(employeeNameProvider)} couldn't connect. ($e). Check your connection and try again.";
           _state = VoiceConnectionState.error;
         });
       }

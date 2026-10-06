@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../config/app_env.dart';
+import '../storage/local_prefs.dart';
 import '../storage/secure_store.dart';
 
 /// User-presentable API error. Screens show [message]; details stay in logs.
@@ -20,10 +21,10 @@ class ApiException implements Exception {
 
 /// Authenticated Dio client for OUR backend.
 class ApiClient {
-  ApiClient(this._store, {String? baseUrl})
+  ApiClient(this._store, {String? baseUrl, LocalPrefs? prefs})
     : dio = Dio(
         BaseOptions(
-          baseUrl: baseUrl ?? AppEnv.apiBaseUrl,
+          baseUrl: baseUrl ?? prefs?.serverUrl ?? AppEnv.effectiveApiBaseUrl,
           connectTimeout: const Duration(seconds: 12),
           receiveTimeout: const Duration(seconds: 20),
           headers: {'Accept': 'application/json'},

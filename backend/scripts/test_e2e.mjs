@@ -195,11 +195,23 @@ async function run() {
   assert.ok(voiceSess.data.proxy_base_url.includes('/voice/sarvam-proxy'));
   console.log(`   ✓ Voice session token generated, proxy=${voiceSess.data.proxy_base_url}`);
 
+  // 9b. Trigger Outbound Lead Call via Sarvam
+  console.log('9b. Trigger Lead Call via Sarvam Outbound...');
+  const triggerRes = await req(`/leads/${singleLead.data.id}/call`, {
+    method: 'POST',
+    headers: authHeader,
+  });
+  assert.strictEqual(triggerRes.status, 200);
+  assert.ok(triggerRes.data.call?.id);
+  assert.strictEqual(triggerRes.data.call?.status, 'calling');
+  const triggeredCallId = triggerRes.data.call.id;
+  console.log(`   ✓ Lead call initiated in DB with id=${triggeredCallId}, status=calling`);
+
   // 10. Sarvam Webhook with HMAC signature
   console.log('10. Sarvam completed call webhook...');
   const webhookSecret = 'dev_webhook_secret_key_12345';
   const webhookBody = JSON.stringify({
-    call_id: `sarvam_call_${Date.now()}`,
+    call_id: triggeredCallId,
     lead_id: singleLead.data.id,
     duration_seconds: 145,
     status: 'completed',

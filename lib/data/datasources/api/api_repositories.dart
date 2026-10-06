@@ -172,6 +172,10 @@ class ApiCallRepository implements CallRepository {
 
   @override
   Future<List<Call>> forLead(String leadId) => api.get('/calls', (d) => _l(d).map(Call.fromJson).toList(), query: {'lead_id': leadId});
+
+  @override
+  Future<Call> triggerCall(String leadId) =>
+      api.post('/leads/$leadId/call', (d) => Call.fromJson(_j(d is Map && d.containsKey('call') ? d['call'] : d)));
 }
 
 class ApiCampaignRepository implements CampaignRepository {

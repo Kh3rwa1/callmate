@@ -10,7 +10,6 @@ import '../data/repositories/repositories.dart';
 import '../data/templates/templates.dart';
 import '../services/analytics/analytics_service.dart';
 import '../services/notifications/notification_service.dart';
-import '../services/voice/mock_voice_agent_service.dart';
 import '../services/voice/sarvam_voice_agent_service.dart';
 import '../services/voice/voice_agent_service.dart';
 import '../services/whatsapp/whatsapp_service.dart';
@@ -29,7 +28,13 @@ final useMockProvider = Provider<bool>((_) => AppEnv.useMock);
 
 final localPrefsProvider = Provider<LocalPrefs>((_) => throw UnimplementedError('override in main'));
 final secureStoreProvider = Provider<SecureStore>((_) => SecureStore());
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient(ref.watch(secureStoreProvider)));
+final apiClientProvider = Provider<ApiClient>((ref) {
+  LocalPrefs? prefs;
+  try {
+    prefs = ref.watch(localPrefsProvider);
+  } catch (_) {}
+  return ApiClient(ref.watch(secureStoreProvider), prefs: prefs);
+});
 
 final mockBackendProvider = Provider<MockBackend>((ref) {
   final b = MockBackend();
@@ -119,22 +124,9 @@ final whatsappServiceProvider = Provider<WhatsAppService>((_) => const WhatsAppD
 final analyticsProvider = Provider<AnalyticsService>((_) => DebugAnalyticsService());
 final notificationServiceProvider = Provider<NotificationService>((_) => NotificationService());
 
-/// Voice service instance (configured for mock or real Sarvam backend).
+/// Voice service instance (100% real Sarvam AI voice agent).
 final voiceAgentServiceProvider = Provider<VoiceAgentService>((ref) {
-  final VoiceAgentService s;
-  if (ref.watch(useMockProvider)) {
-    final b = ref.watch(mockBackendProvider);
-    final tpl = templateFor(b.business.category);
-    s = MockVoiceAgentService(
-      agentName: b.agent.name,
-      agentRole: b.agent.role,
-      businessName: b.business.name,
-      humanLabel: tpl.workflow.humanLabel,
-      vertical: b.business.category == BusinessCategory.coaching ? 'coaching' : 'generic',
-    );
-  } else {
-    s = SarvamVoiceAgentService(ref.watch(voiceSessionRepoProvider));
-  }
+  final s = SarvamVoiceAgentService(ref.watch(voiceSessionRepoProvider));
   ref.onDispose(s.dispose);
   return s;
 });
