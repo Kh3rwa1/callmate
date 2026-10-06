@@ -1,4 +1,7 @@
-# Riya AI – Backend API contract (v1)
+# CallPilot – Backend API contract (v1)
+
+> CallPilot = the product. AI employees (e.g. "Maya · Sales Assistant", "Riya · Admissions Assistant") are tenant data created inside CallPilot.
+> App package id: `com.lexi.light` (Android + iOS).
 
 The mobile app talks **only** to this backend. The backend owns Sarvam Voice
 Agents, telephony, webhooks, secrets, scoring normalisation and push.
@@ -21,7 +24,7 @@ Errors: `{ "message": "User-presentable text", "code": "..." }`.
 
 ## Business & agent
 | GET/PATCH | `/business` | `Business` |
-| GET/PATCH | `/agent` | `Agent` (name, role, languages, formality, calling hours, transfer_number, status) |
+| GET/PATCH | `/agent` | `Agent` (name, role, role_kind, skills, voice, goal, languages, formality, calling hours, transfer_number, status, template_id) |
 
 ## Knowledge
 | POST | `/knowledge` | multipart: `type, title, content?, url?, file?` → `KnowledgeSource` (status `processing`) |
@@ -46,7 +49,7 @@ Backend extracts text and syncs it into the Sarvam agent knowledge base.
 | POST | `/campaigns/:id/start` · `/campaigns/:id/stop` | |
 
 Backend creates the Sarvam outbound campaign, passing per-lead **agent variables**
-(see `templates/coaching_admissions_v1.json → agent_variables_in`).
+(per business template, e.g. `templates/coaching_admissions_v1.json → agent_variables_in`).
 
 ## Follow-ups & callbacks
 | GET | `/followups?status=ready&call_id=` | |
@@ -72,7 +75,7 @@ This follows Sarvam's documented proxy pattern for `SamvaadAgent(baseUrl:, heade
 2. Map connectivity/outcome → `Call.status` (`completed | no_answer | busy | failed`).
 3. Validate agent output variables against `schemas/call_output.schema.json`.
    Invalid / missing → score 0, `temperature=cold`, flag for review (never crash).
-4. Upsert `Call`, update `Lead` (score, summary, objections, next_action, callback_at).
+4. Upsert `Call`, update `Lead` (score, summary, interest, attributes, objections, next_action, callback_at).
 5. If `whatsapp_followup_required` → create `FollowUp(status=ready)`.
 6. If `callback_at` → create `Callback`.
 7. Push (FCM data message `{title, body, route}`) **only** for: hot lead, campaign finished,
@@ -81,3 +84,8 @@ This follows Sarvam's documented proxy pattern for `SamvaadAgent(baseUrl:, heade
 
 ## Push routes (deep links)
 `/followups/:id` · `/calls/:id/result` · `/leads/:id` · `/leads?filter=hot` · `/campaigns/:id` · `/callbacks`
+
+## Business templates
+`business.category` selects a template (`coaching`, `real_estate`, `clinic`, `diagnostic`, `automobile`, `salon`, `restaurant`, `retail`, `local_services`, `other`).
+Each template = AgentTemplate (default name/role/goal/skills) + WorkflowTemplate (interest label, custom lead attributes, human closer label).
+Leads are generic: `interest` + free-form `attributes` map (e.g. coaching `{batch, budget}`, real estate `{budget, location}`). No vertical-specific global fields.

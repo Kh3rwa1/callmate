@@ -13,7 +13,6 @@ import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
-import '../../data/datasources/mock/mock_brain.dart';
 import '../../data/models/models.dart';
 
 class ImportLeadsScreen extends ConsumerStatefulWidget {
@@ -26,7 +25,7 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
   final _form = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _phone = TextEditingController();
-  String? _course;
+  String? _interest;
   bool _busy = false;
   CsvLeadParseResult? _preview;
   String? _fileName;
@@ -46,10 +45,10 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
     if (!_form.currentState!.validate()) return;
     setState(() => _busy = true);
     try {
-      await ref.read(leadRepoProvider).create(NewLeadInput(name: _name.text.trim(), phone: _phone.text, courseInterest: _course));
+      await ref.read(leadRepoProvider).create(NewLeadInput(name: _name.text.trim(), phone: _phone.text, interest: _interest));
       _name.clear();
       _phone.clear();
-      _snack('Lead added ✓ Riya will call them in your next campaign.');
+      _snack('Lead added ✓ Your AI employee will call them in the next campaign.');
     } catch (e) {
       _snack(friendlyError(e));
     } finally {
@@ -75,13 +74,13 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
 
   void _useSample() {
     const sample =
-        'Name,Phone,Course,Source\n'
-        'Riddhi Sen,98301 22334,NEET,Facebook Ad\n'
-        'Karan Mehta,+91 97480 11223,JEE Main,Website form\n'
-        'Moumita Paul,09007766554,Class 10 Boards,Referral\n'
-        'Faizan Ali,8013344556,WBJEE,Instagram\n'
-        'Broken Row,12345,NEET,Website form\n'
-        'Tania Roy,7003322110,Class 12 Science,Google Ads\n';
+        'Name,Phone,Interest,Source\n'
+        'Riddhi Sen,98301 22334,Pricing,Facebook Ad\n'
+        'Karan Mehta,+91 97480 11223,Demo request,Website form\n'
+        'Moumita Paul,09007766554,Service enquiry,Referral\n'
+        'Faizan Ali,8013344556,Pricing,Instagram\n'
+        'Broken Row,12345,Pricing,Website form\n'
+        'Tania Roy,7003322110,Product enquiry,Google Ads\n';
     setState(() {
       _preview = CsvLeadParser.toLeads(sample);
       _fileName = 'sample_leads.csv';
@@ -172,7 +171,7 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Import from CSV', style: t.titleMedium),
-                          Text('Columns: Name, Phone, Course (optional), Source', style: t.bodySmall),
+                          Text('Columns: Name, Phone, Interest (optional), Source', style: t.bodySmall),
                         ],
                       ),
                     ),
@@ -237,7 +236,7 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                   TextFormField(
                     controller: _name,
                     textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(hintText: 'Student / parent name', prefixIcon: Icon(Icons.person_outline_rounded)),
+                    decoration: const InputDecoration(hintText: 'Customer name', prefixIcon: Icon(Icons.person_outline_rounded)),
                     validator: (v) => (v ?? '').trim().length < 2 ? 'Enter a name' : null,
                   ),
                   const SizedBox(height: 12),
@@ -249,10 +248,13 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: _course,
-                    decoration: const InputDecoration(hintText: 'Course interest (optional)', prefixIcon: Icon(Icons.school_outlined)),
-                    items: [for (final c in mockCourses) DropdownMenuItem(value: c.name, child: Text(c.name))],
-                    onChanged: (v) => setState(() => _course = v),
+                    initialValue: _interest,
+                    decoration: InputDecoration(
+                      hintText: '${ref.watch(workflowProvider).interestLabel} (optional)',
+                      prefixIcon: const Icon(Icons.local_offer_outlined),
+                    ),
+                    items: [for (final c in ref.watch(workflowProvider).interestOptions) DropdownMenuItem(value: c, child: Text(c))],
+                    onChanged: (v) => setState(() => _interest = v),
                   ),
                   const SizedBox(height: 16),
                   SecondaryButton(label: 'Add lead', icon: Icons.add_rounded, onPressed: _busy ? null : _addOne),

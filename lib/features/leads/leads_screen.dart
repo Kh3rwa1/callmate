@@ -117,7 +117,7 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                 controller: _search,
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
-                  hintText: 'Search name, phone or course',
+                  hintText: 'Search name, phone or interest',
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _search.text.isEmpty
                       ? null
@@ -180,7 +180,7 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
       if (q.filter == LeadFilter.hot) {
         return const EmptyState(
           title: 'No hot leads yet',
-          message: 'Riya will flag leads that are ready to join.',
+          message: 'Your AI employee will flag leads that are ready to buy or book.',
           mascot: MascotState.thinking,
         );
       }

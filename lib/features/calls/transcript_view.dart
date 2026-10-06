@@ -5,11 +5,12 @@ import '../../core/utils/format.dart';
 import '../../core/widgets/mascot.dart';
 import '../../data/models/models.dart';
 
-/// Clean conversational transcript (Riya on the left, lead on the right).
+/// Clean conversational transcript (AI employee on the left, lead on the right).
 class TranscriptView extends StatefulWidget {
-  const TranscriptView({super.key, required this.transcript, required this.leadName, this.maxLines});
+  const TranscriptView({super.key, required this.transcript, required this.leadName, this.agentName = 'AI', this.maxLines});
   final CallTranscript transcript;
   final String leadName;
+  final String agentName;
   final int? maxLines;
 
   @override
@@ -31,7 +32,7 @@ class _TranscriptViewState extends State<TranscriptView> {
           TranscriptBubble(
             isAgent: l.speaker == TranscriptSpeaker.agent,
             text: l.text,
-            who: l.speaker == TranscriptSpeaker.agent ? 'Riya' : widget.leadName,
+            who: l.speaker == TranscriptSpeaker.agent ? widget.agentName : widget.leadName,
             at: l.offset,
           ),
         if (shown.length < lines.length)

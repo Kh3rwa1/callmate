@@ -15,9 +15,8 @@ class AiCallOutput {
     required this.summary,
     required this.nextAction,
     required this.whatsappFollowupRequired,
-    this.courseInterest,
-    this.preferredBatch,
-    this.budget,
+    this.interest,
+    this.attributes = const {},
     this.objections = const [],
     this.positiveSignals = const [],
     this.callbackAt,
@@ -28,9 +27,12 @@ class AiCallOutput {
   final int leadScore;
   final LeadIntent intent;
   final LeadTemperature temperature;
-  final String? courseInterest;
-  final String? preferredBatch;
-  final String? budget;
+
+  /// What the lead wants (course / property / service / model…).
+  final String? interest;
+
+  /// Template-defined extras, e.g. {"batch": "Evening", "budget": "50000"}.
+  final Map<String, String> attributes;
   final List<String> objections;
   final List<String> positiveSignals;
   final String summary;
@@ -46,9 +48,11 @@ class AiCallOutput {
       leadScore: score,
       intent: LeadIntent.parse(jStrN(j, 'intent')),
       temperature: j['temperature'] == null ? LeadTemperature.fromScore(score) : LeadTemperature.parse(jStrN(j, 'temperature')),
-      courseInterest: jStrN(j, 'course_interest'),
-      preferredBatch: jStrN(j, 'preferred_batch'),
-      budget: jStrN(j, 'budget'),
+      interest: jStrN(j, 'interest') ?? jStrN(j, 'course_interest'),
+      attributes: {
+        for (final e in (jObj(j, 'attributes') ?? const {}).entries)
+          if (e.value != null) e.key: e.value.toString(),
+      },
       objections: jStrList(j, 'objections'),
       positiveSignals: jStrList(j, 'positive_signals'),
       summary: jStr(j, 'summary'),
@@ -64,9 +68,8 @@ class AiCallOutput {
     'lead_score': leadScore,
     'intent': intent.wire,
     'temperature': temperature.wire,
-    'course_interest': courseInterest,
-    'preferred_batch': preferredBatch,
-    'budget': budget,
+    'interest': interest,
+    'attributes': attributes,
     'objections': objections,
     'positive_signals': positiveSignals,
     'summary': summary,

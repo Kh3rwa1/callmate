@@ -46,6 +46,7 @@ class _Body extends ConsumerWidget {
     final fus = ref.watch(followUpsProvider).value?.where((f) => f.leadId == l.id).toList() ?? const <FollowUp>[];
     final fu = fus.firstOrNull;
     final lastCall = calls.where((c) => c.status.isConnected).firstOrNull;
+    final wf = ref.watch(workflowProvider);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 36),
@@ -143,8 +144,11 @@ class _Body extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
           child: Column(
             children: [
-              _Kv('Course interest', l.interestLine),
-              if (l.budget != null) _Kv('Budget', Fmt.inr(int.tryParse(l.budget!) ?? 0)),
+              _Kv(wf.interestLabel, l.interest ?? 'Not known yet'),
+              for (final a in wf.attributes)
+                if (l.attributes[a.key] != null) _Kv(a.label, _fmtAttr(a.key, l.attributes[a.key]!)),
+              for (final e in l.attributes.entries)
+                if (!wf.attributes.any((a) => a.key == e.key)) _Kv(_titleCase(e.key), _fmtAttr(e.key, e.value)),
               if (l.language != null) _Kv('Language', l.language!),
               _Kv('Next action', l.nextAction.label, highlight: l.nextAction != NextAction.none),
               _Kv('Callback', l.callbackAt == null ? 'Not scheduled' : Fmt.friendlyFuture(l.callbackAt!), highlight: l.callbackAt != null),
@@ -193,7 +197,7 @@ class _Body extends ConsumerWidget {
         ],
         SectionLabel('Call history', trailing: Text('${calls.length}', style: t.labelMedium)),
         if (calls.isEmpty)
-          AppCard(child: Text('Riya hasn\'t called ${l.firstName} yet.', style: t.bodyMedium))
+          AppCard(child: Text('${ref.watch(employeeNameProvider)} hasn\'t called ${l.firstName} yet.', style: t.bodyMedium))
         else
           AppCard(
             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -222,13 +226,22 @@ class _Body extends ConsumerWidget {
         if (lastCall != null && !lastCall.transcript.isEmpty) ...[
           const SectionLabel('Latest transcript'),
           AppCard(
-            child: TranscriptView(transcript: lastCall.transcript, leadName: l.firstName, maxLines: 6),
+            child: TranscriptView(
+              transcript: lastCall.transcript,
+              leadName: l.firstName,
+              agentName: ref.watch(employeeNameProvider),
+              maxLines: 6,
+            ),
           ),
         ],
       ],
     );
   }
 }
+
+String _titleCase(String k) => k.isEmpty ? k : k[0].toUpperCase() + k.substring(1).replaceAll('_', ' ');
+
+String _fmtAttr(String key, String v) => key == 'budget' && int.tryParse(v) != null ? Fmt.inr(int.parse(v)) : v;
 
 class _Kv extends StatelessWidget {
   const _Kv(this.k, this.v, {this.highlight = false, this.last = false});

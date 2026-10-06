@@ -56,7 +56,7 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
             setState(() => _inFlight[key] = s);
             if (s.status == KnowledgeStatus.ready) {
               setState(() => _inFlight.remove(key));
-              _snack('Riya learned “${s.title}” ✓');
+              _snack('${ref.read(employeeNameProvider)} learned “${s.title}” ✓');
             }
           },
           onError: (_) {
@@ -112,7 +112,7 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
     KnowledgeType.pdf => '📄',
     KnowledgeType.website => '🌐',
     KnowledgeType.faq => '❓',
-    KnowledgeType.centreInfo => '📍',
+    KnowledgeType.businessInfo => '📍',
     KnowledgeType.text => '📝',
   };
 
@@ -137,8 +137,8 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
           final all = [..._inFlight.values, ...items];
           if (all.isEmpty) {
             return EmptyState(
-              title: 'Riya hasn\'t learned anything yet',
-              message: 'Add your brochure, fees or FAQ so she can answer questions on calls.',
+              title: 'Your AI employee hasn\'t learned anything yet',
+              message: 'Add services, pricing, FAQs or business details so it can answer customer questions.',
               actionLabel: '+ Add information',
               onAction: _openAddSheet,
             );
@@ -148,7 +148,10 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(AppSpace.page, 8, AppSpace.page, 100),
               children: [
-                Text('Everything Riya knows about your business. She uses this to answer questions on calls.', style: t.bodyMedium),
+                Text(
+                  'Everything ${ref.watch(employeeNameProvider)} knows about your business – services, pricing, opening hours, location, policies and FAQs.',
+                  style: t.bodyMedium,
+                ),
                 if (latest != null) ...[
                   const SizedBox(height: 8),
                   Text('Last updated ${Fmt.relative(latest)}', style: t.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
@@ -191,7 +194,7 @@ class _SourceTile extends StatelessWidget {
     final s = source;
     final (label, color) = switch (s.status) {
       KnowledgeStatus.uploading => ('Uploading ${(s.progress * 100).round()}%', AppColors.info),
-      KnowledgeStatus.processing => ('Riya is reading…', AppColors.warm),
+      KnowledgeStatus.processing => ('Learning…', AppColors.warm),
       KnowledgeStatus.ready => ('Learned', AppColors.success),
       KnowledgeStatus.failed => ('Couldn\'t read this – try again', AppColors.hot),
     };

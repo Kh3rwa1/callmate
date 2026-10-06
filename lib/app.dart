@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/config/brand.dart';
 import 'core/providers.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -11,13 +12,13 @@ import 'data/models/misc.dart';
 import 'data/repositories/repositories.dart' show NotificationEvent;
 import 'features/notifications/notifications_screen.dart';
 
-class RiyaApp extends ConsumerStatefulWidget {
-  const RiyaApp({super.key});
+class CallPilotApp extends ConsumerStatefulWidget {
+  const CallPilotApp({super.key});
   @override
-  ConsumerState<RiyaApp> createState() => _RiyaAppState();
+  ConsumerState<CallPilotApp> createState() => _CallPilotAppState();
 }
 
-class _RiyaAppState extends ConsumerState<RiyaApp> {
+class _CallPilotAppState extends ConsumerState<CallPilotApp> {
   final _subs = <StreamSubscription<dynamic>>[];
   AppNotification? _banner;
   Timer? _bannerTimer;
@@ -94,7 +95,7 @@ class _RiyaAppState extends ConsumerState<RiyaApp> {
     // Keep the live campaign listener alive app-wide.
     ref.watch(activeCampaignProvider);
     return MaterialApp.router(
-      title: 'Riya AI',
+      title: Brand.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       routerConfig: router,

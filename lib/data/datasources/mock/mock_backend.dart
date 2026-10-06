@@ -50,20 +50,24 @@ class MockBackend implements BackendEvents {
     category: BusinessCategory.coaching,
     address: '12 Park Street, Kolkata',
     offerings: ['NEET', 'JEE Main', 'WBJEE', 'Class 10 Boards', 'Class 12 Science'],
-    fees: 'NEET ₹52,000/yr · JEE ₹56,000/yr · Boards from ₹24,000/yr',
+    pricing: 'NEET ₹52,000/yr · JEE ₹56,000/yr · Boards from ₹24,000/yr',
     openingHours: 'Mon–Sat, 9 AM – 8 PM',
     location: 'Park Street, Kolkata',
     whatsappNumber: '+91 98300 12345',
-    counsellorNumber: '+91 98300 54321',
+    humanNumber: '+91 98300 54321',
     ownerName: 'Dulor',
   );
 
+  /// DEMO DATA ONLY – Riya is one example employee a coaching customer
+  /// created inside CallPilot. She is not the product brand.
   static final _defaultAgent = Agent(
     id: 'agent_1',
     name: coachingAgentTemplate.defaultName,
     role: coachingAgentTemplate.role,
     status: AgentStatus.active,
     templateId: coachingAgentTemplate.id,
+    roleKind: coachingAgentTemplate.roleKind.name,
+    skills: coachingAgentTemplate.defaultSkills.map((e) => e.wire).toList(),
     languages: coachingAgentTemplate.languages,
     goal: coachingAgentTemplate.goal,
     capabilities: coachingAgentTemplate.capabilities,
@@ -119,9 +123,9 @@ class MockBackend implements BackendEvents {
       ),
       KnowledgeSource(
         id: 'kn_5',
-        type: KnowledgeType.centreInfo,
-        title: 'Centre Information',
-        detail: 'Timings, address, counsellor',
+        type: KnowledgeType.businessInfo,
+        title: 'Business Information',
+        detail: 'Timings, address, contact person',
         status: KnowledgeStatus.ready,
         updatedAt: now.subtract(const Duration(days: 2)),
       ),
@@ -158,7 +162,7 @@ class MockBackend implements BackendEvents {
       final lead = _makeLead(
         _randomName(),
         _randomPhone(),
-        brain.pick(mockCourses).name,
+        brain.pick(verticalFor(business.category).offerings).name,
         null,
         now.subtract(Duration(minutes: 30 + _rnd.nextInt(400))),
       );
@@ -184,7 +188,7 @@ class MockBackend implements BackendEvents {
       final lead = _makeLead(
         _randomName(),
         _randomPhone(),
-        brain.pick(mockCourses).name,
+        brain.pick(verticalFor(business.category).offerings).name,
         null,
         now.subtract(Duration(minutes: 5 + _rnd.nextInt(240))),
       );
@@ -208,7 +212,7 @@ class MockBackend implements BackendEvents {
         id: 'n_1',
         type: NotificationType.hotLead,
         title: '🔥 Hot lead detected',
-        body: '${agent.name} completed a call with Rahul. Lead score: 87.',
+        body: 'Your AI employee identified a high-intent lead: Rahul (score 87).',
         route: '/followups/${followUpForLead(rahul.id)?.id ?? ''}',
         actionLabel: 'Review Follow-up',
         createdAt: now.subtract(const Duration(minutes: 42)),
@@ -224,8 +228,8 @@ class MockBackend implements BackendEvents {
       AppNotification(
         id: 'n_3',
         type: NotificationType.callback,
-        title: '📅 Callback',
-        body: 'Rahul asked to speak tomorrow at 6 PM.',
+        title: '📅 Callback requested',
+        body: 'A customer asked for a callback: Rahul, tomorrow at 6 PM.',
         route: '/leads/${rahul.id}',
         actionLabel: 'View lead',
         createdAt: now.subtract(const Duration(minutes: 41)),
@@ -238,25 +242,25 @@ class MockBackend implements BackendEvents {
       ..addAll([
         ActivityItem(
           emoji: '📞',
-          text: '${agent.name} completed ${calls.length} calls',
+          text: '${agent.name} completed ${calls.length} calls.',
           at: now.subtract(const Duration(minutes: 5)),
           route: '/calls',
         ),
         ActivityItem(
           emoji: '🔥',
-          text: '$hotLeads leads became hot',
+          text: '$hotLeads leads were classified as high intent.',
           at: now.subtract(const Duration(minutes: 18)),
           route: '/leads?filter=hot',
         ),
         ActivityItem(
           emoji: '📅',
-          text: '${callbacks.length} callbacks scheduled',
+          text: '${callbacks.length} callbacks were scheduled.',
           at: now.subtract(const Duration(minutes: 40)),
           route: '/callbacks',
         ),
         ActivityItem(
           emoji: '💬',
-          text: '${followUps.values.where((f) => f.isPending).length} WhatsApp follow-ups drafted',
+          text: '${followUps.values.where((f) => f.isPending).length} WhatsApp follow-ups were drafted.',
           at: now.subtract(const Duration(hours: 1)),
           route: '/followups',
         ),
@@ -266,14 +270,14 @@ class MockBackend implements BackendEvents {
   String _randomName() => '${brain.pick(mockFirstNames)} ${brain.pick(mockLastNames)}';
   String _randomPhone() => '${brain.pick(['98', '97', '90', '91', '83', '70', '62'])}${(10000000 + _rnd.nextInt(89999999))}';
 
-  Lead _makeLead(String name, String phone, String course, String? batch, DateTime created, {String? source}) => Lead(
+  Lead _makeLead(String name, String phone, String interest, String? option, DateTime created, {String? source}) => Lead(
     id: _nextId('lead'),
     businessId: business.id,
     name: name,
     phone: PhoneUtils.normalize(phone) ?? phone,
     source: source ?? brain.pick(mockSources),
-    courseInterest: course,
-    preferredBatch: batch,
+    interest: interest,
+    attributes: option == null ? const {} : {verticalFor(business.category).optionKey: option},
     status: LeadStatus.newLead,
     createdAt: created,
     updatedAt: created,
@@ -367,7 +371,7 @@ class MockBackend implements BackendEvents {
         leadId: lead.id,
         leadName: lead.name,
         scheduledAt: out.callbackAt!,
-        note: out.temperature == LeadTemperature.hot ? 'Counsellor callback – parents available' : 'Follow-up call',
+        note: out.temperature == LeadTemperature.hot ? '${templateFor(business.category).workflow.humanLabel} follow-up' : 'Follow-up call',
       );
     }
 
@@ -388,7 +392,10 @@ class MockBackend implements BackendEvents {
       leadScore: score,
       nextAction: out.nextAction,
       callbackAt: out.callbackAt,
-      courseInterest: [out.courseInterest, out.preferredBatch].whereType<String>().join(' · '),
+      interest: [
+        out.interest,
+        ...out.attributes.entries.where((e) => e.key != 'budget').map((e) => e.value),
+      ].whereType<String>().join(' · '),
       objections: out.objections,
       followUpId: followUpId,
       interactionId: interactionId,
@@ -407,9 +414,8 @@ class MockBackend implements BackendEvents {
       objections: out.objections,
       nextAction: out.nextAction,
       callbackAt: out.callbackAt,
-      courseInterest: out.courseInterest,
-      preferredBatch: out.preferredBatch,
-      budget: out.budget,
+      interest: out.interest,
+      attributes: {...lead.attributes, ...out.attributes},
       language: out.language,
       lastCallId: callId,
       updatedAt: start.add(duration),
@@ -435,7 +441,7 @@ class MockBackend implements BackendEvents {
         id: _nextId('n'),
         type: NotificationType.hotLead,
         title: '🔥 Hot lead detected',
-        body: '${agent.name} completed a call with ${call.leadName.split(' ').first}. Lead score: ${call.leadScore?.value}.',
+        body: 'Your AI employee identified a high-intent lead: ${call.leadName.split(' ').first} (score ${call.leadScore?.value}).',
         route: fu != null ? '/followups/${fu.id}' : '/calls/${call.id}/result',
         actionLabel: 'Review Follow-up',
         createdAt: DateTime.now(),
@@ -467,7 +473,7 @@ class MockBackend implements BackendEvents {
     return c;
   }
 
-  int estimateCost(int n) => (n * 0.68 * coachingWorkflowTemplate.estimatedMinutesPerCall * usage.ratePerMinuteInr).round();
+  int estimateCost(int n) => (n * 0.68 * templateFor(business.category).workflow.estimatedMinutesPerCall * usage.ratePerMinuteInr).round();
 
   Campaign startCampaign(String id) {
     var c = campaigns[id]!;
@@ -592,7 +598,14 @@ class MockBackend implements BackendEvents {
       final fresh = leads.values.where((l) => l.status == LeadStatus.newLead).toList();
       lead = fresh.isNotEmpty
           ? fresh.first
-          : _makeLead(_randomName(), _randomPhone(), brain.pick(mockCourses).name, null, DateTime.now(), source: 'Website form');
+          : _makeLead(
+              _randomName(),
+              _randomPhone(),
+              brain.pick(verticalFor(business.category).offerings).name,
+              null,
+              DateTime.now(),
+              source: 'Website form',
+            );
       leads[lead.id] = lead;
     }
     final call = _runCall(lead, temperature: t, connected: true, at: DateTime.now().subtract(const Duration(minutes: 2)));
@@ -610,7 +623,7 @@ class MockBackend implements BackendEvents {
         id: _nextId('n'),
         type: type,
         title: '🔥 Hot lead detected',
-        body: '${agent.name} completed a call with $first. Lead score: ${fu?.scoreValue ?? 87}.',
+        body: 'Your AI employee identified a high-intent lead: $first (score ${fu?.scoreValue ?? 87}).',
         route: fu == null ? '/leads?filter=hot' : '/followups/${fu.id}',
         actionLabel: 'Review Follow-up',
         createdAt: DateTime.now(),
@@ -626,8 +639,8 @@ class MockBackend implements BackendEvents {
       NotificationType.callback => AppNotification(
         id: _nextId('n'),
         type: type,
-        title: '📅 Callback',
-        body: '${(cb?.leadName ?? 'Rahul').split(' ').first} asked to speak tomorrow at 6 PM.',
+        title: '📅 Callback requested',
+        body: 'A customer asked for a callback: ${(cb?.leadName ?? 'Rahul').split(' ').first}, tomorrow at 6 PM.',
         route: cb == null ? '/callbacks' : '/leads/${cb.leadId}',
         actionLabel: 'View lead',
         createdAt: DateTime.now(),

@@ -2,10 +2,17 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../data/templates/templates.dart';
 import '../theme/app_colors.dart';
 
-/// Mascot states. Asset files live in `assets/mascot/<set>/<state>.png`
-/// (default set at `assets/mascot/<state>.png`). Swap files to rebrand –
+/// The CallPilot AI-workforce mascot.
+///
+/// It represents CallPilot's AI employees in general – NOT a specific named
+/// employee. Each employee adapts it through a role badge/accessory
+/// ([EmployeeRoleKind]: sales 💼, appointments 📅, support 💬, admissions 📚…),
+/// so the visual identity stays consistent across every industry.
+///
+/// Asset files live in `assets/mascot/<state>.png`. Swap files to restyle –
 /// layouts never change.
 enum MascotState {
   welcome('welcome'),
@@ -38,6 +45,7 @@ class Mascot extends StatefulWidget {
     this.haloColor,
     this.animate = true,
     this.semanticLabel,
+    this.role,
   });
 
   final MascotState state;
@@ -46,6 +54,9 @@ class Mascot extends StatefulWidget {
   final Color? haloColor;
   final bool animate;
   final String? semanticLabel;
+
+  /// Optional role badge (accessory) for the employee being shown.
+  final EmployeeRoleKind? role;
 
   @override
   State<Mascot> createState() => _MascotState();
@@ -174,6 +185,16 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
       );
     }
 
+    if (widget.role != null && s >= 72) {
+      body = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          body,
+          Positioned(right: s * 0.04, bottom: s * 0.06, child: RoleBadge(role: widget.role!, size: (s * 0.24).clamp(26, 52))),
+        ],
+      );
+    }
+
     return Semantics(
       label: widget.semanticLabel ?? 'AI employee illustration',
       image: true,
@@ -182,6 +203,27 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
       ),
     );
   }
+}
+
+/// Accessory badge that adapts the shared mascot to an employee role.
+class RoleBadge extends StatelessWidget {
+  const RoleBadge({super.key, required this.role, this.size = 34});
+  final EmployeeRoleKind role;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      shape: BoxShape.circle,
+      border: Border.all(color: AppColors.brandSoft, width: 2),
+      boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 8, offset: Offset(0, 3))],
+    ),
+    child: Text(role.badge, style: TextStyle(fontSize: size * 0.5, height: 1)),
+  );
 }
 
 /// Circular avatar crop of the mascot for list rows / chips.

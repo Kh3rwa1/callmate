@@ -54,8 +54,12 @@ class _KnowledgeSheetState extends State<_KnowledgeSheet> {
     final t = Theme.of(context).textTheme;
     final (title, hint) = switch (widget.type) {
       KnowledgeType.website => ('Add website', 'abccoaching.in'),
-      KnowledgeType.faq => ('Add FAQ', 'Q: Do you offer a demo class?\nA: Yes, every Saturday at 11 AM.\n\nQ: Is there a hostel?\nA: …'),
-      _ => ('Paste information', 'Anything Riya should know – scholarships, discounts, results, faculty…'),
+      KnowledgeType.faq => (
+        'Add FAQ',
+        'Q: Do you offer a free consultation?\nA: Yes, every Saturday at 11 AM.\n\nQ: Do you accept UPI?\nA: …',
+      ),
+      KnowledgeType.businessInfo => ('Add business information', 'Opening hours, location, parking, payment options, cancellation policy…'),
+      _ => ('Paste information', 'Anything your AI employee should know – services, pricing, offers, policies…'),
     };
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -91,7 +95,7 @@ class _KnowledgeSheetState extends State<_KnowledgeSheet> {
                 },
               ),
               const SizedBox(height: 20),
-              PrimaryButton(label: 'Add to Riya\'s knowledge', onPressed: _save),
+              PrimaryButton(label: 'Add to your AI\'s knowledge', onPressed: _save),
             ],
           ),
         ),

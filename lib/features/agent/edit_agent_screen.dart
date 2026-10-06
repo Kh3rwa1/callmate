@@ -12,6 +12,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
+import '../../data/templates/templates.dart';
 
 /// Human-friendly agent settings. No prompts, no model knobs.
 class EditAgentScreen extends ConsumerStatefulWidget {
@@ -23,7 +24,10 @@ class EditAgentScreen extends ConsumerStatefulWidget {
 class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
   Agent? _a;
   final _name = TextEditingController();
+  final _role = TextEditingController();
+  final _goal = TextEditingController();
   final _transfer = TextEditingController();
+  static const _voices = ['Warm · Female', 'Calm · Female', 'Friendly · Male', 'Confident · Male'];
   bool _saving = false;
   static const _allLanguages = [
     'Bengali',
@@ -42,6 +46,8 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
   @override
   void dispose() {
     _name.dispose();
+    _role.dispose();
+    _goal.dispose();
     _transfer.dispose();
     super.dispose();
   }
@@ -55,7 +61,17 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
     }
     setState(() => _saving = true);
     try {
-      await ref.read(businessRepoProvider).saveAgent(a.copyWith(name: _name.text.trim(), transferNumber: _transfer.text.trim()));
+      await ref
+          .read(businessRepoProvider)
+          .saveAgent(
+            a.copyWith(
+              name: _name.text.trim(),
+              role: _role.text.trim().isEmpty ? a.role : _role.text.trim(),
+              roleKind: EmployeeRoleKind.fromRole(_role.text.trim().isEmpty ? a.role : _role.text.trim()).name,
+              goal: _goal.text.trim().isEmpty ? a.goal : _goal.text.trim(),
+              transferNumber: _transfer.text.trim(),
+            ),
+          );
       HapticFeedback.mediumImpact();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${_name.text.trim()} updated ✓')));
@@ -74,6 +90,8 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
     if (_a == null && async.value != null) {
       _a = async.value;
       _name.text = _a!.name;
+      _role.text = _a!.role;
+      _goal.text = _a!.goal;
       _transfer.text = _a!.transferNumber ?? '';
     }
     final a = _a;
@@ -84,7 +102,7 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 120),
               children: [
-                const Center(child: Mascot(size: 120)),
+                Center(child: Mascot(size: 120, role: EmployeeRoleKind.fromRole(_role.text))),
                 const SectionLabel('Identity'),
                 AppCard(
                   child: Column(
@@ -95,12 +113,27 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                       TextField(
                         controller: _name,
                         textCapitalization: TextCapitalization.words,
-                        decoration: const InputDecoration(hintText: 'Riya'),
+                        decoration: const InputDecoration(hintText: 'e.g. Maya, Riya, Arjun'),
                       ),
                       const SizedBox(height: 16),
                       Text('Role', style: t.titleSmall),
                       const SizedBox(height: 8),
-                      Text(a.role, style: t.bodyLarge),
+                      TextField(
+                        controller: _role,
+                        textCapitalization: TextCapitalization.words,
+                        onChanged: (_) => setState(() {}),
+                        decoration: const InputDecoration(hintText: 'e.g. Sales Assistant, Appointment Assistant'),
+                      ),
+                      const SizedBox(height: 16),
+                      Text('Goal', style: t.titleSmall),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _goal,
+                        maxLines: 2,
+                        minLines: 1,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(hintText: 'e.g. Convert enquiries into qualified opportunities'),
+                      ),
                     ],
                   ),
                 ),
@@ -123,6 +156,22 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                             if (next.isEmpty) return;
                             setState(() => _a = a.copyWith(languages: next));
                           },
+                        ),
+                    ],
+                  ),
+                ),
+                const SectionLabel('Voice'),
+                AppCard(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final v in _voices)
+                        ChoiceChip(
+                          label: Text(v),
+                          selected: a.voice == v,
+                          labelStyle: TextStyle(fontWeight: FontWeight.w700, color: a.voice == v ? Colors.white : AppColors.inkSoft),
+                          onSelected: (_) => setState(() => _a = a.copyWith(voice: v)),
                         ),
                     ],
                   ),
@@ -165,7 +214,7 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                           setState(() => _a = a.copyWith(callingHoursStart: v.start.round(), callingHoursEnd: v.end.round()));
                         },
                       ),
-                      Text('Riya never calls outside these hours.', style: t.bodySmall),
+                      Text('${a.name} never calls outside these hours.', style: t.bodySmall),
                     ],
                   ),
                 ),
@@ -174,12 +223,15 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('When a lead wants to talk now, Riya can transfer the call to:', style: t.bodyMedium),
+                      Text('When a lead wants to talk now, ${a.name} can transfer the call to:', style: t.bodyMedium),
                       const SizedBox(height: 10),
                       TextField(
                         controller: _transfer,
                         keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(hintText: 'Counsellor number', prefixIcon: Icon(Icons.support_agent_rounded)),
+                        decoration: InputDecoration(
+                          hintText: '${ref.watch(workflowProvider).humanLabel} number',
+                          prefixIcon: const Icon(Icons.support_agent_rounded),
+                        ),
                       ),
                     ],
                   ),
@@ -201,7 +253,7 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                     children: [
                       const Emoji('📚'),
                       const SizedBox(width: 12),
-                      Expanded(child: Text('Teach Your AI', style: t.titleSmall)),
+                      Expanded(child: Text('Business Knowledge · Teach Your AI', style: t.titleSmall)),
                       const Icon(Icons.chevron_right_rounded),
                     ],
                   ),

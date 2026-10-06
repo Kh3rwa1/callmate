@@ -15,7 +15,7 @@ import '../../core/widgets/mascot.dart';
 import '../../services/voice/voice_agent_service.dart';
 import '../calls/transcript_view.dart';
 
-/// "Talk to Riya" – owner tests the AI employee in-app.
+/// "Talk to {employee}" – owner tests their AI employee in-app.
 ///
 /// Session is cleaned up on: leaving the screen, dispose, app backgrounding,
 /// call end and connection failure.
@@ -82,7 +82,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
     } catch (_) {
       if (mounted) {
         setState(() {
-          _error = "Riya couldn't connect. Check your connection and try again.";
+          _error = "${ref.read(employeeNameProvider)} couldn't connect. Check your connection and try again.";
           _state = VoiceConnectionState.error;
         });
       }
@@ -145,7 +145,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final name = ref.watch(agentProvider).value?.name ?? 'Riya';
+    final name = ref.watch(employeeNameProvider);
     final (label, color) = _status;
     final ended = _state == VoiceConnectionState.disconnected;
 
@@ -190,7 +190,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
                             child: Text(
                               _state == VoiceConnectionState.connecting
                                   ? 'Connecting to $name…'
-                                  : 'Say “Hello” to start. Pretend you\'re a parent asking about admission.',
+                                  : 'Say “Hello” to start. ${ref.watch(workflowProvider).testCallerHint}',
                               style: t.bodyMedium,
                               textAlign: TextAlign.center,
                             ),

@@ -4,13 +4,26 @@ import 'dart:typed_data';
 
 import 'voice_agent_service.dart';
 
-/// Scripted demo conversation. The owner plays a parent/student; Riya
-/// demonstrates qualification, FAQ answering and callback booking.
+/// Scripted demo conversation used in mock mode. The owner plays a customer;
+/// the configured AI employee demonstrates qualification, answering questions
+/// and booking a human follow-up. Script adapts to the business vertical.
 class MockVoiceAgentService implements VoiceAgentService {
-  MockVoiceAgentService({required this.agentName, required this.businessName, this.failFirstAttempt = false});
+  MockVoiceAgentService({
+    required this.agentName,
+    required this.agentRole,
+    required this.businessName,
+    this.humanLabel = 'team',
+    this.vertical = 'generic',
+    this.failFirstAttempt = false,
+  });
 
   final String agentName;
+  final String agentRole;
   final String businessName;
+  final String humanLabel;
+
+  /// 'coaching' | 'generic' – picks the demo script.
+  final String vertical;
   final bool failFirstAttempt;
 
   final _state = StreamController<VoiceConnectionState>.broadcast();
@@ -50,16 +63,33 @@ class MockVoiceAgentService implements VoiceAgentService {
     if (!_transcript.isClosed) _transcript.add(List.unmodifiable(_entries));
   }
 
-  List<(bool, String)> get _script => [
-    (true, 'Namaste! I\'m $agentName, the AI admissions assistant at $businessName. Are you enquiring for yourself or for your child?'),
+  List<(bool, String)> get _script => vertical == 'coaching' ? _coachingScript : _genericScript;
+
+  String get _human => humanLabel.toLowerCase();
+
+  List<(bool, String)> get _genericScript => [
+    (true, 'Namaste! I\'m $agentName, an AI ${agentRole.toLowerCase()} from $businessName. How can I help you today?'),
+    (false, 'Hi, I saw your ad. Can you tell me the price?'),
+    (true, 'Of course! Our standard plan starts at ₹4,999, and there\'s a premium option too. What are you looking for exactly?'),
+    (false, 'The standard plan sounds fine. How soon can you start?'),
+    (true, 'We can start this week. Would you like our $_human to call you and confirm the details?'),
+    (false, 'Yes, tomorrow evening works.'),
+    (true, 'Perfect – I\'ve booked a call for tomorrow at 6 PM and I\'ll send the details on WhatsApp. Thank you! 🙏'),
+  ];
+
+  List<(bool, String)> get _coachingScript => [
+    (
+      true,
+      'Namaste! I\'m $agentName, an AI ${agentRole.toLowerCase()} from $businessName. Are you enquiring for yourself or for your child?',
+    ),
     (false, 'For my son. He wants to prepare for NEET.'),
-    (true, 'Wonderful! We have NEET morning, evening and weekend batches. Which timing suits him best?'),
+    (true, 'Wonderful! We have morning, evening and weekend batches. Which timing suits him best?'),
     (false, 'Evening would be better. What are the fees?'),
-    (true, 'The NEET evening batch is ₹52,000 per year, payable in three easy instalments. The new batch starts next month.'),
-    (false, 'Okay. I\'ll need to discuss with my husband once.'),
-    (true, 'Of course! Shall I ask our counsellor to call you tomorrow at 6 PM? I\'ll also send the details on WhatsApp.'),
+    (true, 'The evening batch is ₹52,000 per year, payable in three easy instalments.'),
+    (false, 'Okay. I\'ll need to discuss it at home once.'),
+    (true, 'Of course! Shall I ask our $_human to call you tomorrow at 6 PM? I\'ll also send the details on WhatsApp.'),
     (false, 'Yes, that works.'),
-    (true, 'Perfect – callback booked for tomorrow, 6 PM. Thank you, and best wishes to your son! 🙏'),
+    (true, 'Perfect – callback booked for tomorrow, 6 PM. Thank you! 🙏'),
   ];
 
   void _at(int ms, void Function() f) => _timers.add(
@@ -81,7 +111,7 @@ class MockVoiceAgentService implements VoiceAgentService {
     if (failFirstAttempt && _attempts == 1) {
       _running = false;
       _set(VoiceConnectionState.error);
-      throw const VoiceAgentException("Riya couldn't connect. Check your connection and try again.");
+      throw const VoiceAgentException("Your AI employee couldn't connect. Check your connection and try again.");
     }
     var t = 0;
     for (final (isAgent, text) in _script) {

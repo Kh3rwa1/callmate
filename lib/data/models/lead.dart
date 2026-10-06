@@ -45,6 +45,8 @@ class LeadScore {
   };
 }
 
+/// Generic lead. Business-specific data (batch, budget, property type…) lives
+/// in [attributes], keyed by the WorkflowTemplate – never as global fields.
 class Lead {
   const Lead({
     required this.id,
@@ -55,15 +57,14 @@ class Lead {
     required this.status,
     required this.createdAt,
     required this.updatedAt,
-    this.courseInterest,
-    this.preferredBatch,
+    this.interest,
+    this.attributes = const {},
     this.score,
     this.summary,
     this.objections = const [],
     this.nextAction = NextAction.none,
     this.callbackAt,
     this.lastCallId,
-    this.budget,
     this.language,
   });
 
@@ -72,8 +73,12 @@ class Lead {
   final String name;
   final String phone;
   final String source;
-  final String? courseInterest;
-  final String? preferredBatch;
+
+  /// What the lead is interested in (course, property, service, model…).
+  final String? interest;
+
+  /// Optional, template-defined custom attributes.
+  final Map<String, String> attributes;
   final LeadStatus status;
   final LeadScore? score;
   final String? summary;
@@ -81,7 +86,6 @@ class Lead {
   final NextAction nextAction;
   final DateTime? callbackAt;
   final String? lastCallId;
-  final String? budget;
   final String? language;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -93,16 +97,18 @@ class Lead {
 
   String get firstName => name.trim().split(RegExp(r'\s+')).first;
 
+  /// "NEET · Evening" / "3 BHK · Site visit" – interest plus the first attribute.
   String get interestLine {
-    final parts = [courseInterest, preferredBatch].whereType<String>().where((s) => s.isNotEmpty);
+    final first = attributes.entries.where((e) => e.key != 'budget').map((e) => e.value).firstOrNull;
+    final parts = [interest, first].whereType<String>().where((s) => s.isNotEmpty);
     return parts.isEmpty ? 'Interest not known yet' : parts.join(' · ');
   }
 
   Lead copyWith({
     String? name,
     String? phone,
-    String? courseInterest,
-    String? preferredBatch,
+    String? interest,
+    Map<String, String>? attributes,
     LeadStatus? status,
     LeadScore? score,
     String? summary,
@@ -111,7 +117,6 @@ class Lead {
     DateTime? callbackAt,
     bool clearCallback = false,
     String? lastCallId,
-    String? budget,
     String? language,
     DateTime? updatedAt,
   }) => Lead(
@@ -120,8 +125,8 @@ class Lead {
     name: name ?? this.name,
     phone: phone ?? this.phone,
     source: source,
-    courseInterest: courseInterest ?? this.courseInterest,
-    preferredBatch: preferredBatch ?? this.preferredBatch,
+    interest: interest ?? this.interest,
+    attributes: attributes ?? this.attributes,
     status: status ?? this.status,
     score: score ?? this.score,
     summary: summary ?? this.summary,
@@ -129,32 +134,41 @@ class Lead {
     nextAction: nextAction ?? this.nextAction,
     callbackAt: clearCallback ? null : (callbackAt ?? this.callbackAt),
     lastCallId: lastCallId ?? this.lastCallId,
-    budget: budget ?? this.budget,
     language: language ?? this.language,
     createdAt: createdAt,
     updatedAt: updatedAt ?? DateTime.now(),
   );
 
-  factory Lead.fromJson(Json j) => Lead(
-    id: jStr(j, 'id'),
-    businessId: jStr(j, 'business_id'),
-    name: jStr(j, 'name', 'Unknown'),
-    phone: jStr(j, 'phone'),
-    source: jStr(j, 'source', 'Manual'),
-    courseInterest: jStrN(j, 'course_interest'),
-    preferredBatch: jStrN(j, 'preferred_batch'),
-    status: LeadStatus.parse(jStrN(j, 'status')),
-    score: jObj(j, 'score') == null ? null : LeadScore.fromJson(jObj(j, 'score')!),
-    summary: jStrN(j, 'summary'),
-    objections: jStrList(j, 'objections'),
-    nextAction: NextAction.parse(jStrN(j, 'next_action')),
-    callbackAt: jDate(j, 'callback_at'),
-    lastCallId: jStrN(j, 'last_call_id'),
-    budget: jStrN(j, 'budget'),
-    language: jStrN(j, 'language'),
-    createdAt: jDate(j, 'created_at') ?? DateTime.now(),
-    updatedAt: jDate(j, 'updated_at') ?? DateTime.now(),
-  );
+  factory Lead.fromJson(Json j) {
+    final attrs = <String, String>{
+      for (final e in (jObj(j, 'attributes') ?? const {}).entries)
+        if (e.value != null) e.key: e.value.toString(),
+    };
+    // Back-compat with v0 coaching payloads.
+    final legacyBatch = jStrN(j, 'preferred_batch');
+    final legacyBudget = jStrN(j, 'budget');
+    if (legacyBatch != null) attrs.putIfAbsent('batch', () => legacyBatch);
+    if (legacyBudget != null) attrs.putIfAbsent('budget', () => legacyBudget);
+    return Lead(
+      id: jStr(j, 'id'),
+      businessId: jStr(j, 'business_id'),
+      name: jStr(j, 'name', 'Unknown'),
+      phone: jStr(j, 'phone'),
+      source: jStr(j, 'source', 'Manual'),
+      interest: jStrN(j, 'interest') ?? jStrN(j, 'course_interest'),
+      attributes: attrs,
+      status: LeadStatus.parse(jStrN(j, 'status')),
+      score: jObj(j, 'score') == null ? null : LeadScore.fromJson(jObj(j, 'score')!),
+      summary: jStrN(j, 'summary'),
+      objections: jStrList(j, 'objections'),
+      nextAction: NextAction.parse(jStrN(j, 'next_action')),
+      callbackAt: jDate(j, 'callback_at'),
+      lastCallId: jStrN(j, 'last_call_id'),
+      language: jStrN(j, 'language'),
+      createdAt: jDate(j, 'created_at') ?? DateTime.now(),
+      updatedAt: jDate(j, 'updated_at') ?? DateTime.now(),
+    );
+  }
 
   Json toJson() => {
     'id': id,
@@ -162,8 +176,8 @@ class Lead {
     'name': name,
     'phone': phone,
     'source': source,
-    'course_interest': courseInterest,
-    'preferred_batch': preferredBatch,
+    'interest': interest,
+    'attributes': attributes,
     'status': status.wire,
     'score': score?.toJson(),
     'summary': summary,
@@ -171,7 +185,6 @@ class Lead {
     'next_action': nextAction.wire,
     'callback_at': dateOut(callbackAt),
     'last_call_id': lastCallId,
-    'budget': budget,
     'language': language,
     'created_at': dateOut(createdAt),
     'updated_at': dateOut(updatedAt),
@@ -180,13 +193,14 @@ class Lead {
 
 /// Input used when creating/importing leads.
 class NewLeadInput {
-  const NewLeadInput({required this.name, required this.phone, this.courseInterest, this.source = 'Manual'});
+  const NewLeadInput({required this.name, required this.phone, this.interest, this.source = 'Manual', this.attributes = const {}});
   final String name;
   final String phone;
-  final String? courseInterest;
+  final String? interest;
   final String source;
+  final Map<String, String> attributes;
 
-  Json toJson() => {'name': name, 'phone': phone, 'course_interest': courseInterest, 'source': source};
+  Json toJson() => {'name': name, 'phone': phone, 'interest': interest, 'source': source, 'attributes': attributes};
 }
 
 class LeadImportResult {

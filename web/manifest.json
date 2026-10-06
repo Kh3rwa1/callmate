@@ -1,11 +1,11 @@
 {
-    "name": "Riya AI",
-    "short_name": "Riya AI",
+    "name": "CallPilot",
+    "short_name": "CallPilot",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FAF7F2",
     "theme_color": "#4F46E5",
-    "description": "A new Flutter project.",
+    "description": "AI that calls, qualifies, and follows up for your business.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

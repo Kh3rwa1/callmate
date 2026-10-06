@@ -19,7 +19,7 @@ enum LeadStatus {
   called('called', 'Called'),
   callback('callback', 'Callback'),
   noAnswer('no_answer', 'No answer'),
-  converted('converted', 'Admitted'),
+  converted('converted', 'Converted'),
   notInterested('not_interested', 'Not interested');
 
   const LeadStatus(this.wire, this.label);
@@ -79,23 +79,28 @@ enum CallStatus {
 }
 
 enum NextAction {
-  counsellorCallback('counsellor_callback', 'Counsellor callback'),
+  humanFollowUp('human_followup', 'Human follow-up'),
   sendWhatsapp('send_whatsapp', 'Send WhatsApp'),
   whatsappAndCallback('whatsapp_and_callback', 'WhatsApp + callback'),
-  scheduleVisit('schedule_visit', 'Invite for centre visit'),
+  bookAppointment('book_appointment', 'Book appointment / visit'),
   retryCall('retry_call', 'Try calling again'),
   none('none', 'No action needed');
 
   const NextAction(this.wire, this.label);
   final String wire;
   final String label;
-  static NextAction parse(String? v) => _parse(values, v, NextAction.none, (e) => e.wire);
+  static NextAction parse(String? v) => switch (v) {
+    // legacy wire values from older backend builds
+    'counsellor_callback' => NextAction.humanFollowUp,
+    'schedule_visit' => NextAction.bookAppointment,
+    _ => _parse(values, v, NextAction.none, (e) => e.wire),
+  };
 }
 
 enum FollowUpStatus {
-  ready('ready', 'Ready'),
-  opened('opened', 'Opened WhatsApp'),
-  done('done', 'Marked sent'),
+  ready('ready', 'Ready to send'),
+  opened('opened', 'WhatsApp opened'),
+  done('done', 'Marked as sent by you'),
   dismissed('dismissed', 'Dismissed');
 
   const FollowUpStatus(this.wire, this.label);
@@ -130,12 +135,13 @@ enum KnowledgeType {
   website('website', 'Website'),
   faq('faq', 'FAQ'),
   text('text', 'Notes'),
-  centreInfo('centre_info', 'Centre information');
+  businessInfo('business_info', 'Business information');
 
   const KnowledgeType(this.wire, this.label);
   final String wire;
   final String label;
-  static KnowledgeType parse(String? v) => _parse(values, v, KnowledgeType.text, (e) => e.wire);
+  static KnowledgeType parse(String? v) =>
+      v == 'centre_info' ? KnowledgeType.businessInfo : _parse(values, v, KnowledgeType.text, (e) => e.wire);
 }
 
 enum KnowledgeStatus {
@@ -184,17 +190,20 @@ enum CallbackStatus {
 enum BusinessCategory {
   coaching('coaching', 'Coaching Centre', '🎓'),
   realEstate('real_estate', 'Real Estate', '🏠'),
+  clinic('clinic', 'Clinic', '🩺'),
+  diagnostic('diagnostic', 'Diagnostic Centre', '🧪'),
   automobile('automobile', 'Automobile', '🚗'),
   salon('salon', 'Salon', '💇'),
+  restaurant('restaurant', 'Restaurant', '🍽️'),
+  retail('retail', 'Retail', '🛍️'),
   localServices('local_services', 'Local Services', '🛠️'),
-  clinic('clinic', 'Clinic', '🩺'),
   other('other', 'Other', '✨');
 
   const BusinessCategory(this.wire, this.label, this.emoji);
   final String wire;
   final String label;
   final String emoji;
-  static BusinessCategory parse(String? v) => _parse(values, v, BusinessCategory.coaching, (e) => e.wire);
+  static BusinessCategory parse(String? v) => _parse(values, v, BusinessCategory.other, (e) => e.wire);
 }
 
 enum TranscriptSpeaker {

@@ -8,11 +8,11 @@ class Business {
     required this.category,
     this.address,
     this.offerings = const [],
-    this.fees,
+    this.pricing,
     this.openingHours,
     this.location,
     this.whatsappNumber,
-    this.counsellorNumber,
+    this.humanNumber,
     this.ownerName,
   });
 
@@ -21,11 +21,13 @@ class Business {
   final BusinessCategory category;
   final String? address;
   final List<String> offerings;
-  final String? fees;
+  final String? pricing;
   final String? openingHours;
   final String? location;
   final String? whatsappNumber;
-  final String? counsellorNumber;
+
+  /// Number of the human who closes (counsellor / agent / front desk).
+  final String? humanNumber;
   final String? ownerName;
 
   Business copyWith({
@@ -33,22 +35,22 @@ class Business {
     BusinessCategory? category,
     String? address,
     List<String>? offerings,
-    String? fees,
+    String? pricing,
     String? openingHours,
     String? location,
     String? whatsappNumber,
-    String? counsellorNumber,
+    String? humanNumber,
   }) => Business(
     id: id,
     name: name ?? this.name,
     category: category ?? this.category,
     address: address ?? this.address,
     offerings: offerings ?? this.offerings,
-    fees: fees ?? this.fees,
+    pricing: pricing ?? this.pricing,
     openingHours: openingHours ?? this.openingHours,
     location: location ?? this.location,
     whatsappNumber: whatsappNumber ?? this.whatsappNumber,
-    counsellorNumber: counsellorNumber ?? this.counsellorNumber,
+    humanNumber: humanNumber ?? this.humanNumber,
     ownerName: ownerName,
   );
 
@@ -58,11 +60,11 @@ class Business {
     category: BusinessCategory.parse(jStrN(j, 'category')),
     address: jStrN(j, 'address'),
     offerings: jStrList(j, 'offerings'),
-    fees: jStrN(j, 'fees'),
+    pricing: jStrN(j, 'pricing') ?? jStrN(j, 'fees'),
     openingHours: jStrN(j, 'opening_hours'),
     location: jStrN(j, 'location'),
     whatsappNumber: jStrN(j, 'whatsapp_number'),
-    counsellorNumber: jStrN(j, 'counsellor_number'),
+    humanNumber: jStrN(j, 'human_number') ?? jStrN(j, 'counsellor_number'),
     ownerName: jStrN(j, 'owner_name'),
   );
 
@@ -72,11 +74,11 @@ class Business {
     'category': category.wire,
     'address': address,
     'offerings': offerings,
-    'fees': fees,
+    'pricing': pricing,
     'opening_hours': openingHours,
     'location': location,
     'whatsapp_number': whatsappNumber,
-    'counsellor_number': counsellorNumber,
+    'human_number': humanNumber,
     'owner_name': ownerName,
   };
 }
@@ -90,10 +92,13 @@ class Agent {
     required this.role,
     required this.status,
     required this.templateId,
-    this.languages = const ['Bengali', 'Hindi', 'English'],
+    this.languages = const ['English', 'Hindi', 'Bengali'],
     this.formality = 0.35,
-    this.goal = 'Convert enquiries into counselling appointments',
-    this.mascotSet = 'riya',
+    this.goal = 'Convert enquiries into qualified opportunities',
+    this.mascotSet = 'default',
+    this.roleKind = 'general',
+    this.skills = const [],
+    this.voice = 'Warm · Female',
     this.callsToday = 0,
     this.capabilities = const [],
     this.transferNumber,
@@ -112,6 +117,13 @@ class Agent {
   final double formality;
   final String goal;
   final String mascotSet;
+
+  /// Visual role (EmployeeRoleKind.name) – drives mascot accessory/badge.
+  final String roleKind;
+
+  /// EmployeeSkill wire values chosen during onboarding.
+  final List<String> skills;
+  final String voice;
   final int callsToday;
   final List<String> capabilities;
   final String? transferNumber;
@@ -131,6 +143,11 @@ class Agent {
     List<String>? languages,
     double? formality,
     String? goal,
+    String? roleKind,
+    List<String>? skills,
+    String? voice,
+    String? templateId,
+    List<String>? capabilities,
     int? callsToday,
     String? transferNumber,
     int? callingHoursStart,
@@ -140,13 +157,16 @@ class Agent {
     name: name ?? this.name,
     role: role ?? this.role,
     status: status ?? this.status,
-    templateId: templateId,
+    templateId: templateId ?? this.templateId,
     languages: languages ?? this.languages,
     formality: formality ?? this.formality,
     goal: goal ?? this.goal,
     mascotSet: mascotSet,
+    roleKind: roleKind ?? this.roleKind,
+    skills: skills ?? this.skills,
+    voice: voice ?? this.voice,
     callsToday: callsToday ?? this.callsToday,
-    capabilities: capabilities,
+    capabilities: capabilities ?? this.capabilities,
     transferNumber: transferNumber ?? this.transferNumber,
     callingHoursStart: callingHoursStart ?? this.callingHoursStart,
     callingHoursEnd: callingHoursEnd ?? this.callingHoursEnd,
@@ -154,14 +174,17 @@ class Agent {
 
   factory Agent.fromJson(Json j) => Agent(
     id: jStr(j, 'id'),
-    name: jStr(j, 'name', 'Riya'),
-    role: jStr(j, 'role', 'Admissions Assistant'),
+    name: jStr(j, 'name', 'AI Employee'),
+    role: jStr(j, 'role', 'Sales Assistant'),
     status: AgentStatus.parse(jStrN(j, 'status')),
-    templateId: jStr(j, 'template_id', 'coaching_admissions_v1'),
+    templateId: jStr(j, 'template_id', 'generic_sales_v1'),
     languages: jStrList(j, 'languages'),
     formality: jDouble(j, 'formality', 0.35),
     goal: jStr(j, 'goal'),
-    mascotSet: jStr(j, 'mascot_set', 'riya'),
+    mascotSet: jStr(j, 'mascot_set', 'default'),
+    roleKind: jStr(j, 'role_kind', 'general'),
+    skills: jStrList(j, 'skills'),
+    voice: jStr(j, 'voice', 'Warm · Female'),
     callsToday: jInt(j, 'calls_today'),
     capabilities: jStrList(j, 'capabilities'),
     transferNumber: jStrN(j, 'transfer_number'),
@@ -179,6 +202,9 @@ class Agent {
     'formality': formality,
     'goal': goal,
     'mascot_set': mascotSet,
+    'role_kind': roleKind,
+    'skills': skills,
+    'voice': voice,
     'calls_today': callsToday,
     'capabilities': capabilities,
     'transfer_number': transferNumber,

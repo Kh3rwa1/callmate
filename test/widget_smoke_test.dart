@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:riya_admissions/core/widgets/lead_widgets.dart';
-import 'package:riya_admissions/data/models/models.dart';
+import 'package:callpilot/core/widgets/lead_widgets.dart';
+import 'package:callpilot/data/models/models.dart';
 
 void main() {
   testWidgets('ScoreBadge shows number + word (not colour alone)', (tester) async {

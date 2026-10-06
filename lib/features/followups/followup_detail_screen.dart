@@ -96,9 +96,9 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
                     }
                   },
                   itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'copy', child: Text('Copy message')),
+                    const PopupMenuItem(value: 'copy', child: Text('Copy Message')),
                     const PopupMenuItem(value: 'share', child: Text('Share…')),
-                    if (!fu.isPending) const PopupMenuItem(value: 'done', child: Text('Mark as sent')),
+                    if (!fu.isPending) const PopupMenuItem(value: 'done', child: Text('I sent it')),
                     const PopupMenuItem(value: 'dismiss', child: Text('Dismiss')),
                   ],
                 ),
@@ -227,8 +227,8 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Opened WhatsApp${fu.openedAt != null ? ' · ${Fmt.relative(fu.openedAt!)}' : ''}', style: t.titleSmall),
-                            Text('Did you send it? Mark it so Riya knows.', style: t.bodySmall),
+                            Text('WhatsApp opened${fu.openedAt != null ? ' · ${Fmt.relative(fu.openedAt!)}' : ''}', style: t.titleSmall),
+                            Text('Did you send it? Mark it so ${ref.watch(employeeNameProvider)} knows.', style: t.bodySmall),
                           ],
                         ),
                       ),
@@ -237,11 +237,11 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
                           onPressed: () async {
                             await ref.read(followUpRepoProvider).update(fu.copyWith(status: FollowUpStatus.done));
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marked as sent ✓')));
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marked as sent by you ✓')));
                               context.pop();
                             }
                           },
-                          child: const Text('Mark sent'),
+                          child: const Text('I sent it'),
                         ),
                     ],
                   ),

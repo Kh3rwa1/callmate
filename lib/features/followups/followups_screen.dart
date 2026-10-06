@@ -55,7 +55,7 @@ class FollowUpsScreen extends ConsumerWidget {
                       hasScrollBody: false,
                       child: EmptyState(
                         title: 'All caught up 🎉',
-                        message: 'New WhatsApp drafts appear here after Riya\'s calls.',
+                        message: 'New WhatsApp drafts appear here after your AI employee\'s calls.',
                         mascot: MascotState.success,
                       ),
                     )
@@ -76,7 +76,7 @@ class FollowUpsScreen extends ConsumerWidget {
                   if (opened.isNotEmpty) ...[
                     const SliverPadding(
                       padding: EdgeInsets.symmetric(horizontal: AppSpace.page),
-                      sliver: SliverToBoxAdapter(child: SectionLabel('Opened in WhatsApp')),
+                      sliver: SliverToBoxAdapter(child: SectionLabel('WhatsApp opened')),
                     ),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 28),

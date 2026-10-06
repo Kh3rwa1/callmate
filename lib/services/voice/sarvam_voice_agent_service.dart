@@ -70,7 +70,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       session = await _sessions.createTestSession();
     } catch (_) {
       _set(VoiceConnectionState.error);
-      throw const VoiceAgentException("Riya couldn't connect. Check your connection and try again.");
+      throw const VoiceAgentException("Your AI employee couldn't connect. Check your connection and try again.");
     }
 
     final config = InteractionConfig(
@@ -109,7 +109,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       );
     } catch (_) {
       await _teardown(VoiceConnectionState.error);
-      throw const VoiceAgentException("Riya couldn't connect. Check your connection and try again.");
+      throw const VoiceAgentException("Your AI employee couldn't connect. Check your connection and try again.");
     }
   }
 

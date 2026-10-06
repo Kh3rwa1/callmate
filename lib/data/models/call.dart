@@ -50,7 +50,7 @@ class Call {
     this.leadScore,
     this.nextAction = NextAction.none,
     this.callbackAt,
-    this.courseInterest,
+    this.interest,
     this.objections = const [],
     this.followUpId,
     this.interactionId,
@@ -73,7 +73,7 @@ class Call {
   final LeadScore? leadScore;
   final NextAction nextAction;
   final DateTime? callbackAt;
-  final String? courseInterest;
+  final String? interest;
   final List<String> objections;
   final String? followUpId;
   final String? interactionId;
@@ -98,7 +98,7 @@ class Call {
     leadScore: jObj(j, 'lead_score') == null ? null : LeadScore.fromJson(jObj(j, 'lead_score')!),
     nextAction: NextAction.parse(jStrN(j, 'next_action')),
     callbackAt: jDate(j, 'callback_at'),
-    courseInterest: jStrN(j, 'course_interest'),
+    interest: jStrN(j, 'interest') ?? jStrN(j, 'course_interest'),
     objections: jStrList(j, 'objections'),
     followUpId: jStrN(j, 'followup_id'),
     interactionId: jStrN(j, 'interaction_id'),
@@ -122,7 +122,7 @@ class Call {
     'lead_score': leadScore?.toJson(),
     'next_action': nextAction.wire,
     'callback_at': dateOut(callbackAt),
-    'course_interest': courseInterest,
+    'interest': interest,
     'objections': objections,
     'followup_id': followUpId,
     'interaction_id': interactionId,

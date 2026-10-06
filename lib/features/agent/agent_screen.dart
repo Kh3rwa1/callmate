@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/brand_widgets.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
@@ -46,7 +47,7 @@ class _Body extends ConsumerWidget {
     final active = a.status == AgentStatus.active;
     final usage = ref.watch(usageProvider).value;
     final knowledge = ref.watch(knowledgeProvider).value;
-    final caps = a.capabilities.isEmpty ? coachingAgentTemplate.capabilities : a.capabilities;
+    final caps = a.capabilities.isEmpty ? genericCapabilities : a.capabilities;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(AppSpace.page, 12, AppSpace.page, 36),
@@ -57,7 +58,7 @@ class _Body extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
           child: Column(
             children: [
-              Mascot(state: active ? MascotState.welcome : MascotState.thinking, size: 190),
+              EmployeeMascot(state: active ? MascotState.welcome : MascotState.thinking, size: 190, agent: a),
               const SizedBox(height: 8),
               Text(a.name, style: t.displaySmall),
               Text(a.role, style: t.titleMedium?.copyWith(color: AppColors.brand)),
@@ -73,7 +74,14 @@ class _Body extends ConsumerWidget {
         const SectionLabel('Identity'),
         AppCard(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          child: Column(children: [_Kv('Name', a.name), _Kv('Role', a.role), _Kv('Languages', a.languages.join(' · '), last: true)]),
+          child: Column(
+            children: [
+              _Kv('Name', a.name),
+              _Kv('Role', a.role),
+              _Kv('Languages', a.languages.join(' · ')),
+              _Kv('Voice', a.voice, last: true),
+            ],
+          ),
         ),
         const SectionLabel('Personality'),
         AppCard(
@@ -121,7 +129,7 @@ class _Body extends ConsumerWidget {
             ],
           ),
         ),
-        const SectionLabel('Can do'),
+        const SectionLabel('Capabilities'),
         AppCard(
           child: Column(
             children: [
@@ -141,7 +149,7 @@ class _Body extends ConsumerWidget {
             ],
           ),
         ),
-        const SectionLabel('Knowledge'),
+        const SectionLabel('Business Knowledge'),
         AppCard(
           onTap: () => context.push('/agent/teach'),
           child: Row(
@@ -153,7 +161,7 @@ class _Body extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Teach Your AI', style: t.titleMedium),
-                    Text(knowledge == null ? 'Loading…' : '${knowledge.length} sources · brochure, fees, FAQ', style: t.bodySmall),
+                    Text(knowledge == null ? 'Loading…' : '${knowledge.length} sources · services, pricing, FAQs', style: t.bodySmall),
                   ],
                 ),
               ),

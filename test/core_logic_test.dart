@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:riya_admissions/core/utils/csv.dart';
-import 'package:riya_admissions/core/utils/phone.dart';
-import 'package:riya_admissions/data/datasources/mock/mock_backend.dart';
-import 'package:riya_admissions/data/datasources/mock/mock_repositories.dart';
-import 'package:riya_admissions/data/models/ai_output.dart';
-import 'package:riya_admissions/data/models/models.dart';
-import 'package:riya_admissions/services/whatsapp/whatsapp_service.dart';
+import 'package:callpilot/core/utils/csv.dart';
+import 'package:callpilot/core/utils/phone.dart';
+import 'package:callpilot/data/datasources/mock/mock_backend.dart';
+import 'package:callpilot/data/datasources/mock/mock_repositories.dart';
+import 'package:callpilot/data/models/ai_output.dart';
+import 'package:callpilot/data/models/models.dart';
+import 'package:callpilot/services/whatsapp/whatsapp_service.dart';
 
 void main() {
   group('PhoneUtils', () {
@@ -44,7 +44,7 @@ void main() {
   group('CSV import', () {
     test('parses header, quotes, sanitises and dedupes', () {
       const csv =
-          'Name,Mobile,Course\n'
+          'Name,Mobile,Interest\n'
           '"Das, Priya",98310 22233,JEE Main\n'
           '=HYPERLINK("x"),9831022233,NEET\n'
           'Bad,123,NEET\n'
@@ -64,12 +64,12 @@ void main() {
         'lead_score': 140,
         'intent': 'interested',
         'summary': 's',
-        'next_action': 'counsellor_callback',
+        'next_action': 'human_followup',
         'whatsapp_followup_required': true,
       });
       expect(o.leadScore, 100);
       expect(o.temperature, LeadTemperature.hot);
-      expect(o.nextAction, NextAction.counsellorCallback);
+      expect(o.nextAction, NextAction.humanFollowUp);
     });
     test('unknown enum values degrade gracefully', () {
       final l = Lead.fromJson({'id': '1', 'status': 'weird', 'next_action': '???'});

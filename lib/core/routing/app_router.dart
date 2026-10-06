@@ -19,6 +19,7 @@ import '../../features/leads/leads_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
 import '../../features/onboarding/onboarding_screens.dart';
 import '../../features/shell/app_shell.dart';
+import '../../features/splash/splash_screen.dart';
 import '../../features/usage/usage_screen.dart';
 import '../../features/voice_test/voice_test_screen.dart';
 import '../providers.dart';
@@ -42,20 +43,23 @@ final routerProvider = Provider<GoRouter>((ref) {
   final prefs = ref.watch(localPrefsProvider);
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: prefs.onboarded ? '/home' : '/onboarding',
+    initialLocation: '/splash',
     redirect: (context, state) {
       final loc = state.matchedLocation;
       final inOnboarding = loc.startsWith('/onboarding') || loc.startsWith('/voice-test');
-      if (!prefs.onboarded && !inOnboarding && loc != '/demo') return '/onboarding';
+      if (!prefs.onboarded && !inOnboarding && loc != '/demo' && loc != '/splash') return '/onboarding';
       return null;
     },
     routes: [
+      GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
+
       // ---------------- Onboarding
       GoRoute(
         path: '/onboarding',
         pageBuilder: (_, s) => _fade(s, const WelcomeScreen()),
         routes: [
           GoRoute(path: 'business-type', pageBuilder: (_, s) => _fade(s, const BusinessTypeScreen())),
+          GoRoute(path: 'skills', pageBuilder: (_, s) => _fade(s, const EmployeeSkillsScreen())),
           GoRoute(path: 'details', pageBuilder: (_, s) => _fade(s, const BusinessDetailsScreen())),
           GoRoute(path: 'offer', pageBuilder: (_, s) => _fade(s, const OfferDetailsScreen())),
           GoRoute(path: 'teach', pageBuilder: (_, s) => _fade(s, const TeachAiOnboardingScreen())),

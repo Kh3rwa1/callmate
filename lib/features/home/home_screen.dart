@@ -12,6 +12,8 @@ import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../campaign/campaign_widgets.dart';
+import '../../core/config/brand.dart';
+import '../../core/widgets/brand_widgets.dart';
 
 /// Home – "What happened today?"
 class HomeScreen extends ConsumerWidget {
@@ -89,7 +91,11 @@ class HomeScreen extends ConsumerWidget {
                     value: dash,
                     onRetry: () => ref.invalidate(dashboardProvider),
                     loading: const _HomeSkeleton(),
-                    data: (d) => _HomeBody(d: d, agentName: agent?.name ?? 'Riya'),
+                    data: (d) => _HomeBody(
+                      d: d,
+                      agentName: agent?.name ?? Brand.employeeFallbackName,
+                      humanLabel: ref.watch(workflowProvider).humanLabel,
+                    ),
                   ),
                 ),
               ),
@@ -112,18 +118,18 @@ class _AgentCard extends StatelessWidget {
     final active = agent?.status == AgentStatus.active;
     return AppCard(
       padding: const EdgeInsets.fromLTRB(8, 12, 18, 12),
-      semanticLabel: '${agent?.name ?? 'Riya'}, ${agent?.role ?? ''}, ${active ? 'active' : 'paused'}',
+      semanticLabel: '${agent?.name ?? Brand.employeeFallbackName}, ${agent?.role ?? ''}, ${active ? 'active' : 'paused'}',
       onTap: () => context.go('/agent'),
       child: Row(
         children: [
-          Mascot(state: active ? MascotState.calling : MascotState.welcome, size: 104, animate: active),
+          EmployeeMascot(state: active ? MascotState.calling : MascotState.welcome, size: 104, animate: active, agent: agent),
           const SizedBox(width: 6),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(agent?.name ?? 'Riya', style: t.titleLarge),
-                Text(agent?.role ?? 'Admissions Assistant', style: t.bodyMedium),
+                Text(agent?.name ?? Brand.employeeFallbackName, style: t.titleLarge),
+                Text(agent?.role ?? Brand.employeeNoun, style: t.bodyMedium),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -155,9 +161,10 @@ class _AgentCard extends StatelessWidget {
 }
 
 class _HomeBody extends StatelessWidget {
-  const _HomeBody({required this.d, required this.agentName});
+  const _HomeBody({required this.d, required this.agentName, required this.humanLabel});
   final DailySummary d;
   final String agentName;
+  final String humanLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -174,11 +181,11 @@ class _HomeBody extends StatelessWidget {
           crossAxisSpacing: 12,
           childAspectRatio: 1.55,
           children: [
-            _Metric(value: d.leads, label: 'Leads', emoji: '👥', onTap: () => context.go('/leads')),
+            _Metric(value: d.callsToday, label: 'Calls', emoji: '📞', onTap: () => context.go('/calls')),
             _Metric(
               value: d.connected,
               label: 'Connected',
-              emoji: '📞',
+              emoji: '✅',
               color: AppColors.success,
               onTap: () => context.go('/calls?filter=connected'),
             ),
@@ -189,7 +196,7 @@ class _HomeBody extends StatelessWidget {
               color: const Color(0xFFB45309),
               onTap: () => context.go('/leads?filter=warm'),
             ),
-            _Metric(value: d.hot, label: 'Hot', emoji: '🔥', color: AppColors.hot, onTap: () => context.go('/leads?filter=hot')),
+            _Metric(value: d.hot, label: 'Hot Leads', emoji: '🔥', color: AppColors.hot, onTap: () => context.go('/leads?filter=hot')),
           ],
         ),
         const SectionLabel('Needs your attention'),
@@ -198,7 +205,7 @@ class _HomeBody extends StatelessWidget {
             emoji: '🔥',
             tint: AppColors.hotSoft,
             title: '${d.hot} hot leads',
-            body: 'These leads are ready for counsellor follow-up.',
+            body: 'These leads are ready for follow-up.',
             cta: 'View hot leads',
             ctaColor: AppColors.hot,
             onTap: () => context.go('/leads?filter=hot'),
@@ -218,7 +225,7 @@ class _HomeBody extends StatelessWidget {
             emoji: '📅',
             tint: AppColors.infoSoft,
             title: '${d.callbacksToday} callbacks scheduled',
-            body: 'Leads asked to speak with your counsellor.',
+            body: 'Customers asked to speak with your ${humanLabel.toLowerCase()}.',
             cta: 'See callbacks',
             ctaColor: AppColors.info,
             onTap: () => context.push('/callbacks'),
@@ -228,7 +235,7 @@ class _HomeBody extends StatelessWidget {
         _ActionCard(
           emoji: '💬',
           tint: AppColors.whatsappSoft,
-          title: d.followUpsReady == 0 ? 'All caught up 🎉' : '${d.followUpsReady} WhatsApp messages ready',
+          title: d.followUpsReady == 0 ? 'All caught up 🎉' : '${d.followUpsReady} follow-ups ready',
           body: d.followUpsReady == 0
               ? 'New drafts appear here after each call.'
               : '$agentName drafted them from each call. Review and send.',

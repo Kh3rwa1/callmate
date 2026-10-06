@@ -39,7 +39,7 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
     final n = DateTime.now();
     final tomorrow = DateTime(n.year, n.month, n.day + 1);
     _presets = [
-      if (widget.suggested != null && widget.suggested!.isAfter(n)) ('Suggested by Riya', widget.suggested!),
+      if (widget.suggested != null && widget.suggested!.isAfter(n)) ('Suggested by ${ref.read(employeeNameProvider)}', widget.suggested!),
       if (n.hour < 17) ('Today, 6 PM', DateTime(n.year, n.month, n.day, 18)),
       ('Tomorrow, 11 AM', tomorrow.add(const Duration(hours: 11))),
       ('Tomorrow, 6 PM', tomorrow.add(const Duration(hours: 18))),
@@ -87,7 +87,10 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
           children: [
             Text('Schedule callback', style: t.headlineSmall),
             const SizedBox(height: 4),
-            Text('Your counsellor will call ${widget.lead.firstName}. We\'ll remind you.', style: t.bodyMedium),
+            Text(
+              'Your ${ref.watch(workflowProvider).humanLabel.toLowerCase()} will call ${widget.lead.firstName}. We\'ll remind you.',
+              style: t.bodyMedium,
+            ),
             const SizedBox(height: 18),
             for (final (label, at) in _presets)
               Padding(

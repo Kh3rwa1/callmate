@@ -79,18 +79,18 @@ class _Result extends ConsumerWidget {
                       children: [
                         const Icon(Icons.auto_awesome_rounded, size: 18, color: AppColors.brand),
                         const SizedBox(width: 6),
-                        Text('What Riya understood', style: t.labelMedium?.copyWith(color: AppColors.brand)),
+                        Text('What ${ref.watch(employeeNameProvider)} understood', style: t.labelMedium?.copyWith(color: AppColors.brand)),
                       ],
                     ),
                     const SizedBox(height: 10),
                     Text('“${c.summary ?? 'No summary available.'}”', style: t.bodyLarge?.copyWith(fontSize: 17, height: 1.5)),
-                    if ((c.courseInterest ?? '').isNotEmpty) ...[
+                    if ((c.interest ?? '').isNotEmpty) ...[
                       const SizedBox(height: 14),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          Pill(label: '🎓 ${c.courseInterest}', color: AppColors.ink, background: AppColors.surfaceMuted),
+                          Pill(label: '📌 ${c.interest}', color: AppColors.ink, background: AppColors.surfaceMuted),
                           if (c.transcript.language != null)
                             Pill(label: '🗣 ${c.transcript.language}', color: AppColors.ink, background: AppColors.surfaceMuted),
                         ],
@@ -142,18 +142,20 @@ class _Result extends ConsumerWidget {
               AppCard(
                 child: Row(
                   children: [
-                    const IconBubble(color: AppColors.infoSoft, child: Emoji('📅')),
+                    const IconBubble(color: AppColors.infoSoft, child: Emoji('🤝')),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            c.callbackAt != null ? 'Call ${Fmt.callbackPhrase(c.callbackAt!)}' : c.nextAction.label,
-                            style: t.titleMedium,
-                          ),
+                          Text(_actionTitle(c.nextAction), style: t.titleMedium),
                           const SizedBox(height: 2),
-                          Text(c.nextAction.label, style: t.bodySmall),
+                          Text(
+                            c.callbackAt != null
+                                ? 'Your ${ref.watch(workflowProvider).humanLabel.toLowerCase()} should call ${Fmt.callbackPhrase(c.callbackAt!)}'
+                                : c.nextAction.label,
+                            style: t.bodySmall,
+                          ),
                         ],
                       ),
                     ),
@@ -163,7 +165,12 @@ class _Result extends ConsumerWidget {
               if (!c.transcript.isEmpty) ...[
                 const SectionLabel('Transcript'),
                 AppCard(
-                  child: TranscriptView(transcript: c.transcript, leadName: c.leadName.split(' ').first, maxLines: 4),
+                  child: TranscriptView(
+                    transcript: c.transcript,
+                    leadName: c.leadName.split(' ').first,
+                    agentName: ref.watch(employeeNameProvider),
+                    maxLines: 4,
+                  ),
                 ),
               ],
             ],
@@ -193,7 +200,7 @@ class _Result extends ConsumerWidget {
                 Expanded(
                   flex: 6,
                   child: PrimaryButton(
-                    label: 'Send WhatsApp',
+                    label: 'Prepare WhatsApp',
                     icon: Icons.chat_rounded,
                     color: AppColors.whatsapp,
                     onPressed: fuId == null ? () => context.push('/leads/${c.leadId}') : () => context.push('/followups/$fuId'),
@@ -207,6 +214,15 @@ class _Result extends ConsumerWidget {
     );
   }
 }
+
+/// Owner-facing phrasing of the AI's structured next action.
+String _actionTitle(NextAction a) => switch (a) {
+  NextAction.whatsappAndCallback || NextAction.humanFollowUp => 'Human follow-up',
+  NextAction.sendWhatsapp => 'Send a WhatsApp follow-up',
+  NextAction.bookAppointment => 'Book an appointment / visit',
+  NextAction.retryCall => 'Try calling again',
+  NextAction.none => 'No action needed',
+};
 
 class _Reason extends StatelessWidget {
   const _Reason({required this.text, required this.positive});
@@ -257,7 +273,7 @@ class _Detail extends StatelessWidget {
         const SizedBox(height: 16),
         if (!c.status.isConnected)
           Text(
-            'Riya will try again in the next campaign. You can also call them yourself.',
+            'Your AI employee will try again in the next campaign. You can also call them yourself.',
             style: t.bodyMedium,
             textAlign: TextAlign.center,
           ),

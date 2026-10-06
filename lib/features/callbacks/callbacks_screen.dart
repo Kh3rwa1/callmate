@@ -30,14 +30,14 @@ class CallbacksScreen extends ConsumerWidget {
           if (upcoming.isEmpty && done.isEmpty) {
             return const EmptyState(
               title: 'No callbacks yet',
-              message: 'When a lead asks to talk to your counsellor, it shows up here.',
+              message: 'When a customer asks for a callback, it shows up here.',
               mascot: MascotState.thinking,
             );
           }
           return ListView(
             padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 32),
             children: [
-              Text('Leads who asked to speak with your counsellor.', style: t.bodyMedium),
+              Text('Customers who asked to speak with your team.', style: t.bodyMedium),
               const SectionLabel('Upcoming'),
               if (upcoming.isEmpty) AppCard(child: Text('All caught up 🎉', style: t.titleSmall)),
               for (final c in upcoming)

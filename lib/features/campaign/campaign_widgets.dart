@@ -5,6 +5,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/mascot.dart';
 import '../../data/models/models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/providers.dart';
 
 /// Primary "Call New Leads" CTA (Home + Leads).
 class CallNewLeadsButton extends StatelessWidget {
@@ -23,12 +25,12 @@ class CallNewLeadsButton extends StatelessWidget {
 }
 
 /// Compact live banner shown on Home while a campaign is running.
-class CampaignLiveBanner extends StatelessWidget {
+class CampaignLiveBanner extends ConsumerWidget {
   const CampaignLiveBanner({super.key, required this.campaign});
   final Campaign campaign;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).textTheme;
     final s = campaign.stats;
     return AppCard(
@@ -43,7 +45,7 @@ class CampaignLiveBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Riya is calling your leads…', style: t.titleSmall?.copyWith(color: Colors.white)),
+                Text('${ref.watch(employeeNameProvider)} is calling your leads…', style: t.titleSmall?.copyWith(color: Colors.white)),
                 const SizedBox(height: 4),
                 Text(
                   '${s.completed} of ${s.total} done · ${s.hot} hot',

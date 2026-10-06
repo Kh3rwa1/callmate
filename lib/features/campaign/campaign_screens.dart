@@ -12,7 +12,6 @@ import '../../core/widgets/lead_widgets.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
-import '../../data/templates/templates.dart';
 
 // =============================================================== Setup
 class CampaignSetupScreen extends ConsumerStatefulWidget {
@@ -77,7 +76,7 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
     try {
       final draft = CampaignDraft(
         leadIds: leads.map((e) => e.id).toList(),
-        purpose: coachingAgentTemplate.callPurpose,
+        purpose: ref.read(businessTemplateProvider).agent.callPurpose,
         callingHoursStart: _hours!.start.round(),
         callingHoursEnd: _hours!.end.round(),
         options: _opts,
@@ -137,7 +136,7 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                                 Text('${leads.length}', style: t.displaySmall?.copyWith(color: AppColors.brand)),
                                 Text('leads ready', style: t.titleMedium),
                                 const SizedBox(height: 4),
-                                Text('${agent?.name ?? 'Riya'} will call each one and report back.', style: t.bodySmall),
+                                Text('${agent?.name ?? 'Your AI employee'} will call each one and report back.', style: t.bodySmall),
                               ],
                             ),
                           ),
@@ -149,9 +148,13 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                       child: Column(
                         children: [
-                          _Row(label: 'AI Employee', value: agent?.name ?? 'Riya', leading: const MascotAvatar(size: 30)),
+                          _Row(
+                            label: 'AI Employee',
+                            value: agent == null ? '—' : '${agent.name} · ${agent.role}',
+                            leading: const MascotAvatar(size: 30),
+                          ),
                           const Divider(),
-                          _Row(label: 'Purpose', value: coachingAgentTemplate.callPurpose),
+                          _Row(label: 'Purpose', value: ref.watch(businessTemplateProvider).agent.callPurpose),
                           const Divider(),
                           const _Row(label: 'Languages', value: 'Auto detect'),
                           const Divider(),
@@ -301,7 +304,7 @@ class CampaignProgressScreen extends ConsumerWidget {
     final s = c.stats;
     final running = c.isActive;
     final done = c.status == CampaignStatus.completed;
-    final agentName = ref.watch(agentProvider).value?.name ?? 'Riya';
+    final agentName = ref.watch(employeeNameProvider);
 
     return Scaffold(
       appBar: AppBar(

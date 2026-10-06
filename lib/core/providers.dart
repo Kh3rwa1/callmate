@@ -7,6 +7,7 @@ import '../data/datasources/mock/mock_backend.dart';
 import '../data/datasources/mock/mock_repositories.dart';
 import '../data/models/models.dart';
 import '../data/repositories/repositories.dart';
+import '../data/templates/templates.dart';
 import '../services/analytics/analytics_service.dart';
 import '../services/notifications/notification_service.dart';
 import '../services/voice/mock_voice_agent_service.dart';
@@ -14,6 +15,7 @@ import '../services/voice/sarvam_voice_agent_service.dart';
 import '../services/voice/voice_agent_service.dart';
 import '../services/whatsapp/whatsapp_service.dart';
 import 'config/app_env.dart';
+import 'config/brand.dart';
 import 'network/api_client.dart';
 import 'storage/local_prefs.dart';
 import 'storage/secure_store.dart';
@@ -73,7 +75,14 @@ final voiceAgentServiceProvider = Provider.autoDispose<VoiceAgentService>((ref) 
   final VoiceAgentService s;
   if (ref.watch(useMockProvider)) {
     final b = ref.watch(mockBackendProvider);
-    s = MockVoiceAgentService(agentName: b.agent.name, businessName: b.business.name);
+    final tpl = templateFor(b.business.category);
+    s = MockVoiceAgentService(
+      agentName: b.agent.name,
+      agentRole: b.agent.role,
+      businessName: b.business.name,
+      humanLabel: tpl.workflow.humanLabel,
+      vertical: b.business.category == BusinessCategory.coaching ? 'coaching' : 'generic',
+    );
   } else {
     s = SarvamVoiceAgentService(ref.watch(voiceSessionRepoProvider));
   }
@@ -187,3 +196,18 @@ class ActiveCampaign extends Notifier<Campaign?> {
 
   void set(Campaign c) => state = c;
 }
+
+/// ---------------------------------------------------------------------------
+/// Active template context. Every screen pulls vertical vocabulary from here
+/// (interest label, human closer, knowledge hints…) so changing
+/// business.category / agent.name / agent.role re-skins the whole UI.
+/// ---------------------------------------------------------------------------
+final businessTemplateProvider = Provider<BusinessTemplate>((ref) {
+  final cat = ref.watch(businessProvider).value?.category;
+  return templateFor(cat);
+});
+
+final workflowProvider = Provider<WorkflowTemplate>((ref) => ref.watch(businessTemplateProvider).workflow);
+
+/// Employee display name – never falls back to a hardcoded persona.
+final employeeNameProvider = Provider<String>((ref) => ref.watch(agentProvider).value?.name ?? Brand.employeeFallbackName);

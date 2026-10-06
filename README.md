@@ -1,56 +1,54 @@
-# Riya AI – Admissions AI employee for coaching centres
+# CallPilot
 
-> Your AI employee calls every lead, qualifies them, and prepares the perfect WhatsApp follow-up.
+**Your AI Calling Employee**
 
-**Core loop:** Lead → AI call → AI understands → Lead score → Follow-up draft → Notification → WhatsApp opens → **you tap Send**.
+AI that calls, qualifies, and follows up for your business.
+
+| | |
+|---|---|
+| Visible app name | **CallPilot** |
+| Android `applicationId` / `namespace` | `com.lexi.light` |
+| iOS bundle identifier | `com.lexi.light` |
+| Dart package (internal) | `callpilot` |
+
+> CallPilot is the **product**. Owners hire **AI employees** inside it – e.g. *Maya · Sales Assistant*, *Riya · Admissions Assistant*, *Arjun · Appointment Assistant*.
+> The bundled demo data (ABC Coaching Centre + Riya) is just one example tenant.
+
+**Core loop:** Lead → AI call → conversation → AI analysis → lead score → next action → AI follow-up → notification → WhatsApp opens → **you tap Send**.
 
 ## Run
 
 ```bash
 flutter pub get
-# Demo / mock mode (no backend needed – full journey works)
-flutter run --dart-define-from-file=env/dev.json
-# Staging / prod (real backend)
-flutter run --dart-define-from-file=env/staging.json
+flutter run --dart-define-from-file=env/dev.json        # mock mode – full journey works offline
+flutter run --dart-define-from-file=env/staging.json    # real backend
 flutter build apk --release --dart-define-from-file=env/prod.json
 ```
 
-Mock mode activates automatically whenever `API_BASE_URL` is empty.
+## Brand & configuration
+- `lib/core/config/brand.dart` – `APP_NAME = "CallPilot"`, `APP_TAGLINE`, `APP_DESCRIPTION`. All visible branding reads from here.
+- Employee name/role/voice/goal/skills come from the `Agent` – never hardcoded in UI (`employeeNameProvider`).
+- Business vocabulary (interest label, human closer, custom lead fields, test-call hints) comes from the active template (`workflowProvider`).
 
-## Architecture
-
-```
-lib/
-  core/        config (flavors), theme, routing (GoRouter), network (Dio), storage, utils, widgets (Mascot, cards, states)
-  data/
-    models/        normalised entities (Lead, Call, FollowUp, Campaign, Agent, Business, KnowledgeSource, Usage, Callback…)
-    templates/     BusinessTemplate / AgentTemplate / WorkflowTemplate (Coaching = full V1)
-    repositories/  interfaces (UI depends only on these)
-    datasources/
-      mock/        in-memory backend + simulated Sarvam webhook pipeline + seed data
-      api/         Dio implementations of backend/API.md
-  services/
-    voice/       VoiceAgentService ← SarvamVoiceAgentService (sarvamconv_ai_sdk) | MockVoiceAgentService
-    whatsapp/    WhatsAppService ← WhatsAppDeepLinkService (wa.me click-to-chat, no Business API)
-    notifications/ NotificationService + PushProvider abstraction (FCM plugs in here)
-    analytics/   PII-free analytics facade
-  features/    onboarding, home, leads, calls, followups, agent, knowledge, campaign, callbacks, voice_test, notifications, usage, demo
-backend/       API contract, agent template, structured-output JSON schema, .env.example
-```
-
-State: Riverpod 3. Navigation: GoRouter `StatefulShellRoute` with **exactly 5 tabs**: Home · Leads · Calls · Follow-ups · AI Employee.
-
-## Security
-- No Sarvam keys in the app. In-app voice uses `SamvaadAgent(baseUrl: <our proxy>, headers: {Authorization})` per Sarvam's proxy guidance.
-- Outbound calls are placed by the backend, never from the phone.
-- Only our own JWTs are stored (flutter_secure_storage). API logs print method/path/status only.
-- Phone numbers normalised/validated (Indian defaults); CSV import sanitised (formula-injection, control chars, length caps, dedupe).
-- Analytics strips name/phone/message/transcript keys.
+## Templates (`lib/data/templates/templates.dart`)
+`BusinessTemplate` → `AgentTemplate` + `WorkflowTemplate` for: Coaching Centre (tuned V1), Real Estate, Clinic, Diagnostic Centre, Automobile, Salon, Restaurant, Retail, Local Services, Other.
+Leads are generic (`interest` + custom `attributes`); coaching's batch/budget are template attributes, not global fields.
 
 ## Mascot
-Drop replacement art into `assets/mascot/` keeping file names:
-`welcome, speaking, listening, thinking, calling, success, hot_lead, whatsapp, error` (.png, transparent, square).
-The `Mascot` widget falls back to a vector silhouette if a file is missing.
+`Mascot` = the CallPilot AI-workforce character (states: welcome, calling, speaking, listening, thinking, success, hot lead, WhatsApp, error).
+`EmployeeMascot` adds a role badge from the employee's role (💼 sales, 📅 appointments, 💬 support, 📚 admissions, 🛎️ reception).
+Assets: `assets/mascot/*.png`. App icon / splash use the CallPilot mark (`assets/icon/`), never a named employee.
 
-## Demo tools
-Home → 🧪 icon (or AI Employee → Demo controls): simulate hot lead, completed call, WhatsApp follow-up, campaign progress, notifications, replay onboarding.
+## Architecture
+```
+lib/core       config (brand, flavors), theme, routing, network, storage, utils, widgets
+lib/data       models, templates, repositories (interfaces), datasources/{mock,api}
+lib/services   voice (VoiceAgentService ← Sarvam | Mock), whatsapp (deep link), notifications, analytics
+lib/features   splash, onboarding, home, leads, calls, followups, agent, knowledge, campaign, callbacks, voice_test, notifications, usage, demo
+backend/       API contract, templates, structured-output schema
+```
+
+## Guarantees
+- WhatsApp V1 = click-to-chat deep link only. Nothing is sent automatically; UI says "WhatsApp opened" / "Ready to send".
+- Sarvam lives behind `VoiceAgentService` + our backend proxy. No secrets in the app.
+- Outbound calls: App → Backend → Sarvam Voice Agents → Telephony → Customer.

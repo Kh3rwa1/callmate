@@ -62,14 +62,14 @@ class CsvLeadParser {
 
     final header = rows.first.map((h) => h.trim().toLowerCase()).toList();
     int find(List<String> keys) => header.indexWhere((h) => keys.any((k) => h.contains(k)));
-    var nameIdx = find(['name', 'student']);
+    var nameIdx = find(['name', 'customer', 'student', 'client']);
     var phoneIdx = find(['phone', 'mobile', 'contact', 'number', 'whatsapp']);
-    final courseIdx = find(['course', 'interest', 'class', 'program']);
+    final interestIdx = find(['interest', 'course', 'service', 'product', 'property', 'model', 'program']);
     final sourceIdx = find(['source', 'channel', 'campaign']);
 
     var dataRows = rows.skip(1);
     if (nameIdx < 0 && phoneIdx < 0) {
-      // No header row – assume name, phone, course.
+      // No header row – assume name, phone, interest.
       nameIdx = 0;
       phoneIdx = 1;
       dataRows = rows;
@@ -98,7 +98,7 @@ class CsvLeadParser {
         NewLeadInput(
           name: name.isEmpty ? 'Lead ${PhoneUtils.masked(phone)}' : name,
           phone: phone,
-          courseInterest: at(courseIdx).isEmpty ? null : at(courseIdx),
+          interest: at(interestIdx).isEmpty ? null : at(interestIdx),
           source: at(sourceIdx).isEmpty ? 'CSV import' : at(sourceIdx),
         ),
       );

@@ -73,7 +73,7 @@ Future<void> _fallback(BuildContext context, WhatsAppService wa, String message)
               Text('Copy the message instead, or share it with another app.', style: t.bodyMedium, textAlign: TextAlign.center),
               const SizedBox(height: 20),
               PrimaryButton(
-                label: 'Copy message',
+                label: 'Copy Message',
                 icon: Icons.copy_rounded,
                 onPressed: () async {
                   await wa.copyMessage(message);

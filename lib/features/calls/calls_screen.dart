@@ -14,6 +14,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/repositories.dart';
 import '../leads/leads_controller.dart';
+import '../../core/config/brand.dart';
 
 final callFilterProvider = NotifierProvider<CallFilterController, CallFilter>(CallFilterController.new);
 
@@ -126,8 +127,8 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Semantics(header: true, child: Text('Calls', style: t.headlineMedium)),
-                        Text('Everything ${agent?.name ?? 'Riya'} did for you', style: t.bodyMedium),
+                        Semantics(header: true, child: Text('AI Calls', style: t.headlineMedium)),
+                        Text('Everything ${agent?.name ?? 'your AI employee'} did for you', style: t.bodyMedium),
                       ],
                     ),
                   ),
@@ -162,7 +163,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                 ],
               ),
             ),
-            Expanded(child: _list(s, agent?.name ?? 'Riya')),
+            Expanded(child: _list(s, agent?.name ?? Brand.employeeFallbackName)),
           ],
         ),
       ),

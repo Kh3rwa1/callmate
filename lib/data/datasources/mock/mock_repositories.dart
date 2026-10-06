@@ -141,7 +141,7 @@ class MockLeadRepository implements LeadRepository {
                   q.isEmpty ||
                   l.name.toLowerCase().contains(q) ||
                   l.phone.contains(q.replaceAll(RegExp(r'\D'), '').isEmpty ? '\u0000' : q.replaceAll(RegExp(r'\D'), '')) ||
-                  (l.courseInterest ?? '').toLowerCase().contains(q),
+                  (l.interest ?? '').toLowerCase().contains(q),
             )
             .toList()
           ..sort(leadPriority);
@@ -166,7 +166,8 @@ class MockLeadRepository implements LeadRepository {
       name: input.name,
       phone: phone,
       source: input.source,
-      courseInterest: input.courseInterest,
+      interest: input.interest,
+      attributes: input.attributes,
       status: LeadStatus.newLead,
       createdAt: now,
       updatedAt: now,
@@ -193,7 +194,8 @@ class MockLeadRepository implements LeadRepository {
         name: i.name,
         phone: phone,
         source: i.source,
-        courseInterest: i.courseInterest,
+        interest: i.interest,
+        attributes: i.attributes,
         status: LeadStatus.newLead,
         createdAt: now,
         updatedAt: now,
@@ -309,7 +311,7 @@ class MockCallbackRepository implements CallbackRepository {
       leadId: leadId,
       leadName: lead.name,
       scheduledAt: at,
-      note: note ?? '${coachingWorkflowTemplate.counsellorLabel} callback',
+      note: note ?? '${templateFor(b.business.category).workflow.humanLabel} follow-up',
     );
     b.callbacks[cb.id] = cb;
     b.leads[leadId] = lead.copyWith(callbackAt: at, status: LeadStatus.callback);
