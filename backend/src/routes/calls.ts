@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
+import { safeJsonParse } from '../utils/json';
+import { decryptAtRest } from '../utils/crypto_data';
 
 const callsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
-function formatCall(row: any) {
+async function formatCall(row: any, secret?: string) {
   if (!row) return null;
 
   let leadScoreObj: any = null;
@@ -12,15 +14,16 @@ function formatCall(row: any) {
       value: row.score,
       temperature: row.temperature || 'cold',
       intent: row.intent || 'unknown',
-      positive_signals: row.positive_signals ? JSON.parse(row.positive_signals) : [],
-      concerns: row.objections ? JSON.parse(row.objections) : [],
+      positive_signals: safeJsonParse(row.positive_signals, []),
+      concerns: safeJsonParse(row.objections, []),
     };
   }
 
   let transcriptObj: any = { lines: [] };
   if (row.transcript) {
     try {
-      const parsed = JSON.parse(row.transcript);
+      const decrypted = await decryptAtRest(row.transcript, secret);
+      const parsed = safeJsonParse(decrypted, []);
       if (Array.isArray(parsed)) {
         transcriptObj = { lines: parsed };
       } else {
@@ -48,6 +51,7 @@ function formatCall(row: any) {
     interaction_id: row.interaction_id,
     started_at: row.started_at,
     completed_at: row.completed_at,
+    created_at: row.created_at,
   };
 }
 
@@ -56,8 +60,9 @@ callsApp.get('/calls', async (c) => {
   const user = c.get('user');
   const filter = c.req.query('filter') || 'all';
   const leadId = c.req.query('lead_id');
-  const cursor = parseInt(c.req.query('cursor') || '0', 10);
-  const limit = Math.min(parseInt(c.req.query('limit') || '20', 10), 100);
+  const rawCursor = c.req.query('cursor');
+  const limit = Math.min(Math.max(1, parseInt(c.req.query('limit') || '20', 10)), 100);
+  const secret = c.env.ENCRYPTION_KEY || c.env.JWT_SIGNING_KEY;
 
   let sql = 'SELECT * FROM calls WHERE business_id = ?';
   const params: any[] = [user.business_id];
@@ -75,21 +80,52 @@ callsApp.get('/calls', async (c) => {
     sql += " AND temperature = 'hot'";
   }
 
-  sql += ' ORDER BY started_at DESC LIMIT ? OFFSET ?';
-  params.push(limit + 1, cursor);
+  if (rawCursor) {
+    try {
+      const decoded = JSON.parse(atob(rawCursor));
+      if (decoded.started_at && decoded.id) {
+        sql += ' AND (started_at < ? OR (started_at = ? AND id < ?))';
+        params.push(decoded.started_at, decoded.started_at, decoded.id);
+      }
+    } catch {
+      const offset = parseInt(rawCursor, 10);
+      if (!isNaN(offset) && offset > 0) {
+        sql += ' ORDER BY started_at DESC, id DESC LIMIT ? OFFSET ?';
+        params.push(limit + 1, offset);
+        const { results } = await c.env.DB.prepare(sql).bind(...params).all<any>();
+        const hasMore = results.length > limit;
+        const items = await Promise.all((hasMore ? results.slice(0, limit) : results).map((r) => formatCall(r, secret)));
+        return c.json({
+          items,
+          has_more: hasMore,
+          next_cursor: hasMore ? String(offset + limit) : null,
+        });
+      }
+    }
+  }
+
+  sql += ' ORDER BY started_at DESC, id DESC LIMIT ?';
+  params.push(limit + 1);
 
   const { results } = await c.env.DB.prepare(sql).bind(...params).all<any>();
   const hasMore = results.length > limit;
-  const items = (hasMore ? results.slice(0, limit) : results).map(formatCall);
+  const sliced = hasMore ? results.slice(0, limit) : results;
+  const items = await Promise.all(sliced.map((r) => formatCall(r, secret)));
 
   if (leadId) {
     return c.json(items);
   }
 
+  let nextCursor: string | null = null;
+  if (hasMore && items.length > 0) {
+    const lastItem = items[items.length - 1];
+    nextCursor = btoa(JSON.stringify({ started_at: lastItem?.started_at, id: lastItem?.id }));
+  }
+
   return c.json({
     items,
     has_more: hasMore,
-    next_cursor: hasMore ? String(cursor + limit) : null,
+    next_cursor: nextCursor,
   });
 });
 
@@ -97,15 +133,17 @@ callsApp.get('/calls', async (c) => {
 callsApp.get('/calls/:id', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');
+  const secret = c.env.ENCRYPTION_KEY || c.env.JWT_SIGNING_KEY;
   const row = await c.env.DB.prepare('SELECT * FROM calls WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   if (!row) return c.json({ message: 'Call not found.', code: 'not_found' }, 404);
-  return c.json(formatCall(row));
+  return c.json(await formatCall(row, secret));
 });
 
 // POST /leads/:id/call (or trigger a call for lead)
 callsApp.post('/leads/:id/call', async (c) => {
   const user = c.get('user');
   const leadId = c.req.param('id');
+  const secret = c.env.ENCRYPTION_KEY || c.env.JWT_SIGNING_KEY;
 
   const lead = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ? AND business_id = ?').bind(leadId, user.business_id).first<any>();
   if (!lead) return c.json({ message: 'Lead not found.', code: 'not_found' }, 404);
@@ -117,8 +155,8 @@ callsApp.post('/leads/:id/call', async (c) => {
 
   // Record active call in D1
   await c.env.DB.prepare(`
-    INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, status, started_at)
-    VALUES (?, ?, ?, ?, ?, 'calling', datetime('now'))
+    INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, status, started_at, created_at)
+    VALUES (?, ?, ?, ?, ?, 'calling', datetime('now'), datetime('now'))
   `).bind(callId, user.business_id, lead.id, lead.name, lead.phone).run();
 
   await c.env.DB.prepare(`
@@ -173,11 +211,10 @@ callsApp.post('/leads/:id/call', async (c) => {
 
   const created = await c.env.DB.prepare('SELECT * FROM calls WHERE id = ? AND business_id = ?').bind(callId, user.business_id).first();
   return c.json({
-    call: formatCall(created),
+    call: await formatCall(created, secret),
     sarvam_dispatched: !!sarvamResult,
     sarvam_response: sarvamResult,
   });
 });
 
 export { callsApp };
-

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { signJWT, verifyJWT, getJwtSecret, authMiddleware } from '../auth';
 import { getSmsProvider } from '../sms';
+import { parseJsonBody, otpRequestSchema, registerSchema, loginSchema, refreshSchema } from '../schemas/validation';
 
 const authApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -25,8 +26,11 @@ async function sha256(text: string): Promise<string> {
 // POST /auth/otp/request
 // Rate limited: max 3 per 10min per phone, max 10 per 10min per IP
 authApp.post('/otp/request', async (c) => {
-  const body: any = await c.req.json().catch(() => ({}));
-  const rawPhone = body.phone?.trim();
+  const parsed = await parseJsonBody(c, otpRequestSchema);
+  if (!parsed.success) {
+    return parsed.response;
+  }
+  const rawPhone = parsed.data.phone.trim();
 
   if (!rawPhone) {
     return c.json({ message: 'Phone number is required.', code: 'invalid_request' }, 400);
@@ -90,14 +94,14 @@ authApp.post('/otp/request', async (c) => {
 // POST /auth/register
 // NEVER returns tokens for an existing phone. Requires verified OTP.
 authApp.post('/register', async (c) => {
-  const body: any = await c.req.json().catch(() => ({}));
-  const rawPhone = body.phone?.trim();
-  const businessName = body.business_name?.trim();
-  const otp = body.otp?.trim();
-
-  if (!rawPhone || !businessName || !otp) {
-    return c.json({ message: 'Phone, business name, and verification code are required.', code: 'invalid_request' }, 400);
+  const parsed = await parseJsonBody(c, registerSchema);
+  if (!parsed.success) {
+    return parsed.response;
   }
+  const body = parsed.data;
+  const rawPhone = body.phone.trim();
+  const businessName = body.business_name.trim();
+  const otp = body.otp.trim();
 
   const phone = normalizePhone(rawPhone);
 
@@ -177,13 +181,13 @@ authApp.post('/register', async (c) => {
 // POST /auth/login
 // Verifies OTP hash, enforces max 5 attempts, deletes OTP on success
 authApp.post('/login', async (c) => {
-  const body: any = await c.req.json().catch(() => ({}));
-  const rawPhone = body.phone?.trim();
-  const otp = body.otp?.trim();
-
-  if (!rawPhone || !otp) {
-    return c.json({ message: 'Phone and OTP are required.', code: 'invalid_request' }, 400);
+  const parsed = await parseJsonBody(c, loginSchema);
+  if (!parsed.success) {
+    return parsed.response;
   }
+  const body = parsed.data;
+  const rawPhone = body.phone.trim();
+  const otp = body.otp.trim();
 
   const phone = normalizePhone(rawPhone);
 
@@ -243,12 +247,11 @@ authApp.post('/login', async (c) => {
 // POST /auth/refresh
 // Token rotation and family reuse detection
 authApp.post('/refresh', async (c) => {
-  const body: any = await c.req.json().catch(() => ({}));
-  const token = body.refresh_token?.trim();
-
-  if (!token) {
-    return c.json({ message: 'Refresh token is required.', code: 'invalid_request' }, 400);
+  const parsed = await parseJsonBody(c, refreshSchema);
+  if (!parsed.success) {
+    return parsed.response;
   }
+  const token = parsed.data.refresh_token.trim();
 
   const secret = getJwtSecret(c);
   const payload = await verifyJWT(token, secret, 'refresh');

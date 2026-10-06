@@ -16,3 +16,15 @@ database_id = "local-d1-callpilot-db"
 [[r2_buckets]]
 binding = "KNOWLEDGE_BUCKET"
 bucket_name = "callpilot-knowledge"
+
+[[queues.producers]]
+queue = "callpilot-campaign-dispatch"
+binding = "CAMPAIGN_QUEUE"
+
+[[queues.consumers]]
+queue = "callpilot-campaign-dispatch"
+max_batch_size = 10
+max_batch_timeout = 1
+max_retries = 3
+dead_letter_queue = "callpilot-campaign-dlq"
+

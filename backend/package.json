@@ -6,13 +6,14 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:migrate": "wrangler d1 execute callpilot-db --local --file=./migrations/0001_initial.sql && wrangler d1 execute callpilot-db --local --file=./migrations/0003_otp_and_security.sql",
+    "db:migrate": "wrangler d1 execute callpilot-db --local --file=./migrations/0001_initial.sql && wrangler d1 execute callpilot-db --local --file=./migrations/0003_otp_and_security.sql && wrangler d1 execute callpilot-db --local --file=./migrations/0004_compliance_and_billing.sql",
     "db:seed": "wrangler d1 execute callpilot-db --local --file=./migrations/0002_seed.sql",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test_e2e.mjs"
   },
   "dependencies": {
-    "hono": "^4.7.2"
+    "hono": "^4.7.2",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250224.0",

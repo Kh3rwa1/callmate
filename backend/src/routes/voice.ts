@@ -1,6 +1,10 @@
 import { Hono, Context } from 'hono';
 import { Env, AuthUser } from '../types';
 import { signJWT, verifyJWT, getJwtSecret } from '../auth';
+import { safeJsonParse } from '../utils/json';
+import { encryptAtRest } from '../utils/crypto_data';
+import { isOptOutRequest } from '../services/compliance';
+import { sendBusinessPushNotification } from '../services/fcm';
 
 const voiceApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -578,6 +582,28 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
   let followUpId: string | null = null;
   const statements: D1PreparedStatement[] = [];
 
+  const encSecret = c.env.ENCRYPTION_KEY || c.env.JWT_SIGNING_KEY;
+  const encryptedTranscript = await encryptAtRest(transcript, encSecret);
+  const encryptedRawMetadata = await encryptAtRest(rawBody, encSecret);
+
+  // 2.3: Atomic billing tracking (minutes_used and calls_made)
+  const durationMinutes = Math.max(1, Math.ceil(durationSeconds / 60));
+  statements.push(
+    c.env.DB.prepare(
+      `UPDATE usage SET minutes_used = minutes_used + ?, calls_made = calls_made + 1 WHERE business_id = ?`
+    ).bind(durationMinutes, businessId)
+  );
+
+  // 2.2: Opt-out detection from caller responses/intents
+  const optOutRequested = isOptOutRequest(data);
+  if (optOutRequested) {
+    statements.push(
+      c.env.DB.prepare(
+        `UPDATE leads SET do_not_call = 1, consent = 'opt_out', updated_at = datetime('now') WHERE id = ? AND business_id = ?`
+      ).bind(leadId, businessId)
+    );
+  }
+
   // Create FollowUp if required
   if (norm.whatsapp_followup_required || data.output_variables?.whatsapp_message) {
     followUpId = `fu_${crypto.randomUUID().slice(0, 12)}`;
@@ -590,17 +616,17 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     );
   }
 
-  // Update Call with AND business_id = ?
+  // Update Call with encrypted transcript, raw_metadata, and AND business_id = ?
   statements.push(
     c.env.DB.prepare(
       `UPDATE calls SET
-        status = ?, duration_seconds = ?, recording_url = ?, transcript = ?,
+        status = ?, duration_seconds = ?, recording_url = ?, transcript = ?, raw_metadata = ?,
         score = ?, temperature = ?, intent = ?, summary = ?, objections = ?,
         positive_signals = ?, next_action = ?, follow_up_id = ?, callback_at = ?,
         completed_at = datetime('now')
        WHERE id = ? AND business_id = ?`
     ).bind(
-      callStatus, durationSeconds, data.recording_url || null, transcript,
+      callStatus, durationSeconds, data.recording_url || null, encryptedTranscript, encryptedRawMetadata,
       norm.score, norm.temperature, norm.intent, norm.summary, objections,
       positiveSignals, norm.next_action, followUpId, callbackAt,
       callId, businessId
@@ -644,6 +670,41 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
   }
 
   await c.env.DB.batch(statements);
+
+  // 2.5: Push Notifications (FCM data-messages)
+  if (norm.temperature === 'hot') {
+    c.executionCtx?.waitUntil(
+      sendBusinessPushNotification(c.env, businessId, {
+        type: 'hot_lead',
+        title: '🔥 Hot Lead Alert',
+        body: `${leadName} is very interested (${norm.score}/100)`,
+        route: `/leads/${leadId}`,
+      })
+    );
+  }
+
+  if (callbackAt) {
+    c.executionCtx?.waitUntil(
+      sendBusinessPushNotification(c.env, businessId, {
+        type: 'callback',
+        title: 'Callback Scheduled',
+        body: `Callback scheduled with ${leadName}`,
+        route: `/callbacks`,
+      })
+    );
+  }
+
+  if (followUpId) {
+    // Batched to max 1 per 10 min
+    c.executionCtx?.waitUntil(
+      sendBusinessPushNotification(c.env, businessId, {
+        type: 'follow_up_ready',
+        title: '💬 Follow-up Ready',
+        body: `Follow-up message ready for ${leadName}`,
+        route: `/followups/${followUpId}`,
+      })
+    );
+  }
 
   return c.json({
     success: true,

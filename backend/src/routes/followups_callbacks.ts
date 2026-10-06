@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
+import { parseJsonBody, patchFollowupSchema, createCallbackSchema, patchCallbackSchema } from '../schemas/validation';
 
 const fcApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -63,7 +64,11 @@ fcApp.get('/followups/:id', async (c) => {
 fcApp.patch('/followups/:id', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');
-  const body = await c.req.json<any>().catch(() => ({}));
+  const parsed = await parseJsonBody(c, patchFollowupSchema);
+  if (!parsed.success) {
+    return parsed.response;
+  }
+  const body = parsed.data;
 
   const existing = await c.env.DB.prepare('SELECT * FROM followups WHERE id = ? AND business_id = ?').bind(id, user.business_id).first<any>();
   if (!existing) return c.json({ message: 'Follow-up not found.', code: 'not_found' }, 404);
@@ -116,13 +121,15 @@ fcApp.get('/callbacks', async (c) => {
 
 fcApp.post('/callbacks', async (c) => {
   const user = c.get('user');
-  const body = await c.req.json<any>().catch(() => ({}));
+  const parsed = await parseJsonBody(c, createCallbackSchema);
+  if (!parsed.success) {
+    return parsed.response;
+  }
+  const body = parsed.data;
 
   const leadId = body.lead_id;
-  const scheduledAt = body.scheduled_at || new Date().toISOString();
+  const scheduledAt = body.scheduled_at;
   const note = body.note || null;
-
-  if (!leadId) return c.json({ message: 'lead_id is required.', code: 'invalid_request' }, 400);
 
   const lead = await c.env.DB.prepare('SELECT name, phone FROM leads WHERE id = ? AND business_id = ?').bind(leadId, user.business_id).first<any>();
   if (!lead) return c.json({ message: 'Lead not found.', code: 'not_found' }, 404);
@@ -145,7 +152,11 @@ fcApp.post('/callbacks', async (c) => {
 fcApp.patch('/callbacks/:id', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');
-  const body = await c.req.json<any>().catch(() => ({}));
+  const parsed = await parseJsonBody(c, patchCallbackSchema);
+  if (!parsed.success) {
+    return parsed.response;
+  }
+  const body = parsed.data;
 
   const status = body.status || 'done';
 

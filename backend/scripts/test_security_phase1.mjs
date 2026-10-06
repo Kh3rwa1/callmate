@@ -1,7 +1,51 @@
 import assert from 'node:assert';
 import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
 
 const BASE = 'http://127.0.0.1:8787';
+
+let childProc = null;
+function cleanup() {
+  if (childProc) {
+    try {
+      process.kill(-childProc.pid);
+    } catch {}
+    childProc = null;
+  }
+}
+
+process.on('exit', cleanup);
+process.on('SIGINT', () => { cleanup(); process.exit(1); });
+process.on('SIGTERM', () => { cleanup(); process.exit(1); });
+
+async function ensureServer() {
+  try {
+    const res = await fetch(`${BASE}/health`);
+    if (res.ok) {
+      console.log('Using running server at ' + BASE);
+      return;
+    }
+  } catch {}
+
+  console.log('Starting local wrangler dev server on port 8787...');
+  childProc = spawn('npx', ['wrangler', 'dev', '--port', '8787', '--ip', '127.0.0.1'], {
+    stdio: 'ignore',
+    detached: true,
+  });
+
+  const start = Date.now();
+  while (Date.now() - start < 30000) {
+    try {
+      const res = await fetch(`${BASE}/health`);
+      if (res.ok) {
+        console.log('✓ Wrangler dev server is ready.');
+        return;
+      }
+    } catch {}
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error('Timed out waiting for wrangler dev server to become healthy');
+}
 
 async function req(path, options = {}) {
   const url = `${BASE}${path}`;
@@ -28,6 +72,7 @@ function createForgedJwt(header, payload, secret) {
 }
 
 async function run() {
+  await ensureServer();
   console.log('=== PHASE 1 SECURITY TEST SUITE (RED -> GREEN) ===\n');
 
   // Check server is up

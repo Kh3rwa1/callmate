@@ -14,6 +14,8 @@ export interface Env {
   AI?: any;
   CF_ACCOUNT_ID?: string;
   CF_AI_API_TOKEN?: string;
+  CAMPAIGN_QUEUE?: Queue<any>;
+  ENCRYPTION_KEY?: string;
 }
 
 export interface AuthUser {

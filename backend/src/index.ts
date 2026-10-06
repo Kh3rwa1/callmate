@@ -74,6 +74,8 @@ app.onError((err, c) => {
   }, 500);
 });
 
+import { handleCampaignQueueBatch } from './services/campaign_queue';
+
 // 404 Handler
 app.notFound((c) => {
   return c.json({
@@ -82,4 +84,10 @@ app.notFound((c) => {
   }, 404);
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  async queue(batch: MessageBatch<any>, env: Env): Promise<void> {
+    await handleCampaignQueueBatch(batch, env);
+  },
+};
+

@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
+import { safeJsonParse } from '../utils/json';
+import { parseJsonBody, createLeadSchema, importLeadsSchema, patchLeadSchema } from '../schemas/validation';
 
 const leadsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -23,10 +25,13 @@ function formatLead(row: any) {
     temperature: row.temperature,
     score: scoreObj,
     summary: row.summary,
-    objections: row.objections ? JSON.parse(row.objections) : [],
+    objections: safeJsonParse(row.objections, []),
     next_action: row.next_action,
     callback_at: row.callback_at,
-    attributes: row.attributes ? JSON.parse(row.attributes) : {},
+    attributes: safeJsonParse(row.attributes, {}),
+    do_not_call: row.do_not_call === 1,
+    consent: row.consent || 'implicit_inquiry',
+    timezone: row.timezone || 'Asia/Kolkata',
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -42,12 +47,14 @@ function normalizePhone(p: string): string | null {
 }
 
 // GET /leads
+// Keyset cursor pagination on (created_at, id) with limit capped at 100
 leadsApp.get('/leads', async (c) => {
   const user = c.get('user');
   const filter = c.req.query('filter') || 'all';
   const q = c.req.query('q')?.toLowerCase()?.trim();
-  const cursor = parseInt(c.req.query('cursor') || '0', 10);
-  const limit = Math.min(parseInt(c.req.query('limit') || '20', 10), 1000);
+  const rawCursor = c.req.query('cursor');
+  // Cap limit strictly at 100
+  const limit = Math.min(Math.max(1, parseInt(c.req.query('limit') || '20', 10)), 100);
   const fields = c.req.query('fields');
 
   let sql = 'SELECT * FROM leads WHERE business_id = ?';
@@ -63,6 +70,8 @@ leadsApp.get('/leads', async (c) => {
     sql += " AND temperature = 'warm'";
   } else if (filter === 'callback') {
     sql += " AND callback_at IS NOT NULL";
+  } else if (filter === 'dnc') {
+    sql += " AND do_not_call = 1";
   }
 
   if (q) {
@@ -70,10 +79,34 @@ leadsApp.get('/leads', async (c) => {
     params.push(`%${q}%`, `%${q}%`, `%${q}%`);
   }
 
-  // Prioritize hot leads, then newest
-  sql += " ORDER BY CASE WHEN temperature = 'hot' THEN 0 WHEN temperature = 'warm' THEN 1 ELSE 2 END, created_at DESC";
-  sql += ' LIMIT ? OFFSET ?';
-  params.push(limit + 1, cursor);
+  // Parse keyset cursor (base64 encoded JSON { created_at, id })
+  if (rawCursor) {
+    try {
+      const decoded = JSON.parse(atob(rawCursor));
+      if (decoded.created_at && decoded.id) {
+        sql += ' AND (created_at < ? OR (created_at = ? AND id < ?))';
+        params.push(decoded.created_at, decoded.created_at, decoded.id);
+      }
+    } catch {
+      // Legacy offset fallback if rawCursor is an integer
+      const offset = parseInt(rawCursor, 10);
+      if (!isNaN(offset) && offset > 0) {
+        sql += ' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?';
+        params.push(limit + 1, offset);
+        const { results } = await c.env.DB.prepare(sql).bind(...params).all<any>();
+        const hasMore = results.length > limit;
+        const items = (hasMore ? results.slice(0, limit) : results).map(formatLead);
+        return c.json({
+          items,
+          has_more: hasMore,
+          next_cursor: hasMore ? String(offset + limit) : null,
+        });
+      }
+    }
+  }
+
+  sql += ' ORDER BY created_at DESC, id DESC LIMIT ?';
+  params.push(limit + 1);
 
   const { results } = await c.env.DB.prepare(sql).bind(...params).all<any>();
   const hasMore = results.length > limit;
@@ -83,54 +116,76 @@ leadsApp.get('/leads', async (c) => {
     return c.json(items);
   }
 
+  let nextCursor: string | null = null;
+  if (hasMore && items.length > 0) {
+    const lastItem = items[items.length - 1];
+    if (lastItem) {
+      nextCursor = btoa(JSON.stringify({ created_at: lastItem.created_at, id: lastItem.id }));
+    }
+  }
+
   return c.json({
     items,
     has_more: hasMore,
-    next_cursor: hasMore ? String(cursor + limit) : null,
+    next_cursor: nextCursor,
   });
 });
 
 // POST /leads
 leadsApp.post('/leads', async (c) => {
   const user = c.get('user');
-  const body = await c.req.json<any>().catch(() => ({}));
+  const parsed = await parseJsonBody(c, createLeadSchema);
+  if (!parsed.success) {
+    return parsed.response;
+  }
+  const body = parsed.data;
 
-  const name = body.name?.trim();
-  const rawPhone = body.phone?.trim();
-  if (!name || !rawPhone) {
-    return c.json({ message: 'Name and phone are required.', code: 'invalid_request' }, 400);
+  const phone = normalizePhone(body.phone);
+  if (!phone) {
+    return c.json({ message: 'Invalid phone number format.', code: 'invalid_phone' }, 400);
   }
 
-  const phone = normalizePhone(rawPhone);
-  if (!phone) {
-    return c.json({ message: 'Invalid phone number.', code: 'invalid_phone' }, 400);
+  // Deduplication check for this business
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM leads WHERE business_id = ? AND phone = ?'
+  ).bind(user.business_id, phone).first<{ id: string }>();
+
+  if (existing) {
+    return c.json({
+      message: 'A lead with this phone number already exists for your business.',
+      code: 'lead_phone_exists',
+      existing_id: existing.id,
+    }, 409);
   }
 
   const id = `lead_${crypto.randomUUID().slice(0, 12)}`;
   const interest = body.interest || body.course_interest || null;
   const source = body.source || 'Manual entry';
   const attributes = JSON.stringify(body.attributes || {});
+  const doNotCall = body.do_not_call ? 1 : 0;
+  const consent = body.consent || 'implicit_inquiry';
+  const timezone = body.timezone || 'Asia/Kolkata';
 
   await c.env.DB.prepare(
-    `INSERT INTO leads (id, business_id, name, phone, interest, source, status, attributes, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'new', ?, datetime('now'), datetime('now'))`
-  ).bind(id, user.business_id, name, phone, interest, source, attributes).run();
+    `INSERT INTO leads (id, business_id, name, phone, interest, source, status, attributes, do_not_call, consent, timezone, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?, datetime('now'), datetime('now'))`
+  ).bind(id, user.business_id, body.name.trim(), phone, interest, source, attributes, doNotCall, consent, timezone).run();
 
   const created = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatLead(created));
 });
 
 // POST /leads/import
+// Cap batch at 1000 rows, deduplicate against database & in-batch
 leadsApp.post('/leads/import', async (c) => {
   const user = c.get('user');
-  const body: any = await c.req.json().catch(() => ({}));
-  const list = body.leads || [];
-
-  if (!Array.isArray(list) || list.length === 0) {
-    return c.json({ imported: 0, skipped: 0, errors: ['No leads provided.'] });
+  const parsed = await parseJsonBody(c, importLeadsSchema);
+  if (!parsed.success) {
+    return parsed.response;
   }
+  const list = parsed.data.leads;
 
-  // Get existing phones for this tenant to dedupe
+  // Retrieve existing phones for this business to dedupe
   const { results: existingRows } = await c.env.DB.prepare(
     'SELECT phone FROM leads WHERE business_id = ?'
   ).bind(user.business_id).all<{ phone: string }>();
@@ -144,9 +199,8 @@ leadsApp.post('/leads/import', async (c) => {
 
   for (let i = 0; i < list.length; i++) {
     const item = list[i];
-    const name = item.name?.trim() || 'Lead';
-    const rawPhone = item.phone?.trim() || '';
-    const phone = normalizePhone(rawPhone);
+    const name = item.name.trim();
+    const phone = normalizePhone(item.phone);
 
     if (!phone) {
       skipped++;
@@ -164,18 +218,19 @@ leadsApp.post('/leads/import', async (c) => {
     const interest = item.interest || item.course_interest || null;
     const source = item.source || 'CSV Import';
     const attributes = JSON.stringify(item.attributes || {});
+    const doNotCall = item.do_not_call ? 1 : 0;
+    const consent = item.consent || 'implicit_inquiry';
 
     statements.push(
       c.env.DB.prepare(
-        `INSERT INTO leads (id, business_id, name, phone, interest, source, status, attributes, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'new', ?, datetime('now'), datetime('now'))`
-      ).bind(id, user.business_id, name, phone, interest, source, attributes)
+        `INSERT INTO leads (id, business_id, name, phone, interest, source, status, attributes, do_not_call, consent, timezone, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, 'Asia/Kolkata', datetime('now'), datetime('now'))`
+      ).bind(id, user.business_id, name, phone, interest, source, attributes, doNotCall, consent)
     );
   }
 
   // Batch insert into D1
   if (statements.length > 0) {
-    // D1 batch supports up to 100 statements per call
     const chunkSize = 80;
     for (let i = 0; i < statements.length; i += chunkSize) {
       await c.env.DB.batch(statements.slice(i, i + chunkSize));
@@ -203,15 +258,18 @@ leadsApp.get('/leads/:id', async (c) => {
 leadsApp.patch('/leads/:id', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');
-  const body = await c.req.json<any>().catch(() => ({}));
+  const parsed = await parseJsonBody(c, patchLeadSchema);
+  if (!parsed.success) {
+    return parsed.response;
+  }
+  const body = parsed.data;
 
   const existing = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id).first<any>();
   if (!existing) return c.json({ message: 'Lead not found.', code: 'not_found' }, 404);
 
-  const name = body.name !== undefined ? body.name : existing.name;
+  const name = body.name !== undefined ? body.name.trim() : existing.name;
   const phone = body.phone !== undefined ? (normalizePhone(body.phone) || existing.phone) : existing.phone;
   const interest = body.interest !== undefined ? body.interest : existing.interest;
-  const source = body.source !== undefined ? body.source : existing.source;
   const status = body.status !== undefined ? body.status : existing.status;
   const temperature = body.temperature !== undefined ? body.temperature : existing.temperature;
   const score = body.score !== undefined ? body.score : existing.score;
@@ -219,17 +277,22 @@ leadsApp.patch('/leads/:id', async (c) => {
   const nextAction = body.next_action !== undefined ? body.next_action : existing.next_action;
   const callbackAt = body.callback_at !== undefined ? body.callback_at : existing.callback_at;
   const attributes = body.attributes !== undefined ? JSON.stringify(body.attributes) : existing.attributes;
+  const doNotCall = body.do_not_call !== undefined ? (body.do_not_call ? 1 : 0) : existing.do_not_call;
+  const consent = body.consent !== undefined ? body.consent : existing.consent;
+  const timezone = body.timezone !== undefined ? body.timezone : existing.timezone;
 
   await c.env.DB.prepare(
     `UPDATE leads SET
-      name = ?, phone = ?, interest = ?, source = ?, status = ?,
+      name = ?, phone = ?, interest = ?, status = ?,
       temperature = ?, score = ?, summary = ?, next_action = ?,
-      callback_at = ?, attributes = ?, updated_at = datetime('now')
+      callback_at = ?, attributes = ?, do_not_call = ?, consent = ?,
+      timezone = ?, updated_at = datetime('now')
      WHERE id = ? AND business_id = ?`
   ).bind(
-    name, phone, interest, source, status,
+    name, phone, interest, status,
     temperature, score, summary, nextAction,
-    callbackAt, attributes, id, user.business_id
+    callbackAt, attributes, doNotCall, consent,
+    timezone, id, user.business_id
   ).run();
 
   const updated = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();

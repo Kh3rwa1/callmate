@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
+import { safeJsonParse } from '../utils/json';
+import { parseJsonBody, patchBusinessSchema, patchAgentSchema } from '../schemas/validation';
 
 const businessApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -11,7 +13,7 @@ function formatBusiness(row: any) {
     name: row.name,
     category: row.category,
     address: row.address,
-    offerings: row.offerings ? JSON.parse(row.offerings) : null,
+    offerings: safeJsonParse(row.offerings, []),
     pricing: row.pricing,
     opening_hours: row.opening_hours,
     location: row.location,
@@ -31,11 +33,11 @@ function formatAgent(row: any) {
     status: row.status,
     template_id: row.template_id,
     role_kind: row.role_kind,
-    skills: row.skills ? JSON.parse(row.skills) : [],
-    languages: row.languages ? JSON.parse(row.languages) : ['English', 'Hindi'],
+    skills: safeJsonParse(row.skills, []),
+    languages: safeJsonParse(row.languages, ['English', 'Hindi']),
     goal: row.goal,
     formality: row.formality ?? 0.35,
-    capabilities: row.capabilities ? JSON.parse(row.capabilities) : [],
+    capabilities: safeJsonParse(row.capabilities, []),
     calling_hours_start: row.calling_hours_start ?? 10,
     calling_hours_end: row.calling_hours_end ?? 19,
     transfer_number: row.transfer_number,
@@ -54,7 +56,11 @@ businessApp.get('/business', async (c) => {
 // PATCH /business
 businessApp.patch('/business', async (c) => {
   const user = c.get('user');
-  const body = await c.req.json<any>().catch(() => ({}));
+  const parsed = await parseJsonBody(c, patchBusinessSchema);
+  if (!parsed.success) {
+    return parsed.response;
+  }
+  const body = parsed.data;
 
   const existing = await c.env.DB.prepare('SELECT * FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
   if (!existing) {
@@ -98,7 +104,11 @@ businessApp.get('/agent', async (c) => {
 // PATCH /agent
 businessApp.patch('/agent', async (c) => {
   const user = c.get('user');
-  const body = await c.req.json<any>().catch(() => ({}));
+  const parsed = await parseJsonBody(c, patchAgentSchema);
+  if (!parsed.success) {
+    return parsed.response;
+  }
+  const body = parsed.data;
 
   let existing = await c.env.DB.prepare('SELECT * FROM agents WHERE business_id = ?').bind(user.business_id).first<any>();
   if (!existing) {

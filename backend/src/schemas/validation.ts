@@ -1,0 +1,171 @@
+import { z } from 'zod';
+
+// ==========================================
+// Auth Schemas
+// ==========================================
+export const otpRequestSchema = z.object({
+  phone: z.string().min(8, 'Phone number must be at least 8 digits').max(16, 'Phone number too long'),
+});
+
+export const registerSchema = z.object({
+  phone: z.string().min(8, 'Phone number must be at least 8 digits').max(16, 'Phone number too long'),
+  otp: z.string().length(6, 'OTP must be exactly 6 digits'),
+  business_name: z.string().min(1, 'Business name is required').max(120),
+});
+
+export const loginSchema = z.object({
+  phone: z.string().min(8, 'Phone number must be at least 8 digits').max(16, 'Phone number too long'),
+  otp: z.string().length(6, 'OTP must be exactly 6 digits'),
+});
+
+export const refreshSchema = z.object({
+  refresh_token: z.string().min(20, 'Invalid refresh token format'),
+});
+
+// ==========================================
+// Lead Schemas
+// ==========================================
+export const createLeadSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  phone: z.string().min(8, 'Phone number must be at least 8 digits').max(20),
+  interest: z.string().optional(),
+  course_interest: z.string().optional(),
+  source: z.string().optional(),
+  attributes: z.record(z.string(), z.any()).optional(),
+  do_not_call: z.boolean().optional(),
+  consent: z.string().optional(),
+  timezone: z.string().optional(),
+});
+
+export const leadItemSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  phone: z.string().min(8, 'Phone must be at least 8 digits').max(20),
+  interest: z.string().optional(),
+  course_interest: z.string().optional(),
+  source: z.string().optional(),
+  attributes: z.record(z.string(), z.any()).optional(),
+  do_not_call: z.boolean().optional(),
+  consent: z.string().optional(),
+});
+
+export const importLeadsSchema = z.object({
+  leads: z.array(leadItemSchema).min(1, 'At least 1 lead is required').max(1000, 'Import batch cannot exceed 1000 leads'),
+});
+
+export const patchLeadSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  phone: z.string().min(8).max(20).optional(),
+  interest: z.string().nullable().optional(),
+  course_interest: z.string().nullable().optional(),
+  status: z.enum(['new', 'calling', 'called', 'interested', 'hot', 'warm', 'cold', 'lost']).optional(),
+  temperature: z.enum(['hot', 'warm', 'cold']).nullable().optional(),
+  score: z.number().int().min(0).max(100).nullable().optional(),
+  summary: z.string().nullable().optional(),
+  objections: z.array(z.string()).optional(),
+  next_action: z.string().optional(),
+  callback_at: z.string().nullable().optional(),
+  attributes: z.record(z.string(), z.any()).optional(),
+  do_not_call: z.boolean().optional(),
+  consent: z.string().optional(),
+  timezone: z.string().optional(),
+});
+
+// ==========================================
+// Campaign Schemas
+// ==========================================
+export const createCampaignSchema = z.object({
+  purpose: z.string().min(1, 'Campaign purpose is required').max(255).optional(),
+  title: z.string().min(1).max(255).optional(),
+  lead_ids: z.array(z.string()).default([]),
+  calling_hours_start: z.number().int().min(0).max(23).default(10),
+  calling_hours_end: z.number().int().min(0).max(23).default(19),
+  options: z.record(z.string(), z.any()).optional(),
+});
+
+// ==========================================
+// Business & Agent Schemas
+// ==========================================
+export const patchBusinessSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  category: z.string().optional(),
+  address: z.string().nullable().optional(),
+  offerings: z.array(z.string()).optional(),
+  pricing: z.string().nullable().optional(),
+  opening_hours: z.string().nullable().optional(),
+  location: z.string().nullable().optional(),
+  whatsapp_number: z.string().nullable().optional(),
+  human_number: z.string().nullable().optional(),
+  owner_name: z.string().nullable().optional(),
+});
+
+export const patchAgentSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  role: z.string().optional(),
+  role_kind: z.string().optional(),
+  template_id: z.string().optional(),
+  skills: z.array(z.string()).optional(),
+  languages: z.array(z.string()).optional(),
+  goal: z.string().optional(),
+  formality: z.number().min(0).max(1).optional(),
+  capabilities: z.array(z.string()).optional(),
+  calling_hours_start: z.number().int().min(0).max(23).optional(),
+  calling_hours_end: z.number().int().min(0).max(23).optional(),
+  transfer_number: z.string().nullable().optional(),
+  voice: z.string().optional(),
+  status: z.enum(['active', 'paused', 'inactive']).optional(),
+});
+
+// ==========================================
+// Followup & Callback Schemas
+// ==========================================
+export const patchFollowupSchema = z.object({
+  message: z.string().optional(),
+  status: z.enum(['ready', 'opened', 'done', 'dismissed']).optional(),
+  opened_at: z.string().nullable().optional(),
+});
+
+export const createCallbackSchema = z.object({
+  lead_id: z.string().min(1, 'Lead ID is required'),
+  scheduled_at: z.string().min(1, 'Scheduled time is required'),
+  note: z.string().optional(),
+});
+
+export const patchCallbackSchema = z.object({
+  status: z.enum(['scheduled', 'done']).optional(),
+  note: z.string().optional(),
+});
+
+/**
+ * Helper to validate a request body with a Zod schema.
+ * Returns { success: true, data } or { success: false, response: Response }
+ */
+export async function parseJsonBody<T>(c: any, schema: z.ZodType<T>): Promise<{ success: true; data: T } | { success: false; response: Response }> {
+  let raw: any;
+  try {
+    raw = await c.req.json();
+  } catch {
+    return {
+      success: false,
+      response: c.json({ message: 'Malformed JSON payload.', code: 'invalid_json' }, 400),
+    };
+  }
+
+  const result = schema.safeParse(raw);
+  if (!result.success) {
+    const issues = (result.error as any).issues || (result.error as any).errors || [];
+    const errorDetails = issues.map((e: any) => ({
+      field: Array.isArray(e.path) ? e.path.join('.') : String(e.path || ''),
+      message: e.message,
+    }));
+    return {
+      success: false,
+      response: c.json({
+        message: issues[0]?.message || 'Validation error',
+        code: 'validation_error',
+        errors: errorDetails,
+      }, 400),
+    };
+  }
+
+  return { success: true, data: result.data };
+}
