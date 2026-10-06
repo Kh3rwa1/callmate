@@ -1,0 +1,7 @@
+{
+  "APP_FLAVOR": "dev",
+  "API_BASE_URL": "http://127.0.0.1:8787",
+  "SARVAM_PROXY_PATH": "/voice/sarvam-proxy/",
+  "USE_MOCK": false,
+  "DEMO_TOOLS": true
+}

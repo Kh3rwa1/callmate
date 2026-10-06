@@ -10,6 +10,7 @@ abstract class AuthRepository {
   Future<void> login({required String phone, required String otp});
   Future<void> register({required String phone, required String businessName});
   Future<void> logout();
+  Future<void> deleteAccount();
 }
 
 abstract class BusinessRepository {
@@ -84,6 +85,10 @@ abstract class DashboardRepository {
 abstract class VoiceSessionRepository {
   /// POST /voice/test-session – backend returns ids + short-lived proxy token.
   Future<VoiceTestSession> createTestSession();
+}
+
+abstract class DeviceRepository {
+  Future<void> registerDevice({required String token, String? platform});
 }
 
 /// Realtime-ish backend events (in production: FCM data messages / SSE).

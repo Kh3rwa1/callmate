@@ -225,6 +225,59 @@ class _Body extends ConsumerWidget {
                   onTap: () => context.push('/demo'),
                 ),
               ],
+              const Divider(indent: 56),
+              ListTile(
+                leading: const Icon(Icons.logout_rounded, color: AppColors.hot),
+                title: const Text('Sign out', style: TextStyle(color: AppColors.hot)),
+                onTap: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Sign out?'),
+                      content: const Text('You will need to sign in again to access your workspace.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Sign out', style: TextStyle(color: AppColors.hot)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok == true && context.mounted) {
+                    await ref.read(sessionProvider.notifier).logout();
+                    if (context.mounted) context.go('/login');
+                  }
+                },
+              ),
+              const Divider(indent: 56),
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: AppColors.inkFaint),
+                title: const Text('Delete account', style: TextStyle(color: AppColors.inkFaint)),
+                subtitle: const Text('Permanently erase account and data', style: TextStyle(fontSize: 12)),
+                onTap: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Delete account?'),
+                      content: const Text(
+                        'This action cannot be undone. All your business records, leads, calls, transcripts, and AI configurations will be permanently deleted.',
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Delete permanently', style: TextStyle(color: AppColors.hot, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok == true && context.mounted) {
+                    await ref.read(sessionProvider.notifier).deleteAccount();
+                    if (context.mounted) context.go('/login');
+                  }
+                },
+              ),
             ],
           ),
         ),

@@ -44,6 +44,52 @@ final authRepoProvider = Provider<AuthRepository>(
   (ref) =>
       ref.watch(useMockProvider) ? MockAuthRepository() : ApiAuthRepository(ref.watch(apiClientProvider), ref.watch(secureStoreProvider)),
 );
+
+final sessionProvider = AsyncNotifierProvider<SessionNotifier, bool>(SessionNotifier.new);
+
+class SessionNotifier extends AsyncNotifier<bool> {
+  @override
+  Future<bool> build() async {
+    return ref.watch(authRepoProvider).hasSession();
+  }
+
+  Future<void> login({required String phone, required String otp}) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(authRepoProvider).login(phone: phone, otp: otp);
+      ref.read(dataVersionProvider.notifier).bump();
+      return true;
+    });
+  }
+
+  Future<void> register({required String phone, required String businessName}) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(authRepoProvider).register(phone: phone, businessName: businessName);
+      ref.read(dataVersionProvider.notifier).bump();
+      return true;
+    });
+  }
+
+  Future<void> logout() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(authRepoProvider).logout();
+      ref.read(dataVersionProvider.notifier).bump();
+      return false;
+    });
+  }
+
+  Future<void> deleteAccount() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(authRepoProvider).deleteAccount();
+      ref.read(dataVersionProvider.notifier).bump();
+      return false;
+    });
+  }
+}
+
 final businessRepoProvider = Provider<BusinessRepository>((ref) => _pick(ref, MockBusinessRepository.new, ApiBusinessRepository.new));
 final knowledgeRepoProvider = Provider<KnowledgeRepository>((ref) => _pick(ref, MockKnowledgeRepository.new, ApiKnowledgeRepository.new));
 final leadRepoProvider = Provider<LeadRepository>((ref) => _pick(ref, MockLeadRepository.new, ApiLeadRepository.new));
@@ -59,6 +105,9 @@ final dashboardRepoProvider = Provider<DashboardRepository>((ref) => _pick(ref, 
 final voiceSessionRepoProvider = Provider<VoiceSessionRepository>(
   (ref) => _pick(ref, (_) => MockVoiceSessionRepository(), ApiVoiceSessionRepository.new),
 );
+final deviceRepoProvider = Provider<DeviceRepository>(
+  (ref) => _pick(ref, (_) => MockDeviceRepository(), ApiDeviceRepository.new),
+);
 
 final backendEventsProvider = Provider<BackendEvents>((ref) {
   if (ref.watch(useMockProvider)) return ref.watch(mockBackendProvider);
@@ -70,8 +119,8 @@ final whatsappServiceProvider = Provider<WhatsAppService>((_) => const WhatsAppD
 final analyticsProvider = Provider<AnalyticsService>((_) => DebugAnalyticsService());
 final notificationServiceProvider = Provider<NotificationService>((_) => NotificationService());
 
-/// A fresh voice service per test screen (auto-disposed with the screen).
-final voiceAgentServiceProvider = Provider.autoDispose<VoiceAgentService>((ref) {
+/// Voice service instance (configured for mock or real Sarvam backend).
+final voiceAgentServiceProvider = Provider<VoiceAgentService>((ref) {
   final VoiceAgentService s;
   if (ref.watch(useMockProvider)) {
     final b = ref.watch(mockBackendProvider);

@@ -41,7 +41,11 @@ class ApiClient {
           if (e.response?.statusCode == 401 && e.requestOptions.extra['retried'] != true) {
             final ok = await _refresh();
             if (ok) {
+              final token = await _store.accessToken();
               final req = e.requestOptions..extra['retried'] = true;
+              if (token != null) {
+                req.headers['Authorization'] = 'Bearer $token';
+              }
               try {
                 return handler.resolve(await dio.fetch(req));
               } catch (_) {}

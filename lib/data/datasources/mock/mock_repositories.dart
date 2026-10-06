@@ -28,6 +28,8 @@ class MockAuthRepository implements AuthRepository {
   Future<void> register({required String phone, required String businessName}) => _lag(() => _session = true);
   @override
   Future<void> logout() async => _session = false;
+  @override
+  Future<void> deleteAccount() async => _session = false;
 }
 
 class MockBusinessRepository implements BusinessRepository {
@@ -380,4 +382,9 @@ class MockVoiceSessionRepository implements VoiceSessionRepository {
   @override
   Future<VoiceTestSession> createTestSession() =>
       _lag(() => const VoiceTestSession(sessionToken: 'demo', orgId: 'demo', workspaceId: 'demo', appId: 'demo', proxyBaseUrl: ''), 400);
+}
+
+class MockDeviceRepository implements DeviceRepository {
+  @override
+  Future<void> registerDevice({required String token, String? platform}) async {}
 }

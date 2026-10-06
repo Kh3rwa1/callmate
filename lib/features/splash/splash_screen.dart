@@ -19,9 +19,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 1300), () {
+    Future<void>.delayed(const Duration(milliseconds: 1300), () async {
       if (!mounted) return;
-      context.go(ref.read(localPrefsProvider).onboarded ? '/home' : '/onboarding');
+      final isMock = ref.read(useMockProvider);
+      final hasSession = await ref.read(authRepoProvider).hasSession();
+      if (!mounted) return;
+      if (!isMock && !hasSession) {
+        context.go('/login');
+      } else {
+        context.go(ref.read(localPrefsProvider).onboarded ? '/home' : '/onboarding');
+      }
     });
   }
 

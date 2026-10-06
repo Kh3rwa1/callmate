@@ -44,6 +44,12 @@ class ApiAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout() => store.clear();
+
+  @override
+  Future<void> deleteAccount() async {
+    await api.delete('/auth/account');
+    await store.clear();
+  }
 }
 
 class ApiBusinessRepository implements BusinessRepository {
@@ -271,6 +277,14 @@ class ApiVoiceSessionRepository implements VoiceSessionRepository {
   final ApiClient api;
   @override
   Future<VoiceTestSession> createTestSession() => api.post('/voice/test-session', (d) => VoiceTestSession.fromJson(_j(d)));
+}
+
+class ApiDeviceRepository implements DeviceRepository {
+  ApiDeviceRepository(this.api);
+  final ApiClient api;
+  @override
+  Future<void> registerDevice({required String token, String? platform}) =>
+      api.post('/devices/register', (_) {}, data: {'token': token, if (platform != null) 'platform': platform});
 }
 
 /// Production event source. Remote push (FCM data messages) is forwarded here

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/agent/agent_screen.dart';
 import '../../features/agent/edit_agent_screen.dart';
+import '../../features/auth/login_screen.dart';
 import '../../features/callbacks/callbacks_screen.dart';
 import '../../features/calls/call_result_screen.dart';
 import '../../features/calls/calls_screen.dart';
@@ -46,12 +47,26 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     redirect: (context, state) {
       final loc = state.matchedLocation;
+      final sessionAsync = ref.watch(sessionProvider);
+      final hasSession = sessionAsync.value ?? false;
+      final isMock = ref.watch(useMockProvider);
+      final inAuth = loc.startsWith('/login');
       final inOnboarding = loc.startsWith('/onboarding') || loc.startsWith('/voice-test');
-      if (!prefs.onboarded && !inOnboarding && loc != '/demo' && loc != '/splash') return '/onboarding';
+
+      if (!isMock && !hasSession && !inAuth && loc != '/demo' && loc != '/splash') {
+        return '/login';
+      }
+      if (hasSession && inAuth) {
+        return prefs.onboarded ? '/home' : '/onboarding';
+      }
+      if (!prefs.onboarded && !inOnboarding && loc != '/demo' && loc != '/splash' && !inAuth) {
+        return '/onboarding';
+      }
       return null;
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/login', pageBuilder: (_, s) => _fade(s, const LoginScreen())),
 
       // ---------------- Onboarding
       GoRoute(
