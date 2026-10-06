@@ -43,6 +43,7 @@ voiceApp.post('/test-session', async (c) => {
       gender: 'female',
       voice: 'female',
       speaker: 'meera',
+      tts_model: 'bulbul:v4-flash',
       mode: 'owner_test',
     },
     user_identifier: user.id,
@@ -100,11 +101,20 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
   const cleanText = text.replace(/!+/g, '.').replace(/\s+/g, ' ').trim();
   if (!cleanText) return undefined;
 
-  // 1. Try Sarvam TTS if real key is configured (Meera - Indian English female voice)
+  // 1. Try Sarvam Bulbul v4 (bulbul:v4-flash / bulbul:v4) if real key is configured
   const sarvamKey = env.SARVAM_API_KEY || '';
   if (sarvamKey && !sarvamKey.includes('mock')) {
     try {
-      const ttsRes = await fetch('https://api.sarvam.ai/text-to-speech', {
+      const v4Payload = {
+        inputs: [cleanText],
+        target_language_code: 'en-IN',
+        speaker: 'meera',
+        pace: 0.95,
+        speech_sample_rate: 22050,
+        enable_preprocessing: true,
+        model: 'bulbul:v4-flash',
+      };
+      let ttsRes = await fetch('https://api.sarvam.ai/text-to-speech', {
         method: 'POST',
         headers: {
           'api-subscription-key': sarvamKey,
@@ -112,18 +122,23 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
           'Authorization': `Bearer ${sarvamKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          inputs: [cleanText],
-          target_language_code: 'en-IN',
-          speaker: 'meera',
-          pitch: 0,
-          pace: 0.95,
-          loudness: 1.0,
-          speech_sample_rate: 22050,
-          enable_preprocessing: true,
-          model: 'bulbul:v1',
-        }),
+        body: JSON.stringify(v4Payload),
       });
+
+      // Fallback to bulbul:v4 research preview if v4-flash fails
+      if (!ttsRes.ok) {
+        ttsRes = await fetch('https://api.sarvam.ai/text-to-speech', {
+          method: 'POST',
+          headers: {
+            'api-subscription-key': sarvamKey,
+            'X-API-Key': sarvamKey,
+            'Authorization': `Bearer ${sarvamKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ...v4Payload, model: 'bulbul:v4' }),
+        });
+      }
+
       if (ttsRes.ok) {
         const ttsData: any = await ttsRes.json();
         if (ttsData?.audios?.[0]) {
@@ -131,7 +146,7 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
         }
       }
     } catch (e) {
-      console.warn('[Sarvam TTS Error]:', e);
+      console.warn('[Sarvam Bulbul v4 TTS Error]:', e);
     }
   }
 

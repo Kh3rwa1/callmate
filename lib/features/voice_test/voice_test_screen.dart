@@ -78,6 +78,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
         'gender': 'female',
         'voice': 'female',
         'speaker': 'meera',
+        'tts_model': 'bulbul:v4-flash',
         'mode': 'owner_test',
       });
     } on VoiceAgentException catch (e) {
