@@ -1,0 +1,7 @@
+{
+  "APP_FLAVOR": "prod",
+  "API_BASE_URL": "https://api.example.com",
+  "SARVAM_PROXY_PATH": "/voice/sarvam-proxy/",
+  "USE_MOCK": false,
+  "DEMO_TOOLS": false
+}

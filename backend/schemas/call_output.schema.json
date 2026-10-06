@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://riya.ai/schemas/call_output.schema.json",
+  "title": "Admissions call structured output",
+  "description": "Produced by the Sarvam agent as output variables at end of call. Validated + normalised by the backend into Call / Lead / FollowUp / Callback. The mobile app never parses free text.",
+  "type": "object",
+  "required": ["lead_score", "intent", "temperature", "summary", "next_action", "whatsapp_followup_required"],
+  "additionalProperties": false,
+  "properties": {
+    "lead_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "intent": { "enum": ["interested", "exploring", "not_interested", "callback_requested", "unknown"] },
+    "temperature": { "enum": ["hot", "warm", "cold"] },
+    "course_interest": { "type": ["string", "null"], "examples": ["NEET"] },
+    "preferred_batch": { "type": ["string", "null"], "examples": ["Evening"] },
+    "budget": { "type": ["string", "null"], "description": "INR, digits only", "examples": ["50000"] },
+    "objections": { "type": "array", "items": { "type": "string" }, "maxItems": 5 },
+    "positive_signals": { "type": "array", "items": { "type": "string" }, "maxItems": 6 },
+    "summary": { "type": "string", "maxLength": 400 },
+    "next_action": { "enum": ["counsellor_callback", "send_whatsapp", "whatsapp_and_callback", "schedule_visit", "retry_call", "none"] },
+    "callback_at": { "type": ["string", "null"], "format": "date-time" },
+    "whatsapp_followup_required": { "type": "boolean" },
+    "whatsapp_message": { "type": ["string", "null"], "maxLength": 1000 },
+    "language": { "type": ["string", "null"], "examples": ["Hindi"] }
+  },
+  "examples": [
+    {
+      "lead_score": 87,
+      "intent": "interested",
+      "temperature": "hot",
+      "course_interest": "NEET",
+      "preferred_batch": "Evening",
+      "budget": "50000",
+      "objections": ["Needs parent approval"],
+      "positive_signals": ["Asked about pricing", "Asked about admission date", "Requested details", "Agreed to follow-up"],
+      "summary": "Rahul is interested in the NEET evening batch. He asked about fees and wants to discuss admission with his parents.",
+      "next_action": "whatsapp_and_callback",
+      "callback_at": "2025-06-11T18:00:00+05:30",
+      "whatsapp_followup_required": true,
+      "whatsapp_message": "Hi Rahul 👋\n\nGreat speaking with you today. As discussed, I'm sharing the NEET evening batch details. Please let me know if you'd like to schedule a counselling session.",
+      "language": "English"
+    }
+  ]
+}

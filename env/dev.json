@@ -1,0 +1,6 @@
+{
+  "APP_FLAVOR": "dev",
+  "API_BASE_URL": "",
+  "USE_MOCK": true,
+  "DEMO_TOOLS": true
+}

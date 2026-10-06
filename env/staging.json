@@ -1,0 +1,7 @@
+{
+  "APP_FLAVOR": "staging",
+  "API_BASE_URL": "https://staging-api.example.com",
+  "SARVAM_PROXY_PATH": "/voice/sarvam-proxy/",
+  "USE_MOCK": false,
+  "DEMO_TOOLS": true
+}
