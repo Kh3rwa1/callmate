@@ -55,14 +55,29 @@ android {
     buildTypes {
         release {
             val releaseSigning = signingConfigs.getByName("release")
-            signingConfig = if (releaseSigning.storeFile != null) {
+            signingConfig = if (releaseSigning.storeFile != null && releaseSigning.storeFile!!.exists()) {
                 releaseSigning
             } else {
-                signingConfigs.getByName("debug")
+                null
             }
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
+            )
+        }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it.name.contains("Release", ignoreCase = true) }) {
+        val releaseConfig = android.signingConfigs.getByName("release")
+        if (releaseConfig.storeFile == null || !releaseConfig.storeFile!!.exists()) {
+            throw org.gradle.api.GradleException(
+                "Release signing failed: key.properties is missing or does not contain a valid storeFile. " +
+                "Silent fallback to debug key is strictly prohibited for production releases. " +
+                "Provide key.properties in the android root directory with storeFile, keyAlias, storePassword, and keyPassword."
             )
         }
     }

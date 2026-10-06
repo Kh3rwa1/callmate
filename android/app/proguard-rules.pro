@@ -18,6 +18,11 @@
 
 # Sarvam SDK & Audio
 -keep class com.sarvam.** { *; }
+-dontwarn com.sarvam.**
+-keep class com.sarvam_ai.** { *; }
+-dontwarn com.sarvam_ai.**
+-keep class ai.sarvam.** { *; }
+-dontwarn ai.sarvam.**
 
 # Play Core deferred components optional references
 -dontwarn com.google.android.play.core.**

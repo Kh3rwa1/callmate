@@ -131,6 +131,18 @@ String friendlyError(Object e) {
   final s = e.toString();
   if (s.contains('not found')) return 'We couldn\'t find that. It may have been removed.';
   if (s.contains('connection') || s.contains('network')) return 'No connection. Check your internet and try again.';
+  if (s.contains('rate_limit') || s.contains('Too many OTP requests')) {
+    return 'Too many attempts. Please wait 10 minutes before requesting a new code.';
+  }
+  if (s.contains('invalid_otp') || s.contains('Invalid OTP') || s.contains('Invalid or expired')) {
+    return 'Invalid or expired OTP. Please check the code and try again.';
+  }
+  if (s.contains('otp_locked')) {
+    return 'Too many failed attempts. Please request a new OTP.';
+  }
+  if (s.contains('phone_registered') || s.contains('already exists')) {
+    return 'This phone number is already registered. Please sign in instead.';
+  }
   if (s.length < 90 && !s.contains('Exception') && !s.contains('Error')) return s;
   return 'Something went wrong. Try again.';
 }

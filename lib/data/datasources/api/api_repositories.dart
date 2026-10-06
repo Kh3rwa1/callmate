@@ -35,12 +35,20 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> requestOtp({required String phone}) =>
+      api.post('/auth/otp/request', (_) {}, data: {'phone': phone});
+
+  @override
   Future<void> login({required String phone, required String otp}) =>
       api.post('/auth/login', (d) => _save(d), data: {'phone': phone, 'otp': otp});
 
   @override
-  Future<void> register({required String phone, required String businessName}) =>
-      api.post('/auth/register', (d) => _save(d), data: {'phone': phone, 'business_name': businessName});
+  Future<void> register({required String phone, required String businessName, required String otp}) =>
+      api.post('/auth/register', (d) => _save(d), data: {
+        'phone': phone,
+        'business_name': businessName,
+        'otp': otp,
+      });
 
   @override
   Future<void> logout() => store.clear();

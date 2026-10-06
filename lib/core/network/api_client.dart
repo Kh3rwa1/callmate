@@ -21,7 +21,7 @@ class ApiException implements Exception {
 
 /// Authenticated Dio client for OUR backend.
 class ApiClient {
-  ApiClient(this._store, {String? baseUrl, LocalPrefs? prefs})
+  ApiClient(this._store, {String? baseUrl, LocalPrefs? prefs, this.onAuthFailure})
     : dio = Dio(
         BaseOptions(
           baseUrl: baseUrl ?? prefs?.serverUrl ?? AppEnv.effectiveApiBaseUrl,
@@ -75,17 +75,46 @@ class ApiClient {
 
   final SecureStore _store;
   final Dio dio;
+  final VoidCallback? onAuthFailure;
 
-  Future<bool> _refresh() async {
+  Future<bool>? _refreshFlight;
+
+  Future<bool> _refresh() {
+    if (_refreshFlight != null) return _refreshFlight!;
+    _refreshFlight = _executeRefresh().whenComplete(() {
+      _refreshFlight = null;
+    });
+    return _refreshFlight!;
+  }
+
+  Future<bool> _executeRefresh() async {
     final r = await _store.refreshToken();
-    if (r == null) return false;
+    if (r == null) {
+      onAuthFailure?.call();
+      return false;
+    }
     try {
-      final res = await Dio(BaseOptions(baseUrl: dio.options.baseUrl)).post('/auth/refresh', data: {'refresh_token': r});
+      final refreshDio = Dio(
+        BaseOptions(
+          baseUrl: dio.options.baseUrl,
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+          headers: {'Accept': 'application/json'},
+        ),
+      )..httpClientAdapter = dio.httpClientAdapter;
+      final res = await refreshDio.post(
+        '/auth/refresh',
+        data: {'refresh_token': r},
+      );
       final data = res.data as Map;
-      await _store.saveTokens(access: data['access_token'] as String, refresh: data['refresh_token'] as String?);
+      await _store.saveTokens(
+        access: data['access_token'] as String,
+        refresh: data['refresh_token'] as String?,
+      );
       return true;
     } catch (_) {
       await _store.clear();
+      onAuthFailure?.call();
       return false;
     }
   }

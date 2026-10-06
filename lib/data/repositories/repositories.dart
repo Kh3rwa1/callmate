@@ -7,8 +7,9 @@ import '../models/models.dart';
 
 abstract class AuthRepository {
   Future<bool> hasSession();
+  Future<void> requestOtp({required String phone});
   Future<void> login({required String phone, required String otp});
-  Future<void> register({required String phone, required String businessName});
+  Future<void> register({required String phone, required String businessName, required String otp});
   Future<void> logout();
   Future<void> deleteAccount();
 }

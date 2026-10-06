@@ -100,9 +100,9 @@ class _CallPilotAppState extends ConsumerState<CallPilotApp> {
       theme: AppTheme.light(),
       routerConfig: router,
       builder: (context, child) {
-        // Respect user font scaling but cap it so layouts stay usable.
+        // Respect user font scaling up to 1.5x for accessibility.
         final mq = MediaQuery.of(context);
-        final scaled = mq.copyWith(textScaler: mq.textScaler.clamp(minScaleFactor: 0.9, maxScaleFactor: 1.35));
+        final scaled = mq.copyWith(textScaler: mq.textScaler.clamp(minScaleFactor: 0.85, maxScaleFactor: 1.5));
         return MediaQuery(
           data: scaled,
           child: Stack(

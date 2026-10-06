@@ -33,7 +33,13 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   try {
     prefs = ref.watch(localPrefsProvider);
   } catch (_) {}
-  return ApiClient(ref.watch(secureStoreProvider), prefs: prefs);
+  return ApiClient(
+    ref.watch(secureStoreProvider),
+    prefs: prefs,
+    onAuthFailure: () {
+      ref.read(sessionProvider.notifier).forceLogout();
+    },
+  );
 });
 
 final mockBackendProvider = Provider<MockBackend>((ref) {
@@ -58,6 +64,10 @@ class SessionNotifier extends AsyncNotifier<bool> {
     return ref.watch(authRepoProvider).hasSession();
   }
 
+  Future<void> requestOtp({required String phone}) async {
+    await ref.read(authRepoProvider).requestOtp(phone: phone);
+  }
+
   Future<void> login({required String phone, required String otp}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
@@ -67,13 +77,18 @@ class SessionNotifier extends AsyncNotifier<bool> {
     });
   }
 
-  Future<void> register({required String phone, required String businessName}) async {
+  Future<void> register({required String phone, required String businessName, required String otp}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await ref.read(authRepoProvider).register(phone: phone, businessName: businessName);
+      await ref.read(authRepoProvider).register(phone: phone, businessName: businessName, otp: otp);
       ref.read(dataVersionProvider.notifier).bump();
       return true;
     });
+  }
+
+  Future<void> forceLogout() async {
+    state = const AsyncValue.data(false);
+    ref.read(dataVersionProvider.notifier).bump();
   }
 
   Future<void> logout() async {

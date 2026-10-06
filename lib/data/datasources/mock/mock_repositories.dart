@@ -23,9 +23,11 @@ class MockAuthRepository implements AuthRepository {
   @override
   Future<bool> hasSession() async => _session;
   @override
+  Future<void> requestOtp({required String phone}) => _lag(() {});
+  @override
   Future<void> login({required String phone, required String otp}) => _lag(() => _session = true);
   @override
-  Future<void> register({required String phone, required String businessName}) => _lag(() => _session = true);
+  Future<void> register({required String phone, required String businessName, required String otp}) => _lag(() => _session = true);
   @override
   Future<void> logout() async => _session = false;
   @override
