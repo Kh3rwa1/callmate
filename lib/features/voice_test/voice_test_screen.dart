@@ -36,6 +36,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
   bool _permissionDenied = false;
   bool _muted = false;
   final _level = ValueNotifier<double>(0);
+  final _inputController = TextEditingController();
 
   @override
   void initState() {
@@ -110,9 +111,18 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
       s.cancel();
     }
     _voice.stopSession();
+    _inputController.dispose();
     _scroll.dispose();
     _level.dispose();
     super.dispose();
+  }
+
+  void _sendUserInput([String? overrideText]) {
+    final text = (overrideText ?? _inputController.text).trim();
+    if (text.isEmpty) return;
+    _inputController.clear();
+    HapticFeedback.lightImpact();
+    _voice.sendText(text);
   }
 
   MascotState get _mascot => switch (_state) {
@@ -253,30 +263,87 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
                           ),
                         ],
                       )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          _RoundControl(
-                            icon: _muted ? Icons.mic_off_rounded : Icons.mic_rounded,
-                            label: _muted ? 'Unmute' : 'Mute',
-                            background: _muted ? AppColors.ink : Colors.white,
-                            foreground: _muted ? Colors.white : AppColors.ink,
-                            onTap: _live
-                                ? () {
-                                    HapticFeedback.selectionClick();
-                                    setState(() => _muted = !_muted);
-                                    _voice.setMuted(_muted);
-                                  }
-                                : null,
-                          ),
-                          const SizedBox(width: 36),
-                          _RoundControl(
-                            icon: Icons.call_end_rounded,
-                            label: 'End',
-                            background: AppColors.hot,
-                            foreground: Colors.white,
-                            size: 76,
-                            onTap: _live ? _end : (_error != null ? () => context.pop() : null),
+                          if (_live) ...[
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _SuggestionChip(label: '“What do you do?”', onTap: () => _sendUserInput('What do you do?')),
+                                  const SizedBox(width: 8),
+                                  _SuggestionChip(label: '“How do you handle fees?”', onTap: () => _sendUserInput('How do you handle fees and pricing?')),
+                                  const SizedBox(width: 8),
+                                  _SuggestionChip(label: '“Can I book a visit?”', onTap: () => _sendUserInput('Can I book an appointment or visit?')),
+                                  const SizedBox(width: 8),
+                                  _SuggestionChip(label: '“What are your hours?”', onTap: () => _sendUserInput('What are your calling hours?')),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _inputController,
+                                    textInputAction: TextInputAction.send,
+                                    onSubmitted: (_) => _sendUserInput(),
+                                    decoration: InputDecoration(
+                                      hintText: 'Talk or ask $name anything…',
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                        borderSide: const BorderSide(color: AppColors.border),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                        borderSide: const BorderSide(color: AppColors.border),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                        borderSide: const BorderSide(color: AppColors.brand, width: 1.5),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton.filled(
+                                  icon: const Icon(Icons.send_rounded, size: 20),
+                                  onPressed: _sendUserInput,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _RoundControl(
+                                icon: _muted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                                label: _muted ? 'Unmute' : 'Mute',
+                                background: _muted ? AppColors.ink : Colors.white,
+                                foreground: _muted ? Colors.white : AppColors.ink,
+                                onTap: _live
+                                    ? () {
+                                        HapticFeedback.selectionClick();
+                                        setState(() => _muted = !_muted);
+                                        _voice.setMuted(_muted);
+                                      }
+                                    : null,
+                              ),
+                              const SizedBox(width: 36),
+                              _RoundControl(
+                                icon: Icons.call_end_rounded,
+                                label: 'End',
+                                background: AppColors.hot,
+                                foreground: Colors.white,
+                                size: 76,
+                                onTap: _live ? _end : (_error != null ? () => context.pop() : null),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -443,3 +510,20 @@ class _WavePainter extends CustomPainter {
   @override
   bool shouldRepaint(_WavePainter o) => o.phase != phase || o.level != level || o.color != color;
 }
+
+class _SuggestionChip extends StatelessWidget {
+  const _SuggestionChip({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      label: Text(label, style: const TextStyle(fontSize: 12)),
+      onPressed: onTap,
+      backgroundColor: Colors.white,
+      side: const BorderSide(color: AppColors.border),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    );
+  }
+}
+

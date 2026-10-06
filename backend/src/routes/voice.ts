@@ -39,6 +39,54 @@ voiceApp.post('/test-session', async (c) => {
   });
 });
 
+// POST /voice/chat (Requires auth)
+// Interactive conversational endpoint for live voice test and browser sessions
+voiceApp.post('/chat', async (c) => {
+  const user = c.get('user');
+  const body: any = await c.req.json().catch(() => ({}));
+  const userMessage = (body.message || '').trim();
+
+  if (!userMessage) {
+    return c.json({ message: 'Message is required.', code: 'invalid_request' }, 400);
+  }
+
+  const business = await c.env.DB.prepare('SELECT * FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
+  const agent = await c.env.DB.prepare('SELECT * FROM agents WHERE business_id = ?').bind(user.business_id).first<any>();
+
+  const agentName = agent?.name || 'Riya';
+  const agentRole = agent?.role || 'Assistant';
+  const businessName = business?.name || 'our business';
+  const category = business?.category || 'business';
+
+  const lower = userMessage.toLowerCase();
+  let reply = '';
+
+  if (/^(hi|hello|hey|namaste|good\s*(morning|afternoon|evening)|salaam)/i.test(lower)) {
+    reply = `Namaste! I am ${agentName}, your ${agentRole} at ${businessName}. How can I help you today?`;
+  } else if (/what\s*(do\s*you\s*do|is\s*your\s*role)|who\s*are\s*you/i.test(lower)) {
+    reply = `I am ${agentName}, the ${agentRole} for ${businessName}. I speak with callers, answer inquiries, qualify their needs, and schedule follow-ups for your team.`;
+  } else if (/fee|cost|price|pricing|charge|rate/i.test(lower)) {
+    reply = `Our pricing and fees at ${businessName} depend on the specific program or service you choose. I can note down your requirements and have our team send the full details via WhatsApp!`;
+  } else if (/book|schedule|appointment|visit|tour|meeting|call\s*back/i.test(lower)) {
+    reply = `I would be happy to schedule that for you at ${businessName}! What date and time works best for you?`;
+  } else if (/hour|time|when\s*(are\s*you\s*open|can\s*i\s*call)/i.test(lower)) {
+    reply = `Our standard operational hours at ${businessName} are from 10:00 AM to 7:00 PM Monday through Saturday.`;
+  } else if (/qualif|score|hot\s*lead|lead/i.test(lower)) {
+    reply = `During calls, I evaluate each customer's interest, timeline, and budget. High-intent inquiries are instantly scored as Hot Leads, and I alert your team with the full audio transcript.`;
+  } else if (/human|manager|owner|speak\s*to\s*(someone|person)/i.test(lower)) {
+    reply = `Certainly! I will immediately flag this call and schedule a callback with our senior team member at ${businessName}.`;
+  } else {
+    reply = `Thank you for asking about that! At ${businessName}, as your ${agentRole}, I ensure all your questions are handled and our team gets back to you with exact details. Would you like me to note your contact information?`;
+  }
+
+  return c.json({
+    reply,
+    agent_name: agentName,
+    agent_role: agentRole,
+    business_name: businessName,
+  });
+});
+
 // ALL /voice/sarvam-proxy/*
 // Secure proxy for Sarvam SDK runtime calls and WebSockets
 voiceApp.all('/sarvam-proxy/*', async (c) => {

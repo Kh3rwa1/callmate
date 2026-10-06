@@ -86,6 +86,7 @@ abstract class DashboardRepository {
 abstract class VoiceSessionRepository {
   /// POST /voice/test-session – backend returns ids + short-lived proxy token.
   Future<VoiceTestSession> createTestSession();
+  Future<String> sendChatMessage(String message);
 }
 
 abstract class DeviceRepository {

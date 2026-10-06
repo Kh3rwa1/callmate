@@ -32,7 +32,26 @@
   <title>CallPilot – Your AI Calling Employee</title>
   <link rel="manifest" href="manifest.json">
 </head>
-<body>
+  <script>
+    window.speakAgentText = function(text) {
+      try {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.rate = 1.0;
+        utter.pitch = 1.0;
+        utter.lang = 'en-IN';
+        window.speechSynthesis.speak(utter);
+      } catch (e) {
+        console.warn('SpeechSynthesis error:', e);
+      }
+    };
+    window.stopAgentSpeech = function() {
+      try {
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      } catch (_) {}
+    };
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

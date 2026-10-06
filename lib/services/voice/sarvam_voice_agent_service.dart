@@ -9,6 +9,7 @@ import '../../core/config/app_env.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/misc.dart';
 import '../../data/repositories/repositories.dart';
+import 'speech/speech_interop.dart';
 import 'voice_agent_service.dart';
 
 /// Real in-app voice using the official `sarvamconv_ai_sdk` (v1.0.x).
@@ -86,51 +87,20 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     _set(VoiceConnectionState.speaking);
     _startWebLevel(speaking: true);
 
+    final greeting = 'Namaste! I am $agentName, your AI employee at $bizName. How can I help you today?';
     _entries.add(VoiceTranscriptEntry(
       id: 'web_agent_1',
       isAgent: true,
-      text: 'Namaste! I am $agentName, your AI employee at $bizName. When leads call, I qualify their interest, answer questions, and schedule callbacks for you!',
+      text: greeting,
       isFinal: true,
     ));
     _emit();
+    speakAgentText(greeting);
 
-    _webTimers.add(Timer(const Duration(milliseconds: 3200), () {
+    _webTimers.add(Timer(const Duration(milliseconds: 2800), () {
       if (_current != VoiceConnectionState.speaking) return;
       _set(VoiceConnectionState.listening);
       _startWebLevel(speaking: false);
-
-      _webTimers.add(Timer(const Duration(milliseconds: 2200), () {
-        if (_current != VoiceConnectionState.listening) return;
-        _entries.add(VoiceTranscriptEntry(
-          id: 'web_user_1',
-          isAgent: false,
-          text: 'Great, how do you handle hot leads and follow-ups?',
-          isFinal: true,
-        ));
-        _emit();
-
-        _set(VoiceConnectionState.thinking);
-        _startWebLevel(speaking: false);
-
-        _webTimers.add(Timer(const Duration(milliseconds: 1400), () {
-          if (_current != VoiceConnectionState.thinking) return;
-          _set(VoiceConnectionState.speaking);
-          _startWebLevel(speaking: true);
-
-          _entries.add(VoiceTranscriptEntry(
-            id: 'web_agent_2',
-            isAgent: true,
-            text: 'I instantly score each caller as Hot, Warm, or Cold, log full call transcripts to your dashboard, and trigger automated WhatsApp follow-ups!',
-            isFinal: true,
-          ));
-          _emit();
-
-          _webTimers.add(Timer(const Duration(milliseconds: 3000), () {
-            _stopWebTimers();
-            _set(VoiceConnectionState.disconnected);
-          }));
-        }));
-      }));
     }));
   }
 
@@ -283,11 +253,41 @@ class SarvamVoiceAgentService implements VoiceAgentService {
 
   @override
   Future<void> sendText(String text) async {
-    if (_agent == null || text.trim().isEmpty) return;
-    _entries.add(VoiceTranscriptEntry(id: 'u${_seq++}', isAgent: false, text: text.trim()));
+    final clean = text.trim();
+    if (clean.isEmpty) return;
+
+    if (kIsWeb) {
+      _entries.add(VoiceTranscriptEntry(id: 'u${_seq++}', isAgent: false, text: clean));
+      _emit();
+      _set(VoiceConnectionState.thinking);
+      _startWebLevel(speaking: false);
+
+      try {
+        final reply = await _sessions.sendChatMessage(clean);
+        if (_current == VoiceConnectionState.disconnected || _current == VoiceConnectionState.idle) return;
+        _entries.add(VoiceTranscriptEntry(id: 'a${_seq++}', isAgent: true, text: reply));
+        _emit();
+        _set(VoiceConnectionState.speaking);
+        _startWebLevel(speaking: true);
+        speakAgentText(reply);
+        _webTimers.add(Timer(Duration(milliseconds: min(8000, max(2200, reply.length * 50))), () {
+          if (_current == VoiceConnectionState.speaking) {
+            _set(VoiceConnectionState.listening);
+            _startWebLevel(speaking: false);
+          }
+        }));
+      } catch (err) {
+        debugPrint('[SarvamVoiceAgent] Web chat error: $err');
+        _set(VoiceConnectionState.listening);
+      }
+      return;
+    }
+
+    if (_agent == null) return;
+    _entries.add(VoiceTranscriptEntry(id: 'u${_seq++}', isAgent: false, text: clean));
     _emit();
     _set(VoiceConnectionState.thinking);
-    await _agent!.sendText(text.trim());
+    await _agent!.sendText(clean);
   }
 
   @override
@@ -298,6 +298,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
 
   Future<void> _teardown(VoiceConnectionState end) async {
     _stopWebTimers();
+    stopAgentSpeech();
     final a = _agent;
     _agent = null;
     _speakingDecay?.cancel();
