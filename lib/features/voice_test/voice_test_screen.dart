@@ -182,7 +182,21 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
                     boxShadow: AppShadows.card,
                   ),
                   child: _error != null
-                      ? _ErrorPanel(message: _error!, permissionDenied: _permissionDenied, onRetry: _start)
+                      ? _ErrorPanel(
+                          message: _error!,
+                          permissionDenied: _permissionDenied,
+                          onRetry: _start,
+                          fromOnboarding: widget.fromOnboarding,
+                          onContinue: () async {
+                            if (widget.fromOnboarding) {
+                              await ref.read(localPrefsProvider).setAgentTested(true);
+                              await ref.read(localPrefsProvider).setOnboarded(true);
+                              if (context.mounted) context.go('/home');
+                            } else {
+                              context.pop();
+                            }
+                          },
+                        )
                       : _lines.isEmpty
                       ? Center(
                           child: Padding(
@@ -324,10 +338,19 @@ class _RoundControl extends StatelessWidget {
 }
 
 class _ErrorPanel extends StatelessWidget {
-  const _ErrorPanel({required this.message, required this.permissionDenied, required this.onRetry});
+  const _ErrorPanel({
+    required this.message,
+    required this.permissionDenied,
+    required this.onRetry,
+    this.onContinue,
+    this.fromOnboarding = false,
+  });
   final String message;
   final bool permissionDenied;
   final VoidCallback onRetry;
+  final VoidCallback? onContinue;
+  final bool fromOnboarding;
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
@@ -345,6 +368,16 @@ class _ErrorPanel extends StatelessWidget {
                   ? PrimaryButton(label: 'Open settings', onPressed: openAppSettings)
                   : PrimaryButton(label: 'Try again', onPressed: onRetry),
             ),
+            if (onContinue != null) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: 220,
+                child: SecondaryButton(
+                  label: fromOnboarding ? 'Continue to dashboard' : 'Go back',
+                  onPressed: onContinue,
+                ),
+              ),
+            ],
           ],
         ),
       ),

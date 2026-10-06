@@ -29,6 +29,9 @@ class SarvamVoiceAgentService implements VoiceAgentService {
   Timer? _speakingDecay;
   bool _muted = false;
   int _seq = 0;
+  final List<Timer> _webTimers = [];
+  Timer? _webLevelTimer;
+  final Random _rnd = Random();
 
   @override
   VoiceConnectionState get currentState => _current;
@@ -45,11 +48,98 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     if (!_transcript.isClosed) _transcript.add(List.unmodifiable(_entries));
   }
 
+  void _stopWebTimers() {
+    for (final t in _webTimers) {
+      t.cancel();
+    }
+    _webTimers.clear();
+    _webLevelTimer?.cancel();
+    _webLevelTimer = null;
+    if (!_level.isClosed) _level.add(0);
+  }
+
+  void _startWebLevel({required bool speaking}) {
+    _webLevelTimer?.cancel();
+    _webLevelTimer = Timer.periodic(const Duration(milliseconds: 90), (_) {
+      if (_level.isClosed) return;
+      _level.add(speaking ? 0.35 + _rnd.nextDouble() * 0.55 : _rnd.nextDouble() * 0.18);
+    });
+  }
+
+  Future<void> _startWebSession({Map<String, dynamic> agentVariables = const {}}) async {
+    _stopWebTimers();
+    _entries.clear();
+    _emit();
+    _set(VoiceConnectionState.connecting);
+
+    VoiceTestSession? session;
+    try {
+      session = await _sessions.createTestSession();
+    } catch (e) {
+      debugPrint('[SarvamVoiceAgent] Web test session error: $e');
+    }
+
+    final agentName = agentVariables['agent_name'] ?? session?.agentVariables['agent_name'] ?? 'Your AI Assistant';
+    final bizName = agentVariables['business_name'] ?? session?.agentVariables['business_name'] ?? 'your business';
+
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    _set(VoiceConnectionState.speaking);
+    _startWebLevel(speaking: true);
+
+    _entries.add(VoiceTranscriptEntry(
+      id: 'web_agent_1',
+      isAgent: true,
+      text: 'Namaste! I am $agentName, your AI employee at $bizName. When leads call, I qualify their interest, answer questions, and schedule callbacks for you!',
+      isFinal: true,
+    ));
+    _emit();
+
+    _webTimers.add(Timer(const Duration(milliseconds: 3200), () {
+      if (_current != VoiceConnectionState.speaking) return;
+      _set(VoiceConnectionState.listening);
+      _startWebLevel(speaking: false);
+
+      _webTimers.add(Timer(const Duration(milliseconds: 2200), () {
+        if (_current != VoiceConnectionState.listening) return;
+        _entries.add(VoiceTranscriptEntry(
+          id: 'web_user_1',
+          isAgent: false,
+          text: 'Great, how do you handle hot leads and follow-ups?',
+          isFinal: true,
+        ));
+        _emit();
+
+        _set(VoiceConnectionState.thinking);
+        _startWebLevel(speaking: false);
+
+        _webTimers.add(Timer(const Duration(milliseconds: 1400), () {
+          if (_current != VoiceConnectionState.thinking) return;
+          _set(VoiceConnectionState.speaking);
+          _startWebLevel(speaking: true);
+
+          _entries.add(VoiceTranscriptEntry(
+            id: 'web_agent_2',
+            isAgent: true,
+            text: 'I instantly score each caller as Hot, Warm, or Cold, log full call transcripts to your dashboard, and trigger automated WhatsApp follow-ups!',
+            isFinal: true,
+          ));
+          _emit();
+
+          _webTimers.add(Timer(const Duration(milliseconds: 3000), () {
+            _stopWebTimers();
+            _set(VoiceConnectionState.disconnected);
+          }));
+        }));
+      }));
+    }));
+  }
+
   @override
   Future<void> startTestSession({Map<String, dynamic> agentVariables = const {}}) async {
     if (_agent != null) return;
     if (kIsWeb) {
-      throw const VoiceAgentException('Live voice runs on the Android & iOS app.');
+      await _startWebSession(agentVariables: agentVariables);
+      return;
     }
     _set(VoiceConnectionState.connecting);
 
@@ -207,6 +297,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
   }
 
   Future<void> _teardown(VoiceConnectionState end) async {
+    _stopWebTimers();
     final a = _agent;
     _agent = null;
     _speakingDecay?.cancel();
