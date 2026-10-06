@@ -11,6 +11,9 @@ export interface Env {
   SARVAM_PROXY_BASE?: string;
   TELEPHONY_PROVIDER?: string;
   FCM_SERVICE_ACCOUNT_JSON?: string;
+  AI?: any;
+  CF_ACCOUNT_ID?: string;
+  CF_AI_API_TOKEN?: string;
 }
 
 export interface AuthUser {

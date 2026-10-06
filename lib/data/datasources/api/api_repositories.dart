@@ -282,8 +282,8 @@ class ApiVoiceSessionRepository implements VoiceSessionRepository {
   @override
   Future<VoiceTestSession> createTestSession() => api.post('/voice/test-session', (d) => VoiceTestSession.fromJson(_j(d)));
   @override
-  Future<String> sendChatMessage(String message) =>
-      api.post('/voice/chat', (d) => _j(d)['reply']?.toString() ?? '', data: {'message': message});
+  Future<VoiceChatReply> sendChatMessage(String message) =>
+      api.post('/voice/chat', (d) => VoiceChatReply.fromJson(_j(d)), data: {'message': message});
 }
 
 class ApiDeviceRepository implements DeviceRepository {

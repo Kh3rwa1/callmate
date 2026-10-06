@@ -87,7 +87,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     _set(VoiceConnectionState.speaking);
     _startWebLevel(speaking: true);
 
-    final greeting = 'Namaste! I am $agentName, your AI employee at $bizName. How can I help you today?';
+    final greeting = 'Hello, I am $agentName with $bizName. How can I assist you today?';
     _entries.add(VoiceTranscriptEntry(
       id: 'web_agent_1',
       isAgent: true,
@@ -263,14 +263,18 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       _startWebLevel(speaking: false);
 
       try {
-        final reply = await _sessions.sendChatMessage(clean);
+        final chatReply = await _sessions.sendChatMessage(clean);
         if (_current == VoiceConnectionState.disconnected || _current == VoiceConnectionState.idle) return;
-        _entries.add(VoiceTranscriptEntry(id: 'a${_seq++}', isAgent: true, text: reply));
+        _entries.add(VoiceTranscriptEntry(id: 'a${_seq++}', isAgent: true, text: chatReply.reply));
         _emit();
         _set(VoiceConnectionState.speaking);
         _startWebLevel(speaking: true);
-        speakAgentText(reply);
-        _webTimers.add(Timer(Duration(milliseconds: min(8000, max(2200, reply.length * 50))), () {
+        if (chatReply.audioBase64 != null && chatReply.audioBase64!.isNotEmpty) {
+          playBase64Audio(chatReply.audioBase64!);
+        } else {
+          speakAgentText(chatReply.reply);
+        }
+        _webTimers.add(Timer(Duration(milliseconds: min(8000, max(2200, chatReply.reply.length * 50))), () {
           if (_current == VoiceConnectionState.speaking) {
             _set(VoiceConnectionState.listening);
             _startWebLevel(speaking: false);

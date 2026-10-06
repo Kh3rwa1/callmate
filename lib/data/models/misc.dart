@@ -160,3 +160,14 @@ class VoiceTestSession {
     userIdentifier: jStr(j, 'user_identifier', 'owner'),
   );
 }
+
+class VoiceChatReply {
+  const VoiceChatReply({required this.reply, this.audioBase64});
+  final String reply;
+  final String? audioBase64;
+
+  factory VoiceChatReply.fromJson(Json j) => VoiceChatReply(
+    reply: jStr(j, 'reply'),
+    audioBase64: jStrN(j, 'audio_base64'),
+  );
+}

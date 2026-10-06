@@ -58,34 +58,171 @@ voiceApp.post('/chat', async (c) => {
   const businessName = business?.name || 'our business';
   const category = business?.category || 'business';
 
-  const lower = userMessage.toLowerCase();
-  let reply = '';
-
-  if (/^(hi|hello|hey|namaste|good\s*(morning|afternoon|evening)|salaam)/i.test(lower)) {
-    reply = `Namaste! I am ${agentName}, your ${agentRole} at ${businessName}. How can I help you today?`;
-  } else if (/what\s*(do\s*you\s*do|is\s*your\s*role)|who\s*are\s*you/i.test(lower)) {
-    reply = `I am ${agentName}, the ${agentRole} for ${businessName}. I speak with callers, answer inquiries, qualify their needs, and schedule follow-ups for your team.`;
-  } else if (/fee|cost|price|pricing|charge|rate/i.test(lower)) {
-    reply = `Our pricing and fees at ${businessName} depend on the specific program or service you choose. I can note down your requirements and have our team send the full details via WhatsApp!`;
-  } else if (/book|schedule|appointment|visit|tour|meeting|call\s*back/i.test(lower)) {
-    reply = `I would be happy to schedule that for you at ${businessName}! What date and time works best for you?`;
-  } else if (/hour|time|when\s*(are\s*you\s*open|can\s*i\s*call)/i.test(lower)) {
-    reply = `Our standard operational hours at ${businessName} are from 10:00 AM to 7:00 PM Monday through Saturday.`;
-  } else if (/qualif|score|hot\s*lead|lead/i.test(lower)) {
-    reply = `During calls, I evaluate each customer's interest, timeline, and budget. High-intent inquiries are instantly scored as Hot Leads, and I alert your team with the full audio transcript.`;
-  } else if (/human|manager|owner|speak\s*to\s*(someone|person)/i.test(lower)) {
-    reply = `Certainly! I will immediately flag this call and schedule a callback with our senior team member at ${businessName}.`;
-  } else {
-    reply = `Thank you for asking about that! At ${businessName}, as your ${agentRole}, I ensure all your questions are handled and our team gets back to you with exact details. Would you like me to note your contact information?`;
-  }
+  const { reply, audioBase64 } = await generateAIReply(
+    c.env,
+    agentName,
+    agentRole,
+    businessName,
+    userMessage
+  );
 
   return c.json({
     reply,
+    audio_base64: audioBase64,
     agent_name: agentName,
     agent_role: agentRole,
     business_name: businessName,
   });
 });
+
+async function generateAIReply(
+  env: Env,
+  agentName: string,
+  agentRole: string,
+  businessName: string,
+  userMessage: string
+): Promise<{ reply: string; audioBase64?: string }> {
+  const systemPrompt = `You are ${agentName}, a professional, calm, grounded, and polite ${agentRole} at ${businessName}.
+You are speaking on a live phone call with a customer or applicant.
+Tone & Persona Guidelines:
+1. Speak in a calm, natural, professional executive phone tone.
+2. Keep your response to 1 or 2 concise, clear sentences.
+3. Address the caller's specific question directly and accurately.
+4. Never use exclamation marks. Do not sound theatrical, dramatic, or robotic.
+5. If they ask about fees, admissions, courses, or scheduling, answer helpfully and offer to note their contact or schedule a callback.`;
+
+  let replyText = '';
+
+  // 1. Try Sarvam AI Chat if non-mock key is available
+  const sarvamKey = env.SARVAM_API_KEY || '';
+  if (sarvamKey && !sarvamKey.includes('mock')) {
+    try {
+      const sarvamRes = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'api-subscription-key': sarvamKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'sarvam-105b',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage },
+          ],
+        }),
+      });
+      if (sarvamRes.ok) {
+        const data: any = await sarvamRes.json();
+        replyText = data?.choices?.[0]?.message?.content?.trim() || '';
+      }
+    } catch (e) {
+      console.warn('[Sarvam Chat Error]:', e);
+    }
+  }
+
+  // 2. Try Cloudflare Workers AI with verified credentials
+  if (!replyText) {
+    const cfToken = env.CF_AI_API_TOKEN || '';
+    const cfAccount = env.CF_ACCOUNT_ID || '';
+    if (cfToken && cfAccount) {
+      try {
+        const cfRes = await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${cfAccount}/ai/v1/chat/completions`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${cfToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userMessage },
+              ],
+            }),
+          }
+        );
+        if (cfRes.ok) {
+          const data: any = await cfRes.json();
+          replyText = data?.choices?.[0]?.message?.content?.trim() || '';
+        }
+      } catch (e) {
+        console.warn('[Cloudflare AI Error]:', e);
+      }
+    } else if (env.AI) {
+      try {
+        const aiRes: any = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage },
+          ],
+        });
+        replyText = aiRes?.response?.trim() || '';
+      } catch (e) {
+        console.warn('[Cloudflare AI Binding Error]:', e);
+      }
+    }
+  }
+
+  // 3. Fallback: Calm, grounded, non-dramatic sentences
+  if (!replyText) {
+    const lower = userMessage.toLowerCase();
+    if (/^(hi|hello|hey|namaste|good\s*(morning|afternoon|evening)|salaam)/i.test(lower)) {
+      replyText = `Hello, I am ${agentName} from ${businessName}. How can I assist you today?`;
+    } else if (/what\s*(do\s*you\s*do|is\s*your\s*role)|who\s*are\s*you/i.test(lower)) {
+      replyText = `I am ${agentName}, the ${agentRole} for ${businessName}. I answer caller questions, verify requirements, and coordinate follow-ups for our team.`;
+    } else if (/fee|cost|price|pricing|charge|rate/i.test(lower)) {
+      replyText = `Our fees depend on the specific program you are interested in. I can note your details and have our admissions office send you the breakdown.`;
+    } else if (/book|schedule|appointment|visit|tour|meeting|call\s*back/i.test(lower)) {
+      replyText = `I would be happy to schedule that for you. What day and time works best for you?`;
+    } else if (/hour|time|when\s*(are\s*you\s*open|can\s*i\s*call)/i.test(lower)) {
+      replyText = `Our team is available from 10:00 AM to 7:00 PM Monday through Saturday.`;
+    } else if (/human|manager|owner|speak\s*to\s*(someone|person)/i.test(lower)) {
+      replyText = `I will notify our senior team member and arrange a direct callback for you.`;
+    } else {
+      replyText = `Thank you for asking. I am noting your inquiry for our team at ${businessName}, and we will follow up with the exact details.`;
+    }
+  }
+
+  // De-dramatize: replace exclamation marks with periods, remove dramatic punctuation
+  replyText = replyText.replace(/!+/g, '.').replace(/\s+/g, ' ').trim();
+
+  // 4. Try Sarvam TTS if real key is available
+  let audioBase64: string | undefined;
+  if (sarvamKey && !sarvamKey.includes('mock')) {
+    try {
+      const ttsRes = await fetch('https://api.sarvam.ai/text-to-speech', {
+        method: 'POST',
+        headers: {
+          'api-subscription-key': sarvamKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputs: [replyText],
+          target_language_code: 'en-IN',
+          speaker: 'meera',
+          pitch: 0,
+          pace: 0.95,
+          loudness: 1.0,
+          speech_sample_rate: 22050,
+          enable_preprocessing: true,
+          model: 'bulbul:v1',
+        }),
+      });
+      if (ttsRes.ok) {
+        const ttsData: any = await ttsRes.json();
+        if (ttsData?.audios?.[0]) {
+          audioBase64 = ttsData.audios[0];
+        }
+      }
+    } catch (e) {
+      console.warn('[Sarvam TTS Error]:', e);
+    }
+  }
+
+  return { reply: replyText, audioBase64 };
+}
 
 // ALL /voice/sarvam-proxy/*
 // Secure proxy for Sarvam SDK runtime calls and WebSockets

@@ -389,8 +389,8 @@ class MockVoiceSessionRepository implements VoiceSessionRepository {
       _lag(() => const VoiceTestSession(sessionToken: 'demo', orgId: 'demo', workspaceId: 'demo', appId: 'demo', proxyBaseUrl: ''), 400);
 
   @override
-  Future<String> sendChatMessage(String message) =>
-      _lag(() => 'I am here to help you qualify leads, answer customer questions, and schedule follow-ups for your business.', 400);
+  Future<VoiceChatReply> sendChatMessage(String message) =>
+      _lag(() => const VoiceChatReply(reply: 'I am here to help you answer questions and schedule follow-ups for your business.'), 400);
 }
 
 class MockDeviceRepository implements DeviceRepository {
