@@ -137,6 +137,8 @@ class VoiceTestSession {
     this.version,
     this.agentVariables = const {},
     this.userIdentifier = 'owner',
+    this.greetingText,
+    this.greetingAudioBase64,
   });
 
   /// Short-lived token for OUR proxy (not a Sarvam key).
@@ -148,6 +150,8 @@ class VoiceTestSession {
   final int? version;
   final Map<String, dynamic> agentVariables;
   final String userIdentifier;
+  final String? greetingText;
+  final String? greetingAudioBase64;
 
   factory VoiceTestSession.fromJson(Json j) => VoiceTestSession(
     sessionToken: jStr(j, 'session_token'),
@@ -158,6 +162,8 @@ class VoiceTestSession {
     version: jIntN(j, 'version'),
     agentVariables: jObj(j, 'agent_variables') ?? const {},
     userIdentifier: jStr(j, 'user_identifier', 'owner'),
+    greetingText: jStrN(j, 'greeting_text'),
+    greetingAudioBase64: jStrN(j, 'greeting_audio_base64'),
   );
 }
 

@@ -34,6 +34,18 @@
 </head>
   <script>
     let activeAudioEl = null;
+    let cachedVoices = [];
+
+    function updateVoices() {
+      if ('speechSynthesis' in window) {
+        const v = window.speechSynthesis.getVoices();
+        if (v && v.length) cachedVoices = v;
+      }
+    }
+    if ('speechSynthesis' in window) {
+      updateVoices();
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
 
     window.playBase64Audio = function(base64Audio) {
       try {
@@ -42,9 +54,15 @@
           activeAudioEl = null;
         }
         if (!base64Audio) return;
-        const audio = new Audio("data:audio/wav;base64," + base64Audio);
+        const mime = (base64Audio.startsWith('//') || base64Audio.startsWith('SUQz')) ? 'audio/mpeg' : 'audio/wav';
+        const audio = new Audio(`data:${mime};base64,` + base64Audio);
         activeAudioEl = audio;
-        audio.play().catch(e => console.warn('Audio play error:', e));
+        audio.play().catch(e => {
+          console.warn('Audio play error, retrying audio/mpeg:', e);
+          const fallback = new Audio("data:audio/mpeg;base64," + base64Audio);
+          activeAudioEl = fallback;
+          fallback.play().catch(e2 => console.warn('Audio retry error:', e2));
+        });
       } catch (e) {
         console.warn('playBase64Audio error:', e);
       }
@@ -76,7 +94,8 @@
         }
 
         function selectFemaleVoice() {
-          const voices = window.speechSynthesis.getVoices() || [];
+          updateVoices();
+          const voices = cachedVoices.length ? cachedVoices : (window.speechSynthesis.getVoices() || []);
           if (!voices.length) return null;
 
           // 1. Primary: Indian English / Indic Female voices (Tara on macOS, Heera/Neerja on Windows)
@@ -108,12 +127,12 @@
           const nonMale = voices.find(v => v.lang.startsWith('en') && !isMale(v.name));
           if (nonMale) return nonMale;
 
-          return voices[0];
+          return null;
         }
 
         const utter = new SpeechSynthesisUtterance(cleanText);
         utter.rate = 0.95; // Calm, conversational pace
-        utter.pitch = 1.0; // Natural warm female pitch
+        utter.pitch = 1.05; // Warm, natural female executive pitch
         utter.lang = 'en-IN';
 
         const femaleVoice = selectFemaleVoice();

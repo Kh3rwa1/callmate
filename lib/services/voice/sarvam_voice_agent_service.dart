@@ -87,7 +87,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     _set(VoiceConnectionState.speaking);
     _startWebLevel(speaking: true);
 
-    final greeting = 'Hello, I am $agentName with $bizName. How can I assist you today?';
+    final greeting = session?.greetingText ?? 'Hello, I am $agentName with $bizName. How can I assist you today?';
     _entries.add(VoiceTranscriptEntry(
       id: 'web_agent_1',
       isAgent: true,
@@ -95,7 +95,11 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       isFinal: true,
     ));
     _emit();
-    speakAgentText(greeting);
+    if (session?.greetingAudioBase64 != null && session!.greetingAudioBase64!.isNotEmpty) {
+      playBase64Audio(session.greetingAudioBase64!);
+    } else {
+      speakAgentText(greeting);
+    }
 
     _webTimers.add(Timer(const Duration(milliseconds: 2800), () {
       if (_current != VoiceConnectionState.speaking) return;

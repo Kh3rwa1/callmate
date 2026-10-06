@@ -22,6 +22,11 @@ voiceApp.post('/test-session', async (c) => {
   const url = new URL(c.req.url);
   const proxyBaseUrl = `${url.origin}/voice/sarvam-proxy/`;
 
+  const agentName = agent?.name || 'Riya';
+  const businessName = business?.name || 'CallPilot Business';
+  const greetingText = `Hello, I am ${agentName} from ${businessName}. How can I assist you today?`;
+  const greetingAudioBase64 = await synthesizeFemaleAudio(c.env, greetingText);
+
   return c.json({
     session_token: sessionToken,
     org_id: c.env.SARVAM_ORG_ID || 'org_callpilot',
@@ -29,9 +34,11 @@ voiceApp.post('/test-session', async (c) => {
     app_id: c.env.SARVAM_ADMISSIONS_APP_ID || 'app_callpilot_voice',
     version: '1.0',
     proxy_base_url: proxyBaseUrl,
+    greeting_text: greetingText,
+    greeting_audio_base64: greetingAudioBase64,
     agent_variables: {
-      business_name: business?.name || 'CallPilot Business',
-      agent_name: agent?.name || 'Riya',
+      business_name: businessName,
+      agent_name: agentName,
       agent_role: agent?.role || 'Assistant',
       gender: 'female',
       voice: 'female',
@@ -78,6 +85,87 @@ voiceApp.post('/chat', async (c) => {
   });
 });
 
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 8192;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk as any);
+  }
+  return btoa(binary);
+}
+
+async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | undefined> {
+  const cleanText = text.replace(/!+/g, '.').replace(/\s+/g, ' ').trim();
+  if (!cleanText) return undefined;
+
+  // 1. Try Sarvam TTS if real key is configured (Meera - Indian English female voice)
+  const sarvamKey = env.SARVAM_API_KEY || '';
+  if (sarvamKey && !sarvamKey.includes('mock')) {
+    try {
+      const ttsRes = await fetch('https://api.sarvam.ai/text-to-speech', {
+        method: 'POST',
+        headers: {
+          'api-subscription-key': sarvamKey,
+          'X-API-Key': sarvamKey,
+          'Authorization': `Bearer ${sarvamKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputs: [cleanText],
+          target_language_code: 'en-IN',
+          speaker: 'meera',
+          pitch: 0,
+          pace: 0.95,
+          loudness: 1.0,
+          speech_sample_rate: 22050,
+          enable_preprocessing: true,
+          model: 'bulbul:v1',
+        }),
+      });
+      if (ttsRes.ok) {
+        const ttsData: any = await ttsRes.json();
+        if (ttsData?.audios?.[0]) {
+          return ttsData.audios[0];
+        }
+      }
+    } catch (e) {
+      console.warn('[Sarvam TTS Error]:', e);
+    }
+  }
+
+  // 2. Try Cloudflare Workers AI TTS (Deepgram Aura 2 female executive voice 'luna')
+  const cfToken = env.CF_AI_API_TOKEN || '';
+  const cfAccount = env.CF_ACCOUNT_ID || '';
+  if (cfToken && cfAccount) {
+    try {
+      const cfTtsRes = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${cfAccount}/ai/run/@cf/deepgram/aura-2-en`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${cfToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: cleanText,
+            voice: 'luna',
+          }),
+        }
+      );
+      if (cfTtsRes.ok) {
+        const audioBuffer = await cfTtsRes.arrayBuffer();
+        return arrayBufferToBase64(audioBuffer);
+      }
+    } catch (e) {
+      console.warn('[Cloudflare Workers AI TTS Error]:', e);
+    }
+  }
+
+  return undefined;
+}
+
 async function generateAIReply(
   env: Env,
   agentName: string,
@@ -104,6 +192,8 @@ Tone & Persona Guidelines:
         method: 'POST',
         headers: {
           'api-subscription-key': sarvamKey,
+          'X-API-Key': sarvamKey,
+          'Authorization': `Bearer ${sarvamKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -191,38 +281,8 @@ Tone & Persona Guidelines:
   // De-dramatize: replace exclamation marks with periods, remove dramatic punctuation
   replyText = replyText.replace(/!+/g, '.').replace(/\s+/g, ' ').trim();
 
-  // 4. Try Sarvam TTS if real key is available
-  let audioBase64: string | undefined;
-  if (sarvamKey && !sarvamKey.includes('mock')) {
-    try {
-      const ttsRes = await fetch('https://api.sarvam.ai/text-to-speech', {
-        method: 'POST',
-        headers: {
-          'api-subscription-key': sarvamKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inputs: [replyText],
-          target_language_code: 'en-IN',
-          speaker: 'meera',
-          pitch: 0,
-          pace: 0.95,
-          loudness: 1.0,
-          speech_sample_rate: 22050,
-          enable_preprocessing: true,
-          model: 'bulbul:v1',
-        }),
-      });
-      if (ttsRes.ok) {
-        const ttsData: any = await ttsRes.json();
-        if (ttsData?.audios?.[0]) {
-          audioBase64 = ttsData.audios[0];
-        }
-      }
-    } catch (e) {
-      console.warn('[Sarvam TTS Error]:', e);
-    }
-  }
+  // 4. Synthesize natural female audio
+  const audioBase64 = await synthesizeFemaleAudio(env, replyText);
 
   return { reply: replyText, audioBase64 };
 }
