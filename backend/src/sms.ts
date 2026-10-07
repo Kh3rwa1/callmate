@@ -1,4 +1,5 @@
 import { Env } from './types';
+import { maskPhone, logInfo } from './utils/logger';
 
 export interface SmsProvider {
   sendOtp(phone: string, otp: string): Promise<boolean>;
@@ -11,7 +12,10 @@ export class MockSmsProvider implements SmsProvider {
     if (this.environment === 'production') {
       throw new Error('Security violation: MockSmsProvider cannot be used in production environment.');
     }
-    console.log(`[Mock SMS Gateway] [${phone}] Your CallPilot verification code is: ${otp}`);
+    logInfo('Mock SMS verification code dispatched', {
+      phone: maskPhone(phone),
+      event: 'mock_sms_dispatched',
+    });
     return true;
   }
 }

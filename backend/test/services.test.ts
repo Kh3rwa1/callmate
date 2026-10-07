@@ -199,5 +199,20 @@ describe('Utility & Services Unit Tests', () => {
       expect(importLeadsSchema.safeParse({ leads: [] }).success).toBe(false);
       expect(deviceTokenSchema.safeParse({ token: 'tok_123', platform: 'android' }).success).toBe(true);
     });
+
+    it('masks phone numbers and outputs structured JSON logs', async () => {
+      const { maskPhone, logInfo, logWarn, logError } = await import('../src/utils/logger');
+
+      expect(maskPhone('+919830012345')).toBe('91XXXXXXX345');
+      expect(maskPhone('9830012345')).toBe('98XXXXX345');
+      expect(maskPhone('123')).toBe('XXXXX');
+      expect(maskPhone('')).toBe('');
+
+      // Test structured logging methods
+      logInfo('Test info log', { test: true });
+      logWarn('Test warn log', { test: true });
+      logError('Test error log', new Error('Something failed'), { requestId: 'req_123' });
+      logError('Test raw error log', 'raw_err_string');
+    });
   });
 });
