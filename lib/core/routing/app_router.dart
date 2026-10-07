@@ -32,7 +32,7 @@ CustomTransitionPage<void> _fade(GoRouterState s, Widget child) =>
       key: s.pageKey,
       child: child,
       transitionDuration: const Duration(milliseconds: 280),
-      transitionsBuilder: (_, a, __, c) => FadeTransition(
+      transitionsBuilder: (_, a, _, c) => FadeTransition(
         opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
         child: SlideTransition(
           position: Tween(
@@ -44,16 +44,23 @@ CustomTransitionPage<void> _fade(GoRouterState s, Widget child) =>
       ),
     );
 
+/// The router is created once. Session changes re-run [GoRouter.redirect] via
+/// `refreshListenable` instead of rebuilding the router, which would restart
+/// at /splash and drop the navigation stack on every login/logout.
 final routerProvider = Provider<GoRouter>((ref) {
-  final prefs = ref.watch(localPrefsProvider);
-  return GoRouter(
+  final prefs = ref.read(localPrefsProvider);
+  final sessionChanges = ValueNotifier<int>(0);
+  ref.listen(sessionProvider, (_, _) => sessionChanges.value++);
+  ref.onDispose(sessionChanges.dispose);
+
+  final router = GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
+    refreshListenable: sessionChanges,
     redirect: (context, state) {
       final loc = state.matchedLocation;
-      final sessionAsync = ref.watch(sessionProvider);
-      final hasSession = sessionAsync.value ?? false;
-      final isMock = ref.watch(useMockProvider);
+      final hasSession = ref.read(sessionProvider).value ?? false;
+      final isMock = ref.read(useMockProvider);
       final inAuth = loc.startsWith('/login');
       final inOnboarding =
           loc.startsWith('/onboarding') || loc.startsWith('/voice-test');
@@ -78,7 +85,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(
         path: '/login',
         pageBuilder: (_, s) => _fade(s, const LoginScreen()),
@@ -122,11 +129,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // ---------------- Main app: exactly 5 tabs
       StatefulShellRoute.indexedStack(
-        builder: (_, __, shell) => AppShell(shell: shell),
+        builder: (_, _, shell) => AppShell(shell: shell),
         branches: [
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
+              GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
             ],
           ),
           StatefulShellBranch(
@@ -151,13 +158,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/followups',
-                builder: (_, __) => const FollowUpsScreen(),
+                builder: (_, _) => const FollowUpsScreen(),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/agent', builder: (_, __) => const AgentScreen()),
+              GoRoute(path: '/agent', builder: (_, _) => const AgentScreen()),
             ],
           ),
         ],
@@ -252,4 +259,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.onDispose(router.dispose);
+  return router;
 });

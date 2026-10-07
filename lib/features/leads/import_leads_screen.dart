@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:file_picker/file_picker.dart';
+import '../../core/utils/file_pick.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -68,21 +68,18 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
 
   Future<void> _pickCsv() async {
     try {
-      final r = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['csv', 'txt'],
-        withData: true,
+      final f = await pickSingleFile(
+        extensions: ['csv', 'txt'],
+        maxBytes: 2 * 1024 * 1024,
       );
-      final f = r?.files.firstOrNull;
-      if (f?.bytes == null) return;
-      if (f!.size > 2 * 1024 * 1024) {
-        return _snack('That file is over 2 MB. Split it and try again.');
-      }
-      final text = utf8.decode(f.bytes!, allowMalformed: true);
+      if (f == null) return;
+      final text = utf8.decode(f.bytes, allowMalformed: true);
       setState(() {
         _preview = CsvLeadParser.toLeads(text);
         _fileName = f.name;
       });
+    } on FileTooLargeException {
+      _snack('That file is over 2 MB. Split it and try again.');
     } catch (_) {
       _snack('Couldn\'t read that file. Make sure it\'s a CSV.');
     }

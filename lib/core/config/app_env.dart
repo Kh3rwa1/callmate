@@ -3,7 +3,8 @@ import 'package:flutter/foundation.dart';
 /// Environment configuration.
 ///
 /// Values come from `--dart-define` / `--dart-define-from-file=env/<env>.json`.
-/// Supports Cloudflare backend proxying as well as Sarvam AI voice integration.
+/// All Sarvam voice traffic goes through the backend proxy
+/// ([sarvamProxyPath]); no third-party API keys are ever compiled into the app.
 enum AppFlavor { dev, staging, prod }
 
 class AppEnv {
@@ -24,24 +25,6 @@ class AppEnv {
   static const String sarvamProxyPath = String.fromEnvironment(
     'SARVAM_PROXY_PATH',
     defaultValue: '/voice/sarvam-proxy/',
-  );
-
-  /// Optional direct Sarvam configuration.
-  static const String sarvamApiKey = String.fromEnvironment(
-    'SARVAM_API_KEY',
-    defaultValue: '',
-  );
-  static const String sarvamOrgId = String.fromEnvironment(
-    'SARVAM_ORG_ID',
-    defaultValue: 'org_callpilot',
-  );
-  static const String sarvamWorkspaceId = String.fromEnvironment(
-    'SARVAM_WORKSPACE_ID',
-    defaultValue: 'ws_callpilot',
-  );
-  static const String sarvamAppId = String.fromEnvironment(
-    'SARVAM_APP_ID',
-    defaultValue: 'app_callpilot_voice',
   );
 
   /// Force mock/demo mode ONLY if explicitly configured with USE_MOCK=true.
@@ -76,4 +59,48 @@ class AppEnv {
   }
 
   static bool get showDemoTools => demoTools && flavor != AppFlavor.prod;
+
+  /// Validates the backend configuration for a build.
+  ///
+  /// Returns `null` when the configuration is acceptable, or a human-readable
+  /// reason why the app must not start. Only non-mock staging/prod builds are
+  /// checked: they need an `https` [apiBaseUrl] that is not a placeholder
+  /// (`example.com`).
+  static String? configError({
+    required AppFlavor flavor,
+    required bool useMock,
+    required String apiBaseUrl,
+  }) {
+    if (useMock || flavor == AppFlavor.dev) return null;
+    final label = flavor.name;
+    final url = apiBaseUrl.trim();
+    if (url.isEmpty) {
+      return 'API_BASE_URL is empty for the $label build. '
+          'Set it in env/$label.json to your real backend URL.';
+    }
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+      return 'API_BASE_URL "$url" for the $label build must be an absolute '
+          'https:// URL.';
+    }
+    final host = uri.host.toLowerCase();
+    if (host == 'example.com' || host.endsWith('.example.com')) {
+      return 'API_BASE_URL "$url" for the $label build is a placeholder. '
+          'Replace it in env/$label.json with your real backend domain.';
+    }
+    return null;
+  }
+
+  /// Throws a [StateError] if the compiled-in configuration is not safe to
+  /// start with (see [configError]). Call once at startup.
+  static void ensureValid() {
+    final error = configError(
+      flavor: flavor,
+      useMock: useMock,
+      apiBaseUrl: apiBaseUrl,
+    );
+    if (error != null) {
+      throw StateError('Invalid app configuration: $error');
+    }
+  }
 }

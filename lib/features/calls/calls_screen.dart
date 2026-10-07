@@ -35,7 +35,7 @@ class CallsList extends Notifier<PagedState<Call>> {
   @override
   PagedState<Call> build() {
     ref.watch(callFilterProvider);
-    ref.listen(dataVersionProvider, (_, __) => refresh(silent: true));
+    ref.listen(dataVersionProvider, (_, _) => refresh(silent: true));
     Future.microtask(refresh);
     return const PagedState(loading: true);
   }

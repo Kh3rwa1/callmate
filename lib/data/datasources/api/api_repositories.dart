@@ -408,10 +408,7 @@ class ApiVoiceSessionRepository implements VoiceSessionRepository {
   }) => api.post(
     '/voice/chat',
     (d) => VoiceChatReply.fromJson(_j(d)),
-    data: {
-      'message': message,
-      if (conversationId != null) 'conversation_id': conversationId,
-    },
+    data: {'message': message, 'conversation_id': ?conversationId},
   );
 }
 
@@ -419,12 +416,8 @@ class ApiDeviceRepository implements DeviceRepository {
   ApiDeviceRepository(this.api);
   final ApiClient api;
   @override
-  Future<void> registerDevice({required String token, String? platform}) =>
-      api.post(
-        '/devices',
-        (_) {},
-        data: {'token': token, if (platform != null) 'platform': platform},
-      );
+  Future<void> registerDevice({required String token, String? platform}) => api
+      .post('/devices', (_) {}, data: {'token': token, 'platform': ?platform});
   @override
   Future<void> unregisterDevice(String token) => api.delete('/devices/$token');
 }

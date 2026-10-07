@@ -49,7 +49,7 @@ class UsageScreen extends ConsumerWidget {
                     tween: Tween(begin: 0, end: u.ratio),
                     duration: const Duration(milliseconds: 900),
                     curve: Curves.easeOutCubic,
-                    builder: (_, v, __) => LinearProgressIndicator(
+                    builder: (_, v, _) => LinearProgressIndicator(
                       value: v,
                       minHeight: 12,
                       borderRadius: BorderRadius.circular(9),

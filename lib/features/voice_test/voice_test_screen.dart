@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
@@ -14,6 +12,9 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/mascot.dart';
 import '../../services/voice/voice_agent_service.dart';
 import '../calls/transcript_view.dart';
+import 'voice_test_composer.dart';
+import 'voice_test_status.dart';
+import 'voice_test_widgets.dart';
 
 /// "Talk to {employee}" – owner tests their AI employee in-app.
 ///
@@ -147,45 +148,38 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
     _voice.sendText(text);
   }
 
-  MascotState get _mascot => switch (_state) {
-    VoiceConnectionState.speaking => MascotState.speaking,
-    VoiceConnectionState.listening => MascotState.listening,
-    VoiceConnectionState.thinking => MascotState.thinking,
-    VoiceConnectionState.connecting => MascotState.calling,
-    VoiceConnectionState.error => MascotState.error,
-    VoiceConnectionState.disconnected => MascotState.success,
-    VoiceConnectionState.idle => MascotState.welcome,
-  };
+  void _toggleMute() {
+    HapticFeedback.selectionClick();
+    setState(() => _muted = !_muted);
+    _voice.setMuted(_muted);
+  }
 
-  (String, Color) get _status => switch (_state) {
-    VoiceConnectionState.connecting => ('Connecting…', AppColors.warm),
-    VoiceConnectionState.listening => (
-      _muted ? 'Muted' : 'Listening',
-      AppColors.success,
-    ),
-    VoiceConnectionState.speaking => ('Speaking', AppColors.brand),
-    VoiceConnectionState.thinking => ('Thinking…', AppColors.warm),
-    VoiceConnectionState.disconnected => ('Disconnected', AppColors.cold),
-    VoiceConnectionState.error => ('Couldn\'t connect', AppColors.hot),
-    VoiceConnectionState.idle => ('Ready', AppColors.cold),
-  };
+  /// Leaves the screen. From onboarding this marks the agent as tested and
+  /// onboarding as complete before going home.
+  Future<void> _finish({bool requestNotifications = false}) async {
+    if (!widget.fromOnboarding) {
+      context.pop();
+      return;
+    }
+    final prefs = ref.read(localPrefsProvider);
+    await prefs.setAgentTested(true);
+    await prefs.setOnboarded(true);
+    if (requestNotifications) {
+      await ref.read(notificationServiceProvider).requestPermission();
+    }
+    if (mounted) context.go('/home');
+  }
 
-  bool get _live => const {
-    VoiceConnectionState.listening,
-    VoiceConnectionState.speaking,
-    VoiceConnectionState.thinking,
-    VoiceConnectionState.connecting,
-  }.contains(_state);
+  bool get _live => isLiveVoiceState(_state);
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
     final name = ref.watch(employeeNameProvider);
-    final (label, color) = _status;
+    final (label, color) = voiceStatusFor(_state, muted: _muted);
     final ended = _state == VoiceConnectionState.disconnected;
 
     return PopScope(
-      onPopInvokedWithResult: (_, __) => _voice.stopSession(),
+      onPopInvokedWithResult: (_, _) => _voice.stopSession(),
       child: Scaffold(
         appBar: AppBar(title: Text('Talk to $name')),
         body: SafeArea(
@@ -193,7 +187,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
             children: [
               const SizedBox(height: 4),
               Mascot(
-                state: _mascot,
+                state: mascotForVoiceState(_state),
                 size: MediaQuery.sizeOf(context).height < 700 ? 150 : 200,
               ),
               const SizedBox(height: 10),
@@ -206,7 +200,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
                 height: 44,
                 child: ValueListenableBuilder<double>(
                   valueListenable: _level,
-                  builder: (_, v, __) => _Waveform(
+                  builder: (_, v, _) => VoiceWaveform(
                     level: _live ? v : 0,
                     color: _state == VoiceConnectionState.speaking
                         ? AppColors.brand
@@ -223,52 +217,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
                     borderRadius: BorderRadius.circular(AppRadius.card),
                     boxShadow: AppShadows.card,
                   ),
-                  child: _error != null
-                      ? _ErrorPanel(
-                          message: _error!,
-                          permissionDenied: _permissionDenied,
-                          onRetry: _start,
-                          fromOnboarding: widget.fromOnboarding,
-                          onContinue: () async {
-                            if (widget.fromOnboarding) {
-                              await ref
-                                  .read(localPrefsProvider)
-                                  .setAgentTested(true);
-                              await ref
-                                  .read(localPrefsProvider)
-                                  .setOnboarded(true);
-                              if (context.mounted) context.go('/home');
-                            } else {
-                              context.pop();
-                            }
-                          },
-                        )
-                      : _lines.isEmpty
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(
-                              _state == VoiceConnectionState.connecting
-                                  ? 'Connecting to $name…'
-                                  : 'Say “Hello” to start. ${ref.watch(workflowProvider).testCallerHint}',
-                              style: t.bodyMedium,
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        )
-                      : ListView(
-                          controller: _scroll,
-                          padding: const EdgeInsets.all(14),
-                          children: [
-                            for (final l in _lines)
-                              TranscriptBubble(
-                                isAgent: l.isAgent,
-                                text: l.text,
-                                who: l.isAgent ? name : 'You',
-                                pending: !l.isFinal,
-                              ),
-                          ],
-                        ),
+                  child: _buildTranscript(context, name),
                 ),
               ),
               Padding(
@@ -279,178 +228,8 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
                   12,
                 ),
                 child: ended
-                    ? Column(
-                        children: [
-                          Text(
-                            'That\'s how $name handles your leads ✨',
-                            style: t.titleSmall,
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SecondaryButton(
-                                  label: 'Talk again',
-                                  icon: Icons.replay_rounded,
-                                  onPressed: _start,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: PrimaryButton(
-                                  label: widget.fromOnboarding
-                                      ? 'Continue'
-                                      : 'Done',
-                                  color: AppColors.success,
-                                  onPressed: () async {
-                                    if (widget.fromOnboarding) {
-                                      await ref
-                                          .read(localPrefsProvider)
-                                          .setAgentTested(true);
-                                      await ref
-                                          .read(localPrefsProvider)
-                                          .setOnboarded(true);
-                                      await ref
-                                          .read(notificationServiceProvider)
-                                          .requestPermission();
-                                      if (context.mounted) context.go('/home');
-                                    } else {
-                                      context.pop();
-                                    }
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      )
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_live) ...[
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: [
-                                  _SuggestionChip(
-                                    label: '“What do you do?”',
-                                    onTap: () =>
-                                        _sendUserInput('What do you do?'),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _SuggestionChip(
-                                    label: '“How do you handle fees?”',
-                                    onTap: () => _sendUserInput(
-                                      'How do you handle fees and pricing?',
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _SuggestionChip(
-                                    label: '“Can I book a visit?”',
-                                    onTap: () => _sendUserInput(
-                                      'Can I book an appointment or visit?',
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _SuggestionChip(
-                                    label: '“What are your hours?”',
-                                    onTap: () => _sendUserInput(
-                                      'What are your calling hours?',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _inputController,
-                                    textInputAction: TextInputAction.send,
-                                    onSubmitted: (_) => _sendUserInput(),
-                                    decoration: InputDecoration(
-                                      hintText: 'Talk or ask $name anything…',
-                                      filled: true,
-                                      fillColor: Colors.white,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 12,
-                                          ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(24),
-                                        borderSide: const BorderSide(
-                                          color: AppColors.border,
-                                        ),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(24),
-                                        borderSide: const BorderSide(
-                                          color: AppColors.border,
-                                        ),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(24),
-                                        borderSide: const BorderSide(
-                                          color: AppColors.brand,
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                IconButton.filled(
-                                  icon: const Icon(
-                                    Icons.send_rounded,
-                                    size: 20,
-                                  ),
-                                  onPressed: _sendUserInput,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _RoundControl(
-                                icon: _muted
-                                    ? Icons.mic_off_rounded
-                                    : Icons.mic_rounded,
-                                label: _muted ? 'Unmute' : 'Mute',
-                                background: _muted
-                                    ? AppColors.ink
-                                    : Colors.white,
-                                foreground: _muted
-                                    ? Colors.white
-                                    : AppColors.ink,
-                                onTap: _live
-                                    ? () {
-                                        HapticFeedback.selectionClick();
-                                        setState(() => _muted = !_muted);
-                                        _voice.setMuted(_muted);
-                                      }
-                                    : null,
-                              ),
-                              const SizedBox(width: 36),
-                              _RoundControl(
-                                icon: Icons.call_end_rounded,
-                                label: 'End',
-                                background: AppColors.hot,
-                                foreground: Colors.white,
-                                size: 76,
-                                onTap: _live
-                                    ? _end
-                                    : (_error != null
-                                          ? () => context.pop()
-                                          : null),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                    ? _buildEndedActions(context, name)
+                    : _buildLiveControls(name),
               ),
             ],
           ),
@@ -458,196 +237,113 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
       ),
     );
   }
-}
 
-class _RoundControl extends StatelessWidget {
-  const _RoundControl({
-    required this.icon,
-    required this.label,
-    required this.background,
-    required this.foreground,
-    this.onTap,
-    this.size = 64,
-  });
-  final IconData icon;
-  final String label;
-  final Color background;
-  final Color foreground;
-  final VoidCallback? onTap;
-  final double size;
-  @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: label,
-    enabled: onTap != null,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Opacity(
-          opacity: onTap == null ? 0.4 : 1,
-          child: Material(
-            color: background,
-            shape: const CircleBorder(),
-            elevation: 2,
-            shadowColor: Colors.black26,
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: onTap,
-              child: SizedBox(
-                width: size,
-                height: size,
-                child: Icon(icon, color: foreground, size: size * 0.42),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        ExcludeSemantics(
-          child: Text(label, style: Theme.of(context).textTheme.labelMedium),
-        ),
-      ],
-    ),
-  );
-}
-
-class _ErrorPanel extends StatelessWidget {
-  const _ErrorPanel({
-    required this.message,
-    required this.permissionDenied,
-    required this.onRetry,
-    this.onContinue,
-    this.fromOnboarding = false,
-  });
-  final String message;
-  final bool permissionDenied;
-  final VoidCallback onRetry;
-  final VoidCallback? onContinue;
-  final bool fromOnboarding;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message, style: t.titleSmall, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: 220,
-              child: permissionDenied
-                  ? PrimaryButton(
-                      label: 'Open settings',
-                      onPressed: openAppSettings,
-                    )
-                  : PrimaryButton(label: 'Try again', onPressed: onRetry),
-            ),
-            if (onContinue != null) ...[
-              const SizedBox(height: 10),
-              SizedBox(
-                width: 220,
-                child: SecondaryButton(
-                  label: fromOnboarding ? 'Continue to dashboard' : 'Go back',
-                  onPressed: onContinue,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Lightweight animated bars driven by audio level.
-class _Waveform extends StatefulWidget {
-  const _Waveform({required this.level, required this.color});
-  final double level;
-  final Color color;
-  @override
-  State<_Waveform> createState() => _WaveformState();
-}
-
-class _WaveformState extends State<_Waveform>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1200),
-  )..repeat();
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ExcludeSemantics(
-      child: RepaintBoundary(
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (_, __) => CustomPaint(
-            size: const Size(220, 44),
-            painter: _WavePainter(
-              phase: _c.value,
-              level: widget.level,
-              color: widget.color,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _WavePainter extends CustomPainter {
-  _WavePainter({required this.phase, required this.level, required this.color});
-  final double phase;
-  final double level;
-  final Color color;
-  @override
-  void paint(Canvas canvas, Size size) {
-    const bars = 21;
-    final w = size.width / (bars * 1.8);
-    final p = Paint()
-      ..color = color
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = w;
-    for (var i = 0; i < bars; i++) {
-      final x = (i + 0.5) * size.width / bars;
-      final center = 1 - ((i - bars / 2).abs() / (bars / 2));
-      final wave = (math.sin((phase * 2 * math.pi) + i * 0.7) + 1) / 2;
-      final h =
-          4 +
-          (size.height - 8) *
-              (0.08 + level * (0.35 + 0.65 * wave) * (0.4 + 0.6 * center));
-      canvas.drawLine(
-        Offset(x, size.height / 2 - h / 2),
-        Offset(x, size.height / 2 + h / 2),
-        p,
+  Widget _buildTranscript(BuildContext context, String name) {
+    if (_error != null) {
+      return VoiceErrorPanel(
+        message: _error!,
+        permissionDenied: _permissionDenied,
+        onRetry: _start,
+        fromOnboarding: widget.fromOnboarding,
+        onContinue: _finish,
       );
     }
+    if (_lines.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            _state == VoiceConnectionState.connecting
+                ? 'Connecting to $name…'
+                : 'Say “Hello” to start. ${ref.watch(workflowProvider).testCallerHint}',
+            style: Theme.of(context).textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    return ListView(
+      controller: _scroll,
+      padding: const EdgeInsets.all(14),
+      children: [
+        for (final l in _lines)
+          TranscriptBubble(
+            isAgent: l.isAgent,
+            text: l.text,
+            who: l.isAgent ? name : 'You',
+            pending: !l.isFinal,
+          ),
+      ],
+    );
   }
 
-  @override
-  bool shouldRepaint(_WavePainter o) =>
-      o.phase != phase || o.level != level || o.color != color;
-}
+  Widget _buildEndedActions(BuildContext context, String name) {
+    return Column(
+      children: [
+        Text(
+          'That\'s how $name handles your leads ✨',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: SecondaryButton(
+                label: 'Talk again',
+                icon: Icons.replay_rounded,
+                onPressed: _start,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: PrimaryButton(
+                label: widget.fromOnboarding ? 'Continue' : 'Done',
+                color: AppColors.success,
+                onPressed: () => _finish(requestNotifications: true),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
-class _SuggestionChip extends StatelessWidget {
-  const _SuggestionChip({required this.label, required this.onTap});
-  final String label;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      onPressed: onTap,
-      backgroundColor: Colors.white,
-      side: const BorderSide(color: AppColors.border),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+  Widget _buildLiveControls(String name) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_live) ...[
+          VoiceTestComposer(
+            controller: _inputController,
+            employeeName: name,
+            onSend: _sendUserInput,
+          ),
+          const SizedBox(height: 16),
+        ],
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            VoiceRoundControl(
+              icon: _muted ? Icons.mic_off_rounded : Icons.mic_rounded,
+              label: _muted ? 'Unmute' : 'Mute',
+              background: _muted ? AppColors.ink : Colors.white,
+              foreground: _muted ? Colors.white : AppColors.ink,
+              onTap: _live ? _toggleMute : null,
+            ),
+            const SizedBox(width: 36),
+            VoiceRoundControl(
+              icon: Icons.call_end_rounded,
+              label: 'End',
+              background: AppColors.hot,
+              foreground: Colors.white,
+              size: 76,
+              onTap: _live
+                  ? _end
+                  : (_error != null ? () => context.pop() : null),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

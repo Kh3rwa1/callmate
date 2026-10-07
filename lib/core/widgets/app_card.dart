@@ -196,7 +196,7 @@ class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
     height: 14,
     child: AnimatedBuilder(
       animation: _c,
-      builder: (_, __) => Stack(
+      builder: (_, _) => Stack(
         alignment: Alignment.center,
         children: [
           if (widget.enabled)

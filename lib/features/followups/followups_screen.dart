@@ -83,7 +83,7 @@ class FollowUpsScreen extends ConsumerWidget {
                       ),
                       sliver: SliverList.separated(
                         itemCount: pending.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (_, i) => _FollowUpCard(fu: pending[i]),
                       ),
                     ),
