@@ -2,13 +2,23 @@ import 'enums.dart';
 import 'json.dart';
 
 class CampaignOptions {
-  const CampaignOptions({this.scoreLead = true, this.generateWhatsapp = true, this.recommendCallback = true, this.notifyHot = true});
+  const CampaignOptions({
+    this.scoreLead = true,
+    this.generateWhatsapp = true,
+    this.recommendCallback = true,
+    this.notifyHot = true,
+  });
   final bool scoreLead;
   final bool generateWhatsapp;
   final bool recommendCallback;
   final bool notifyHot;
 
-  CampaignOptions copyWith({bool? scoreLead, bool? generateWhatsapp, bool? recommendCallback, bool? notifyHot}) => CampaignOptions(
+  CampaignOptions copyWith({
+    bool? scoreLead,
+    bool? generateWhatsapp,
+    bool? recommendCallback,
+    bool? notifyHot,
+  }) => CampaignOptions(
     scoreLead: scoreLead ?? this.scoreLead,
     generateWhatsapp: generateWhatsapp ?? this.generateWhatsapp,
     recommendCallback: recommendCallback ?? this.recommendCallback,
@@ -31,7 +41,14 @@ class CampaignOptions {
 }
 
 class CampaignStats {
-  const CampaignStats({this.total = 0, this.queued = 0, this.completed = 0, this.connected = 0, this.interested = 0, this.hot = 0});
+  const CampaignStats({
+    this.total = 0,
+    this.queued = 0,
+    this.completed = 0,
+    this.connected = 0,
+    this.interested = 0,
+    this.hot = 0,
+  });
   final int total;
   final int queued;
   final int completed;
@@ -51,7 +68,14 @@ class CampaignStats {
     hot: jInt(j, 'hot'),
   );
 
-  Json toJson() => {'total': total, 'queued': queued, 'completed': completed, 'connected': connected, 'interested': interested, 'hot': hot};
+  Json toJson() => {
+    'total': total,
+    'queued': queued,
+    'completed': completed,
+    'connected': connected,
+    'interested': interested,
+    'hot': hot,
+  };
 }
 
 class Campaign {
@@ -89,7 +113,12 @@ class Campaign {
 
   bool get isActive => status == CampaignStatus.running;
 
-  Campaign copyWith({CampaignStatus? status, CampaignStats? stats, DateTime? startedAt, List<String>? recentCallIds}) => Campaign(
+  Campaign copyWith({
+    CampaignStatus? status,
+    CampaignStats? stats,
+    DateTime? startedAt,
+    List<String>? recentCallIds,
+  }) => Campaign(
     id: id,
     agentId: agentId,
     purpose: purpose,

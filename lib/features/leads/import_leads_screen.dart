@@ -45,10 +45,20 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
     if (!_form.currentState!.validate()) return;
     setState(() => _busy = true);
     try {
-      await ref.read(leadRepoProvider).create(NewLeadInput(name: _name.text.trim(), phone: _phone.text, interest: _interest));
+      await ref
+          .read(leadRepoProvider)
+          .create(
+            NewLeadInput(
+              name: _name.text.trim(),
+              phone: _phone.text,
+              interest: _interest,
+            ),
+          );
       _name.clear();
       _phone.clear();
-      _snack('Lead added ✓ Your AI employee will call them in the next campaign.');
+      _snack(
+        'Lead added ✓ Your AI employee will call them in the next campaign.',
+      );
     } catch (e) {
       _snack(friendlyError(e));
     } finally {
@@ -58,10 +68,16 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
 
   Future<void> _pickCsv() async {
     try {
-      final r = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['csv', 'txt'], withData: true);
+      final r = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv', 'txt'],
+        withData: true,
+      );
       final f = r?.files.firstOrNull;
       if (f?.bytes == null) return;
-      if (f!.size > 2 * 1024 * 1024) return _snack('That file is over 2 MB. Split it and try again.');
+      if (f!.size > 2 * 1024 * 1024) {
+        return _snack('That file is over 2 MB. Split it and try again.');
+      }
       final text = utf8.decode(f.bytes!, allowMalformed: true);
       setState(() {
         _preview = CsvLeadParser.toLeads(text);
@@ -105,7 +121,12 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
           final t = Theme.of(ctx).textTheme;
           return SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 16),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.page,
+                0,
+                AppSpace.page,
+                16,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -115,7 +136,10 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                   if (r.skipped + p.skipped > 0)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
-                      child: Text('${r.skipped + p.skipped} skipped (duplicates or invalid numbers)', style: t.bodyMedium),
+                      child: Text(
+                        '${r.skipped + p.skipped} skipped (duplicates or invalid numbers)',
+                        style: t.bodyMedium,
+                      ),
                     ),
                   const SizedBox(height: 20),
                   PrimaryButton(
@@ -164,24 +188,37 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
               children: [
                 Row(
                   children: [
-                    const IconBubble(color: AppColors.brandSoft, child: Emoji('📥')),
+                    const IconBubble(
+                      color: AppColors.brandSoft,
+                      child: Emoji('📥'),
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Import from CSV', style: t.titleMedium),
-                          Text('Columns: Name, Phone, Interest (optional), Source', style: t.bodySmall),
+                          Text(
+                            'Columns: Name, Phone, Interest (optional), Source',
+                            style: t.bodySmall,
+                          ),
                         ],
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                PrimaryButton(label: 'Choose CSV file', icon: Icons.upload_file_rounded, onPressed: _busy ? null : _pickCsv),
+                PrimaryButton(
+                  label: 'Choose CSV file',
+                  icon: Icons.upload_file_rounded,
+                  onPressed: _busy ? null : _pickCsv,
+                ),
                 const SizedBox(height: 4),
                 Center(
-                  child: TextButton(onPressed: _useSample, child: const Text('Try with sample leads')),
+                  child: TextButton(
+                    onPressed: _useSample,
+                    child: const Text('Try with sample leads'),
+                  ),
                 ),
               ],
             ),
@@ -194,9 +231,16 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                 children: [
                   Row(
                     children: [
-                      Pill(label: '${p.leads.length} ready', color: AppColors.success),
+                      Pill(
+                        label: '${p.leads.length} ready',
+                        color: AppColors.success,
+                      ),
                       const SizedBox(width: 8),
-                      if (p.skipped > 0) Pill(label: '${p.skipped} skipped', color: AppColors.hot),
+                      if (p.skipped > 0)
+                        Pill(
+                          label: '${p.skipped} skipped',
+                          color: AppColors.hot,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -210,11 +254,15 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                         ],
                       ),
                     ),
-                  if (p.leads.length > 5) Text('+ ${p.leads.length - 5} more', style: t.bodySmall),
+                  if (p.leads.length > 5)
+                    Text('+ ${p.leads.length - 5} more', style: t.bodySmall),
                   for (final e in p.errors)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
-                      child: Text('⚠️ $e', style: t.bodySmall?.copyWith(color: AppColors.hot)),
+                      child: Text(
+                        '⚠️ $e',
+                        style: t.bodySmall?.copyWith(color: AppColors.hot),
+                      ),
                     ),
                   const SizedBox(height: 16),
                   PrimaryButton(
@@ -236,28 +284,47 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                   TextFormField(
                     controller: _name,
                     textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(hintText: 'Customer name', prefixIcon: Icon(Icons.person_outline_rounded)),
-                    validator: (v) => (v ?? '').trim().length < 2 ? 'Enter a name' : null,
+                    decoration: const InputDecoration(
+                      hintText: 'Customer name',
+                      prefixIcon: Icon(Icons.person_outline_rounded),
+                    ),
+                    validator: (v) =>
+                        (v ?? '').trim().length < 2 ? 'Enter a name' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _phone,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(hintText: 'Mobile number', prefixIcon: Icon(Icons.phone_outlined), prefixText: ''),
-                    validator: (v) => PhoneUtils.isValid(v) ? null : 'Enter a valid 10-digit mobile number',
+                    decoration: const InputDecoration(
+                      hintText: 'Mobile number',
+                      prefixIcon: Icon(Icons.phone_outlined),
+                      prefixText: '',
+                    ),
+                    validator: (v) => PhoneUtils.isValid(v)
+                        ? null
+                        : 'Enter a valid 10-digit mobile number',
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: _interest,
                     decoration: InputDecoration(
-                      hintText: '${ref.watch(workflowProvider).interestLabel} (optional)',
+                      hintText:
+                          '${ref.watch(workflowProvider).interestLabel} (optional)',
                       prefixIcon: const Icon(Icons.local_offer_outlined),
                     ),
-                    items: [for (final c in ref.watch(workflowProvider).interestOptions) DropdownMenuItem(value: c, child: Text(c))],
+                    items: [
+                      for (final c
+                          in ref.watch(workflowProvider).interestOptions)
+                        DropdownMenuItem(value: c, child: Text(c)),
+                    ],
                     onChanged: (v) => setState(() => _interest = v),
                   ),
                   const SizedBox(height: 16),
-                  SecondaryButton(label: 'Add lead', icon: Icons.add_rounded, onPressed: _busy ? null : _addOne),
+                  SecondaryButton(
+                    label: 'Add lead',
+                    icon: Icons.add_rounded,
+                    onPressed: _busy ? null : _addOne,
+                  ),
                 ],
               ),
             ),

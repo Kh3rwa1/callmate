@@ -2,17 +2,35 @@ import 'dart:async';
 import 'dart:typed_data';
 
 /// Vendor-neutral voice agent contract. The UI only ever sees this.
-enum VoiceConnectionState { idle, connecting, listening, speaking, thinking, disconnected, error }
+enum VoiceConnectionState {
+  idle,
+  connecting,
+  listening,
+  speaking,
+  thinking,
+  disconnected,
+  error,
+}
 
 class VoiceTranscriptEntry {
-  const VoiceTranscriptEntry({required this.id, required this.isAgent, required this.text, this.isFinal = true});
+  const VoiceTranscriptEntry({
+    required this.id,
+    required this.isAgent,
+    required this.text,
+    this.isFinal = true,
+  });
   final String id;
   final bool isAgent;
   final String text;
   final bool isFinal;
 
   VoiceTranscriptEntry copyWith({String? text, bool? isFinal}) =>
-      VoiceTranscriptEntry(id: id, isAgent: isAgent, text: text ?? this.text, isFinal: isFinal ?? this.isFinal);
+      VoiceTranscriptEntry(
+        id: id,
+        isAgent: isAgent,
+        text: text ?? this.text,
+        isFinal: isFinal ?? this.isFinal,
+      );
 }
 
 class VoiceAgentException implements Exception {
@@ -25,7 +43,9 @@ class VoiceAgentException implements Exception {
 
 abstract class VoiceAgentService {
   /// Starts a test conversation with the owner's AI employee.
-  Future<void> startTestSession({Map<String, dynamic> agentVariables = const {}});
+  Future<void> startTestSession({
+    Map<String, dynamic> agentVariables = const {},
+  });
 
   /// Ends the session and releases mic/audio/socket. Safe to call repeatedly.
   Future<void> stopSession();

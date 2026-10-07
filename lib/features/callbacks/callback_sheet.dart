@@ -11,12 +11,18 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 
 /// Quick callback scheduler with smart presets (AI suggestion first).
-Future<Callback?> showCallbackSheet(BuildContext context, WidgetRef ref, {required Lead lead, DateTime? suggested}) {
+Future<Callback?> showCallbackSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  required Lead lead,
+  DateTime? suggested,
+}) {
   return showModalBottomSheet<Callback>(
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
-    builder: (_) => _CallbackSheet(lead: lead, suggested: suggested ?? lead.callbackAt),
+    builder: (_) =>
+        _CallbackSheet(lead: lead, suggested: suggested ?? lead.callbackAt),
   );
 }
 
@@ -39,7 +45,8 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
     final n = DateTime.now();
     final tomorrow = DateTime(n.year, n.month, n.day + 1);
     _presets = [
-      if (widget.suggested != null && widget.suggested!.isAfter(n)) ('Suggested by ${ref.read(employeeNameProvider)}', widget.suggested!),
+      if (widget.suggested != null && widget.suggested!.isAfter(n))
+        ('Suggested by ${ref.read(employeeNameProvider)}', widget.suggested!),
       if (n.hour < 17) ('Today, 6 PM', DateTime(n.year, n.month, n.day, 18)),
       ('Tomorrow, 11 AM', tomorrow.add(const Duration(hours: 11))),
       ('Tomorrow, 6 PM', tomorrow.add(const Duration(hours: 18))),
@@ -55,7 +62,10 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
       lastDate: DateTime.now().add(const Duration(days: 60)),
     );
     if (d == null || !mounted) return;
-    final tm = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_at));
+    final tm = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_at),
+    );
     if (tm == null) return;
     setState(() => _at = DateTime(d.year, d.month, d.day, tm.hour, tm.minute));
   }
@@ -63,15 +73,23 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
   Future<void> _save() async {
     setState(() => _busy = true);
     try {
-      final cb = await ref.read(callbackRepoProvider).schedule(leadId: widget.lead.id, at: _at);
+      final cb = await ref
+          .read(callbackRepoProvider)
+          .schedule(leadId: widget.lead.id, at: _at);
       HapticFeedback.mediumImpact();
       if (!mounted) return;
       Navigator.pop(context, cb);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Callback set for ${Fmt.friendlyFuture(_at)} 📅')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Callback set for ${Fmt.friendlyFuture(_at)} 📅'),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
   }
 
@@ -105,13 +123,20 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
               ),
             _Option(
               label: 'Pick date & time',
-              sub: _presets.any((p) => p.$2 == _at) ? 'Choose any slot' : Fmt.friendlyFuture(_at),
+              sub: _presets.any((p) => p.$2 == _at)
+                  ? 'Choose any slot'
+                  : Fmt.friendlyFuture(_at),
               selected: !_presets.any((p) => p.$2 == _at),
               onTap: _custom,
               icon: Icons.edit_calendar_rounded,
             ),
             const SizedBox(height: 18),
-            PrimaryButton(label: 'Schedule Callback', icon: Icons.event_available_rounded, loading: _busy, onPressed: _save),
+            PrimaryButton(
+              label: 'Schedule Callback',
+              icon: Icons.event_available_rounded,
+              loading: _busy,
+              onPressed: _save,
+            ),
           ],
         ),
       ),
@@ -120,7 +145,14 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
 }
 
 class _Option extends StatelessWidget {
-  const _Option({required this.label, required this.sub, required this.selected, required this.onTap, this.highlight = false, this.icon});
+  const _Option({
+    required this.label,
+    required this.sub,
+    required this.selected,
+    required this.onTap,
+    this.highlight = false,
+    this.icon,
+  });
   final String label;
   final String sub;
   final bool selected;
@@ -137,12 +169,18 @@ class _Option extends StatelessWidget {
         onTap: onTap,
         shadow: false,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: Border.all(color: selected ? AppColors.brand : AppColors.border, width: selected ? 2 : 1.2),
+        border: Border.all(
+          color: selected ? AppColors.brand : AppColors.border,
+          width: selected ? 2 : 1.2,
+        ),
         color: selected ? AppColors.brandSoft : Colors.white,
         child: Row(
           children: [
             Icon(
-              icon ?? (highlight ? Icons.auto_awesome_rounded : Icons.schedule_rounded),
+              icon ??
+                  (highlight
+                      ? Icons.auto_awesome_rounded
+                      : Icons.schedule_rounded),
               color: selected ? AppColors.brand : AppColors.inkFaint,
             ),
             const SizedBox(width: 12),
@@ -155,7 +193,8 @@ class _Option extends StatelessWidget {
                 ],
               ),
             ),
-            if (selected) const Icon(Icons.check_circle_rounded, color: AppColors.brand),
+            if (selected)
+              const Icon(Icons.check_circle_rounded, color: AppColors.brand),
           ],
         ),
       ),

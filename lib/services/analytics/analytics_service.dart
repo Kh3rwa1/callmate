@@ -9,7 +9,14 @@ abstract class AnalyticsService {
 }
 
 class DebugAnalyticsService implements AnalyticsService {
-  static const _blocked = {'name', 'phone', 'message', 'transcript', 'summary', 'email'};
+  static const _blocked = {
+    'name',
+    'phone',
+    'message',
+    'transcript',
+    'summary',
+    'email',
+  };
 
   @override
   void track(String event, [Map<String, Object> props = const {}]) {

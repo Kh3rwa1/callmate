@@ -19,5 +19,10 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   final prefs = await LocalPrefs.create();
 
-  runApp(ProviderScope(overrides: [localPrefsProvider.overrideWithValue(prefs)], child: const CallPilotApp()));
+  runApp(
+    ProviderScope(
+      overrides: [localPrefsProvider.overrideWithValue(prefs)],
+      child: const CallPilotApp(),
+    ),
+  );
 }

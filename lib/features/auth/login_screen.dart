@@ -64,11 +64,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _errorMessage = null;
     final phone = PhoneUtils.normalize(_phoneController.text.trim());
     if (phone == null) {
-      setState(() => _errorMessage = 'Please enter a valid 10-digit mobile number.');
+      setState(
+        () => _errorMessage = 'Please enter a valid 10-digit mobile number.',
+      );
       return;
     }
     if (_isRegister && _businessController.text.trim().isEmpty) {
-      setState(() => _errorMessage = 'Please enter your business or company name.');
+      setState(
+        () => _errorMessage = 'Please enter your business or company name.',
+      );
       return;
     }
 
@@ -100,7 +104,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _verifyOtp() async {
     final otp = _otpController.text.trim();
     if (otp.length != 6) {
-      setState(() => _errorMessage = 'Please enter the 6-digit verification code.');
+      setState(
+        () => _errorMessage = 'Please enter the 6-digit verification code.',
+      );
       return;
     }
 
@@ -117,11 +123,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       if (_isRegister) {
-        await ref.read(sessionProvider.notifier).register(
-          phone: phone,
-          businessName: _businessController.text.trim(),
-          otp: otp,
-        );
+        await ref
+            .read(sessionProvider.notifier)
+            .register(
+              phone: phone,
+              businessName: _businessController.text.trim(),
+              otp: otp,
+            );
       } else {
         await ref.read(sessionProvider.notifier).login(phone: phone, otp: otp);
       }
@@ -160,7 +168,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.page, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.page,
+              vertical: 12,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
               child: Form(
@@ -179,7 +190,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             const SizedBox(height: 4),
                             Text(
                               Brand.tagline,
-                              style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
+                              style: t.bodyMedium?.copyWith(
+                                color: AppColors.inkSoft,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                           ],
@@ -194,8 +207,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           children: [
                             Text(
                               _otpSent
-                                  ? (_isRegister ? 'Verify Registration' : 'Verify OTP')
-                                  : (_isRegister ? 'Create Your Account' : 'Sign In to Your Workspace'),
+                                  ? (_isRegister
+                                        ? 'Verify Registration'
+                                        : 'Verify OTP')
+                                  : (_isRegister
+                                        ? 'Create Your Account'
+                                        : 'Sign In to Your Workspace'),
                               style: t.titleLarge,
                             ),
                             const SizedBox(height: 6),
@@ -203,8 +220,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               _otpSent
                                   ? 'Enter the 6-digit code sent to ${PhoneUtils.display(_phoneController.text)}'
                                   : (_isRegister
-                                      ? 'Start hiring AI employees for your business'
-                                      : 'Enter your phone number to receive a one-time login code'),
+                                        ? 'Start hiring AI employees for your business'
+                                        : 'Enter your phone number to receive a one-time login code'),
                               style: t.bodySmall,
                             ),
                             const SizedBox(height: 20),
@@ -218,12 +235,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.error_outline_rounded, color: AppColors.hot, size: 20),
+                                    const Icon(
+                                      Icons.error_outline_rounded,
+                                      color: AppColors.hot,
+                                      size: 20,
+                                    ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
                                         _errorMessage!,
-                                        style: t.bodySmall?.copyWith(color: AppColors.hot, fontWeight: FontWeight.w600),
+                                        style: t.bodySmall?.copyWith(
+                                          color: AppColors.hot,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -237,10 +261,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 TextField(
                                   controller: _businessController,
                                   textCapitalization: TextCapitalization.words,
-                                  autofillHints: const [AutofillHints.organizationName],
+                                  autofillHints: const [
+                                    AutofillHints.organizationName,
+                                  ],
                                   decoration: const InputDecoration(
                                     labelText: 'Business name',
-                                    hintText: 'e.g. Apex Coaching / Sharma Realty',
+                                    hintText:
+                                        'e.g. Apex Coaching / Sharma Realty',
                                     prefixIcon: Icon(Icons.business_outlined),
                                   ),
                                 ),
@@ -249,8 +276,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               TextField(
                                 controller: _phoneController,
                                 keyboardType: TextInputType.phone,
-                                autofillHints: const [AutofillHints.telephoneNumber],
-                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+ -]'))],
+                                autofillHints: const [
+                                  AutofillHints.telephoneNumber,
+                                ],
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(
+                                    RegExp(r'[0-9+ -]'),
+                                  ),
+                                ],
                                 decoration: const InputDecoration(
                                   labelText: 'Mobile number',
                                   hintText: '98300 12345',
@@ -260,7 +293,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                               const SizedBox(height: 20),
                               PrimaryButton(
-                                label: _isRegister ? 'Get Verification Code' : 'Send OTP',
+                                label: _isRegister
+                                    ? 'Get Verification Code'
+                                    : 'Send OTP',
                                 loading: _submitting,
                                 color: AppColors.brand,
                                 onPressed: _sendOtp,
@@ -280,7 +315,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     _isRegister
                                         ? 'Already have an account? Sign in'
                                         : 'New to ${Brand.appName}? Register your business',
-                                    style: t.bodySmall?.copyWith(color: AppColors.brand, fontWeight: FontWeight.w700),
+                                    style: t.bodySmall?.copyWith(
+                                      color: AppColors.brand,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -289,13 +327,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 controller: _otpController,
                                 keyboardType: TextInputType.number,
                                 autofocus: true,
-                                autofillHints: const [AutofillHints.oneTimeCode],
+                                autofillHints: const [
+                                  AutofillHints.oneTimeCode,
+                                ],
                                 inputFormatters: [
                                   FilteringTextInputFormatter.digitsOnly,
                                   LengthLimitingTextInputFormatter(6),
                                 ],
                                 textAlign: TextAlign.center,
-                                style: t.headlineSmall?.copyWith(letterSpacing: 8),
+                                style: t.headlineSmall?.copyWith(
+                                  letterSpacing: 8,
+                                ),
                                 decoration: const InputDecoration(
                                   labelText: '6-digit OTP',
                                   hintText: '••••••',
@@ -305,7 +347,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                               const SizedBox(height: 20),
                               PrimaryButton(
-                                label: _isRegister ? 'Verify & Create Account' : 'Verify & Enter',
+                                label: _isRegister
+                                    ? 'Verify & Create Account'
+                                    : 'Verify & Enter',
                                 loading: _submitting,
                                 color: AppColors.success,
                                 onPressed: _verifyOtp,
@@ -329,14 +373,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     child: const Text('Change number'),
                                   ),
                                   TextButton(
-                                    onPressed: (_resendCountdown > 0 || _submitting)
+                                    onPressed:
+                                        (_resendCountdown > 0 || _submitting)
                                         ? null
                                         : () {
                                             _sendOtp();
                                             _startCountdown();
                                           },
                                     child: Text(
-                                      _resendCountdown > 0 ? 'Resend in ${_resendCountdown}s' : 'Resend code',
+                                      _resendCountdown > 0
+                                          ? 'Resend in ${_resendCountdown}s'
+                                          : 'Resend code',
                                     ),
                                   ),
                                 ],
@@ -346,22 +393,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
 
-                    const SizedBox(height: 20),
-                    Center(
-                      child: Text(
-                        'By continuing, you agree to our Terms of Service & Privacy Policy.',
-                        style: t.bodySmall?.copyWith(fontSize: 11, color: AppColors.inkSoft),
-                        textAlign: TextAlign.center,
+                      const SizedBox(height: 20),
+                      Center(
+                        child: Text(
+                          'By continuing, you agree to our Terms of Service & Privacy Policy.',
+                          style: t.bodySmall?.copyWith(
+                            fontSize: 11,
+                            color: AppColors.inkSoft,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

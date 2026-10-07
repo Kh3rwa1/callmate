@@ -27,7 +27,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       if (!isMock && !hasSession) {
         context.go('/login');
       } else {
-        context.go(ref.read(localPrefsProvider).onboarded ? '/home' : '/onboarding');
+        context.go(
+          ref.read(localPrefsProvider).onboarded ? '/home' : '/onboarding',
+        );
       }
     });
   }
@@ -44,7 +46,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           curve: Curves.easeOutCubic,
           builder: (_, v, child) => Opacity(
             opacity: v,
-            child: Transform.translate(offset: Offset(0, 12 * (1 - v)), child: child),
+            child: Transform.translate(
+              offset: Offset(0, 12 * (1 - v)),
+              child: child,
+            ),
           ),
           child: Semantics(
             label: '${Brand.appName}. ${Brand.tagline}',
@@ -54,11 +59,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 children: [
                   const BrandMark(size: 96),
                   const SizedBox(height: 22),
-                  Text(Brand.appName, style: t.displaySmall?.copyWith(fontSize: 38, letterSpacing: -1)),
+                  Text(
+                    Brand.appName,
+                    style: t.displaySmall?.copyWith(
+                      fontSize: 38,
+                      letterSpacing: -1,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     Brand.tagline,
-                    style: t.titleMedium?.copyWith(color: AppColors.inkSoft, fontWeight: FontWeight.w600),
+                    style: t.titleMedium?.copyWith(
+                      color: AppColors.inkSoft,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),

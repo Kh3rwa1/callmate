@@ -44,7 +44,10 @@ class WelcomeScreen extends StatelessWidget {
                     const SizedBox(height: 22),
                     Text('Welcome to ${Brand.appName}', style: t.headlineSmall),
                     const SizedBox(height: 4),
-                    Text('${Brand.tagline}.', style: t.bodyLarge?.copyWith(color: AppColors.inkSoft)),
+                    Text(
+                      '${Brand.tagline}.',
+                      style: t.bodyLarge?.copyWith(color: AppColors.inkSoft),
+                    ),
                     SizedBox(height: c.maxHeight * 0.02),
                     Center(
                       child: TweenAnimationBuilder<double>(
@@ -55,24 +58,41 @@ class WelcomeScreen extends StatelessWidget {
                           scale: 0.85 + 0.15 * v,
                           child: Opacity(opacity: v.clamp(0, 1), child: child),
                         ),
-                        child: Mascot(state: MascotState.welcome, size: (c.maxHeight * 0.3).clamp(180, 260)),
+                        child: Mascot(
+                          state: MascotState.welcome,
+                          size: (c.maxHeight * 0.3).clamp(180, 260),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 18),
-                    Text('HIRE YOUR AI EMPLOYEE', style: t.labelSmall?.copyWith(color: AppColors.brand, fontSize: 13)),
+                    Text(
+                      'HIRE YOUR AI EMPLOYEE',
+                      style: t.labelSmall?.copyWith(
+                        color: AppColors.brand,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    Text('Call leads, qualify customers, and follow up for your business.', style: t.headlineSmall?.copyWith(height: 1.25)),
+                    Text(
+                      'Call leads, qualify customers, and follow up for your business.',
+                      style: t.headlineSmall?.copyWith(height: 1.25),
+                    ),
                     const SizedBox(height: 20),
                     const _LoopStrip(),
                     const SizedBox(height: 26),
                     PrimaryButton(
                       label: 'Create My AI Employee',
                       trailingArrow: true,
-                      onPressed: () => context.push('/onboarding/business-type'),
+                      onPressed: () =>
+                          context.push('/onboarding/business-type'),
                     ),
                     const SizedBox(height: 10),
                     Center(
-                      child: Text(Brand.description, style: t.bodySmall, textAlign: TextAlign.center),
+                      child: Text(
+                        Brand.description,
+                        style: t.bodySmall,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ],
                 ),
@@ -90,7 +110,13 @@ class _LoopStrip extends StatelessWidget {
   const _LoopStrip();
   @override
   Widget build(BuildContext context) {
-    const steps = [('📞', 'Calls'), ('🧠', 'Analyses'), ('🔥', 'Scores'), ('💬', 'Drafts'), ('🤝', 'You close')];
+    const steps = [
+      ('📞', 'Calls'),
+      ('🧠', 'Analyses'),
+      ('🔥', 'Scores'),
+      ('💬', 'Drafts'),
+      ('🤝', 'You close'),
+    ];
     return Semantics(
       label: 'Calls, analyses, scores, drafts a follow-up, you close',
       child: ExcludeSemantics(
@@ -104,17 +130,26 @@ class _LoopStrip extends StatelessWidget {
                       width: 44,
                       height: 44,
                       alignment: Alignment.center,
-                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: AppShadows.card),
-                      child: Text(steps[i].$1, style: const TextStyle(fontSize: 19)),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: AppShadows.card,
+                      ),
+                      child: Text(
+                        steps[i].$1,
+                        style: const TextStyle(fontSize: 19),
+                      ),
                     ),
                     const SizedBox(height: 6),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
                         steps[i].$2,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700, color: AppColors.inkSoft, fontSize: 11.5),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.inkSoft,
+                          fontSize: 11.5,
+                        ),
                       ),
                     ),
                   ],
@@ -123,7 +158,11 @@ class _LoopStrip extends StatelessWidget {
               if (i < steps.length - 1)
                 const Padding(
                   padding: EdgeInsets.only(bottom: 20),
-                  child: Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.inkFaint),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 16,
+                    color: AppColors.inkFaint,
+                  ),
                 ),
             ],
           ],
@@ -143,8 +182,14 @@ class BusinessTypeScreen extends ConsumerWidget {
     return OnboardingScaffold(
       step: 1,
       title: 'What type of business do you run?',
-      subtitle: 'We\'ll set up your AI employee with the right defaults. You can change anything later.',
-      cta: PrimaryButton(label: 'Continue', onPressed: draft.category == null ? null : () => context.push('/onboarding/skills')),
+      subtitle:
+          'We\'ll set up your AI employee with the right defaults. You can change anything later.',
+      cta: PrimaryButton(
+        label: 'Continue',
+        onPressed: draft.category == null
+            ? null
+            : () => context.push('/onboarding/skills'),
+      ),
       children: [
         GridView.count(
           crossAxisCount: 2,
@@ -160,7 +205,9 @@ class BusinessTypeScreen extends ConsumerWidget {
                 title: tpl.category.label,
                 subtitle: tpl.agent.role,
                 selected: draft.category == tpl.category,
-                onTap: () => ref.read(onboardingProvider.notifier).selectCategory(tpl.category),
+                onTap: () => ref
+                    .read(onboardingProvider.notifier)
+                    .selectCategory(tpl.category),
               ),
           ],
         ),
@@ -197,7 +244,10 @@ class _ChoiceCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AppColors.brandSoft : Colors.white,
           borderRadius: BorderRadius.circular(AppRadius.cardSm),
-          border: Border.all(color: selected ? AppColors.brand : AppColors.border, width: selected ? 2 : 1.5),
+          border: Border.all(
+            color: selected ? AppColors.brand : AppColors.border,
+            width: selected ? 2 : 1.5,
+          ),
         ),
         child: Material(
           type: MaterialType.transparency,
@@ -217,15 +267,32 @@ class _ChoiceCard extends StatelessWidget {
                       Emoji(emoji, size: 26),
                       const Spacer(),
                       if (selected)
-                        Icon(multi ? Icons.check_box_rounded : Icons.check_circle_rounded, color: AppColors.brand)
+                        Icon(
+                          multi
+                              ? Icons.check_box_rounded
+                              : Icons.check_circle_rounded,
+                          color: AppColors.brand,
+                        )
                       else if (multi)
-                        const Icon(Icons.check_box_outline_blank_rounded, color: AppColors.border),
+                        const Icon(
+                          Icons.check_box_outline_blank_rounded,
+                          color: AppColors.border,
+                        ),
                     ],
                   ),
                   const Spacer(),
-                  FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(title, style: t.titleSmall, maxLines: 1)),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(title, style: t.titleSmall, maxLines: 1),
+                  ),
                   if (subtitle != null)
-                    Text(subtitle!, style: t.bodySmall?.copyWith(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(
+                      subtitle!,
+                      style: t.bodySmall?.copyWith(fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                 ],
               ),
             ),
@@ -249,7 +316,12 @@ class EmployeeSkillsScreen extends ConsumerWidget {
       step: 2,
       title: 'What should your AI employee do?',
       subtitle: 'Pick everything that applies.',
-      cta: PrimaryButton(label: 'Continue', onPressed: d.skills.isEmpty ? null : () => context.push('/onboarding/details')),
+      cta: PrimaryButton(
+        label: 'Continue',
+        onPressed: d.skills.isEmpty
+            ? null
+            : () => context.push('/onboarding/details'),
+      ),
       children: [
         GridView.count(
           crossAxisCount: 2,
@@ -265,7 +337,8 @@ class EmployeeSkillsScreen extends ConsumerWidget {
                 title: s.label,
                 multi: true,
                 selected: d.skills.contains(s),
-                onTap: () => ref.read(onboardingProvider.notifier).toggleSkill(s),
+                onTap: () =>
+                    ref.read(onboardingProvider.notifier).toggleSkill(s),
               ),
           ],
         ),
@@ -281,7 +354,12 @@ class EmployeeSkillsScreen extends ConsumerWidget {
               children: [
                 RoleBadge(role: suggested.roleKind, size: 36),
                 const SizedBox(width: 12),
-                Expanded(child: Text('We\'ll set up a ${suggested.role} for you.', style: t.titleSmall)),
+                Expanded(
+                  child: Text(
+                    'We\'ll set up a ${suggested.role} for you.',
+                    style: t.titleSmall,
+                  ),
+                ),
               ],
             ),
           ),
@@ -295,12 +373,17 @@ class EmployeeSkillsScreen extends ConsumerWidget {
 class BusinessDetailsScreen extends ConsumerStatefulWidget {
   const BusinessDetailsScreen({super.key});
   @override
-  ConsumerState<BusinessDetailsScreen> createState() => _BusinessDetailsScreenState();
+  ConsumerState<BusinessDetailsScreen> createState() =>
+      _BusinessDetailsScreenState();
 }
 
 class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
-  late final _name = TextEditingController(text: ref.read(onboardingProvider).businessName);
-  late final _address = TextEditingController(text: ref.read(onboardingProvider).address);
+  late final _name = TextEditingController(
+    text: ref.read(onboardingProvider).businessName,
+  );
+  late final _address = TextEditingController(
+    text: ref.read(onboardingProvider).address,
+  );
   final _form = GlobalKey<FormState>();
 
   @override
@@ -312,7 +395,14 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
 
   void _next() {
     if (!_form.currentState!.validate()) return;
-    ref.read(onboardingProvider.notifier).update((d) => d.copyWith(businessName: _name.text.trim(), address: _address.text.trim()));
+    ref
+        .read(onboardingProvider.notifier)
+        .update(
+          (d) => d.copyWith(
+            businessName: _name.text.trim(),
+            address: _address.text.trim(),
+          ),
+        );
     context.push('/onboarding/offer');
   }
 
@@ -321,7 +411,8 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
     return OnboardingScaffold(
       step: 3,
       title: 'What\'s your business called?',
-      subtitle: 'Your AI employee will introduce itself on behalf of this name.',
+      subtitle:
+          'Your AI employee will introduce itself on behalf of this name.',
       cta: PrimaryButton(label: 'Continue', onPressed: _next),
       children: [
         Form(
@@ -335,8 +426,12 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
                 autofocus: true,
                 textCapitalization: TextCapitalization.words,
                 style: Theme.of(context).textTheme.titleMedium,
-                decoration: const InputDecoration(hintText: 'e.g. Sharma Realty, Smile Dental, ABC Coaching'),
-                validator: (v) => (v ?? '').trim().length < 2 ? 'Please enter your business name' : null,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Sharma Realty, Smile Dental, ABC Coaching',
+                ),
+                validator: (v) => (v ?? '').trim().length < 2
+                    ? 'Please enter your business name'
+                    : null,
                 textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 20),
@@ -344,7 +439,9 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
               TextFormField(
                 controller: _address,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(hintText: 'e.g. 12 Park Street, Kolkata'),
+                decoration: const InputDecoration(
+                  hintText: 'e.g. 12 Park Street, Kolkata',
+                ),
                 onFieldSubmitted: (_) => _next(),
               ),
             ],
@@ -368,7 +465,9 @@ class _OfferDetailsScreenState extends ConsumerState<OfferDetailsScreen> {
   late final _offer = TextEditingController(text: d.offerings);
   late final _fees = TextEditingController(text: d.pricing);
   late final _hours = TextEditingController(text: d.hours);
-  late final _loc = TextEditingController(text: d.location.isEmpty ? d.address : d.location);
+  late final _loc = TextEditingController(
+    text: d.location.isEmpty ? d.address : d.location,
+  );
   late final _wa = TextEditingController(text: d.whatsapp);
   late final _cn = TextEditingController(text: d.humanNumber);
 
@@ -426,10 +525,14 @@ class _OfferDetailsScreenState extends ConsumerState<OfferDetailsScreen> {
             maxLines: lines,
             minLines: 1,
             validator: validator,
-            textInputAction: lines > 1 ? TextInputAction.newline : TextInputAction.next,
+            textInputAction: lines > 1
+                ? TextInputAction.newline
+                : TextInputAction.next,
             decoration: InputDecoration(
               hintText: hint,
-              prefixIcon: icon == null ? null : Icon(icon, color: AppColors.inkFaint),
+              prefixIcon: icon == null
+                  ? null
+                  : Icon(icon, color: AppColors.inkFaint),
             ),
           ),
         ],
@@ -439,7 +542,8 @@ class _OfferDetailsScreenState extends ConsumerState<OfferDetailsScreen> {
     return OnboardingScaffold(
       step: 4,
       title: 'What does your business offer?',
-      subtitle: 'Your AI employee uses this to answer customer questions on calls.',
+      subtitle:
+          'Your AI employee uses this to answer customer questions on calls.',
       cta: PrimaryButton(label: 'Continue', onPressed: _next),
       children: [
         Form(
@@ -452,11 +556,31 @@ class _OfferDetailsScreenState extends ConsumerState<OfferDetailsScreen> {
                 wf.offeringsHint,
                 lines: 2,
                 icon: Icons.storefront_outlined,
-                validator: (v) => (v ?? '').trim().isEmpty ? 'Add at least one ${wf.interestLabel.toLowerCase()}' : null,
+                validator: (v) => (v ?? '').trim().isEmpty
+                    ? 'Add at least one ${wf.interestLabel.toLowerCase()}'
+                    : null,
               ),
-              field('Pricing', _fees, 'e.g. Starting from ₹999 · Packages available', icon: Icons.currency_rupee_rounded, optional: true),
-              field('Opening hours', _hours, 'e.g. Mon–Sat, 9 AM – 8 PM', icon: Icons.schedule_rounded, optional: true),
-              field('Location', _loc, 'e.g. Park Street, Kolkata', icon: Icons.place_outlined, optional: true),
+              field(
+                'Pricing',
+                _fees,
+                'e.g. Starting from ₹999 · Packages available',
+                icon: Icons.currency_rupee_rounded,
+                optional: true,
+              ),
+              field(
+                'Opening hours',
+                _hours,
+                'e.g. Mon–Sat, 9 AM – 8 PM',
+                icon: Icons.schedule_rounded,
+                optional: true,
+              ),
+              field(
+                'Location',
+                _loc,
+                'e.g. Park Street, Kolkata',
+                icon: Icons.place_outlined,
+                optional: true,
+              ),
               field(
                 'WhatsApp number',
                 _wa,
@@ -488,15 +612,30 @@ class TeachAiOnboardingScreen extends ConsumerWidget {
 
   Future<void> _pickPdf(BuildContext context, WidgetRef ref) async {
     try {
-      final r = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['pdf'], withData: true);
+      final r = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        withData: true,
+      );
       final f = r?.files.firstOrNull;
       if (f == null) return;
       ref
           .read(onboardingProvider.notifier)
-          .addKnowledge(KnowledgeInput(type: KnowledgeType.pdf, title: f.name.replaceAll('.pdf', ''), fileName: f.name, bytes: f.bytes));
+          .addKnowledge(
+            KnowledgeInput(
+              type: KnowledgeType.pdf,
+              title: f.name.replaceAll('.pdf', ''),
+              fileName: f.name,
+              bytes: f.bytes,
+            ),
+          );
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Couldn\'t open that file. Try another PDF.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Couldn\'t open that file. Try another PDF.'),
+          ),
+        );
       }
     }
   }
@@ -516,8 +655,12 @@ class TeachAiOnboardingScreen extends ConsumerWidget {
     return OnboardingScaffold(
       step: 5,
       title: 'Teach Your AI',
-      subtitle: 'The more your AI employee knows, the better it answers. You can always add more later.',
-      cta: PrimaryButton(label: d.knowledge.isEmpty ? 'Skip for now' : 'Continue', onPressed: () => context.push('/onboarding/create')),
+      subtitle:
+          'The more your AI employee knows, the better it answers. You can always add more later.',
+      cta: PrimaryButton(
+        label: d.knowledge.isEmpty ? 'Skip for now' : 'Continue',
+        onPressed: () => context.push('/onboarding/create'),
+      ),
       children: [
         _TeachOption(
           emoji: '📄',
@@ -525,8 +668,18 @@ class TeachAiOnboardingScreen extends ConsumerWidget {
           subtitle: 'Services, pricing, brochure',
           onTap: () => add(KnowledgeType.pdf),
         ),
-        _TeachOption(emoji: '🌐', title: 'Add website', subtitle: 'We\'ll read your public pages', onTap: () => add(KnowledgeType.website)),
-        _TeachOption(emoji: '❓', title: 'Add FAQ', subtitle: 'Common questions customers ask', onTap: () => add(KnowledgeType.faq)),
+        _TeachOption(
+          emoji: '🌐',
+          title: 'Add website',
+          subtitle: 'We\'ll read your public pages',
+          onTap: () => add(KnowledgeType.website),
+        ),
+        _TeachOption(
+          emoji: '❓',
+          title: 'Add FAQ',
+          subtitle: 'Common questions customers ask',
+          onTap: () => add(KnowledgeType.faq),
+        ),
         _TeachOption(
           emoji: '📍',
           title: 'Add business information',
@@ -546,7 +699,13 @@ class TeachAiOnboardingScreen extends ConsumerWidget {
           trailing: const Pill(label: 'Later'),
           onTap: () => ScaffoldMessenger.of(context)
             ..clearSnackBars()
-            ..showSnackBar(const SnackBar(content: Text('You\'ll be able to import leads right after setup.'))),
+            ..showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'You\'ll be able to import leads right after setup.',
+                ),
+              ),
+            ),
         ),
         if (d.knowledge.isNotEmpty) ...[
           const SectionLabel('Added'),
@@ -556,15 +715,29 @@ class TeachAiOnboardingScreen extends ConsumerWidget {
               child: AppCard(
                 shadow: false,
                 border: Border.all(color: AppColors.border),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
-                    const Icon(Icons.check_circle_rounded, color: AppColors.success),
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.success,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(k.title, style: t.titleSmall, overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        k.title,
+                        style: t.titleSmall,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    IconButton(tooltip: 'Remove', onPressed: () => n.removeKnowledge(k), icon: const Icon(Icons.close_rounded)),
+                    IconButton(
+                      tooltip: 'Remove',
+                      onPressed: () => n.removeKnowledge(k),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
                   ],
                 ),
               ),
@@ -576,7 +749,13 @@ class TeachAiOnboardingScreen extends ConsumerWidget {
 }
 
 class _TeachOption extends StatelessWidget {
-  const _TeachOption({required this.emoji, required this.title, required this.subtitle, required this.onTap, this.trailing});
+  const _TeachOption({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.trailing,
+  });
   final String emoji;
   final String title;
   final String subtitle;
@@ -626,15 +805,23 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
   Object? _error;
   late final TextEditingController _name;
   late final TextEditingController _role;
-  static const _learning = ['Reading your business details…', 'Learning what you offer…', 'Practising customer calls…'];
+  static const _learning = [
+    'Reading your business details…',
+    'Learning what you offer…',
+    'Practising customer calls…',
+  ];
   int _line = 0;
 
   @override
   void initState() {
     super.initState();
     final a = ref.read(onboardingProvider).suggestedAgent;
-    _name = TextEditingController(text: ref.read(onboardingProvider).employeeName ?? a.defaultName);
-    _role = TextEditingController(text: ref.read(onboardingProvider).employeeRole ?? a.role);
+    _name = TextEditingController(
+      text: ref.read(onboardingProvider).employeeName ?? a.defaultName,
+    );
+    _role = TextEditingController(
+      text: ref.read(onboardingProvider).employeeRole ?? a.role,
+    );
     _run();
   }
 
@@ -671,12 +858,23 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
   Future<void> _activate() async {
     if (_name.text.trim().isEmpty) return;
     setState(() => _activating = true);
-    ref.read(onboardingProvider.notifier).update((d) => d.copyWith(employeeName: _name.text.trim(), employeeRole: _role.text.trim()));
+    ref
+        .read(onboardingProvider.notifier)
+        .update(
+          (d) => d.copyWith(
+            employeeName: _name.text.trim(),
+            employeeRole: _role.text.trim(),
+          ),
+        );
     try {
       await ref.read(onboardingProvider.notifier).activateEmployee();
       if (mounted) context.push('/onboarding/test');
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Something went wrong. Try again.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Something went wrong. Try again.')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _activating = false);
     }
@@ -698,7 +896,11 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                 children: [
                   const Mascot(state: MascotState.error, size: 170),
                   const SizedBox(height: 16),
-                  Text('We couldn\'t set up your AI employee', style: t.titleLarge, textAlign: TextAlign.center),
+                  Text(
+                    'We couldn\'t set up your AI employee',
+                    style: t.titleLarge,
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 8),
                   Text('Something went wrong. Try again.', style: t.bodyMedium),
                   const SizedBox(height: 24),
@@ -725,12 +927,19 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                       const SizedBox(height: 28),
                       const SizedBox(
                         width: 160,
-                        child: LinearProgressIndicator(minHeight: 6, borderRadius: BorderRadius.all(Radius.circular(9))),
+                        child: LinearProgressIndicator(
+                          minHeight: 6,
+                          borderRadius: BorderRadius.all(Radius.circular(9)),
+                        ),
                       ),
                       const SizedBox(height: 18),
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
-                        child: Text(_learning[_line], key: ValueKey(_line), style: t.titleMedium),
+                        child: Text(
+                          _learning[_line],
+                          key: ValueKey(_line),
+                          style: t.titleMedium,
+                        ),
                       ),
                     ],
                   ),
@@ -743,24 +952,43 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                         padding: const EdgeInsets.all(AppSpace.page),
                         child: Column(
                           children: [
-                            Text('Meet your AI employee 👋', style: t.headlineSmall, textAlign: TextAlign.center),
+                            Text(
+                              'Meet your AI employee 👋',
+                              style: t.headlineSmall,
+                              textAlign: TextAlign.center,
+                            ),
                             const SizedBox(height: 8),
                             TweenAnimationBuilder<double>(
                               tween: Tween(begin: 0, end: 1),
                               duration: const Duration(milliseconds: 800),
                               curve: Curves.elasticOut,
-                              builder: (_, v, child) => Transform.scale(scale: 0.6 + 0.4 * v, child: child),
-                              child: Mascot(state: MascotState.success, size: 190, role: roleKind),
+                              builder: (_, v, child) => Transform.scale(
+                                scale: 0.6 + 0.4 * v,
+                                child: child,
+                              ),
+                              child: Mascot(
+                                state: MascotState.success,
+                                size: 190,
+                                role: roleKind,
+                              ),
                             ),
                             const SizedBox(height: 6),
                             ValueListenableBuilder(
                               valueListenable: _name,
-                              builder: (_, v, __) =>
-                                  Text(v.text.isEmpty ? 'Name your employee' : v.text, style: t.displaySmall, textAlign: TextAlign.center),
+                              builder: (_, v, __) => Text(
+                                v.text.isEmpty ? 'Name your employee' : v.text,
+                                style: t.displaySmall,
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                             ValueListenableBuilder(
                               valueListenable: _role,
-                              builder: (_, v, __) => Text(v.text, style: t.titleMedium?.copyWith(color: AppColors.brand)),
+                              builder: (_, v, __) => Text(
+                                v.text,
+                                style: t.titleMedium?.copyWith(
+                                  color: AppColors.brand,
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 20),
                             AppCard(
@@ -771,8 +999,14 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                                       Expanded(
                                         child: TextField(
                                           controller: _name,
-                                          textCapitalization: TextCapitalization.words,
-                                          decoration: const InputDecoration(labelText: 'Name', prefixIcon: Icon(Icons.badge_outlined)),
+                                          textCapitalization:
+                                              TextCapitalization.words,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Name',
+                                            prefixIcon: Icon(
+                                              Icons.badge_outlined,
+                                            ),
+                                          ),
                                           onChanged: (_) => setState(() {}),
                                         ),
                                       ),
@@ -781,14 +1015,26 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                                   const SizedBox(height: 12),
                                   TextField(
                                     controller: _role,
-                                    textCapitalization: TextCapitalization.words,
-                                    decoration: const InputDecoration(labelText: 'Role', prefixIcon: Icon(Icons.work_outline_rounded)),
+                                    textCapitalization:
+                                        TextCapitalization.words,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Role',
+                                      prefixIcon: Icon(
+                                        Icons.work_outline_rounded,
+                                      ),
+                                    ),
                                     onChanged: (_) => setState(() {}),
                                   ),
                                   const Divider(height: 32),
-                                  _Trait(label: 'Languages', value: at.languages.join(' · ')),
+                                  _Trait(
+                                    label: 'Languages',
+                                    value: at.languages.join(' · '),
+                                  ),
                                   const SizedBox(height: 14),
-                                  const _Trait(label: 'Personality', value: 'Friendly · Professional'),
+                                  const _Trait(
+                                    label: 'Personality',
+                                    value: 'Friendly · Professional',
+                                  ),
                                   const SizedBox(height: 14),
                                   _Trait(label: 'Goal', value: at.goal),
                                 ],
@@ -805,7 +1051,12 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(AppSpace.page, 8, AppSpace.page, 16),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpace.page,
+                        8,
+                        AppSpace.page,
+                        16,
+                      ),
                       child: PrimaryButton(
                         label: 'Activate Employee',
                         icon: Icons.bolt_rounded,
@@ -868,7 +1119,10 @@ class FirstCallScreen extends ConsumerWidget {
           await ref.read(localPrefsProvider).setAgentTested(true);
         },
       ),
-      secondary: TextButton(onPressed: () => _finish(context, ref), child: const Text('Go to my dashboard')),
+      secondary: TextButton(
+        onPressed: () => _finish(context, ref),
+        child: const Text('Go to my dashboard'),
+      ),
       children: [
         AppCard(
           child: Column(
@@ -882,8 +1136,14 @@ class FirstCallScreen extends ConsumerWidget {
                     width: 52,
                     height: 52,
                     alignment: Alignment.center,
-                    decoration: const BoxDecoration(color: AppColors.hotSoft, shape: BoxShape.circle),
-                    child: Text(initials, style: t.titleMedium?.copyWith(color: AppColors.hot)),
+                    decoration: const BoxDecoration(
+                      color: AppColors.hotSoft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      initials,
+                      style: t.titleMedium?.copyWith(color: AppColors.hot),
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -900,8 +1160,14 @@ class FirstCallScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(14)),
-                child: Text(wf.sampleLeadQuote, style: t.bodyMedium?.copyWith(fontStyle: FontStyle.italic)),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  wf.sampleLeadQuote,
+                  style: t.bodyMedium?.copyWith(fontStyle: FontStyle.italic),
+                ),
               ),
             ],
           ),
@@ -909,7 +1175,11 @@ class FirstCallScreen extends ConsumerWidget {
         const SizedBox(height: 20),
         Row(
           children: [
-            const EmployeeMascot(state: MascotState.calling, size: 96, halo: false),
+            const EmployeeMascot(
+              state: MascotState.calling,
+              size: 96,
+              halo: false,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -929,14 +1199,21 @@ class FirstCallScreen extends ConsumerWidget {
               const Icon(Icons.shield_outlined, color: AppColors.success),
               const SizedBox(width: 10),
               Expanded(
-                child: Text('Test calls are free and never contact real leads.', style: t.bodyMedium?.copyWith(color: AppColors.ink)),
+                child: Text(
+                  'Test calls are free and never contact real leads.',
+                  style: t.bodyMedium?.copyWith(color: AppColors.ink),
+                ),
               ),
             ],
           ),
         ),
         if (ref.watch(localPrefsProvider).agentTested) ...[
           const SizedBox(height: 16),
-          PrimaryButton(label: 'Looks great – go to dashboard', color: AppColors.success, onPressed: () => _finish(context, ref)),
+          PrimaryButton(
+            label: 'Looks great – go to dashboard',
+            color: AppColors.success,
+            onPressed: () => _finish(context, ref),
+          ),
         ],
       ],
     );

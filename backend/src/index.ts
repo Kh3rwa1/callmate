@@ -45,7 +45,13 @@ app.route('/auth', authApp);
 app.post('/webhooks/sarvam', handleSarvamWebhook);
 
 // Voice proxy (has its own session token verification in route)
-app.all('/voice/sarvam-proxy/*', (c) => voiceApp.fetch(c.req.raw, c.env, c.executionCtx));
+app.all('/voice/sarvam-proxy/*', (c) => {
+  let ctx: any;
+  try {
+    ctx = c.executionCtx;
+  } catch {}
+  return voiceApp.fetch(c.req.raw, c.env, ctx);
+});
 
 // ------------------------------------------------------------- Protected Routes
 const protectedApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();

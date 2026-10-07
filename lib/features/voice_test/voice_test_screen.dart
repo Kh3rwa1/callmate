@@ -26,7 +26,8 @@ class VoiceTestScreen extends ConsumerStatefulWidget {
   ConsumerState<VoiceTestScreen> createState() => _VoiceTestScreenState();
 }
 
-class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsBindingObserver {
+class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
+    with WidgetsBindingObserver {
   late final VoiceAgentService _voice = ref.read(voiceAgentServiceProvider);
   final _subs = <StreamSubscription<dynamic>>[];
   final _scroll = ScrollController();
@@ -46,7 +47,9 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
       _voice.getConnectionState().listen((s) {
         if (!mounted) return;
         setState(() => _state = s);
-        if (s == VoiceConnectionState.disconnected) HapticFeedback.lightImpact();
+        if (s == VoiceConnectionState.disconnected) {
+          HapticFeedback.lightImpact();
+        }
       }),
     );
     _subs.add(
@@ -55,7 +58,11 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
         setState(() => _lines = l);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scroll.hasClients) {
-            _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+            _scroll.animateTo(
+              _scroll.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+            );
           }
         });
       }),
@@ -72,15 +79,17 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
     try {
       final biz = ref.read(businessProvider).value;
       final name = ref.read(employeeNameProvider);
-      await _voice.startTestSession(agentVariables: {
-        'business_name': biz?.name ?? '',
-        'agent_name': name,
-        'gender': 'female',
-        'voice': 'female',
-        'speaker': 'meera',
-        'tts_model': 'bulbul:v4-flash',
-        'mode': 'owner_test',
-      });
+      await _voice.startTestSession(
+        agentVariables: {
+          'business_name': biz?.name ?? '',
+          'agent_name': name,
+          'gender': 'female',
+          'voice': 'female',
+          'speaker': 'meera',
+          'tts_model': 'bulbul:v4-flash',
+          'mode': 'owner_test',
+        },
+      );
     } on VoiceAgentException catch (e) {
       if (mounted) {
         setState(() {
@@ -92,7 +101,8 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = "${ref.read(employeeNameProvider)} couldn't connect. ($e). Check your connection and try again.";
+          _error =
+              "${ref.read(employeeNameProvider)} couldn't connect. ($e). Check your connection and try again.";
           _state = VoiceConnectionState.error;
         });
       }
@@ -101,8 +111,11 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
-    if (s == AppLifecycleState.paused || s == AppLifecycleState.inactive || s == AppLifecycleState.hidden) {
-      if (_state != VoiceConnectionState.idle && _state != VoiceConnectionState.disconnected) {
+    if (s == AppLifecycleState.paused ||
+        s == AppLifecycleState.inactive ||
+        s == AppLifecycleState.hidden) {
+      if (_state != VoiceConnectionState.idle &&
+          _state != VoiceConnectionState.disconnected) {
         _voice.stopSession();
       }
     }
@@ -146,7 +159,10 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
 
   (String, Color) get _status => switch (_state) {
     VoiceConnectionState.connecting => ('Connecting…', AppColors.warm),
-    VoiceConnectionState.listening => (_muted ? 'Muted' : 'Listening', AppColors.success),
+    VoiceConnectionState.listening => (
+      _muted ? 'Muted' : 'Listening',
+      AppColors.success,
+    ),
     VoiceConnectionState.speaking => ('Speaking', AppColors.brand),
     VoiceConnectionState.thinking => ('Thinking…', AppColors.warm),
     VoiceConnectionState.disconnected => ('Disconnected', AppColors.cold),
@@ -176,7 +192,10 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
           child: Column(
             children: [
               const SizedBox(height: 4),
-              Mascot(state: _mascot, size: MediaQuery.sizeOf(context).height < 700 ? 150 : 200),
+              Mascot(
+                state: _mascot,
+                size: MediaQuery.sizeOf(context).height < 700 ? 150 : 200,
+              ),
               const SizedBox(height: 10),
               Semantics(
                 liveRegion: true,
@@ -187,8 +206,12 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
                 height: 44,
                 child: ValueListenableBuilder<double>(
                   valueListenable: _level,
-                  builder: (_, v, __) =>
-                      _Waveform(level: _live ? v : 0, color: _state == VoiceConnectionState.speaking ? AppColors.brand : AppColors.success),
+                  builder: (_, v, __) => _Waveform(
+                    level: _live ? v : 0,
+                    color: _state == VoiceConnectionState.speaking
+                        ? AppColors.brand
+                        : AppColors.success,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -208,8 +231,12 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
                           fromOnboarding: widget.fromOnboarding,
                           onContinue: () async {
                             if (widget.fromOnboarding) {
-                              await ref.read(localPrefsProvider).setAgentTested(true);
-                              await ref.read(localPrefsProvider).setOnboarded(true);
+                              await ref
+                                  .read(localPrefsProvider)
+                                  .setAgentTested(true);
+                              await ref
+                                  .read(localPrefsProvider)
+                                  .setOnboarded(true);
                               if (context.mounted) context.go('/home');
                             } else {
                               context.pop();
@@ -234,33 +261,58 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
                           padding: const EdgeInsets.all(14),
                           children: [
                             for (final l in _lines)
-                              TranscriptBubble(isAgent: l.isAgent, text: l.text, who: l.isAgent ? name : 'You', pending: !l.isFinal),
+                              TranscriptBubble(
+                                isAgent: l.isAgent,
+                                text: l.text,
+                                who: l.isAgent ? name : 'You',
+                                pending: !l.isFinal,
+                              ),
                           ],
                         ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpace.page, 16, AppSpace.page, 12),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.page,
+                  16,
+                  AppSpace.page,
+                  12,
+                ),
                 child: ended
                     ? Column(
                         children: [
-                          Text('That\'s how $name handles your leads ✨', style: t.titleSmall),
+                          Text(
+                            'That\'s how $name handles your leads ✨',
+                            style: t.titleSmall,
+                          ),
                           const SizedBox(height: 12),
                           Row(
                             children: [
                               Expanded(
-                                child: SecondaryButton(label: 'Talk again', icon: Icons.replay_rounded, onPressed: _start),
+                                child: SecondaryButton(
+                                  label: 'Talk again',
+                                  icon: Icons.replay_rounded,
+                                  onPressed: _start,
+                                ),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: PrimaryButton(
-                                  label: widget.fromOnboarding ? 'Continue' : 'Done',
+                                  label: widget.fromOnboarding
+                                      ? 'Continue'
+                                      : 'Done',
                                   color: AppColors.success,
                                   onPressed: () async {
                                     if (widget.fromOnboarding) {
-                                      await ref.read(localPrefsProvider).setAgentTested(true);
-                                      await ref.read(localPrefsProvider).setOnboarded(true);
-                                      await ref.read(notificationServiceProvider).requestPermission();
+                                      await ref
+                                          .read(localPrefsProvider)
+                                          .setAgentTested(true);
+                                      await ref
+                                          .read(localPrefsProvider)
+                                          .setOnboarded(true);
+                                      await ref
+                                          .read(notificationServiceProvider)
+                                          .requestPermission();
                                       if (context.mounted) context.go('/home');
                                     } else {
                                       context.pop();
@@ -280,13 +332,32 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
                               scrollDirection: Axis.horizontal,
                               child: Row(
                                 children: [
-                                  _SuggestionChip(label: '“What do you do?”', onTap: () => _sendUserInput('What do you do?')),
+                                  _SuggestionChip(
+                                    label: '“What do you do?”',
+                                    onTap: () =>
+                                        _sendUserInput('What do you do?'),
+                                  ),
                                   const SizedBox(width: 8),
-                                  _SuggestionChip(label: '“How do you handle fees?”', onTap: () => _sendUserInput('How do you handle fees and pricing?')),
+                                  _SuggestionChip(
+                                    label: '“How do you handle fees?”',
+                                    onTap: () => _sendUserInput(
+                                      'How do you handle fees and pricing?',
+                                    ),
+                                  ),
                                   const SizedBox(width: 8),
-                                  _SuggestionChip(label: '“Can I book a visit?”', onTap: () => _sendUserInput('Can I book an appointment or visit?')),
+                                  _SuggestionChip(
+                                    label: '“Can I book a visit?”',
+                                    onTap: () => _sendUserInput(
+                                      'Can I book an appointment or visit?',
+                                    ),
+                                  ),
                                   const SizedBox(width: 8),
-                                  _SuggestionChip(label: '“What are your hours?”', onTap: () => _sendUserInput('What are your calling hours?')),
+                                  _SuggestionChip(
+                                    label: '“What are your hours?”',
+                                    onTap: () => _sendUserInput(
+                                      'What are your calling hours?',
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -302,25 +373,39 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
                                       hintText: 'Talk or ask $name anything…',
                                       filled: true,
                                       fillColor: Colors.white,
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 12,
+                                          ),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(24),
-                                        borderSide: const BorderSide(color: AppColors.border),
+                                        borderSide: const BorderSide(
+                                          color: AppColors.border,
+                                        ),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(24),
-                                        borderSide: const BorderSide(color: AppColors.border),
+                                        borderSide: const BorderSide(
+                                          color: AppColors.border,
+                                        ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(24),
-                                        borderSide: const BorderSide(color: AppColors.brand, width: 1.5),
+                                        borderSide: const BorderSide(
+                                          color: AppColors.brand,
+                                          width: 1.5,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 IconButton.filled(
-                                  icon: const Icon(Icons.send_rounded, size: 20),
+                                  icon: const Icon(
+                                    Icons.send_rounded,
+                                    size: 20,
+                                  ),
                                   onPressed: _sendUserInput,
                                 ),
                               ],
@@ -331,10 +416,16 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               _RoundControl(
-                                icon: _muted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                                icon: _muted
+                                    ? Icons.mic_off_rounded
+                                    : Icons.mic_rounded,
                                 label: _muted ? 'Unmute' : 'Mute',
-                                background: _muted ? AppColors.ink : Colors.white,
-                                foreground: _muted ? Colors.white : AppColors.ink,
+                                background: _muted
+                                    ? AppColors.ink
+                                    : Colors.white,
+                                foreground: _muted
+                                    ? Colors.white
+                                    : AppColors.ink,
                                 onTap: _live
                                     ? () {
                                         HapticFeedback.selectionClick();
@@ -350,7 +441,11 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen> with WidgetsB
                                 background: AppColors.hot,
                                 foreground: Colors.white,
                                 size: 76,
-                                onTap: _live ? _end : (_error != null ? () => context.pop() : null),
+                                onTap: _live
+                                    ? _end
+                                    : (_error != null
+                                          ? () => context.pop()
+                                          : null),
                               ),
                             ],
                           ),
@@ -407,7 +502,9 @@ class _RoundControl extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        ExcludeSemantics(child: Text(label, style: Theme.of(context).textTheme.labelMedium)),
+        ExcludeSemantics(
+          child: Text(label, style: Theme.of(context).textTheme.labelMedium),
+        ),
       ],
     ),
   );
@@ -441,7 +538,10 @@ class _ErrorPanel extends StatelessWidget {
             SizedBox(
               width: 220,
               child: permissionDenied
-                  ? PrimaryButton(label: 'Open settings', onPressed: openAppSettings)
+                  ? PrimaryButton(
+                      label: 'Open settings',
+                      onPressed: openAppSettings,
+                    )
                   : PrimaryButton(label: 'Try again', onPressed: onRetry),
             ),
             if (onContinue != null) ...[
@@ -470,8 +570,12 @@ class _Waveform extends StatefulWidget {
   State<_Waveform> createState() => _WaveformState();
 }
 
-class _WaveformState extends State<_Waveform> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
+class _WaveformState extends State<_Waveform>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat();
   @override
   void dispose() {
     _c.dispose();
@@ -486,7 +590,11 @@ class _WaveformState extends State<_Waveform> with SingleTickerProviderStateMixi
           animation: _c,
           builder: (_, __) => CustomPaint(
             size: const Size(220, 44),
-            painter: _WavePainter(phase: _c.value, level: widget.level, color: widget.color),
+            painter: _WavePainter(
+              phase: _c.value,
+              level: widget.level,
+              color: widget.color,
+            ),
           ),
         ),
       ),
@@ -511,13 +619,21 @@ class _WavePainter extends CustomPainter {
       final x = (i + 0.5) * size.width / bars;
       final center = 1 - ((i - bars / 2).abs() / (bars / 2));
       final wave = (math.sin((phase * 2 * math.pi) + i * 0.7) + 1) / 2;
-      final h = 4 + (size.height - 8) * (0.08 + level * (0.35 + 0.65 * wave) * (0.4 + 0.6 * center));
-      canvas.drawLine(Offset(x, size.height / 2 - h / 2), Offset(x, size.height / 2 + h / 2), p);
+      final h =
+          4 +
+          (size.height - 8) *
+              (0.08 + level * (0.35 + 0.65 * wave) * (0.4 + 0.6 * center));
+      canvas.drawLine(
+        Offset(x, size.height / 2 - h / 2),
+        Offset(x, size.height / 2 + h / 2),
+        p,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(_WavePainter o) => o.phase != phase || o.level != level || o.color != color;
+  bool shouldRepaint(_WavePainter o) =>
+      o.phase != phase || o.level != level || o.color != color;
 }
 
 class _SuggestionChip extends StatelessWidget {
@@ -535,4 +651,3 @@ class _SuggestionChip extends StatelessWidget {
     );
   }
 }
-

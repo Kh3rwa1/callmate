@@ -16,7 +16,9 @@ import '../../data/repositories/repositories.dart';
 import '../leads/leads_controller.dart';
 import '../../core/config/brand.dart';
 
-final callFilterProvider = NotifierProvider<CallFilterController, CallFilter>(CallFilterController.new);
+final callFilterProvider = NotifierProvider<CallFilterController, CallFilter>(
+  CallFilterController.new,
+);
 
 class CallFilterController extends Notifier<CallFilter> {
   @override
@@ -24,7 +26,9 @@ class CallFilterController extends Notifier<CallFilter> {
   void set(CallFilter f) => state = f;
 }
 
-final callsListProvider = NotifierProvider<CallsList, PagedState<Call>>(CallsList.new);
+final callsListProvider = NotifierProvider<CallsList, PagedState<Call>>(
+  CallsList.new,
+);
 
 class CallsList extends Notifier<PagedState<Call>> {
   int _gen = 0;
@@ -41,9 +45,15 @@ class CallsList extends Notifier<PagedState<Call>> {
     if (!silent) state = state.copyWith(loading: true, clearError: true);
     try {
       final keep = silent ? state.items.length.clamp(20, 200) : 20;
-      final p = await ref.read(callRepoProvider).list(filter: ref.read(callFilterProvider), limit: keep);
+      final p = await ref
+          .read(callRepoProvider)
+          .list(filter: ref.read(callFilterProvider), limit: keep);
       if (gen != _gen) return;
-      state = PagedState(items: p.items, hasMore: p.hasMore, cursor: p.nextCursor);
+      state = PagedState(
+        items: p.items,
+        hasMore: p.hasMore,
+        cursor: p.nextCursor,
+      );
     } catch (e) {
       if (gen == _gen) state = state.copyWith(loading: false, error: e);
     }
@@ -54,9 +64,16 @@ class CallsList extends Notifier<PagedState<Call>> {
     final gen = _gen;
     state = state.copyWith(loadingMore: true);
     try {
-      final p = await ref.read(callRepoProvider).list(filter: ref.read(callFilterProvider), cursor: state.cursor);
+      final p = await ref
+          .read(callRepoProvider)
+          .list(filter: ref.read(callFilterProvider), cursor: state.cursor);
       if (gen != _gen) return;
-      state = state.copyWith(items: [...state.items, ...p.items], hasMore: p.hasMore, cursor: p.nextCursor, loadingMore: false);
+      state = state.copyWith(
+        items: [...state.items, ...p.items],
+        hasMore: p.hasMore,
+        cursor: p.nextCursor,
+        loadingMore: false,
+      );
     } catch (_) {
       state = state.copyWith(loadingMore: false);
     }
@@ -79,7 +96,9 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
     super.initState();
     _apply();
     _scroll.addListener(() {
-      if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 400) ref.read(callsListProvider.notifier).loadMore();
+      if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 400) {
+        ref.read(callsListProvider.notifier).loadMore();
+      }
     });
   }
 
@@ -91,7 +110,11 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
       'all' => CallFilter.all,
       _ => null,
     };
-    if (f != null) WidgetsBinding.instance.addPostFrameCallback((_) => ref.read(callFilterProvider.notifier).set(f));
+    if (f != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => ref.read(callFilterProvider.notifier).set(f),
+      );
+    }
   }
 
   @override
@@ -120,15 +143,26 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpace.page, 12, AppSpace.page, 0),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.page,
+                12,
+                AppSpace.page,
+                0,
+              ),
               child: Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Semantics(header: true, child: Text('AI Calls', style: t.headlineMedium)),
-                        Text('Everything ${agent?.name ?? 'your AI employee'} did for you', style: t.bodyMedium),
+                        Semantics(
+                          header: true,
+                          child: Text('AI Calls', style: t.headlineMedium),
+                        ),
+                        Text(
+                          'Everything ${agent?.name ?? 'your AI employee'} did for you',
+                          style: t.bodyMedium,
+                        ),
                       ],
                     ),
                   ),
@@ -140,7 +174,10 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
               height: 62,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.page, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.page,
+                  vertical: 12,
+                ),
                 children: [
                   for (final (v, label) in const [
                     (CallFilter.all, 'All'),
@@ -153,7 +190,10 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                       child: ChoiceChip(
                         label: Text(label),
                         selected: f == v,
-                        labelStyle: TextStyle(fontWeight: FontWeight.w700, color: f == v ? Colors.white : AppColors.inkSoft),
+                        labelStyle: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: f == v ? Colors.white : AppColors.inkSoft,
+                        ),
                         onSelected: (_) {
                           HapticFeedback.selectionClick();
                           ref.read(callFilterProvider.notifier).set(v);
@@ -163,7 +203,9 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                 ],
               ),
             ),
-            Expanded(child: _list(s, agent?.name ?? Brand.employeeFallbackName)),
+            Expanded(
+              child: _list(s, agent?.name ?? Brand.employeeFallbackName),
+            ),
           ],
         ),
       ),
@@ -171,9 +213,16 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
   }
 
   Widget _list(PagedState<Call> s, String agentName) {
-    if (s.loading && s.items.isEmpty) return const SkeletonList(padding: EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 20));
+    if (s.loading && s.items.isEmpty) {
+      return const SkeletonList(
+        padding: EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 20),
+      );
+    }
     if (s.error != null && s.items.isEmpty) {
-      return ErrorState(message: friendlyError(s.error!), onRetry: () => ref.read(callsListProvider.notifier).refresh());
+      return ErrorState(
+        message: friendlyError(s.error!),
+        onRetry: () => ref.read(callsListProvider.notifier).refresh(),
+      );
     }
     if (s.items.isEmpty) {
       return EmptyState(
@@ -188,7 +237,9 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
     final rows = <Object>[];
     String? lastDay;
     for (final c in s.items) {
-      final d = Fmt.friendlyFuture(c.startedAt).split(',').first.split('·').first.trim();
+      final d = Fmt.friendlyFuture(
+        c.startedAt,
+      ).split(',').first.split('·').first.trim();
       if (d != lastDay) {
         rows.add(d);
         lastDay = d;
@@ -196,7 +247,8 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
       rows.add(c);
     }
     return RefreshIndicator(
-      onRefresh: () => ref.read(callsListProvider.notifier).refresh(silent: true),
+      onRefresh: () =>
+          ref.read(callsListProvider.notifier).refresh(silent: true),
       child: ListView.builder(
         controller: _scroll,
         padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 28),
@@ -206,12 +258,19 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
             return s.hasMore
                 ? const Padding(
                     padding: EdgeInsets.all(20),
-                    child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
+                    child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    ),
                   )
                 : const SizedBox(height: 8);
           }
           final r = rows[i];
-          if (r is String) return SectionLabel(r, padding: EdgeInsets.fromLTRB(4, i == 0 ? 4 : 18, 4, 10));
+          if (r is String) {
+            return SectionLabel(
+              r,
+              padding: EdgeInsets.fromLTRB(4, i == 0 ? 4 : 18, 4, 10),
+            );
+          }
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: CallCard(call: r as Call),
@@ -234,14 +293,20 @@ class CallCard extends StatelessWidget {
     return RepaintBoundary(
       child: AppCard(
         padding: const EdgeInsets.all(16),
-        onTap: () => context.push(connected ? '/calls/${c.id}/result' : '/calls/${c.id}'),
-        semanticLabel: '${Fmt.time(c.startedAt)}, ${c.leadName}, ${c.status.label}',
+        onTap: () => context.push(
+          connected ? '/calls/${c.id}/result' : '/calls/${c.id}',
+        ),
+        semanticLabel:
+            '${Fmt.time(c.startedAt)}, ${c.leadName}, ${c.status.label}',
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
               width: 62,
-              child: Text(Fmt.time(c.startedAt), style: t.labelMedium?.copyWith(color: AppColors.inkFaint)),
+              child: Text(
+                Fmt.time(c.startedAt),
+                style: t.labelMedium?.copyWith(color: AppColors.inkFaint),
+              ),
             ),
             Expanded(
               child: Column(
@@ -250,7 +315,11 @@ class CallCard extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(c.leadName, style: t.titleSmall, overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          c.leadName,
+                          style: t.titleSmall,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       if (c.leadScore != null) ScoreBadge(score: c.leadScore),
                     ],
@@ -259,14 +328,24 @@ class CallCard extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        connected ? Icons.check_circle_rounded : Icons.phone_missed_rounded,
+                        connected
+                            ? Icons.check_circle_rounded
+                            : Icons.phone_missed_rounded,
                         size: 16,
-                        color: connected ? AppColors.success : AppColors.inkFaint,
+                        color: connected
+                            ? AppColors.success
+                            : AppColors.inkFaint,
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        connected ? 'Connected · ${Fmt.duration(c.duration)}' : c.status.label,
-                        style: t.labelMedium?.copyWith(color: connected ? AppColors.success : AppColors.inkFaint),
+                        connected
+                            ? 'Connected · ${Fmt.duration(c.duration)}'
+                            : c.status.label,
+                        style: t.labelMedium?.copyWith(
+                          color: connected
+                              ? AppColors.success
+                              : AppColors.inkFaint,
+                        ),
                       ),
                     ],
                   ),
@@ -277,11 +356,16 @@ class CallCard extends StatelessWidget {
                         children: [
                           TextSpan(
                             text: 'Next: ',
-                            style: t.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                            style: t.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           TextSpan(
                             text: c.nextAction.label,
-                            style: t.bodySmall?.copyWith(color: AppColors.brand, fontWeight: FontWeight.w800),
+                            style: t.bodySmall?.copyWith(
+                              color: AppColors.brand,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ],
                       ),

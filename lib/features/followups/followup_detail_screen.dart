@@ -19,10 +19,12 @@ class FollowUpDetailScreen extends ConsumerStatefulWidget {
   const FollowUpDetailScreen({super.key, required this.followUpId});
   final String followUpId;
   @override
-  ConsumerState<FollowUpDetailScreen> createState() => _FollowUpDetailScreenState();
+  ConsumerState<FollowUpDetailScreen> createState() =>
+      _FollowUpDetailScreenState();
 }
 
-class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> with WidgetsBindingObserver {
+class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen>
+    with WidgetsBindingObserver {
   final _controller = TextEditingController();
   bool _editing = false;
   bool _seeded = false;
@@ -54,7 +56,13 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
 
   Future<void> _open(FollowUp fu) async {
     setState(() => _editing = false);
-    final ok = await openWhatsAppHandoff(context, ref, phone: fu.leadPhone, message: _controller.text, followUp: fu);
+    final ok = await openWhatsAppHandoff(
+      context,
+      ref,
+      phone: fu.leadPhone,
+      message: _controller.text,
+      followUp: fu,
+    );
     if (ok && mounted) {
       setState(() {
         _awaitingReturn = true;
@@ -66,8 +74,14 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
   Future<void> _saveEdit(FollowUp fu) async {
     setState(() => _editing = false);
     if (_controller.text.trim() != fu.message.trim()) {
-      await ref.read(followUpRepoProvider).update(fu.copyWith(message: _controller.text.trim()));
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Message updated ✓')));
+      await ref
+          .read(followUpRepoProvider)
+          .update(fu.copyWith(message: _controller.text.trim()));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Message updated ✓')));
+      }
     }
   }
 
@@ -84,22 +98,42 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
                     final wa = ref.read(whatsappServiceProvider);
                     if (v == 'copy') {
                       await wa.copyMessage(_controller.text);
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Message copied')));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Message copied')),
+                        );
+                      }
                     } else if (v == 'share') {
                       await wa.shareMessage(_controller.text);
                     } else if (v == 'done') {
-                      await ref.read(followUpRepoProvider).update(fu.copyWith(status: FollowUpStatus.done));
+                      await ref
+                          .read(followUpRepoProvider)
+                          .update(fu.copyWith(status: FollowUpStatus.done));
                       if (context.mounted) context.pop();
                     } else if (v == 'dismiss') {
-                      await ref.read(followUpRepoProvider).update(fu.copyWith(status: FollowUpStatus.dismissed));
+                      await ref
+                          .read(followUpRepoProvider)
+                          .update(
+                            fu.copyWith(status: FollowUpStatus.dismissed),
+                          );
                       if (context.mounted) context.pop();
                     }
                   },
                   itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'copy', child: Text('Copy Message')),
+                    const PopupMenuItem(
+                      value: 'copy',
+                      child: Text('Copy Message'),
+                    ),
                     const PopupMenuItem(value: 'share', child: Text('Share…')),
-                    if (!fu.isPending) const PopupMenuItem(value: 'done', child: Text('I sent it')),
-                    const PopupMenuItem(value: 'dismiss', child: Text('Dismiss')),
+                    if (!fu.isPending)
+                      const PopupMenuItem(
+                        value: 'done',
+                        child: Text('I sent it'),
+                      ),
+                    const PopupMenuItem(
+                      value: 'dismiss',
+                      child: Text('Dismiss'),
+                    ),
                   ],
                 ),
               ) ??
@@ -123,13 +157,21 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
   Widget _body(FollowUp fu) {
     final t = Theme.of(context).textTheme;
     final temp = LeadTemperature.fromScore(fu.scoreValue);
-    final opened = _justOpened || fu.status == FollowUpStatus.opened || fu.status == FollowUpStatus.done;
+    final opened =
+        _justOpened ||
+        fu.status == FollowUpStatus.opened ||
+        fu.status == FollowUpStatus.done;
 
     return Column(
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 24),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.page,
+              0,
+              AppSpace.page,
+              24,
+            ),
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -138,30 +180,47 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(opened ? 'WhatsApp opened' : 'Follow-up ready\u00A0💬', style: t.headlineSmall),
+                        Text(
+                          opened
+                              ? 'WhatsApp opened'
+                              : 'Follow-up ready\u00A0💬',
+                          style: t.headlineSmall,
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           children: [
                             Flexible(
                               child: Text(
                                 fu.leadName,
-                                style: t.titleLarge?.copyWith(color: AppColors.inkSoft),
+                                style: t.titleLarge?.copyWith(
+                                  color: AppColors.inkSoft,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             const SizedBox(width: 8),
                             if (fu.scoreValue != null)
                               ScoreBadge(
-                                score: LeadScore(value: fu.scoreValue!, temperature: temp, intent: LeadIntent.unknown),
+                                score: LeadScore(
+                                  value: fu.scoreValue!,
+                                  temperature: temp,
+                                  intent: LeadIntent.unknown,
+                                ),
                               ),
                           ],
                         ),
                         const SizedBox(height: 2),
-                        Text(PhoneUtils.display(fu.leadPhone), style: t.bodySmall),
+                        Text(
+                          PhoneUtils.display(fu.leadPhone),
+                          style: t.bodySmall,
+                        ),
                       ],
                     ),
                   ),
-                  Mascot(state: opened ? MascotState.success : MascotState.whatsapp, size: 96),
+                  Mascot(
+                    state: opened ? MascotState.success : MascotState.whatsapp,
+                    size: 96,
+                  ),
                 ],
               ),
               if (fu.callSummary != null) ...[
@@ -170,7 +229,9 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
                   shadow: false,
                   color: AppColors.surfaceMuted,
                   padding: const EdgeInsets.all(14),
-                  onTap: fu.callId == null ? null : () => context.push('/calls/${fu.callId}/result'),
+                  onTap: fu.callId == null
+                      ? null
+                      : () => context.push('/calls/${fu.callId}/result'),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -184,7 +245,9 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
                             const SizedBox(height: 4),
                             Text(
                               fu.callSummary!,
-                              style: t.bodyMedium?.copyWith(color: AppColors.ink),
+                              style: t.bodyMedium?.copyWith(
+                                color: AppColors.ink,
+                              ),
                               maxLines: 3,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -198,19 +261,39 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
               const SizedBox(height: 22),
               Row(
                 children: [
-                  const Icon(Icons.auto_awesome_rounded, size: 18, color: AppColors.brand),
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 18,
+                    color: AppColors.brand,
+                  ),
                   const SizedBox(width: 6),
-                  Text('AI drafted this based on the call', style: t.titleSmall?.copyWith(color: AppColors.brand)),
+                  Text(
+                    'AI drafted this based on the call',
+                    style: t.titleSmall?.copyWith(color: AppColors.brand),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
-              _MessageCard(controller: _controller, editing: _editing, onTapToEdit: () => setState(() => _editing = true)),
+              _MessageCard(
+                controller: _controller,
+                editing: _editing,
+                onTapToEdit: () => setState(() => _editing = true),
+              ),
               const SizedBox(height: 10),
               Row(
                 children: [
-                  const Icon(Icons.lock_outline_rounded, size: 14, color: AppColors.inkFaint),
+                  const Icon(
+                    Icons.lock_outline_rounded,
+                    size: 14,
+                    color: AppColors.inkFaint,
+                  ),
                   const SizedBox(width: 6),
-                  Expanded(child: Text('Nothing is sent automatically. You tap Send in WhatsApp.', style: t.bodySmall)),
+                  Expanded(
+                    child: Text(
+                      'Nothing is sent automatically. You tap Send in WhatsApp.',
+                      style: t.bodySmall,
+                    ),
+                  ),
                 ],
               ),
               if (opened) ...[
@@ -221,23 +304,40 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_rounded, color: AppColors.success),
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.success,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('WhatsApp opened${fu.openedAt != null ? ' · ${Fmt.relative(fu.openedAt!)}' : ''}', style: t.titleSmall),
-                            Text('Did you send it? Mark it so ${ref.watch(employeeNameProvider)} knows.', style: t.bodySmall),
+                            Text(
+                              'WhatsApp opened${fu.openedAt != null ? ' · ${Fmt.relative(fu.openedAt!)}' : ''}',
+                              style: t.titleSmall,
+                            ),
+                            Text(
+                              'Did you send it? Mark it so ${ref.watch(employeeNameProvider)} knows.',
+                              style: t.bodySmall,
+                            ),
                           ],
                         ),
                       ),
                       if (fu.status != FollowUpStatus.done)
                         TextButton(
                           onPressed: () async {
-                            await ref.read(followUpRepoProvider).update(fu.copyWith(status: FollowUpStatus.done));
+                            await ref
+                                .read(followUpRepoProvider)
+                                .update(
+                                  fu.copyWith(status: FollowUpStatus.done),
+                                );
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marked as sent by you ✓')));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Marked as sent by you ✓'),
+                                ),
+                              );
                               context.pop();
                             }
                           },
@@ -253,7 +353,12 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
         SafeArea(
           top: false,
           child: Container(
-            padding: const EdgeInsets.fromLTRB(AppSpace.page, 12, AppSpace.page, 10),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.page,
+              12,
+              AppSpace.page,
+              10,
+            ),
             decoration: const BoxDecoration(
               color: AppColors.background,
               border: Border(top: BorderSide(color: AppColors.border)),
@@ -266,15 +371,28 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
                     Expanded(
                       flex: 2,
                       child: _editing
-                          ? SecondaryButton(label: 'Save', icon: Icons.check_rounded, onPressed: () => _saveEdit(fu))
-                          : SecondaryButton(label: 'Edit Message', onPressed: () => setState(() => _editing = true)),
+                          ? SecondaryButton(
+                              label: 'Save',
+                              icon: Icons.check_rounded,
+                              onPressed: () => _saveEdit(fu),
+                            )
+                          : SecondaryButton(
+                              label: 'Edit Message',
+                              onPressed: () => setState(() => _editing = true),
+                            ),
                     ),
                     const SizedBox(width: 10),
-                    Expanded(flex: 3, child: WhatsAppButton(onPressed: () => _open(fu))),
+                    Expanded(
+                      flex: 3,
+                      child: WhatsAppButton(onPressed: () => _open(fu)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text('Opens WhatsApp with the message ready to send.', style: t.bodySmall),
+                Text(
+                  'Opens WhatsApp with the message ready to send.',
+                  style: t.bodySmall,
+                ),
               ],
             ),
           ),
@@ -286,7 +404,11 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen> wit
 
 /// WhatsApp-style message bubble with gentle entrance animation.
 class _MessageCard extends StatelessWidget {
-  const _MessageCard({required this.controller, required this.editing, required this.onTapToEdit});
+  const _MessageCard({
+    required this.controller,
+    required this.editing,
+    required this.onTapToEdit,
+  });
   final TextEditingController controller;
   final bool editing;
   final VoidCallback onTapToEdit;
@@ -300,7 +422,10 @@ class _MessageCard extends StatelessWidget {
       curve: Curves.easeOutCubic,
       builder: (_, v, child) => Opacity(
         opacity: v,
-        child: Transform.translate(offset: Offset(0, 16 * (1 - v)), child: child),
+        child: Transform.translate(
+          offset: Offset(0, 16 * (1 - v)),
+          child: child,
+        ),
       ),
       child: Container(
         decoration: BoxDecoration(
@@ -311,7 +436,10 @@ class _MessageCard extends StatelessWidget {
             bottomLeft: Radius.circular(22),
             bottomRight: Radius.circular(22),
           ),
-          border: Border.all(color: editing ? AppColors.whatsapp : const Color(0xFFCDEBC0), width: editing ? 2 : 1),
+          border: Border.all(
+            color: editing ? AppColors.whatsapp : const Color(0xFFCDEBC0),
+            width: editing ? 2 : 1,
+          ),
           boxShadow: AppShadows.card,
         ),
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
@@ -339,7 +467,10 @@ class _MessageCard extends StatelessWidget {
                       width: double.infinity,
                       child: ValueListenableBuilder(
                         valueListenable: controller,
-                        builder: (_, v, __) => Text(v.text, style: t.bodyLarge?.copyWith(height: 1.5)),
+                        builder: (_, v, __) => Text(
+                          v.text,
+                          style: t.bodyLarge?.copyWith(height: 1.5),
+                        ),
                       ),
                     ),
                   ),
@@ -347,9 +478,16 @@ class _MessageCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text(editing ? 'Editing' : 'Draft', style: t.bodySmall?.copyWith(fontSize: 11.5)),
+                Text(
+                  editing ? 'Editing' : 'Draft',
+                  style: t.bodySmall?.copyWith(fontSize: 11.5),
+                ),
                 const SizedBox(width: 4),
-                const Icon(Icons.edit_note_rounded, size: 15, color: AppColors.inkFaint),
+                const Icon(
+                  Icons.edit_note_rounded,
+                  size: 15,
+                  color: AppColors.inkFaint,
+                ),
               ],
             ),
           ],

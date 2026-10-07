@@ -45,11 +45,17 @@ class CampaignLiveBanner extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${ref.watch(employeeNameProvider)} is calling your leads…', style: t.titleSmall?.copyWith(color: Colors.white)),
+                Text(
+                  '${ref.watch(employeeNameProvider)} is calling your leads…',
+                  style: t.titleSmall?.copyWith(color: Colors.white),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   '${s.completed} of ${s.total} done · ${s.hot} hot',
-                  style: t.bodySmall?.copyWith(color: Colors.white70, fontWeight: FontWeight.w600),
+                  style: t.bodySmall?.copyWith(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 TweenAnimationBuilder<double>(

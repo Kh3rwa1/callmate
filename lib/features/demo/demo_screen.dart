@@ -20,7 +20,9 @@ class DemoScreen extends ConsumerWidget {
     if (!mock) {
       return Scaffold(
         appBar: AppBar(title: const Text('Demo controls')),
-        body: const Center(child: Text('Demo controls are only available in mock mode.')),
+        body: const Center(
+          child: Text('Demo controls are only available in mock mode.'),
+        ),
       );
     }
     final b = ref.read(mockBackendProvider);
@@ -30,29 +32,30 @@ class DemoScreen extends ConsumerWidget {
       ..clearSnackBars()
       ..showSnackBar(SnackBar(content: Text(s)));
 
-    Widget tile(String emoji, String title, String sub, VoidCallback onTap) => Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AppCard(
-        onTap: onTap,
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            IconBubble(color: AppColors.surfaceMuted, child: Emoji(emoji)),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: t.titleSmall),
-                  Text(sub, style: t.bodySmall),
-                ],
-              ),
+    Widget tile(String emoji, String title, String sub, VoidCallback onTap) =>
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: AppCard(
+            onTap: onTap,
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                IconBubble(color: AppColors.surfaceMuted, child: Emoji(emoji)),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: t.titleSmall),
+                      Text(sub, style: t.bodySmall),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.play_arrow_rounded, color: AppColors.brand),
+              ],
             ),
-            const Icon(Icons.play_arrow_rounded, color: AppColors.brand),
-          ],
-        ),
-      ),
-    );
+          ),
+        );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Demo controls')),
@@ -70,44 +73,76 @@ class DemoScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 18),
-          tile('🔥', 'Simulate hot lead', 'A new lead is called and scores 80+', () {
-            final c = b.simulateCall(LeadTemperature.hot);
-            snack('${c.leadName} – score ${c.leadScore?.value}');
-            context.push('/calls/${c.id}/result');
-          }),
-          tile('📞', 'Simulate call completed', 'A warm lead, follow-up drafted', () {
-            final c = b.simulateCall(LeadTemperature.warm);
-            context.push('/calls/${c.id}/result');
-          }),
-          tile('💬', 'Simulate WhatsApp follow-up', 'Opens the newest follow-up draft', () {
-            final c = b.simulateCall(LeadTemperature.hot);
-            if (c.followUpId != null) context.push('/followups/${c.followUpId}');
-          }),
-          tile('🚀', 'Simulate campaign progress', 'Start calling all new leads', () => context.push('/campaign/new')),
+          tile(
+            '🔥',
+            'Simulate hot lead',
+            'A new lead is called and scores 80+',
+            () {
+              final c = b.simulateCall(LeadTemperature.hot);
+              snack('${c.leadName} – score ${c.leadScore?.value}');
+              context.push('/calls/${c.id}/result');
+            },
+          ),
+          tile(
+            '📞',
+            'Simulate call completed',
+            'A warm lead, follow-up drafted',
+            () {
+              final c = b.simulateCall(LeadTemperature.warm);
+              context.push('/calls/${c.id}/result');
+            },
+          ),
+          tile(
+            '💬',
+            'Simulate WhatsApp follow-up',
+            'Opens the newest follow-up draft',
+            () {
+              final c = b.simulateCall(LeadTemperature.hot);
+              if (c.followUpId != null) {
+                context.push('/followups/${c.followUpId}');
+              }
+            },
+          ),
+          tile(
+            '🚀',
+            'Simulate campaign progress',
+            'Start calling all new leads',
+            () => context.push('/campaign/new'),
+          ),
           const SectionLabel('Notifications'),
           tile(
             '🔥',
             'Hot lead notification',
             'Tap the banner to deep-link',
-            () => notif.present(b.simulateNotification(NotificationType.hotLead)),
+            () =>
+                notif.present(b.simulateNotification(NotificationType.hotLead)),
           ),
           tile(
             '💬',
             'Follow-up ready notification',
             'Deep-links to the follow-up',
-            () => notif.present(b.simulateNotification(NotificationType.followUpReady)),
+            () => notif.present(
+              b.simulateNotification(NotificationType.followUpReady),
+            ),
           ),
           tile(
             '📅',
             'Callback notification',
             'Deep-links to the lead',
-            () => notif.present(b.simulateNotification(NotificationType.callback)),
+            () => notif.present(
+              b.simulateNotification(NotificationType.callback),
+            ),
           ),
           const SectionLabel('Reset'),
-          tile('↩️', 'Replay onboarding', 'Start again from “Hire your AI employee”', () async {
-            await ref.read(localPrefsProvider).reset();
-            if (context.mounted) context.go('/onboarding');
-          }),
+          tile(
+            '↩️',
+            'Replay onboarding',
+            'Start again from “Hire your AI employee”',
+            () async {
+              await ref.read(localPrefsProvider).reset();
+              if (context.mounted) context.go('/onboarding');
+            },
+          ),
         ],
       ),
     );

@@ -48,7 +48,12 @@ class AppNotification {
 }
 
 class Subscription {
-  const Subscription({required this.planName, required this.includedMinutes, required this.renewsAt, this.priceInr = 0});
+  const Subscription({
+    required this.planName,
+    required this.includedMinutes,
+    required this.renewsAt,
+    this.priceInr = 0,
+  });
   final String planName;
   final int includedMinutes;
   final DateTime renewsAt;
@@ -63,14 +68,22 @@ class Subscription {
 }
 
 class Usage {
-  const Usage({required this.subscription, required this.minutesUsed, required this.callsMade, this.ratePerMinuteInr = 6});
+  const Usage({
+    required this.subscription,
+    required this.minutesUsed,
+    required this.callsMade,
+    this.ratePerMinuteInr = 6,
+  });
   final Subscription subscription;
   final int minutesUsed;
   final int callsMade;
   final int ratePerMinuteInr;
 
-  int get minutesRemaining => (subscription.includedMinutes - minutesUsed).clamp(0, subscription.includedMinutes);
-  double get ratio => subscription.includedMinutes == 0 ? 0 : minutesUsed / subscription.includedMinutes;
+  int get minutesRemaining => (subscription.includedMinutes - minutesUsed)
+      .clamp(0, subscription.includedMinutes);
+  double get ratio => subscription.includedMinutes == 0
+      ? 0
+      : minutesUsed / subscription.includedMinutes;
 
   Usage copyWith({int? minutesUsed, int? callsMade}) => Usage(
     subscription: subscription,
@@ -112,7 +125,12 @@ class DailySummary {
 }
 
 class ActivityItem {
-  const ActivityItem({required this.emoji, required this.text, required this.at, this.route});
+  const ActivityItem({
+    required this.emoji,
+    required this.text,
+    required this.at,
+    this.route,
+  });
   final String emoji;
   final String text;
   final DateTime at;

@@ -9,7 +9,11 @@ abstract class AuthRepository {
   Future<bool> hasSession();
   Future<void> requestOtp({required String phone});
   Future<void> login({required String phone, required String otp});
-  Future<void> register({required String phone, required String businessName, required String otp});
+  Future<void> register({
+    required String phone,
+    required String businessName,
+    required String otp,
+  });
   Future<void> logout();
   Future<void> deleteAccount();
 }
@@ -30,7 +34,12 @@ abstract class KnowledgeRepository {
 }
 
 abstract class LeadRepository {
-  Future<Page<Lead>> list({String? query, LeadFilter filter = LeadFilter.all, String? cursor, int limit = 20});
+  Future<Page<Lead>> list({
+    String? query,
+    LeadFilter filter = LeadFilter.all,
+    String? cursor,
+    int limit = 20,
+  });
   Future<Lead> get(String id);
   Future<Lead> create(NewLeadInput input);
   Future<LeadImportResult> import(List<NewLeadInput> leads);
@@ -41,7 +50,11 @@ abstract class LeadRepository {
 enum LeadFilter { all, newLeads, called, hot, warm, callback }
 
 abstract class CallRepository {
-  Future<Page<Call>> list({CallFilter filter = CallFilter.all, String? cursor, int limit = 20});
+  Future<Page<Call>> list({
+    CallFilter filter = CallFilter.all,
+    String? cursor,
+    int limit = 20,
+  });
   Future<Call> get(String id);
   Future<List<Call>> forLead(String leadId);
   Future<Call> triggerCall(String leadId);
@@ -67,7 +80,11 @@ abstract class FollowUpRepository {
 
 abstract class CallbackRepository {
   Future<List<Callback>> list();
-  Future<Callback> schedule({required String leadId, required DateTime at, String? note});
+  Future<Callback> schedule({
+    required String leadId,
+    required DateTime at,
+    String? note,
+  });
   Future<Callback> markDone(String id);
 }
 
@@ -116,7 +133,8 @@ class CampaignProgressEvent extends BackendEvent {
 
 class DataChangedEvent extends BackendEvent {
   const DataChangedEvent(this.scope);
-  final String scope; // leads | calls | followups | knowledge | agent | callbacks
+  final String
+  scope; // leads | calls | followups | knowledge | agent | callbacks
 }
 
 class NotificationEvent extends BackendEvent {

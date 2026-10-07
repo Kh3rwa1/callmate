@@ -32,7 +32,11 @@ class FollowUp {
 
   bool get isPending => status == FollowUpStatus.ready;
 
-  FollowUp copyWith({String? message, FollowUpStatus? status, DateTime? openedAt}) => FollowUp(
+  FollowUp copyWith({
+    String? message,
+    FollowUpStatus? status,
+    DateTime? openedAt,
+  }) => FollowUp(
     id: id,
     leadId: leadId,
     leadName: leadName,
@@ -95,14 +99,15 @@ class Callback {
   final CallbackStatus status;
   final String? note;
 
-  Callback copyWith({CallbackStatus? status, DateTime? scheduledAt}) => Callback(
-    id: id,
-    leadId: leadId,
-    leadName: leadName,
-    scheduledAt: scheduledAt ?? this.scheduledAt,
-    status: status ?? this.status,
-    note: note,
-  );
+  Callback copyWith({CallbackStatus? status, DateTime? scheduledAt}) =>
+      Callback(
+        id: id,
+        leadId: leadId,
+        leadName: leadName,
+        scheduledAt: scheduledAt ?? this.scheduledAt,
+        status: status ?? this.status,
+        note: note,
+      );
 
   factory Callback.fromJson(Json j) => Callback(
     id: jStr(j, 'id'),

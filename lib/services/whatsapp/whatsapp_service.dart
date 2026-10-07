@@ -9,7 +9,10 @@ import '../../core/utils/phone.dart';
 enum WhatsAppOpenResult { opened, invalidPhone, emptyMessage, notInstalled }
 
 abstract class WhatsAppService {
-  Future<WhatsAppOpenResult> openChat({required String phone, required String message});
+  Future<WhatsAppOpenResult> openChat({
+    required String phone,
+    required String message,
+  });
   Future<void> copyMessage(String message);
   Future<void> shareMessage(String message);
 }
@@ -23,18 +26,25 @@ class WhatsAppDeepLinkService implements WhatsAppService {
     final digits = PhoneUtils.normalize(phone);
     if (digits == null) return null;
     final text = message.trim();
-    return Uri.parse('https://wa.me/$digits${text.isEmpty ? '' : '?text=${Uri.encodeComponent(text)}'}');
+    return Uri.parse(
+      'https://wa.me/$digits${text.isEmpty ? '' : '?text=${Uri.encodeComponent(text)}'}',
+    );
   }
 
   /// Native scheme – opens the app directly when installed.
   static Uri? buildNativeUri({required String phone, required String message}) {
     final digits = PhoneUtils.normalize(phone);
     if (digits == null) return null;
-    return Uri.parse('whatsapp://send?phone=$digits&text=${Uri.encodeComponent(message.trim())}');
+    return Uri.parse(
+      'whatsapp://send?phone=$digits&text=${Uri.encodeComponent(message.trim())}',
+    );
   }
 
   @override
-  Future<WhatsAppOpenResult> openChat({required String phone, required String message}) async {
+  Future<WhatsAppOpenResult> openChat({
+    required String phone,
+    required String message,
+  }) async {
     if (message.trim().isEmpty) return WhatsAppOpenResult.emptyMessage;
     final web = buildUri(phone: phone, message: message);
     final native = buildNativeUri(phone: phone, message: message);
@@ -44,25 +54,36 @@ class WhatsAppDeepLinkService implements WhatsAppService {
       // Prefer the installed app (requires LSApplicationQueriesSchemes /
       // <queries> entries – see Info.plist and AndroidManifest.xml).
       if (await canLaunchUrl(native)) {
-        if (await launchUrl(native, mode: LaunchMode.externalApplication)) return WhatsAppOpenResult.opened;
+        if (await launchUrl(native, mode: LaunchMode.externalApplication)) {
+          return WhatsAppOpenResult.opened;
+        }
       }
     } catch (_) {}
 
     try {
       // Universal link: opens WhatsApp if present, otherwise WhatsApp Web.
-      if (await launchUrl(web, mode: LaunchMode.externalNonBrowserApplication)) return WhatsAppOpenResult.opened;
+      if (await launchUrl(
+        web,
+        mode: LaunchMode.externalNonBrowserApplication,
+      )) {
+        return WhatsAppOpenResult.opened;
+      }
     } catch (_) {}
 
     try {
-      if (await launchUrl(web, mode: LaunchMode.externalApplication)) return WhatsAppOpenResult.opened;
+      if (await launchUrl(web, mode: LaunchMode.externalApplication)) {
+        return WhatsAppOpenResult.opened;
+      }
     } catch (_) {}
 
     return WhatsAppOpenResult.notInstalled;
   }
 
   @override
-  Future<void> copyMessage(String message) => Clipboard.setData(ClipboardData(text: message));
+  Future<void> copyMessage(String message) =>
+      Clipboard.setData(ClipboardData(text: message));
 
   @override
-  Future<void> shareMessage(String message) => SharePlus.instance.share(ShareParams(text: message));
+  Future<void> shareMessage(String message) =>
+      SharePlus.instance.share(ShareParams(text: message));
 }

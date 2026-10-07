@@ -4,7 +4,12 @@
 /// independent from Dart identifiers, and unknown values degrade gracefully.
 library;
 
-T _parse<T extends Enum>(List<T> values, String? raw, T fallback, String Function(T) wire) {
+T _parse<T extends Enum>(
+  List<T> values,
+  String? raw,
+  T fallback,
+  String Function(T) wire,
+) {
   if (raw == null) return fallback;
   for (final v in values) {
     if (wire(v) == raw) return v;
@@ -25,7 +30,8 @@ enum LeadStatus {
   const LeadStatus(this.wire, this.label);
   final String wire;
   final String label;
-  static LeadStatus parse(String? v) => _parse(values, v, LeadStatus.newLead, (e) => e.wire);
+  static LeadStatus parse(String? v) =>
+      _parse(values, v, LeadStatus.newLead, (e) => e.wire);
 }
 
 enum LeadTemperature {
@@ -37,7 +43,8 @@ enum LeadTemperature {
   const LeadTemperature(this.wire, this.label);
   final String wire;
   final String label;
-  static LeadTemperature parse(String? v) => _parse(values, v, LeadTemperature.unknown, (e) => e.wire);
+  static LeadTemperature parse(String? v) =>
+      _parse(values, v, LeadTemperature.unknown, (e) => e.wire);
 
   static LeadTemperature fromScore(int? score) {
     if (score == null) return LeadTemperature.unknown;
@@ -57,7 +64,8 @@ enum LeadIntent {
   const LeadIntent(this.wire, this.label);
   final String wire;
   final String label;
-  static LeadIntent parse(String? v) => _parse(values, v, LeadIntent.unknown, (e) => e.wire);
+  static LeadIntent parse(String? v) =>
+      _parse(values, v, LeadIntent.unknown, (e) => e.wire);
 }
 
 enum CallStatus {
@@ -72,10 +80,12 @@ enum CallStatus {
   const CallStatus(this.wire, this.label);
   final String wire;
   final String label;
-  static CallStatus parse(String? v) => _parse(values, v, CallStatus.failed, (e) => e.wire);
+  static CallStatus parse(String? v) =>
+      _parse(values, v, CallStatus.failed, (e) => e.wire);
 
   bool get isConnected => this == CallStatus.completed;
-  bool get isLive => this == CallStatus.ringing || this == CallStatus.inProgress;
+  bool get isLive =>
+      this == CallStatus.ringing || this == CallStatus.inProgress;
 }
 
 enum NextAction {
@@ -106,7 +116,8 @@ enum FollowUpStatus {
   const FollowUpStatus(this.wire, this.label);
   final String wire;
   final String label;
-  static FollowUpStatus parse(String? v) => _parse(values, v, FollowUpStatus.ready, (e) => e.wire);
+  static FollowUpStatus parse(String? v) =>
+      _parse(values, v, FollowUpStatus.ready, (e) => e.wire);
 }
 
 enum FollowUpChannel {
@@ -127,7 +138,8 @@ enum CampaignStatus {
   const CampaignStatus(this.wire, this.label);
   final String wire;
   final String label;
-  static CampaignStatus parse(String? v) => _parse(values, v, CampaignStatus.draft, (e) => e.wire);
+  static CampaignStatus parse(String? v) =>
+      _parse(values, v, CampaignStatus.draft, (e) => e.wire);
 }
 
 enum KnowledgeType {
@@ -140,8 +152,9 @@ enum KnowledgeType {
   const KnowledgeType(this.wire, this.label);
   final String wire;
   final String label;
-  static KnowledgeType parse(String? v) =>
-      v == 'centre_info' ? KnowledgeType.businessInfo : _parse(values, v, KnowledgeType.text, (e) => e.wire);
+  static KnowledgeType parse(String? v) => v == 'centre_info'
+      ? KnowledgeType.businessInfo
+      : _parse(values, v, KnowledgeType.text, (e) => e.wire);
 }
 
 enum KnowledgeStatus {
@@ -152,7 +165,8 @@ enum KnowledgeStatus {
 
   const KnowledgeStatus(this.wire);
   final String wire;
-  static KnowledgeStatus parse(String? v) => _parse(values, v, KnowledgeStatus.ready, (e) => e.wire);
+  static KnowledgeStatus parse(String? v) =>
+      _parse(values, v, KnowledgeStatus.ready, (e) => e.wire);
 }
 
 enum NotificationType {
@@ -163,7 +177,8 @@ enum NotificationType {
 
   const NotificationType(this.wire);
   final String wire;
-  static NotificationType parse(String? v) => _parse(values, v, NotificationType.campaign, (e) => e.wire);
+  static NotificationType parse(String? v) =>
+      _parse(values, v, NotificationType.campaign, (e) => e.wire);
 }
 
 enum AgentStatus {
@@ -174,7 +189,8 @@ enum AgentStatus {
   const AgentStatus(this.wire, this.label);
   final String wire;
   final String label;
-  static AgentStatus parse(String? v) => _parse(values, v, AgentStatus.active, (e) => e.wire);
+  static AgentStatus parse(String? v) =>
+      _parse(values, v, AgentStatus.active, (e) => e.wire);
 }
 
 enum CallbackStatus {
@@ -184,7 +200,8 @@ enum CallbackStatus {
 
   const CallbackStatus(this.wire);
   final String wire;
-  static CallbackStatus parse(String? v) => _parse(values, v, CallbackStatus.scheduled, (e) => e.wire);
+  static CallbackStatus parse(String? v) =>
+      _parse(values, v, CallbackStatus.scheduled, (e) => e.wire);
 }
 
 enum BusinessCategory {
@@ -203,7 +220,8 @@ enum BusinessCategory {
   final String wire;
   final String label;
   final String emoji;
-  static BusinessCategory parse(String? v) => _parse(values, v, BusinessCategory.other, (e) => e.wire);
+  static BusinessCategory parse(String? v) =>
+      _parse(values, v, BusinessCategory.other, (e) => e.wire);
 }
 
 enum TranscriptSpeaker {
@@ -212,5 +230,7 @@ enum TranscriptSpeaker {
 
   const TranscriptSpeaker(this.wire);
   final String wire;
-  static TranscriptSpeaker parse(String? v) => v == 'lead' || v == 'user' ? TranscriptSpeaker.lead : TranscriptSpeaker.agent;
+  static TranscriptSpeaker parse(String? v) => v == 'lead' || v == 'user'
+      ? TranscriptSpeaker.lead
+      : TranscriptSpeaker.agent;
 }

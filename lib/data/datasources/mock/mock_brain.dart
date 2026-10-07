@@ -44,40 +44,87 @@ class MockVertical {
 
 const _coaching = MockVertical(
   offerings: [
-    MockOffering('NEET', 52000, ['Evening', 'Morning', 'Weekend'], unit: '/ year'),
+    MockOffering('NEET', 52000, [
+      'Evening',
+      'Morning',
+      'Weekend',
+    ], unit: '/ year'),
     MockOffering('JEE Main', 56000, ['Evening', 'Weekend'], unit: '/ year'),
     MockOffering('JEE Advanced', 68000, ['Morning', 'Evening'], unit: '/ year'),
     MockOffering('WBJEE', 38000, ['Evening', 'Weekend'], unit: '/ year'),
-    MockOffering('Class 10 Boards', 24000, ['Evening', 'Morning'], unit: '/ year'),
-    MockOffering('Class 12 Science', 32000, ['Evening', 'Morning'], unit: '/ year'),
+    MockOffering('Class 10 Boards', 24000, [
+      'Evening',
+      'Morning',
+    ], unit: '/ year'),
+    MockOffering('Class 12 Science', 32000, [
+      'Evening',
+      'Morning',
+    ], unit: '/ year'),
   ],
   optionKey: 'batch',
   optionNoun: 'batch',
-  positives: ['Asked about pricing', 'Asked about next steps', 'Requested details', 'Agreed to follow up'],
-  concerns: ['Fees feel slightly high', 'Centre is a bit far', 'Comparing with another coaching', 'Wants an online option'],
+  positives: [
+    'Asked about pricing',
+    'Asked about next steps',
+    'Requested details',
+    'Agreed to follow up',
+  ],
+  concerns: [
+    'Fees feel slightly high',
+    'Centre is a bit far',
+    'Comparing with another coaching',
+    'Wants an online option',
+  ],
   hotConcern: 'Parent approval needed',
   nextStep: 'schedule a counselling session',
-  coldReasons: ['Already joined another coaching', 'Not planning this year', 'Enquired by mistake'],
+  coldReasons: [
+    'Already joined another coaching',
+    'Not planning this year',
+    'Enquired by mistake',
+  ],
 );
 
 const _generic = MockVertical(
   offerings: [
     MockOffering('Standard plan', 4999, ['This week', 'Next week', 'Weekend']),
     MockOffering('Premium plan', 9999, ['This week', 'Next week']),
-    MockOffering('One-time service', 1499, ['Tomorrow', 'This week', 'Weekend']),
+    MockOffering('One-time service', 1499, [
+      'Tomorrow',
+      'This week',
+      'Weekend',
+    ]),
   ],
   optionKey: 'timing',
   optionNoun: 'timing',
-  positives: ['Asked about pricing', 'Asked about next steps', 'Requested details', 'Agreed to follow up'],
-  concerns: ['Price feels slightly high', 'Comparing with another provider', 'Wants to decide later'],
+  positives: [
+    'Asked about pricing',
+    'Asked about next steps',
+    'Requested details',
+    'Agreed to follow up',
+  ],
+  concerns: [
+    'Price feels slightly high',
+    'Comparing with another provider',
+    'Wants to decide later',
+  ],
   hotConcern: 'Needs to confirm with family',
   nextStep: 'book a quick call with our team',
-  coldReasons: ['Already bought elsewhere', 'Not needed right now', 'Enquired by mistake'],
+  coldReasons: [
+    'Already bought elsewhere',
+    'Not needed right now',
+    'Enquired by mistake',
+  ],
 );
 
-MockVertical verticalFor(BusinessCategory c) => c == BusinessCategory.coaching ? _coaching : _generic;
+MockVertical verticalFor(BusinessCategory c) =>
+    c == BusinessCategory.coaching ? _coaching : _generic;
 
-const _positivePool = ['Asked about pricing', 'Asked about next steps', 'Requested details', 'Agreed to follow up'];
+const _positivePool = [
+  'Asked about pricing',
+  'Asked about next steps',
+  'Requested details',
+  'Agreed to follow up',
+];
 
 /// Deterministic-ish "AI" that produces the same structured output the real
 /// backend would receive from Sarvam's agent output variables.
@@ -93,7 +140,10 @@ class MockBrain {
   }
 
   MockOffering offeringFor(MockVertical v, String? name) =>
-      v.offerings.firstWhere((o) => name != null && name.startsWith(o.name), orElse: () => v.offerings.first);
+      v.offerings.firstWhere(
+        (o) => name != null && name.startsWith(o.name),
+        orElse: () => v.offerings.first,
+      );
 
   AiCallOutput think({
     required Lead lead,
@@ -143,7 +193,8 @@ class MockBrain {
           pick(['Asked about pricing', 'Asked about next steps']),
         ];
         concerns = [pick(v.concerns)];
-        summary = '$first is exploring $what. They asked for details on WhatsApp, but ${concerns.first.toLowerCase()}.';
+        summary =
+            '$first is exploring $what. They asked for details on WhatsApp, but ${concerns.first.toLowerCase()}.';
         next = NextAction.sendWhatsapp;
         if (random.nextBool()) callbackAt = nextEvening(hour: 17);
         message =
@@ -159,7 +210,8 @@ class MockBrain {
         intent = LeadIntent.notInterested;
         positives = const [];
         concerns = [pick(v.coldReasons)];
-        summary = '$first is not looking right now – ${concerns.first.toLowerCase()}. ${agent.name} thanked them and closed politely.';
+        summary =
+            '$first is not looking right now – ${concerns.first.toLowerCase()}. ${agent.name} thanked them and closed politely.';
         next = NextAction.none;
         message = null;
     }
@@ -169,7 +221,10 @@ class MockBrain {
       intent: intent,
       temperature: LeadTemperature.fromScore(score),
       interest: o.name,
-      attributes: {v.optionKey: option, if (temperature == LeadTemperature.hot) 'budget': '${o.price}'},
+      attributes: {
+        v.optionKey: option,
+        if (temperature == LeadTemperature.hot) 'budget': '${o.price}',
+      },
       objections: concerns,
       positiveSignals: positives,
       summary: summary,
@@ -181,43 +236,89 @@ class MockBrain {
     );
   }
 
-  CallTranscript transcript({required Lead lead, required AiCallOutput out, required Business business, required Agent agent}) {
+  CallTranscript transcript({
+    required Lead lead,
+    required AiCallOutput out,
+    required Business business,
+    required Agent agent,
+  }) {
     final v = verticalFor(business.category);
     final first = lead.firstName;
     final o = offeringFor(v, out.interest);
     final option = out.attributes[v.optionKey] ?? o.options.first;
-    final human = templateFor(business.category).workflow.humanLabel.toLowerCase();
+    final human = templateFor(
+      business.category,
+    ).workflow.humanLabel.toLowerCase();
     final lines = <(TranscriptSpeaker, String)>[
       (
         TranscriptSpeaker.agent,
         'Hello, am I speaking with $first? This is ${agent.name}, an AI assistant from ${business.name}. '
             'You had enquired about ${o.name} – is this a good time for two minutes?',
       ),
-      (TranscriptSpeaker.lead, pick(['Haan, yes, tell me.', 'Yes, go ahead.', 'Ji, boliye.'])),
-      (TranscriptSpeaker.agent, 'Great! Which ${v.optionNoun} would suit you best?'),
+      (
+        TranscriptSpeaker.lead,
+        pick(['Haan, yes, tell me.', 'Yes, go ahead.', 'Ji, boliye.']),
+      ),
+      (
+        TranscriptSpeaker.agent,
+        'Great! Which ${v.optionNoun} would suit you best?',
+      ),
     ];
     switch (out.temperature) {
       case LeadTemperature.hot:
         lines.addAll([
-          (TranscriptSpeaker.lead, '$option would be better for me. What is the price?'),
-          (TranscriptSpeaker.agent, 'It is ${_price(o)}, and we can start right away.'),
-          (TranscriptSpeaker.lead, 'Okay, that sounds good. What are the next steps?'),
-          (TranscriptSpeaker.agent, 'I can have our $human call you tomorrow around 6 PM to take it forward. Does that work?'),
-          (TranscriptSpeaker.lead, 'Yes, that works. Please send the details on WhatsApp too.'),
-          (TranscriptSpeaker.agent, 'Perfect – I\'ll share everything on WhatsApp. Thank you, $first!'),
+          (
+            TranscriptSpeaker.lead,
+            '$option would be better for me. What is the price?',
+          ),
+          (
+            TranscriptSpeaker.agent,
+            'It is ${_price(o)}, and we can start right away.',
+          ),
+          (
+            TranscriptSpeaker.lead,
+            'Okay, that sounds good. What are the next steps?',
+          ),
+          (
+            TranscriptSpeaker.agent,
+            'I can have our $human call you tomorrow around 6 PM to take it forward. Does that work?',
+          ),
+          (
+            TranscriptSpeaker.lead,
+            'Yes, that works. Please send the details on WhatsApp too.',
+          ),
+          (
+            TranscriptSpeaker.agent,
+            'Perfect – I\'ll share everything on WhatsApp. Thank you, $first!',
+          ),
         ]);
       case LeadTemperature.warm:
         lines.addAll([
-          (TranscriptSpeaker.lead, 'I\'m still exploring options, but $option might work.'),
-          (TranscriptSpeaker.agent, 'That\'s completely fine. Shall I send you the details so you can decide at your pace?'),
+          (
+            TranscriptSpeaker.lead,
+            'I\'m still exploring options, but $option might work.',
+          ),
+          (
+            TranscriptSpeaker.agent,
+            'That\'s completely fine. Shall I send you the details so you can decide at your pace?',
+          ),
           (TranscriptSpeaker.lead, 'Yes, please send them on WhatsApp.'),
-          (TranscriptSpeaker.agent, 'Absolutely, I\'ll send them right after this call. Thank you, $first!'),
+          (
+            TranscriptSpeaker.agent,
+            'Absolutely, I\'ll send them right after this call. Thank you, $first!',
+          ),
         ]);
       case LeadTemperature.cold:
       case LeadTemperature.unknown:
         lines.addAll([
-          (TranscriptSpeaker.lead, 'Actually, not right now. ${out.objections.isEmpty ? '' : out.objections.first}.'),
-          (TranscriptSpeaker.agent, 'No problem at all, thank you for letting me know. Have a great day!'),
+          (
+            TranscriptSpeaker.lead,
+            'Actually, not right now. ${out.objections.isEmpty ? '' : out.objections.first}.',
+          ),
+          (
+            TranscriptSpeaker.agent,
+            'No problem at all, thank you for letting me know. Have a great day!',
+          ),
         ]);
     }
     var t = 0;
@@ -240,7 +341,8 @@ class MockBrain {
     _ => 'Not interested right now',
   };
 
-  static String _price(MockOffering o) => '₹${_inr(o.price)}${o.unit.isEmpty ? '' : ' ${o.unit}'}';
+  static String _price(MockOffering o) =>
+      '₹${_inr(o.price)}${o.unit.isEmpty ? '' : ' ${o.unit}'}';
 
   static String _inr(int v) {
     final s = v.toString();
@@ -328,4 +430,12 @@ const mockLastNames = [
   'Sarkar',
 ];
 
-const mockSources = ['Facebook Ad', 'Website form', 'Google Ads', 'Referral', 'Walk-in enquiry', 'Instagram', 'JustDial'];
+const mockSources = [
+  'Facebook Ad',
+  'Website form',
+  'Google Ads',
+  'Referral',
+  'Walk-in enquiry',
+  'Instagram',
+  'JustDial',
+];

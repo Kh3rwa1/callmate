@@ -73,7 +73,9 @@ class _CallPilotAppState extends ConsumerState<CallPilotApp> {
     } else if (route.startsWith('/calls/')) {
       router.go('/calls');
     }
-    if (route.split('/').length > 2 || route.contains('/campaigns/') || route == '/callbacks') {
+    if (route.split('/').length > 2 ||
+        route.contains('/campaigns/') ||
+        route == '/callbacks') {
       router.push(route);
     } else {
       router.go(route);
@@ -102,7 +104,12 @@ class _CallPilotAppState extends ConsumerState<CallPilotApp> {
       builder: (context, child) {
         // Respect user font scaling up to 1.5x for accessibility.
         final mq = MediaQuery.of(context);
-        final scaled = mq.copyWith(textScaler: mq.textScaler.clamp(minScaleFactor: 0.85, maxScaleFactor: 1.5));
+        final scaled = mq.copyWith(
+          textScaler: mq.textScaler.clamp(
+            minScaleFactor: 0.85,
+            maxScaleFactor: 1.5,
+          ),
+        );
         return MediaQuery(
           data: scaled,
           child: Stack(

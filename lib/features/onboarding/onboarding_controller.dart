@@ -73,7 +73,10 @@ class OnboardingDraft {
   );
 }
 
-final onboardingProvider = NotifierProvider<OnboardingController, OnboardingDraft>(OnboardingController.new);
+final onboardingProvider =
+    NotifierProvider<OnboardingController, OnboardingDraft>(
+      OnboardingController.new,
+    );
 
 class OnboardingController extends Notifier<OnboardingDraft> {
   @override
@@ -84,7 +87,12 @@ class OnboardingController extends Notifier<OnboardingDraft> {
   void selectCategory(BusinessCategory c) {
     // Pre-select sensible skills for this business type (owner can change).
     final defaults = templateFor(c).agent.defaultSkills.toSet();
-    state = state.copyWith(category: c, skills: state.category == c && state.skills.isNotEmpty ? state.skills : defaults);
+    state = state.copyWith(
+      category: c,
+      skills: state.category == c && state.skills.isNotEmpty
+          ? state.skills
+          : defaults,
+    );
   }
 
   void toggleSkill(EmployeeSkill s) {
@@ -93,8 +101,11 @@ class OnboardingController extends Notifier<OnboardingDraft> {
     state = state.copyWith(skills: next);
   }
 
-  void addKnowledge(KnowledgeInput k) => state = state.copyWith(knowledge: [...state.knowledge, k]);
-  void removeKnowledge(KnowledgeInput k) => state = state.copyWith(knowledge: state.knowledge.where((e) => e != k).toList());
+  void addKnowledge(KnowledgeInput k) =>
+      state = state.copyWith(knowledge: [...state.knowledge, k]);
+  void removeKnowledge(KnowledgeInput k) => state = state.copyWith(
+    knowledge: state.knowledge.where((e) => e != k).toList(),
+  );
 
   /// Persists business + knowledge (called before "Meet your AI employee").
   Future<void> saveBusiness() async {
@@ -102,18 +113,29 @@ class OnboardingController extends Notifier<OnboardingDraft> {
     final repo = ref.read(businessRepoProvider);
     final existing = await repo.getBusiness();
     String? n(String v) => v.trim().isEmpty ? null : v.trim();
-    final offerings = d.offerings.split(RegExp(r'[,\n]')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-    final biz = (existing ?? Business(id: 'biz_new', name: d.businessName, category: d.category ?? BusinessCategory.other)).copyWith(
-      name: n(d.businessName) ?? existing?.name,
-      category: d.category,
-      address: n(d.address),
-      offerings: offerings.isEmpty ? null : offerings,
-      pricing: n(d.pricing),
-      openingHours: n(d.hours),
-      location: n(d.location),
-      whatsappNumber: n(d.whatsapp),
-      humanNumber: n(d.humanNumber),
-    );
+    final offerings = d.offerings
+        .split(RegExp(r'[,\n]'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final biz =
+        (existing ??
+                Business(
+                  id: 'biz_new',
+                  name: d.businessName,
+                  category: d.category ?? BusinessCategory.other,
+                ))
+            .copyWith(
+              name: n(d.businessName) ?? existing?.name,
+              category: d.category,
+              address: n(d.address),
+              offerings: offerings.isEmpty ? null : offerings,
+              pricing: n(d.pricing),
+              openingHours: n(d.hours),
+              location: n(d.location),
+              whatsappNumber: n(d.whatsapp),
+              humanNumber: n(d.humanNumber),
+            );
     await repo.saveBusiness(biz);
     final kRepo = ref.read(knowledgeRepoProvider);
     for (final k in d.knowledge) {
@@ -128,10 +150,24 @@ class OnboardingController extends Notifier<OnboardingDraft> {
     final at = d.suggestedAgent;
     final repo = ref.read(businessRepoProvider);
     final current = await repo.getAgent();
-    final role = (d.employeeRole ?? '').trim().isEmpty ? at.role : d.employeeRole!.trim();
-    final name = (d.employeeName ?? '').trim().isEmpty ? at.defaultName : d.employeeName!.trim();
-    final skills = (d.skills.isEmpty ? at.defaultSkills.toSet() : d.skills).map((e) => e.wire).toList();
-    final base = current ?? Agent(id: 'agent_new', name: name, role: role, status: AgentStatus.active, templateId: at.id);
+    final role = (d.employeeRole ?? '').trim().isEmpty
+        ? at.role
+        : d.employeeRole!.trim();
+    final name = (d.employeeName ?? '').trim().isEmpty
+        ? at.defaultName
+        : d.employeeName!.trim();
+    final skills = (d.skills.isEmpty ? at.defaultSkills.toSet() : d.skills)
+        .map((e) => e.wire)
+        .toList();
+    final base =
+        current ??
+        Agent(
+          id: 'agent_new',
+          name: name,
+          role: role,
+          status: AgentStatus.active,
+          templateId: at.id,
+        );
     final agent = base.copyWith(
       name: name,
       role: role,
@@ -148,7 +184,12 @@ class OnboardingController extends Notifier<OnboardingDraft> {
   }
 
   static List<String> _capabilitiesFor(List<String> skills, AgentTemplate at) {
-    final caps = <String>['Calling', 'Lead Qualification', 'Follow-up', 'Customer Questions'];
+    final caps = <String>[
+      'Calling',
+      'Lead Qualification',
+      'Follow-up',
+      'Customer Questions',
+    ];
     for (final w in skills) {
       final s = EmployeeSkill.parse(w);
       if (s == null) continue;

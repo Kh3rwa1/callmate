@@ -12,14 +12,17 @@ class Brand {
 
   static const String appName = 'CallPilot';
   static const String tagline = 'Your AI Calling Employee';
-  static const String description = 'AI that calls, qualifies, and follows up for your business.';
+  static const String description =
+      'AI that calls, qualifies, and follows up for your business.';
 
   /// Fallbacks only used while the employee is still loading.
   static const String employeeFallbackName = 'Your AI employee';
   static const String employeeNoun = 'AI employee';
 }
 
-// Aliases matching the requested constant names.
-const String APP_NAME = Brand.appName; // ignore: constant_identifier_names
-const String APP_TAGLINE = Brand.tagline; // ignore: constant_identifier_names
-const String APP_DESCRIPTION = Brand.description; // ignore: constant_identifier_names
+// ignore: constant_identifier_names
+const String APP_NAME = Brand.appName;
+// ignore: constant_identifier_names
+const String APP_TAGLINE = Brand.tagline;
+// ignore: constant_identifier_names
+const String APP_DESCRIPTION = Brand.description;

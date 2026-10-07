@@ -43,7 +43,13 @@ class _Body extends ConsumerWidget {
     final t = Theme.of(context).textTheme;
     final l = lead;
     final calls = ref.watch(leadCallsProvider(l.id)).value ?? const <Call>[];
-    final fus = ref.watch(followUpsProvider).value?.where((f) => f.leadId == l.id).toList() ?? const <FollowUp>[];
+    final fus =
+        ref
+            .watch(followUpsProvider)
+            .value
+            ?.where((f) => f.leadId == l.id)
+            .toList() ??
+        const <FollowUp>[];
     final fu = fus.firstOrNull;
     final lastCall = calls.where((c) => c.status.isConnected).firstOrNull;
     final wf = ref.watch(workflowProvider);
@@ -87,7 +93,13 @@ class _Body extends ConsumerWidget {
                   if (fu != null && fu.isPending) {
                     context.push('/followups/${fu.id}');
                   } else {
-                    openWhatsAppHandoff(context, ref, phone: l.phone, message: fu?.message ?? 'Hi ${l.firstName} 👋\n\n', followUp: fu);
+                    openWhatsAppHandoff(
+                      context,
+                      ref,
+                      phone: l.phone,
+                      message: fu?.message ?? 'Hi ${l.firstName} 👋\n\n',
+                      followUp: fu,
+                    );
                   }
                 },
               ),
@@ -95,24 +107,43 @@ class _Body extends ConsumerWidget {
             const SizedBox(width: 10),
             Expanded(
               child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 8)),
-                onPressed: () => _handleCall(context, ref, l, ref.read(agentProvider).value?.name ?? 'Riya'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                onPressed: () => _handleCall(
+                  context,
+                  ref,
+                  l,
+                  ref.read(agentProvider).value?.name ?? 'Riya',
+                ),
                 icon: const Icon(Icons.call_rounded, size: 18),
                 label: const FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text('AI Call', maxLines: 1, style: TextStyle(fontSize: 14)),
+                  child: Text(
+                    'AI Call',
+                    maxLines: 1,
+                    style: TextStyle(fontSize: 14),
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44), padding: const EdgeInsets.symmetric(horizontal: 8)),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
                 onPressed: () => showCallbackSheet(context, ref, lead: l),
                 icon: const Icon(Icons.event_rounded, size: 18),
                 label: const FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text('Callback', maxLines: 1, style: TextStyle(fontSize: 14)),
+                  child: Text(
+                    'Callback',
+                    maxLines: 1,
+                    style: TextStyle(fontSize: 14),
+                  ),
                 ),
               ),
             ),
@@ -129,7 +160,13 @@ class _Body extends ConsumerWidget {
                   const SizedBox(height: 12),
                   InkWell(
                     onTap: () => context.push('/calls/${lastCall.id}/result'),
-                    child: Text('See full call result →', style: t.labelMedium?.copyWith(color: AppColors.brand, fontSize: 14)),
+                    child: Text(
+                      'See full call result →',
+                      style: t.labelMedium?.copyWith(
+                        color: AppColors.brand,
+                        fontSize: 14,
+                      ),
+                    ),
                   ),
                 ],
               ],
@@ -143,23 +180,38 @@ class _Body extends ConsumerWidget {
             children: [
               _Kv(wf.interestLabel, l.interest ?? 'Not known yet'),
               for (final a in wf.attributes)
-                if (l.attributes[a.key] != null) _Kv(a.label, _fmtAttr(a.key, l.attributes[a.key]!)),
+                if (l.attributes[a.key] != null)
+                  _Kv(a.label, _fmtAttr(a.key, l.attributes[a.key]!)),
               for (final e in l.attributes.entries)
-                if (!wf.attributes.any((a) => a.key == e.key)) _Kv(_titleCase(e.key), _fmtAttr(e.key, e.value)),
+                if (!wf.attributes.any((a) => a.key == e.key))
+                  _Kv(_titleCase(e.key), _fmtAttr(e.key, e.value)),
               if (l.language != null) _Kv('Language', l.language!),
-              _Kv('Next action', l.nextAction.label, highlight: l.nextAction != NextAction.none),
-              _Kv('Callback', l.callbackAt == null ? 'Not scheduled' : Fmt.friendlyFuture(l.callbackAt!), highlight: l.callbackAt != null),
+              _Kv(
+                'Next action',
+                l.nextAction.label,
+                highlight: l.nextAction != NextAction.none,
+              ),
+              _Kv(
+                'Callback',
+                l.callbackAt == null
+                    ? 'Not scheduled'
+                    : Fmt.friendlyFuture(l.callbackAt!),
+                highlight: l.callbackAt != null,
+              ),
               _Kv('Added', Fmt.relative(l.createdAt), last: true),
             ],
           ),
         ),
-        if (l.score != null && (l.score!.positiveSignals.isNotEmpty || l.objections.isNotEmpty)) ...[
+        if (l.score != null &&
+            (l.score!.positiveSignals.isNotEmpty ||
+                l.objections.isNotEmpty)) ...[
           const SectionLabel('Signals & objections'),
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final p in l.score!.positiveSignals) _Signal(text: p, positive: true),
+                for (final p in l.score!.positiveSignals)
+                  _Signal(text: p, positive: true),
                 for (final o in l.objections) _Signal(text: o, positive: false),
               ],
             ),
@@ -168,7 +220,11 @@ class _Body extends ConsumerWidget {
         if (fu != null) ...[
           SectionLabel(
             'WhatsApp follow-up',
-            trailing: Pill(label: fu.status.label, color: fu.isPending ? AppColors.whatsapp : AppColors.inkSoft, dense: true),
+            trailing: Pill(
+              label: fu.status.label,
+              color: fu.isPending ? AppColors.whatsapp : AppColors.inkSoft,
+              dense: true,
+            ),
           ),
           AppCard(
             onTap: () => context.push('/followups/${fu.id}'),
@@ -186,15 +242,26 @@ class _Body extends ConsumerWidget {
                 const SizedBox(height: 10),
                 Text(
                   fu.isPending ? 'Review & send →' : 'Open again →',
-                  style: t.labelMedium?.copyWith(color: AppColors.whatsapp, fontSize: 14),
+                  style: t.labelMedium?.copyWith(
+                    color: AppColors.whatsapp,
+                    fontSize: 14,
+                  ),
                 ),
               ],
             ),
           ),
         ],
-        SectionLabel('Call history', trailing: Text('${calls.length}', style: t.labelMedium)),
+        SectionLabel(
+          'Call history',
+          trailing: Text('${calls.length}', style: t.labelMedium),
+        ),
         if (calls.isEmpty)
-          AppCard(child: Text('${ref.watch(employeeNameProvider)} hasn\'t called ${l.firstName} yet.', style: t.bodyMedium))
+          AppCard(
+            child: Text(
+              '${ref.watch(employeeNameProvider)} hasn\'t called ${l.firstName} yet.',
+              style: t.bodyMedium,
+            ),
+          )
         else
           AppCard(
             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -204,16 +271,29 @@ class _Body extends ConsumerWidget {
                   if (i > 0) const Divider(indent: 20, endIndent: 20),
                   ListTile(
                     minTileHeight: 60,
-                    onTap: () => context.push(calls[i].status.isConnected ? '/calls/${calls[i].id}/result' : '/calls/${calls[i].id}'),
+                    onTap: () => context.push(
+                      calls[i].status.isConnected
+                          ? '/calls/${calls[i].id}/result'
+                          : '/calls/${calls[i].id}',
+                    ),
                     leading: Icon(
-                      calls[i].status.isConnected ? Icons.check_circle_rounded : Icons.phone_missed_rounded,
-                      color: calls[i].status.isConnected ? AppColors.success : AppColors.inkFaint,
+                      calls[i].status.isConnected
+                          ? Icons.check_circle_rounded
+                          : Icons.phone_missed_rounded,
+                      color: calls[i].status.isConnected
+                          ? AppColors.success
+                          : AppColors.inkFaint,
                     ),
                     title: Text(
-                      calls[i].status.isConnected ? 'Connected · ${Fmt.duration(calls[i].duration)}' : calls[i].status.label,
+                      calls[i].status.isConnected
+                          ? 'Connected · ${Fmt.duration(calls[i].duration)}'
+                          : calls[i].status.label,
                       style: t.titleSmall,
                     ),
-                    subtitle: Text(Fmt.friendlyFuture(calls[i].startedAt), style: t.bodySmall),
+                    subtitle: Text(
+                      Fmt.friendlyFuture(calls[i].startedAt),
+                      style: t.bodySmall,
+                    ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                   ),
                 ],
@@ -236,9 +316,11 @@ class _Body extends ConsumerWidget {
   }
 }
 
-String _titleCase(String k) => k.isEmpty ? k : k[0].toUpperCase() + k.substring(1).replaceAll('_', ' ');
+String _titleCase(String k) =>
+    k.isEmpty ? k : k[0].toUpperCase() + k.substring(1).replaceAll('_', ' ');
 
-String _fmtAttr(String key, String v) => key == 'budget' && int.tryParse(v) != null ? Fmt.inr(int.parse(v)) : v;
+String _fmtAttr(String key, String v) =>
+    key == 'budget' && int.tryParse(v) != null ? Fmt.inr(int.parse(v)) : v;
 
 class _Kv extends StatelessWidget {
   const _Kv(this.k, this.v, {this.highlight = false, this.last = false});
@@ -252,14 +334,21 @@ class _Kv extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
-        border: last ? null : const Border(bottom: BorderSide(color: AppColors.border)),
+        border: last
+            ? null
+            : const Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(width: 130, child: Text(k, style: t.bodyMedium)),
           Expanded(
-            child: Text(v, style: t.titleSmall?.copyWith(color: highlight ? AppColors.brand : AppColors.ink)),
+            child: Text(
+              v,
+              style: t.titleSmall?.copyWith(
+                color: highlight ? AppColors.brand : AppColors.ink,
+              ),
+            ),
           ),
         ],
       ),
@@ -284,14 +373,24 @@ class _Signal extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(text, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+          child: Text(
+            text,
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
         ),
       ],
     ),
   );
 }
 
-Future<void> _handleCall(BuildContext context, WidgetRef ref, Lead l, String agentName) async {
+Future<void> _handleCall(
+  BuildContext context,
+  WidgetRef ref,
+  Lead l,
+  String agentName,
+) async {
   final action = await showModalBottomSheet<String>(
     context: context,
     builder: (ctx) => SafeArea(
@@ -303,7 +402,10 @@ Future<void> _handleCall(BuildContext context, WidgetRef ref, Lead l, String age
           children: [
             Text('Call ${l.name}', style: Theme.of(ctx).textTheme.titleLarge),
             const SizedBox(height: 4),
-            Text(PhoneUtils.display(l.phone), style: Theme.of(ctx).textTheme.bodyMedium),
+            Text(
+              PhoneUtils.display(l.phone),
+              style: Theme.of(ctx).textTheme.bodyMedium,
+            ),
             const SizedBox(height: 16),
             ListTile(
               leading: const CircleAvatar(
@@ -311,7 +413,9 @@ Future<void> _handleCall(BuildContext context, WidgetRef ref, Lead l, String age
                 child: Icon(Icons.smart_toy_rounded, color: AppColors.brand),
               ),
               title: Text('AI Call with $agentName (Sarvam AI)'),
-              subtitle: const Text('Agent calls lead phone directly with voice AI'),
+              subtitle: const Text(
+                'Agent calls lead phone directly with voice AI',
+              ),
               onTap: () => Navigator.pop(ctx, 'ai_call'),
             ),
             ListTile(
@@ -343,20 +447,26 @@ Future<void> _handleCall(BuildContext context, WidgetRef ref, Lead l, String age
   if (action == 'ai_call') {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Calling ${l.name} via Sarvam AI voice agent... 📞')),
+        SnackBar(
+          content: Text('Calling ${l.name} via Sarvam AI voice agent... 📞'),
+        ),
       );
       await ref.read(callRepoProvider).triggerCall(l.id);
       ref.invalidate(leadCallsProvider(l.id));
       ref.read(dataVersionProvider.notifier).bump();
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$agentName is calling ${l.name}! Call logged in activity.')),
+        SnackBar(
+          content: Text(
+            '$agentName is calling ${l.name}! Call logged in activity.',
+          ),
+        ),
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(friendlyError(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
   } else if (action == 'in_app') {
     context.push('/voice-test');
@@ -365,4 +475,3 @@ Future<void> _handleCall(BuildContext context, WidgetRef ref, Lead l, String age
     if (d != null) launchUrl(Uri.parse('tel:+$d'));
   }
 }
-

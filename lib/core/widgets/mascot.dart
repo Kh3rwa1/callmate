@@ -121,7 +121,10 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
       duration: const Duration(milliseconds: 260),
       transitionBuilder: (child, a) => FadeTransition(
         opacity: a,
-        child: ScaleTransition(scale: Tween(begin: 0.96, end: 1.0).animate(a), child: child),
+        child: ScaleTransition(
+          scale: Tween(begin: 0.96, end: 1.0).animate(a),
+          child: child,
+        ),
       ),
       child: Image.asset(
         MascotConfig.path(widget.state),
@@ -129,7 +132,10 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
         width: s,
         height: s,
         fit: BoxFit.contain,
-        cacheWidth: (s * MediaQuery.devicePixelRatioOf(context)).round().clamp(64, 512),
+        cacheWidth: (s * MediaQuery.devicePixelRatioOf(context)).round().clamp(
+          64,
+          512,
+        ),
         filterQuality: FilterQuality.medium,
         errorBuilder: (_, __, ___) => _MascotFallback(size: s),
       ),
@@ -176,7 +182,10 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
               child: Container(
                 width: s * 0.92,
                 height: s * 0.92,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: widget.haloColor ?? AppColors.mascotHalo),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.haloColor ?? AppColors.mascotHalo,
+                ),
               ),
             ),
           ),
@@ -190,7 +199,14 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
         clipBehavior: Clip.none,
         children: [
           body,
-          Positioned(right: s * 0.04, bottom: s * 0.06, child: RoleBadge(role: widget.role!, size: (s * 0.24).clamp(26, 52))),
+          Positioned(
+            right: s * 0.04,
+            bottom: s * 0.06,
+            child: RoleBadge(
+              role: widget.role!,
+              size: (s * 0.24).clamp(26, 52),
+            ),
+          ),
         ],
       );
     }
@@ -220,7 +236,13 @@ class RoleBadge extends StatelessWidget {
       color: Colors.white,
       shape: BoxShape.circle,
       border: Border.all(color: AppColors.brandSoft, width: 2),
-      boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 8, offset: Offset(0, 3))],
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x22000000),
+          blurRadius: 8,
+          offset: Offset(0, 3),
+        ),
+      ],
     ),
     child: Text(role.badge, style: TextStyle(fontSize: size * 0.5, height: 1)),
   );
@@ -228,7 +250,12 @@ class RoleBadge extends StatelessWidget {
 
 /// Circular avatar crop of the mascot for list rows / chips.
 class MascotAvatar extends StatelessWidget {
-  const MascotAvatar({super.key, this.size = 44, this.state = MascotState.welcome, this.ring});
+  const MascotAvatar({
+    super.key,
+    this.size = 44,
+    this.state = MascotState.welcome,
+    this.ring,
+  });
   final double size;
   final MascotState state;
   final Color? ring;
@@ -253,7 +280,9 @@ class MascotAvatar extends StatelessWidget {
           width: size * 1.35,
           height: size * 1.35,
           fit: BoxFit.cover,
-          cacheWidth: (size * 1.35 * MediaQuery.devicePixelRatioOf(context)).round().clamp(48, 512),
+          cacheWidth: (size * 1.35 * MediaQuery.devicePixelRatioOf(context))
+              .round()
+              .clamp(48, 512),
           errorBuilder: (_, __, ___) => _MascotFallback(size: size),
         ),
       ),
@@ -266,7 +295,8 @@ class _MascotFallback extends StatelessWidget {
   const _MascotFallback({required this.size});
   final double size;
   @override
-  Widget build(BuildContext context) => CustomPaint(size: Size.square(size), painter: _MascotPainter());
+  Widget build(BuildContext context) =>
+      CustomPaint(size: Size.square(size), painter: _MascotPainter());
 }
 
 class _MascotPainter extends CustomPainter {
@@ -276,13 +306,25 @@ class _MascotPainter extends CustomPainter {
     final p = Paint()..isAntiAlias = true;
     // body
     p.color = const Color(0xFFE8705A);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * .2, w * .62, w * .6, w * .4), Radius.circular(w * .2)), p);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * .2, w * .62, w * .6, w * .4),
+        Radius.circular(w * .2),
+      ),
+      p,
+    );
     // face
     p.color = const Color(0xFFC98B67);
     canvas.drawCircle(Offset(w * .5, w * .42), w * .22, p);
     // hair
     p.color = const Color(0xFF1E1A1D);
-    canvas.drawArc(Rect.fromCircle(center: Offset(w * .5, w * .4), radius: w * .24), math.pi, math.pi, true, p);
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(w * .5, w * .4), radius: w * .24),
+      math.pi,
+      math.pi,
+      true,
+      p,
+    );
     // eyes
     canvas.drawCircle(Offset(w * .42, w * .44), w * .025, p);
     canvas.drawCircle(Offset(w * .58, w * .44), w * .025, p);
@@ -291,12 +333,24 @@ class _MascotPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = w * .035
       ..color = const Color(0xFF3B3F4A);
-    canvas.drawArc(Rect.fromCircle(center: Offset(w * .5, w * .42), radius: w * .27), math.pi * 1.05, math.pi * .9, false, p);
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(w * .5, w * .42), radius: w * .27),
+      math.pi * 1.05,
+      math.pi * .9,
+      false,
+      p,
+    );
     // smile
     p
       ..strokeWidth = w * .018
       ..color = const Color(0xFF7A3B2E);
-    canvas.drawArc(Rect.fromCircle(center: Offset(w * .5, w * .5), radius: w * .06), .3, math.pi - .6, false, p);
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(w * .5, w * .5), radius: w * .06),
+      .3,
+      math.pi - .6,
+      false,
+      p,
+    );
   }
 
   @override

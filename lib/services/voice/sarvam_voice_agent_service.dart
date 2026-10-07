@@ -63,11 +63,15 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     _webLevelTimer?.cancel();
     _webLevelTimer = Timer.periodic(const Duration(milliseconds: 90), (_) {
       if (_level.isClosed) return;
-      _level.add(speaking ? 0.35 + _rnd.nextDouble() * 0.55 : _rnd.nextDouble() * 0.18);
+      _level.add(
+        speaking ? 0.35 + _rnd.nextDouble() * 0.55 : _rnd.nextDouble() * 0.18,
+      );
     });
   }
 
-  Future<void> _startWebSession({Map<String, dynamic> agentVariables = const {}}) async {
+  Future<void> _startWebSession({
+    Map<String, dynamic> agentVariables = const {},
+  }) async {
     _stopWebTimers();
     _entries.clear();
     _emit();
@@ -80,36 +84,51 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       debugPrint('[SarvamVoiceAgent] Web test session error: $e');
     }
 
-    final agentName = agentVariables['agent_name'] ?? session?.agentVariables['agent_name'] ?? 'Your AI Assistant';
-    final bizName = agentVariables['business_name'] ?? session?.agentVariables['business_name'] ?? 'your business';
+    final agentName =
+        agentVariables['agent_name'] ??
+        session?.agentVariables['agent_name'] ??
+        'Your AI Assistant';
+    final bizName =
+        agentVariables['business_name'] ??
+        session?.agentVariables['business_name'] ??
+        'your business';
 
     await Future<void>.delayed(const Duration(milliseconds: 600));
     _set(VoiceConnectionState.speaking);
     _startWebLevel(speaking: true);
 
-    final greeting = session?.greetingText ?? 'Hello, I am $agentName with $bizName. How can I assist you today?';
-    _entries.add(VoiceTranscriptEntry(
-      id: 'web_agent_1',
-      isAgent: true,
-      text: greeting,
-      isFinal: true,
-    ));
+    final greeting =
+        session?.greetingText ??
+        'Hello, I am $agentName with $bizName. How can I assist you today?';
+    _entries.add(
+      VoiceTranscriptEntry(
+        id: 'web_agent_1',
+        isAgent: true,
+        text: greeting,
+        isFinal: true,
+      ),
+    );
     _emit();
-    if (session?.greetingAudioBase64 != null && session!.greetingAudioBase64!.isNotEmpty) {
+    if (session?.greetingAudioBase64 != null &&
+        session!.greetingAudioBase64!.isNotEmpty) {
       playBase64Audio(session.greetingAudioBase64!);
     } else {
       speakAgentText(greeting);
     }
 
-    _webTimers.add(Timer(const Duration(milliseconds: 2800), () {
-      if (_current != VoiceConnectionState.speaking) return;
-      _set(VoiceConnectionState.listening);
-      _startWebLevel(speaking: false);
-    }));
+    _webTimers.add(
+      Timer(const Duration(milliseconds: 2800), () {
+        if (_current != VoiceConnectionState.speaking) return;
+        _set(VoiceConnectionState.listening);
+        _startWebLevel(speaking: false);
+      }),
+    );
   }
 
   @override
-  Future<void> startTestSession({Map<String, dynamic> agentVariables = const {}}) async {
+  Future<void> startTestSession({
+    Map<String, dynamic> agentVariables = const {},
+  }) async {
     if (_agent != null) return;
     if (kIsWeb) {
       await _startWebSession(agentVariables: agentVariables);
@@ -120,7 +139,10 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     final mic = await Permission.microphone.request();
     if (!mic.isGranted) {
       _set(VoiceConnectionState.error);
-      throw const VoiceAgentException('Microphone access is needed to talk to your AI employee.', permissionDenied: true);
+      throw const VoiceAgentException(
+        'Microphone access is needed to talk to your AI employee.',
+        permissionDenied: true,
+      );
     }
 
     VoiceTestSession? session;
@@ -139,7 +161,9 @@ class SarvamVoiceAgentService implements VoiceAgentService {
         );
       } else {
         _set(VoiceConnectionState.error);
-        throw VoiceAgentException("Your AI employee couldn't connect to backend. Please check connection ($e).");
+        throw VoiceAgentException(
+          "Your AI employee couldn't connect to backend. Please check connection ($e).",
+        );
       }
     }
 
@@ -157,17 +181,28 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       userIdentifierType: UserIdentifierType.custom,
       interactionType: InteractionType.call,
       sampleRate: 16000,
-      agentVariables: {'gender': 'female', 'voice': 'female', 'speaker': 'meera', 'tts_model': 'bulbul:v4-flash', ...session.agentVariables, ...agentVariables},
+      agentVariables: {
+        'gender': 'female',
+        'voice': 'female',
+        'speaker': 'meera',
+        'tts_model': 'bulbul:v4-flash',
+        ...session.agentVariables,
+        ...agentVariables,
+      },
     );
 
     final headers = session.sessionToken.isNotEmpty
         ? {'Authorization': 'Bearer ${session.sessionToken}'}
         : null;
-    final apiKey = session.sessionToken.isEmpty && AppEnv.sarvamApiKey.isNotEmpty
+    final apiKey =
+        session.sessionToken.isEmpty && AppEnv.sarvamApiKey.isNotEmpty
         ? AppEnv.sarvamApiKey
         : null;
 
-    _audio = _MutableAudioInterface(DefaultAudioInterface(inputSampleRate: 16000), onOutput: _onAgentAudio);
+    _audio = _MutableAudioInterface(
+      DefaultAudioInterface(inputSampleRate: 16000),
+      onOutput: _onAgentAudio,
+    );
     _agent = SamvaadAgent(
       config: config,
       baseUrl: proxyBaseUrl,
@@ -180,8 +215,14 @@ class SarvamVoiceAgentService implements VoiceAgentService {
 
     try {
       await _agent!.start();
-      final ok = await _agent!.waitForConnect(timeout: const Duration(seconds: 15));
-      if (!ok) throw const VoiceAgentException('Connection to Sarvam AI timed out. Please try again.');
+      final ok = await _agent!.waitForConnect(
+        timeout: const Duration(seconds: 15),
+      );
+      if (!ok) {
+        throw const VoiceAgentException(
+          'Connection to Sarvam AI timed out. Please try again.',
+        );
+      }
       _set(VoiceConnectionState.listening);
       unawaited(
         _agent!.waitForDisconnect().then((_) {
@@ -193,7 +234,9 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     } catch (err) {
       debugPrint('[SarvamVoiceAgent] Failed to connect: $err');
       await _teardown(VoiceConnectionState.error);
-      throw VoiceAgentException("Sarvam voice connection error: ${friendlyError(err)}");
+      throw VoiceAgentException(
+        "Sarvam voice connection error: ${friendlyError(err)}",
+      );
     }
   }
 
@@ -201,13 +244,25 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     if (msg is ServerTextChunkMsg) {
       final last = _entries.isNotEmpty ? _entries.last : null;
       if (last != null && last.isAgent && !last.isFinal) {
-        _entries[_entries.length - 1] = last.copyWith(text: last.text + msg.text, isFinal: msg.status == MsgStatus.completed);
+        _entries[_entries.length - 1] = last.copyWith(
+          text: last.text + msg.text,
+          isFinal: msg.status == MsgStatus.completed,
+        );
       } else {
-        _entries.add(VoiceTranscriptEntry(id: 'a${_seq++}', isAgent: true, text: msg.text, isFinal: msg.status == MsgStatus.completed));
+        _entries.add(
+          VoiceTranscriptEntry(
+            id: 'a${_seq++}',
+            isAgent: true,
+            text: msg.text,
+            isFinal: msg.status == MsgStatus.completed,
+          ),
+        );
       }
       _emit();
     } else if (msg is ServerTextMsg) {
-      _entries.add(VoiceTranscriptEntry(id: 'a${_seq++}', isAgent: true, text: msg.text));
+      _entries.add(
+        VoiceTranscriptEntry(id: 'a${_seq++}', isAgent: true, text: msg.text),
+      );
       _emit();
     }
   }
@@ -216,7 +271,9 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     if (e is ServerInteractionConnectedEvent) {
       final greet = e.initialBotMessage;
       if (greet != null && greet.isNotEmpty) {
-        _entries.add(VoiceTranscriptEntry(id: 'a${_seq++}', isAgent: true, text: greet));
+        _entries.add(
+          VoiceTranscriptEntry(id: 'a${_seq++}', isAgent: true, text: greet),
+        );
         _emit();
       }
       _set(VoiceConnectionState.listening);
@@ -232,7 +289,9 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     if (!_level.isClosed) _level.add(_rms(pcm));
     _speakingDecay?.cancel();
     _speakingDecay = Timer(const Duration(milliseconds: 700), () {
-      if (_current == VoiceConnectionState.speaking) _set(VoiceConnectionState.listening);
+      if (_current == VoiceConnectionState.speaking) {
+        _set(VoiceConnectionState.listening);
+      }
       if (!_level.isClosed) _level.add(0);
     });
   }
@@ -261,29 +320,48 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     if (clean.isEmpty) return;
 
     if (kIsWeb) {
-      _entries.add(VoiceTranscriptEntry(id: 'u${_seq++}', isAgent: false, text: clean));
+      _entries.add(
+        VoiceTranscriptEntry(id: 'u${_seq++}', isAgent: false, text: clean),
+      );
       _emit();
       _set(VoiceConnectionState.thinking);
       _startWebLevel(speaking: false);
 
       try {
         final chatReply = await _sessions.sendChatMessage(clean);
-        if (_current == VoiceConnectionState.disconnected || _current == VoiceConnectionState.idle) return;
-        _entries.add(VoiceTranscriptEntry(id: 'a${_seq++}', isAgent: true, text: chatReply.reply));
+        if (_current == VoiceConnectionState.disconnected ||
+            _current == VoiceConnectionState.idle) {
+          return;
+        }
+        _entries.add(
+          VoiceTranscriptEntry(
+            id: 'a${_seq++}',
+            isAgent: true,
+            text: chatReply.reply,
+          ),
+        );
         _emit();
         _set(VoiceConnectionState.speaking);
         _startWebLevel(speaking: true);
-        if (chatReply.audioBase64 != null && chatReply.audioBase64!.isNotEmpty) {
+        if (chatReply.audioBase64 != null &&
+            chatReply.audioBase64!.isNotEmpty) {
           playBase64Audio(chatReply.audioBase64!);
         } else {
           speakAgentText(chatReply.reply);
         }
-        _webTimers.add(Timer(Duration(milliseconds: min(8000, max(2200, chatReply.reply.length * 50))), () {
-          if (_current == VoiceConnectionState.speaking) {
-            _set(VoiceConnectionState.listening);
-            _startWebLevel(speaking: false);
-          }
-        }));
+        _webTimers.add(
+          Timer(
+            Duration(
+              milliseconds: min(8000, max(2200, chatReply.reply.length * 50)),
+            ),
+            () {
+              if (_current == VoiceConnectionState.speaking) {
+                _set(VoiceConnectionState.listening);
+                _startWebLevel(speaking: false);
+              }
+            },
+          ),
+        );
       } catch (err) {
         debugPrint('[SarvamVoiceAgent] Web chat error: $err');
         _set(VoiceConnectionState.listening);
@@ -292,7 +370,9 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     }
 
     if (_agent == null) return;
-    _entries.add(VoiceTranscriptEntry(id: 'u${_seq++}', isAgent: false, text: clean));
+    _entries.add(
+      VoiceTranscriptEntry(id: 'u${_seq++}', isAgent: false, text: clean),
+    );
     _emit();
     _set(VoiceConnectionState.thinking);
     await _agent!.sendText(clean);
@@ -324,7 +404,8 @@ class SarvamVoiceAgentService implements VoiceAgentService {
   Future<void> stopSession() => _teardown(VoiceConnectionState.disconnected);
 
   @override
-  Stream<List<VoiceTranscriptEntry>> getTranscriptStream() => _transcript.stream;
+  Stream<List<VoiceTranscriptEntry>> getTranscriptStream() =>
+      _transcript.stream;
 
   @override
   Stream<VoiceConnectionState> getConnectionState() => _state.stream;
@@ -350,10 +431,11 @@ class _MutableAudioInterface implements AudioInterface {
   bool muted = false;
 
   @override
-  Future<void> start(AudioInputCallback inputCallback) => inner.start((data, frames) async {
-    if (muted) return;
-    await inputCallback(data, frames);
-  });
+  Future<void> start(AudioInputCallback inputCallback) =>
+      inner.start((data, frames) async {
+        if (muted) return;
+        await inputCallback(data, frames);
+      });
 
   @override
   Future<void> stop() => inner.stop();

@@ -27,18 +27,22 @@ import '../providers.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
-CustomTransitionPage<void> _fade(GoRouterState s, Widget child) => CustomTransitionPage(
-  key: s.pageKey,
-  child: child,
-  transitionDuration: const Duration(milliseconds: 280),
-  transitionsBuilder: (_, a, __, c) => FadeTransition(
-    opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
-    child: SlideTransition(
-      position: Tween(begin: const Offset(0.04, 0), end: Offset.zero).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
-      child: c,
-    ),
-  ),
-);
+CustomTransitionPage<void> _fade(GoRouterState s, Widget child) =>
+    CustomTransitionPage(
+      key: s.pageKey,
+      child: child,
+      transitionDuration: const Duration(milliseconds: 280),
+      transitionsBuilder: (_, a, __, c) => FadeTransition(
+        opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
+        child: SlideTransition(
+          position: Tween(
+            begin: const Offset(0.04, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+          child: c,
+        ),
+      ),
+    );
 
 final routerProvider = Provider<GoRouter>((ref) {
   final prefs = ref.watch(localPrefsProvider);
@@ -51,35 +55,68 @@ final routerProvider = Provider<GoRouter>((ref) {
       final hasSession = sessionAsync.value ?? false;
       final isMock = ref.watch(useMockProvider);
       final inAuth = loc.startsWith('/login');
-      final inOnboarding = loc.startsWith('/onboarding') || loc.startsWith('/voice-test');
+      final inOnboarding =
+          loc.startsWith('/onboarding') || loc.startsWith('/voice-test');
 
-      if (!isMock && !hasSession && !inAuth && loc != '/demo' && loc != '/splash') {
+      if (!isMock &&
+          !hasSession &&
+          !inAuth &&
+          loc != '/demo' &&
+          loc != '/splash') {
         return '/login';
       }
       if (hasSession && inAuth) {
         return prefs.onboarded ? '/home' : '/onboarding';
       }
-      if (!prefs.onboarded && !inOnboarding && loc != '/demo' && loc != '/splash' && !inAuth) {
+      if (!prefs.onboarded &&
+          !inOnboarding &&
+          loc != '/demo' &&
+          loc != '/splash' &&
+          !inAuth) {
         return '/onboarding';
       }
       return null;
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
-      GoRoute(path: '/login', pageBuilder: (_, s) => _fade(s, const LoginScreen())),
+      GoRoute(
+        path: '/login',
+        pageBuilder: (_, s) => _fade(s, const LoginScreen()),
+      ),
 
       // ---------------- Onboarding
       GoRoute(
         path: '/onboarding',
         pageBuilder: (_, s) => _fade(s, const WelcomeScreen()),
         routes: [
-          GoRoute(path: 'business-type', pageBuilder: (_, s) => _fade(s, const BusinessTypeScreen())),
-          GoRoute(path: 'skills', pageBuilder: (_, s) => _fade(s, const EmployeeSkillsScreen())),
-          GoRoute(path: 'details', pageBuilder: (_, s) => _fade(s, const BusinessDetailsScreen())),
-          GoRoute(path: 'offer', pageBuilder: (_, s) => _fade(s, const OfferDetailsScreen())),
-          GoRoute(path: 'teach', pageBuilder: (_, s) => _fade(s, const TeachAiOnboardingScreen())),
-          GoRoute(path: 'create', pageBuilder: (_, s) => _fade(s, const CreateAgentScreen())),
-          GoRoute(path: 'test', pageBuilder: (_, s) => _fade(s, const FirstCallScreen())),
+          GoRoute(
+            path: 'business-type',
+            pageBuilder: (_, s) => _fade(s, const BusinessTypeScreen()),
+          ),
+          GoRoute(
+            path: 'skills',
+            pageBuilder: (_, s) => _fade(s, const EmployeeSkillsScreen()),
+          ),
+          GoRoute(
+            path: 'details',
+            pageBuilder: (_, s) => _fade(s, const BusinessDetailsScreen()),
+          ),
+          GoRoute(
+            path: 'offer',
+            pageBuilder: (_, s) => _fade(s, const OfferDetailsScreen()),
+          ),
+          GoRoute(
+            path: 'teach',
+            pageBuilder: (_, s) => _fade(s, const TeachAiOnboardingScreen()),
+          ),
+          GoRoute(
+            path: 'create',
+            pageBuilder: (_, s) => _fade(s, const CreateAgentScreen()),
+          ),
+          GoRoute(
+            path: 'test',
+            pageBuilder: (_, s) => _fade(s, const FirstCallScreen()),
+          ),
         ],
       ),
 
@@ -88,13 +125,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __, shell) => AppShell(shell: shell),
         branches: [
           StatefulShellBranch(
-            routes: [GoRoute(path: '/home', builder: (_, __) => const HomeScreen())],
+            routes: [
+              GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
+            ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/leads',
-                builder: (_, s) => LeadsScreen(initialFilter: s.uri.queryParameters['filter']),
+                builder: (_, s) =>
+                    LeadsScreen(initialFilter: s.uri.queryParameters['filter']),
               ),
             ],
           ),
@@ -102,60 +142,114 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/calls',
-                builder: (_, s) => CallsScreen(initialFilter: s.uri.queryParameters['filter']),
+                builder: (_, s) =>
+                    CallsScreen(initialFilter: s.uri.queryParameters['filter']),
               ),
             ],
           ),
           StatefulShellBranch(
-            routes: [GoRoute(path: '/followups', builder: (_, __) => const FollowUpsScreen())],
+            routes: [
+              GoRoute(
+                path: '/followups',
+                builder: (_, __) => const FollowUpsScreen(),
+              ),
+            ],
           ),
           StatefulShellBranch(
-            routes: [GoRoute(path: '/agent', builder: (_, __) => const AgentScreen())],
+            routes: [
+              GoRoute(path: '/agent', builder: (_, __) => const AgentScreen()),
+            ],
           ),
         ],
       ),
 
       // ---------------- Full-screen flows (pushed on root navigator)
-      GoRoute(path: '/leads/import', parentNavigatorKey: rootNavigatorKey, pageBuilder: (_, s) => _fade(s, const ImportLeadsScreen())),
+      GoRoute(
+        path: '/leads/import',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, s) => _fade(s, const ImportLeadsScreen()),
+      ),
       GoRoute(
         path: '/leads/:id',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, LeadDetailScreen(leadId: s.pathParameters['id']!)),
+        pageBuilder: (_, s) =>
+            _fade(s, LeadDetailScreen(leadId: s.pathParameters['id']!)),
       ),
       GoRoute(
         path: '/calls/:id',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, CallResultScreen(callId: s.pathParameters['id']!, detailOnly: true)),
+        pageBuilder: (_, s) => _fade(
+          s,
+          CallResultScreen(callId: s.pathParameters['id']!, detailOnly: true),
+        ),
         routes: [
           GoRoute(
             path: 'result',
             parentNavigatorKey: rootNavigatorKey,
-            pageBuilder: (_, s) => _fade(s, CallResultScreen(callId: s.pathParameters['id']!)),
+            pageBuilder: (_, s) =>
+                _fade(s, CallResultScreen(callId: s.pathParameters['id']!)),
           ),
         ],
       ),
       GoRoute(
         path: '/followups/:id',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, FollowUpDetailScreen(followUpId: s.pathParameters['id']!)),
+        pageBuilder: (_, s) =>
+            _fade(s, FollowUpDetailScreen(followUpId: s.pathParameters['id']!)),
       ),
-      GoRoute(path: '/campaign/new', parentNavigatorKey: rootNavigatorKey, pageBuilder: (_, s) => _fade(s, const CampaignSetupScreen())),
+      GoRoute(
+        path: '/campaign/new',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, s) => _fade(s, const CampaignSetupScreen()),
+      ),
       GoRoute(
         path: '/campaigns/:id',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, CampaignProgressScreen(campaignId: s.pathParameters['id']!)),
+        pageBuilder: (_, s) => _fade(
+          s,
+          CampaignProgressScreen(campaignId: s.pathParameters['id']!),
+        ),
       ),
-      GoRoute(path: '/agent/edit', parentNavigatorKey: rootNavigatorKey, pageBuilder: (_, s) => _fade(s, const EditAgentScreen())),
-      GoRoute(path: '/agent/teach', parentNavigatorKey: rootNavigatorKey, pageBuilder: (_, s) => _fade(s, const TeachAiScreen())),
+      GoRoute(
+        path: '/agent/edit',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, s) => _fade(s, const EditAgentScreen()),
+      ),
+      GoRoute(
+        path: '/agent/teach',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, s) => _fade(s, const TeachAiScreen()),
+      ),
       GoRoute(
         path: '/voice-test',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, VoiceTestScreen(fromOnboarding: s.uri.queryParameters['from'] == 'onboarding')),
+        pageBuilder: (_, s) => _fade(
+          s,
+          VoiceTestScreen(
+            fromOnboarding: s.uri.queryParameters['from'] == 'onboarding',
+          ),
+        ),
       ),
-      GoRoute(path: '/callbacks', parentNavigatorKey: rootNavigatorKey, pageBuilder: (_, s) => _fade(s, const CallbacksScreen())),
-      GoRoute(path: '/notifications', parentNavigatorKey: rootNavigatorKey, pageBuilder: (_, s) => _fade(s, const NotificationsScreen())),
-      GoRoute(path: '/usage', parentNavigatorKey: rootNavigatorKey, pageBuilder: (_, s) => _fade(s, const UsageScreen())),
-      GoRoute(path: '/demo', parentNavigatorKey: rootNavigatorKey, pageBuilder: (_, s) => _fade(s, const DemoScreen())),
+      GoRoute(
+        path: '/callbacks',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, s) => _fade(s, const CallbacksScreen()),
+      ),
+      GoRoute(
+        path: '/notifications',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, s) => _fade(s, const NotificationsScreen()),
+      ),
+      GoRoute(
+        path: '/usage',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, s) => _fade(s, const UsageScreen()),
+      ),
+      GoRoute(
+        path: '/demo',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, s) => _fade(s, const DemoScreen()),
+      ),
     ],
   );
 });

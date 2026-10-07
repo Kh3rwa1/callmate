@@ -44,8 +44,18 @@ class AppCard extends StatelessWidget {
       button: onTap != null,
       label: semanticLabel,
       child: DecoratedBox(
-        decoration: BoxDecoration(color: color, borderRadius: br, border: border, boxShadow: shadow ? AppShadows.card : null),
-        child: Material(type: MaterialType.transparency, borderRadius: br, clipBehavior: Clip.antiAlias, child: content),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: br,
+          border: border,
+          boxShadow: shadow ? AppShadows.card : null,
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: br,
+          clipBehavior: Clip.antiAlias,
+          child: content,
+        ),
       ),
     );
   }
@@ -53,7 +63,12 @@ class AppCard extends StatelessWidget {
 
 /// Uppercase section label – "TODAY'S RESULTS".
 class SectionLabel extends StatelessWidget {
-  const SectionLabel(this.text, {super.key, this.trailing, this.padding = const EdgeInsets.fromLTRB(4, 28, 4, 12)});
+  const SectionLabel(
+    this.text, {
+    super.key,
+    this.trailing,
+    this.padding = const EdgeInsets.fromLTRB(4, 28, 4, 12),
+  });
   final String text;
   final Widget? trailing;
   final EdgeInsetsGeometry padding;
@@ -64,7 +79,13 @@ class SectionLabel extends StatelessWidget {
     child: Row(
       children: [
         Expanded(
-          child: Semantics(header: true, child: Text(text.toUpperCase(), style: Theme.of(context).textTheme.labelSmall)),
+          child: Semantics(
+            header: true,
+            child: Text(
+              text.toUpperCase(),
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ),
         ),
         ?trailing,
       ],
@@ -74,7 +95,14 @@ class SectionLabel extends StatelessWidget {
 
 /// Small rounded pill (status / tags).
 class Pill extends StatelessWidget {
-  const Pill({super.key, required this.label, this.color = AppColors.inkSoft, this.background, this.icon, this.dense = false});
+  const Pill({
+    super.key,
+    required this.label,
+    this.color = AppColors.inkSoft,
+    this.background,
+    this.icon,
+    this.dense = false,
+  });
   final String label;
   final Color color;
   final Color? background;
@@ -83,17 +111,25 @@ class Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: EdgeInsets.symmetric(horizontal: dense ? 8 : 10, vertical: dense ? 3 : 5),
-    decoration: BoxDecoration(color: background ?? color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(99)),
+    padding: EdgeInsets.symmetric(
+      horizontal: dense ? 8 : 10,
+      vertical: dense ? 3 : 5,
+    ),
+    decoration: BoxDecoration(
+      color: background ?? color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(99),
+    ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (icon != null) ...[icon!, const SizedBox(width: 5)],
         Text(
           label,
-          style: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(color: color, fontSize: dense ? 11.5 : 12.5, fontWeight: FontWeight.w800),
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: color,
+            fontSize: dense ? 11.5 : 12.5,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ],
     ),
@@ -102,7 +138,12 @@ class Pill extends StatelessWidget {
 
 /// Status dot + text, never colour alone.
 class StatusDot extends StatelessWidget {
-  const StatusDot({super.key, required this.label, this.color = AppColors.success, this.pulse = true});
+  const StatusDot({
+    super.key,
+    required this.label,
+    this.color = AppColors.success,
+    this.pulse = true,
+  });
   final String label;
   final Color color;
   final bool pulse;
@@ -115,7 +156,10 @@ class StatusDot extends StatelessWidget {
       const SizedBox(width: 6),
       Text(
         label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: color, fontWeight: FontWeight.w800),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     ],
   );
@@ -130,7 +174,10 @@ class _Pulse extends StatefulWidget {
 }
 
 class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  );
   @override
   void initState() {
     super.initState();
@@ -164,7 +211,10 @@ class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
           Container(
             width: 8,
             height: 8,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: widget.color),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: widget.color,
+            ),
           ),
         ],
       ),
@@ -193,7 +243,9 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FilledButton(
-      style: color == null ? null : FilledButton.styleFrom(backgroundColor: color),
+      style: color == null
+          ? null
+          : FilledButton.styleFrom(backgroundColor: color),
       onPressed: loading || onPressed == null
           ? null
           : () {
@@ -201,15 +253,31 @@ class PrimaryButton extends StatelessWidget {
               onPressed!();
             },
       child: loading
-          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+          ? const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.4,
+                color: Colors.white,
+              ),
+            )
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (icon != null) ...[Icon(icon, size: 21), const SizedBox(width: 8)],
+                if (icon != null) ...[
+                  Icon(icon, size: 21),
+                  const SizedBox(width: 8),
+                ],
                 Flexible(
-                  child: FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1)),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(label, maxLines: 1),
+                  ),
                 ),
-                if (trailingArrow) ...[const SizedBox(width: 8), const Icon(Icons.arrow_forward_rounded, size: 20)],
+                if (trailingArrow) ...[
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_forward_rounded, size: 20),
+                ],
               ],
             ),
     );
@@ -217,7 +285,12 @@ class PrimaryButton extends StatelessWidget {
 }
 
 class SecondaryButton extends StatelessWidget {
-  const SecondaryButton({super.key, required this.label, required this.onPressed, this.icon});
+  const SecondaryButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+  });
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
@@ -235,7 +308,10 @@ class SecondaryButton extends StatelessWidget {
       children: [
         if (icon != null) ...[Icon(icon, size: 20), const SizedBox(width: 8)],
         Flexible(
-          child: FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1)),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(label, maxLines: 1),
+          ),
         ),
       ],
     ),
@@ -244,7 +320,12 @@ class SecondaryButton extends StatelessWidget {
 
 /// Round icon bubble used inside cards.
 class IconBubble extends StatelessWidget {
-  const IconBubble({super.key, required this.child, this.color = AppColors.brandSoft, this.size = 48});
+  const IconBubble({
+    super.key,
+    required this.child,
+    this.color = AppColors.brandSoft,
+    this.size = 48,
+  });
   final Widget child;
   final Color color;
   final double size;
@@ -254,7 +335,10 @@ class IconBubble extends StatelessWidget {
     width: size,
     height: size,
     alignment: Alignment.center,
-    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(size * 0.36)),
+    decoration: BoxDecoration(
+      color: color,
+      borderRadius: BorderRadius.circular(size * 0.36),
+    ),
     child: child,
   );
 }

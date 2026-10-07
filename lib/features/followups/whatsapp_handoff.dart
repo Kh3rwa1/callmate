@@ -26,27 +26,47 @@ Future<bool> openWhatsAppHandoff(
   switch (result) {
     case WhatsAppOpenResult.opened:
       HapticFeedback.mediumImpact();
-      ref.read(analyticsProvider).track('whatsapp_opened', {'has_followup': followUp != null});
+      ref.read(analyticsProvider).track('whatsapp_opened', {
+        'has_followup': followUp != null,
+      });
       if (followUp != null) {
         await ref
             .read(followUpRepoProvider)
-            .update(followUp.copyWith(message: message, status: FollowUpStatus.opened, openedAt: DateTime.now()));
+            .update(
+              followUp.copyWith(
+                message: message,
+                status: FollowUpStatus.opened,
+                openedAt: DateTime.now(),
+              ),
+            );
       }
       if (context.mounted) {
         ScaffoldMessenger.of(context)
           ..clearSnackBars()
-          ..showSnackBar(const SnackBar(content: Text('WhatsApp opened – tap Send there ✓')));
+          ..showSnackBar(
+            const SnackBar(content: Text('WhatsApp opened – tap Send there ✓')),
+          );
       }
       return true;
     case WhatsAppOpenResult.invalidPhone:
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(const SnackBar(content: Text('This phone number doesn\'t look right. Edit the lead and try again.')));
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'This phone number doesn\'t look right. Edit the lead and try again.',
+            ),
+          ),
+        );
       return false;
     case WhatsAppOpenResult.emptyMessage:
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(const SnackBar(content: Text('The message is empty. Add some text first.')));
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('The message is empty. Add some text first.'),
+          ),
+        );
       return false;
     case WhatsAppOpenResult.notInstalled:
       await _fallback(context, wa, message);
@@ -54,7 +74,11 @@ Future<bool> openWhatsAppHandoff(
   }
 }
 
-Future<void> _fallback(BuildContext context, WhatsAppService wa, String message) {
+Future<void> _fallback(
+  BuildContext context,
+  WhatsAppService wa,
+  String message,
+) {
   return showModalBottomSheet<void>(
     context: context,
     useSafeArea: true,
@@ -62,7 +86,12 @@ Future<void> _fallback(BuildContext context, WhatsAppService wa, String message)
       final t = Theme.of(ctx).textTheme;
       return SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 16),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.page,
+            0,
+            AppSpace.page,
+            16,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -70,7 +99,11 @@ Future<void> _fallback(BuildContext context, WhatsAppService wa, String message)
               const SizedBox(height: 10),
               Text('WhatsApp isn\'t installed', style: t.titleLarge),
               const SizedBox(height: 6),
-              Text('Copy the message instead, or share it with another app.', style: t.bodyMedium, textAlign: TextAlign.center),
+              Text(
+                'Copy the message instead, or share it with another app.',
+                style: t.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 20),
               PrimaryButton(
                 label: 'Copy Message',
@@ -79,7 +112,9 @@ Future<void> _fallback(BuildContext context, WhatsAppService wa, String message)
                   await wa.copyMessage(message);
                   if (ctx.mounted) {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Message copied')));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Message copied')),
+                    );
                   }
                 },
               ),
@@ -102,7 +137,12 @@ Future<void> _fallback(BuildContext context, WhatsAppService wa, String message)
 
 /// The signature green "WhatsApp →" button.
 class WhatsAppButton extends StatelessWidget {
-  const WhatsAppButton({super.key, required this.onPressed, this.label = 'WhatsApp', this.compact = false});
+  const WhatsAppButton({
+    super.key,
+    required this.onPressed,
+    this.label = 'WhatsApp',
+    this.compact = false,
+  });
   final VoidCallback? onPressed;
   final String label;
   final bool compact;
@@ -119,13 +159,21 @@ class WhatsAppButton extends StatelessWidget {
         ),
         onPressed: onPressed,
         icon: const Icon(Icons.chat_rounded, size: 18),
-        label: FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1)),
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(label, maxLines: 1),
+        ),
       );
     }
     return Semantics(
       button: true,
       label: 'Open WhatsApp with the message ready to send',
-      child: PrimaryButton(label: '$label →', icon: Icons.chat_rounded, color: AppColors.whatsapp, onPressed: onPressed),
+      child: PrimaryButton(
+        label: '$label →',
+        icon: Icons.chat_rounded,
+        color: AppColors.whatsapp,
+        onPressed: onPressed,
+      ),
     );
   }
 }

@@ -3,7 +3,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Device-side secrets: ONLY our own backend session tokens.
 /// Sarvam credentials never touch the device.
 class SecureStore {
-  SecureStore([FlutterSecureStorage? storage]) : _s = storage ?? const FlutterSecureStorage();
+  SecureStore([FlutterSecureStorage? storage])
+    : _s = storage ?? const FlutterSecureStorage();
   final FlutterSecureStorage _s;
 
   static const _access = 'auth.access_token';

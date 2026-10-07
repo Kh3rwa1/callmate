@@ -2,22 +2,32 @@
   "name": "callpilot-backend",
   "version": "1.0.0",
   "description": "CallPilot Cloudflare Workers Backend with D1 & Sarvam AI Integration",
+  "type": "module",
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
     "db:migrate": "wrangler d1 execute callpilot-db --local --file=./migrations/0001_initial.sql && wrangler d1 execute callpilot-db --local --file=./migrations/0003_otp_and_security.sql && wrangler d1 execute callpilot-db --local --file=./migrations/0004_compliance_and_billing.sql",
+    "db:migrate:staging": "wrangler d1 execute callpilot-db-staging --env staging --file=./migrations/0001_initial.sql && wrangler d1 execute callpilot-db-staging --env staging --file=./migrations/0003_otp_and_security.sql && wrangler d1 execute callpilot-db-staging --env staging --file=./migrations/0004_compliance_and_billing.sql",
     "db:seed": "wrangler d1 execute callpilot-db --local --file=./migrations/0002_seed.sql",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/test_e2e.mjs"
+    "test": "node scripts/test_e2e.mjs",
+    "test:vitest": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "hono": "^4.7.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
     "@cloudflare/workers-types": "^4.20250224.0",
+    "@vitest/coverage-istanbul": "^4.1.11",
+    "@vitest/coverage-v8": "^4.1.11",
     "typescript": "^5.7.3",
-    "wrangler": "^3.109.2"
+    "vite": "^8.3.3",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.148.0"
   }
 }

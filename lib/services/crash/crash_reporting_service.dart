@@ -6,7 +6,12 @@ import 'package:flutter/foundation.dart';
 /// - Bearer tokens and JWT strings
 /// - Transcripts and message bodies
 abstract class CrashReportingService {
-  void reportError(Object error, StackTrace? stack, {String? reason, Map<String, Object>? context});
+  void reportError(
+    Object error,
+    StackTrace? stack, {
+    String? reason,
+    Map<String, Object>? context,
+  });
   void log(String message);
 }
 
@@ -16,9 +21,16 @@ class SafeCrashReportingService implements CrashReportingService {
   final bool enabled;
 
   static final _phonePattern = RegExp(r'(?:\+?91[\s-]?)?[6-9]\d{9}');
-  static final _bearerPattern = RegExp(r'Bearer\s+[A-Za-z0-9._-]+', caseSensitive: false);
-  static final _jwtPattern = RegExp(r'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+');
-  static final _emailPattern = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}');
+  static final _bearerPattern = RegExp(
+    r'Bearer\s+[A-Za-z0-9._-]+',
+    caseSensitive: false,
+  );
+  static final _jwtPattern = RegExp(
+    r'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+',
+  );
+  static final _emailPattern = RegExp(
+    r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+  );
 
   static String scrubPii(String input) {
     var out = input;
@@ -56,14 +68,21 @@ class SafeCrashReportingService implements CrashReportingService {
   }
 
   @override
-  void reportError(Object error, StackTrace? stack, {String? reason, Map<String, Object>? context}) {
+  void reportError(
+    Object error,
+    StackTrace? stack, {
+    String? reason,
+    Map<String, Object>? context,
+  }) {
     if (!enabled) return;
     final scrubbedError = scrubPii(error.toString());
     final scrubbedReason = reason != null ? scrubPii(reason) : null;
     final cleanContext = scrubContext(context);
 
     if (kDebugMode) {
-      debugPrint('[CrashReporter] Error: $scrubbedError | reason: $scrubbedReason | ctx: $cleanContext');
+      debugPrint(
+        '[CrashReporter] Error: $scrubbedError | reason: $scrubbedReason | ctx: $cleanContext',
+      );
     }
   }
 

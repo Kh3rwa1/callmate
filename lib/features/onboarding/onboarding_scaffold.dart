@@ -50,8 +50,12 @@ class OnboardingScaffold extends StatelessWidget {
                         child: TweenAnimationBuilder<double>(
                           tween: Tween(end: step / total),
                           duration: const Duration(milliseconds: 400),
-                          builder: (_, v, __) =>
-                              LinearProgressIndicator(value: v, minHeight: 6, backgroundColor: AppColors.border, color: AppColors.brand),
+                          builder: (_, v, __) => LinearProgressIndicator(
+                            value: v,
+                            minHeight: 6,
+                            backgroundColor: AppColors.border,
+                            color: AppColors.brand,
+                          ),
                         ),
                       ),
                     ),
@@ -63,14 +67,25 @@ class OnboardingScaffold extends StatelessWidget {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(AppSpace.page, 24, AppSpace.page, 24),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.page,
+                  24,
+                  AppSpace.page,
+                  24,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Semantics(header: true, child: Text(title, style: t.headlineMedium)),
+                    Semantics(
+                      header: true,
+                      child: Text(title, style: t.headlineMedium),
+                    ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 10),
-                      Text(subtitle!, style: t.bodyLarge?.copyWith(color: AppColors.inkSoft)),
+                      Text(
+                        subtitle!,
+                        style: t.bodyLarge?.copyWith(color: AppColors.inkSoft),
+                      ),
                     ],
                     const SizedBox(height: 28),
                     ...children,
@@ -79,7 +94,12 @@ class OnboardingScaffold extends StatelessWidget {
               ),
             ),
             Container(
-              padding: const EdgeInsets.fromLTRB(AppSpace.page, 12, AppSpace.page, 16),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.page,
+                12,
+                AppSpace.page,
+                16,
+              ),
               decoration: const BoxDecoration(
                 color: AppColors.background,
                 border: Border(top: BorderSide(color: AppColors.border)),
@@ -88,7 +108,10 @@ class OnboardingScaffold extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   cta,
-                  if (secondary != null) ...[const SizedBox(height: 4), secondary!],
+                  if (secondary != null) ...[
+                    const SizedBox(height: 4),
+                    secondary!,
+                  ],
                 ],
               ),
             ),
@@ -109,7 +132,8 @@ class FieldLabel extends StatelessWidget {
     child: Row(
       children: [
         Text(text, style: Theme.of(context).textTheme.titleSmall),
-        if (optional) Text('  Optional', style: Theme.of(context).textTheme.bodySmall),
+        if (optional)
+          Text('  Optional', style: Theme.of(context).textTheme.bodySmall),
       ],
     ),
   );

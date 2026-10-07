@@ -49,15 +49,19 @@ enum EmployeeRoleKind {
   final String badge;
   final String label;
 
-  static EmployeeRoleKind parse(String? v) =>
-      EmployeeRoleKind.values.firstWhere((e) => e.name == v, orElse: () => EmployeeRoleKind.general);
+  static EmployeeRoleKind parse(String? v) => EmployeeRoleKind.values
+      .firstWhere((e) => e.name == v, orElse: () => EmployeeRoleKind.general);
 
   static EmployeeRoleKind fromRole(String role) {
     final r = role.toLowerCase();
     if (r.contains('admission')) return EmployeeRoleKind.admissions;
-    if (r.contains('appointment') || r.contains('booking')) return EmployeeRoleKind.appointments;
+    if (r.contains('appointment') || r.contains('booking')) {
+      return EmployeeRoleKind.appointments;
+    }
     if (r.contains('support')) return EmployeeRoleKind.support;
-    if (r.contains('reception') || r.contains('enquiry')) return EmployeeRoleKind.reception;
+    if (r.contains('reception') || r.contains('enquiry')) {
+      return EmployeeRoleKind.reception;
+    }
     if (r.contains('sales')) return EmployeeRoleKind.sales;
     return EmployeeRoleKind.general;
   }
@@ -134,7 +138,12 @@ class WorkflowTemplate {
 }
 
 class BusinessTemplate {
-  const BusinessTemplate({required this.category, required this.agent, required this.workflow, this.tuned = false});
+  const BusinessTemplate({
+    required this.category,
+    required this.agent,
+    required this.workflow,
+    this.tuned = false,
+  });
   final BusinessCategory category;
   final AgentTemplate agent;
   final WorkflowTemplate workflow;
@@ -148,7 +157,14 @@ class BusinessTemplate {
 
 const _langs = ['English', 'Hindi', 'Bengali'];
 
-const genericCapabilities = ['Calling', 'Lead Qualification', 'Follow-up', 'Customer Questions', 'Callback Scheduling', 'Hot Lead Alerts'];
+const genericCapabilities = [
+  'Calling',
+  'Lead Qualification',
+  'Follow-up',
+  'Customer Questions',
+  'Callback Scheduling',
+  'Hot Lead Alerts',
+];
 
 const salesAgentTemplate = AgentTemplate(
   id: 'generic_sales_v1',
@@ -159,7 +175,12 @@ const salesAgentTemplate = AgentTemplate(
   languages: _langs,
   capabilities: genericCapabilities,
   callPurpose: 'Enquiry follow-up',
-  defaultSkills: [EmployeeSkill.makeCalls, EmployeeSkill.qualifyLeads, EmployeeSkill.followUp, EmployeeSkill.sales],
+  defaultSkills: [
+    EmployeeSkill.makeCalls,
+    EmployeeSkill.qualifyLeads,
+    EmployeeSkill.followUp,
+    EmployeeSkill.sales,
+  ],
 );
 
 const coachingAgentTemplate = AgentTemplate(
@@ -171,7 +192,12 @@ const coachingAgentTemplate = AgentTemplate(
   languages: _langs,
   capabilities: [...genericCapabilities, 'Admissions guidance'],
   callPurpose: 'Admission enquiry follow-up',
-  defaultSkills: [EmployeeSkill.makeCalls, EmployeeSkill.qualifyLeads, EmployeeSkill.followUp, EmployeeSkill.admissions],
+  defaultSkills: [
+    EmployeeSkill.makeCalls,
+    EmployeeSkill.qualifyLeads,
+    EmployeeSkill.followUp,
+    EmployeeSkill.admissions,
+  ],
 );
 
 const appointmentAgentTemplate = AgentTemplate(
@@ -183,7 +209,12 @@ const appointmentAgentTemplate = AgentTemplate(
   languages: _langs,
   capabilities: [...genericCapabilities, 'Appointment Booking'],
   callPurpose: 'Appointment enquiry follow-up',
-  defaultSkills: [EmployeeSkill.makeCalls, EmployeeSkill.bookAppointments, EmployeeSkill.followUp, EmployeeSkill.enquiryHandling],
+  defaultSkills: [
+    EmployeeSkill.makeCalls,
+    EmployeeSkill.bookAppointments,
+    EmployeeSkill.followUp,
+    EmployeeSkill.enquiryHandling,
+  ],
 );
 
 // ================================================================= Workflows
@@ -192,14 +223,21 @@ const genericWorkflow = WorkflowTemplate(
   id: 'generic_enquiry_v1',
   customerNoun: 'customer',
   interestLabel: 'Interest',
-  interestOptions: ['Product enquiry', 'Service enquiry', 'Pricing', 'Demo / visit', 'Other'],
+  interestOptions: [
+    'Product enquiry',
+    'Service enquiry',
+    'Pricing',
+    'Demo / visit',
+    'Other',
+  ],
   offeringsLabel: 'Products / services',
   offeringsHint: 'e.g. Home cleaning, AC repair, Pest control',
   humanLabel: 'Team member',
   knowledgeHint: 'Services, pricing, opening hours, location, policies, FAQs',
   sampleLeadName: 'Rahul Kumar',
   sampleLeadInterest: 'Asked about pricing',
-  sampleLeadQuote: '“Hi, I saw your ad. Can you tell me the price and how soon you can start?”',
+  sampleLeadQuote:
+      '“Hi, I saw your ad. Can you tell me the price and how soon you can start?”',
   testCallerHint: 'Pretend you\'re a customer asking about your services.',
 );
 
@@ -207,14 +245,23 @@ const coachingWorkflow = WorkflowTemplate(
   id: 'coaching_admissions_workflow_v1',
   customerNoun: 'student',
   interestLabel: 'Course',
-  interestOptions: ['NEET', 'JEE Main', 'JEE Advanced', 'WBJEE', 'Class 10 Boards', 'Class 12 Science', 'Foundation (Class 9)'],
+  interestOptions: [
+    'NEET',
+    'JEE Main',
+    'JEE Advanced',
+    'WBJEE',
+    'Class 10 Boards',
+    'Class 12 Science',
+    'Foundation (Class 9)',
+  ],
   offeringsLabel: 'Courses',
   offeringsHint: 'e.g. NEET, JEE Main, Class 10 Boards',
   humanLabel: 'Counsellor',
   knowledgeHint: 'Courses, fees, batch timings, faculty, results, FAQs',
   sampleLeadName: 'Rahul Kumar',
   sampleLeadInterest: 'NEET · Evening batch',
-  sampleLeadQuote: '“Hi, I filled a form for NEET coaching. What are the fees?”',
+  sampleLeadQuote:
+      '“Hi, I filled a form for NEET coaching. What are the fees?”',
   testCallerHint: 'Pretend you\'re a parent asking about admission.',
   attributes: [
     LeadAttributeDef('batch', 'Batch', emoji: '🕒'),
@@ -245,14 +292,20 @@ const clinicWorkflow = WorkflowTemplate(
   id: 'clinic_appointments_v1',
   customerNoun: 'patient',
   interestLabel: 'Service',
-  interestOptions: ['Consultation', 'Follow-up visit', 'Health check-up', 'Procedure enquiry'],
+  interestOptions: [
+    'Consultation',
+    'Follow-up visit',
+    'Health check-up',
+    'Procedure enquiry',
+  ],
   offeringsLabel: 'Services / departments',
   offeringsHint: 'e.g. General physician, Dental, Dermatology',
   humanLabel: 'Front desk',
   knowledgeHint: 'Doctors, timings, consultation fees, location, policies',
   sampleLeadName: 'Rahul Kumar',
   sampleLeadInterest: 'Consultation · Evening',
-  sampleLeadQuote: '“I want to book a consultation. Is the doctor available this evening?”',
+  sampleLeadQuote:
+      '“I want to book a consultation. Is the doctor available this evening?”',
   testCallerHint: 'Pretend you\'re a patient wanting an appointment.',
   attributes: [LeadAttributeDef('slot', 'Preferred slot', emoji: '🕒')],
 );
@@ -268,7 +321,8 @@ const automobileWorkflow = WorkflowTemplate(
   knowledgeHint: 'Models, on-road prices, offers, test drives, service plans',
   sampleLeadName: 'Rahul Kumar',
   sampleLeadInterest: 'SUV · Test drive',
-  sampleLeadQuote: '“What\'s the on-road price of the SUV? Can I book a test drive?”',
+  sampleLeadQuote:
+      '“What\'s the on-road price of the SUV? Can I book a test drive?”',
   testCallerHint: 'Pretend you\'re a buyer asking about a car.',
   attributes: [LeadAttributeDef('budget', 'Budget', emoji: '💰')],
 );
@@ -292,27 +346,72 @@ const salonWorkflow = WorkflowTemplate(
 // ================================================================= Templates
 
 const businessTemplates = <BusinessTemplate>[
-  BusinessTemplate(category: BusinessCategory.coaching, agent: coachingAgentTemplate, workflow: coachingWorkflow, tuned: true),
-  BusinessTemplate(category: BusinessCategory.realEstate, agent: salesAgentTemplate, workflow: realEstateWorkflow),
-  BusinessTemplate(category: BusinessCategory.clinic, agent: appointmentAgentTemplate, workflow: clinicWorkflow),
-  BusinessTemplate(category: BusinessCategory.diagnostic, agent: appointmentAgentTemplate, workflow: clinicWorkflow),
-  BusinessTemplate(category: BusinessCategory.automobile, agent: salesAgentTemplate, workflow: automobileWorkflow),
-  BusinessTemplate(category: BusinessCategory.salon, agent: appointmentAgentTemplate, workflow: salonWorkflow),
-  BusinessTemplate(category: BusinessCategory.restaurant, agent: appointmentAgentTemplate, workflow: genericWorkflow),
-  BusinessTemplate(category: BusinessCategory.retail, agent: salesAgentTemplate, workflow: genericWorkflow),
-  BusinessTemplate(category: BusinessCategory.localServices, agent: salesAgentTemplate, workflow: genericWorkflow),
-  BusinessTemplate(category: BusinessCategory.other, agent: salesAgentTemplate, workflow: genericWorkflow),
+  BusinessTemplate(
+    category: BusinessCategory.coaching,
+    agent: coachingAgentTemplate,
+    workflow: coachingWorkflow,
+    tuned: true,
+  ),
+  BusinessTemplate(
+    category: BusinessCategory.realEstate,
+    agent: salesAgentTemplate,
+    workflow: realEstateWorkflow,
+  ),
+  BusinessTemplate(
+    category: BusinessCategory.clinic,
+    agent: appointmentAgentTemplate,
+    workflow: clinicWorkflow,
+  ),
+  BusinessTemplate(
+    category: BusinessCategory.diagnostic,
+    agent: appointmentAgentTemplate,
+    workflow: clinicWorkflow,
+  ),
+  BusinessTemplate(
+    category: BusinessCategory.automobile,
+    agent: salesAgentTemplate,
+    workflow: automobileWorkflow,
+  ),
+  BusinessTemplate(
+    category: BusinessCategory.salon,
+    agent: appointmentAgentTemplate,
+    workflow: salonWorkflow,
+  ),
+  BusinessTemplate(
+    category: BusinessCategory.restaurant,
+    agent: appointmentAgentTemplate,
+    workflow: genericWorkflow,
+  ),
+  BusinessTemplate(
+    category: BusinessCategory.retail,
+    agent: salesAgentTemplate,
+    workflow: genericWorkflow,
+  ),
+  BusinessTemplate(
+    category: BusinessCategory.localServices,
+    agent: salesAgentTemplate,
+    workflow: genericWorkflow,
+  ),
+  BusinessTemplate(
+    category: BusinessCategory.other,
+    agent: salesAgentTemplate,
+    workflow: genericWorkflow,
+  ),
 ];
 
-BusinessTemplate templateFor(BusinessCategory? c) =>
-    businessTemplates.firstWhere((t) => t.category == c, orElse: () => businessTemplates.last);
+BusinessTemplate templateFor(BusinessCategory? c) => businessTemplates
+    .firstWhere((t) => t.category == c, orElse: () => businessTemplates.last);
 
 /// Suggests a role + mascot kind from the chosen skills (onboarding step 3).
 AgentTemplate agentForSkills(BusinessTemplate base, Set<EmployeeSkill> skills) {
   if (skills.isEmpty) return base.agent;
   if (skills.contains(EmployeeSkill.admissions)) return coachingAgentTemplate;
-  if (skills.contains(EmployeeSkill.bookAppointments) && !skills.contains(EmployeeSkill.sales)) return appointmentAgentTemplate;
-  if (skills.contains(EmployeeSkill.customerSupport) && !skills.contains(EmployeeSkill.sales)) {
+  if (skills.contains(EmployeeSkill.bookAppointments) &&
+      !skills.contains(EmployeeSkill.sales)) {
+    return appointmentAgentTemplate;
+  }
+  if (skills.contains(EmployeeSkill.customerSupport) &&
+      !skills.contains(EmployeeSkill.sales)) {
     return const AgentTemplate(
       id: 'generic_support_v1',
       defaultName: 'Maya',
@@ -324,6 +423,9 @@ AgentTemplate agentForSkills(BusinessTemplate base, Set<EmployeeSkill> skills) {
       callPurpose: 'Customer support follow-up',
     );
   }
-  if (skills.contains(EmployeeSkill.sales) || skills.contains(EmployeeSkill.qualifyLeads)) return salesAgentTemplate;
+  if (skills.contains(EmployeeSkill.sales) ||
+      skills.contains(EmployeeSkill.qualifyLeads)) {
+    return salesAgentTemplate;
+  }
   return base.agent;
 }

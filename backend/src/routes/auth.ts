@@ -212,11 +212,7 @@ authApp.post('/login', async (c) => {
 
   const inputHash = await sha256(otp);
   if (inputHash !== record.otp_hash) {
-    const newAttempts = record.attempts + 1;
     await c.env.DB.prepare('UPDATE otp_codes SET attempts = attempts + 1 WHERE phone = ?').bind(phone).run();
-    if (newAttempts >= 5) {
-      return c.json({ message: 'Too many failed attempts. Verification code locked.', code: 'otp_locked' }, 429);
-    }
     return c.json({ message: 'Invalid verification code.', code: 'invalid_otp' }, 400);
   }
 

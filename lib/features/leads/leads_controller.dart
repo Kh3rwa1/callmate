@@ -7,7 +7,14 @@ import '../../data/models/models.dart';
 import '../../data/repositories/repositories.dart';
 
 class PagedState<T> {
-  const PagedState({this.items = const [], this.loading = false, this.loadingMore = false, this.hasMore = true, this.error, this.cursor});
+  const PagedState({
+    this.items = const [],
+    this.loading = false,
+    this.loadingMore = false,
+    this.hasMore = true,
+    this.error,
+    this.cursor,
+  });
   final List<T> items;
   final bool loading;
   final bool loadingMore;
@@ -39,17 +46,23 @@ class LeadQuery {
   final String search;
 }
 
-final leadQueryProvider = NotifierProvider<LeadQueryController, LeadQuery>(LeadQueryController.new);
+final leadQueryProvider = NotifierProvider<LeadQueryController, LeadQuery>(
+  LeadQueryController.new,
+);
 
 class LeadQueryController extends Notifier<LeadQuery> {
   @override
   LeadQuery build() => const LeadQuery();
-  void setFilter(LeadFilter f) => state = LeadQuery(filter: f, search: state.search);
-  void setSearch(String s) => state = LeadQuery(filter: state.filter, search: s);
+  void setFilter(LeadFilter f) =>
+      state = LeadQuery(filter: f, search: state.search);
+  void setSearch(String s) =>
+      state = LeadQuery(filter: state.filter, search: s);
 }
 
 /// Paginated leads (20 per page) – never loads the full list at once.
-final leadsListProvider = NotifierProvider<LeadsList, PagedState<Lead>>(LeadsList.new);
+final leadsListProvider = NotifierProvider<LeadsList, PagedState<Lead>>(
+  LeadsList.new,
+);
 
 class LeadsList extends Notifier<PagedState<Lead>> {
   int _gen = 0;
@@ -68,9 +81,15 @@ class LeadsList extends Notifier<PagedState<Lead>> {
     if (!silent) state = state.copyWith(loading: true, clearError: true);
     try {
       final keep = silent ? state.items.length.clamp(20, 200) : 20;
-      final p = await ref.read(leadRepoProvider).list(query: q.search, filter: q.filter, limit: keep);
+      final p = await ref
+          .read(leadRepoProvider)
+          .list(query: q.search, filter: q.filter, limit: keep);
       if (gen != _gen) return;
-      state = PagedState(items: p.items, hasMore: p.hasMore, cursor: p.nextCursor);
+      state = PagedState(
+        items: p.items,
+        hasMore: p.hasMore,
+        cursor: p.nextCursor,
+      );
     } catch (e) {
       if (gen != _gen) return;
       state = state.copyWith(loading: false, error: e);
@@ -83,9 +102,16 @@ class LeadsList extends Notifier<PagedState<Lead>> {
     final gen = _gen;
     state = state.copyWith(loadingMore: true);
     try {
-      final p = await ref.read(leadRepoProvider).list(query: q.search, filter: q.filter, cursor: state.cursor);
+      final p = await ref
+          .read(leadRepoProvider)
+          .list(query: q.search, filter: q.filter, cursor: state.cursor);
       if (gen != _gen) return;
-      state = state.copyWith(items: [...state.items, ...p.items], hasMore: p.hasMore, cursor: p.nextCursor, loadingMore: false);
+      state = state.copyWith(
+        items: [...state.items, ...p.items],
+        hasMore: p.hasMore,
+        cursor: p.nextCursor,
+        loadingMore: false,
+      );
     } catch (_) {
       state = state.copyWith(loadingMore: false);
     }

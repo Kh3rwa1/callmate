@@ -31,6 +31,14 @@ export function getHourInTimezone(tz: string = 'Asia/Kolkata'): number {
 }
 
 /**
+ * Checks whether current time in timezone falls within allowed calling hours window.
+ */
+export function isWithinCallingHours(startHour: number = 10, endHour: number = 19, tz: string = 'Asia/Kolkata'): boolean {
+  const currentHour = getHourInTimezone(tz);
+  return currentHour >= startHour && currentHour < endHour;
+}
+
+/**
  * Calculates delay in seconds until the next calling window begins.
  */
 export function getSecondsUntilCallingWindow(tz: string = 'Asia/Kolkata', startHour: number = 10): number {
@@ -138,7 +146,7 @@ export function isOptOutRequest(payload: any): boolean {
   const transcript = payload.transcript || [];
   let transcriptText = '';
   if (Array.isArray(transcript)) {
-    transcriptText = transcript.map((t: any) => t?.text || t?.content || '').join(' ').toLowerCase();
+    transcriptText = transcript.map((t: any) => t?.text || t?.content || t?.message || '').join(' ').toLowerCase();
   } else if (typeof transcript === 'string') {
     transcriptText = transcript.toLowerCase();
   }

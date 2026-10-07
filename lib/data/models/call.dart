@@ -3,7 +3,11 @@ import 'json.dart';
 import 'lead.dart';
 
 class TranscriptLine {
-  const TranscriptLine({required this.speaker, required this.text, this.offset});
+  const TranscriptLine({
+    required this.speaker,
+    required this.text,
+    this.offset,
+  });
   final TranscriptSpeaker speaker;
   final String text;
   final Duration? offset;
@@ -11,10 +15,16 @@ class TranscriptLine {
   factory TranscriptLine.fromJson(Json j) => TranscriptLine(
     speaker: TranscriptSpeaker.parse(jStrN(j, 'speaker')),
     text: jStr(j, 'text'),
-    offset: jIntN(j, 'offset_ms') == null ? null : Duration(milliseconds: jInt(j, 'offset_ms')),
+    offset: jIntN(j, 'offset_ms') == null
+        ? null
+        : Duration(milliseconds: jInt(j, 'offset_ms')),
   );
 
-  Json toJson() => {'speaker': speaker.wire, 'text': text, 'offset_ms': offset?.inMilliseconds};
+  Json toJson() => {
+    'speaker': speaker.wire,
+    'text': text,
+    'offset_ms': offset?.inMilliseconds,
+  };
 }
 
 class CallTranscript {
@@ -24,10 +34,15 @@ class CallTranscript {
 
   bool get isEmpty => lines.isEmpty;
 
-  factory CallTranscript.fromJson(Json j) =>
-      CallTranscript(lines: jList(j, 'lines', TranscriptLine.fromJson), language: jStrN(j, 'language'));
+  factory CallTranscript.fromJson(Json j) => CallTranscript(
+    lines: jList(j, 'lines', TranscriptLine.fromJson),
+    language: jStrN(j, 'language'),
+  );
 
-  Json toJson() => {'lines': lines.map((e) => e.toJson()).toList(), 'language': language};
+  Json toJson() => {
+    'lines': lines.map((e) => e.toJson()).toList(),
+    'language': language,
+  };
 }
 
 /// Normalized call record. The backend maps Sarvam webhook payloads into this
@@ -92,10 +107,14 @@ class Call {
     duration: Duration(seconds: jInt(j, 'duration_sec')),
     startedAt: jDate(j, 'started_at') ?? DateTime.now(),
     endedAt: jDate(j, 'ended_at'),
-    transcript: jObj(j, 'transcript') == null ? const CallTranscript() : CallTranscript.fromJson(jObj(j, 'transcript')!),
+    transcript: jObj(j, 'transcript') == null
+        ? const CallTranscript()
+        : CallTranscript.fromJson(jObj(j, 'transcript')!),
     summary: jStrN(j, 'summary'),
     outcome: jStrN(j, 'outcome'),
-    leadScore: jObj(j, 'lead_score') == null ? null : LeadScore.fromJson(jObj(j, 'lead_score')!),
+    leadScore: jObj(j, 'lead_score') == null
+        ? null
+        : LeadScore.fromJson(jObj(j, 'lead_score')!),
     nextAction: NextAction.parse(jStrN(j, 'next_action')),
     callbackAt: jDate(j, 'callback_at'),
     interest: jStrN(j, 'interest') ?? jStrN(j, 'course_interest'),

@@ -135,6 +135,11 @@ export const patchCallbackSchema = z.object({
   note: z.string().optional(),
 });
 
+export const deviceTokenSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+  platform: z.enum(['android', 'ios', 'web']).default('android'),
+});
+
 /**
  * Helper to validate a request body with a Zod schema.
  * Returns { success: true, data } or { success: false, response: Response }
