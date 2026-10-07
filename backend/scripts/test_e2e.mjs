@@ -1,5 +1,6 @@
 import assert from 'node:assert';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 
 const BASE = 'http://127.0.0.1:8787';
@@ -33,8 +34,25 @@ async function ensureServer() {
     }
   } catch {}
 
+  if (!fs.existsSync('.dev.vars')) {
+    fs.writeFileSync('.dev.vars', [
+      'ENVIRONMENT=development',
+      'JWT_SIGNING_KEY=test-jwt-signing-secret-key-32chars-min-length',
+      'SARVAM_WEBHOOK_SECRET=dev_webhook_secret_key_12345',
+      'SARVAM_API_KEY=sk_test_mock_sarvam_api_key',
+    ].join('\n'));
+  }
+
   console.log('Starting local wrangler dev server on port 8787...');
-  childProc = spawn('npx', ['wrangler', 'dev', '--port', '8787', '--ip', '127.0.0.1'], {
+  childProc = spawn('npx', [
+    'wrangler', 'dev',
+    '--port', '8787',
+    '--ip', '127.0.0.1',
+    '--var', 'ENVIRONMENT:development',
+    '--var', 'JWT_SIGNING_KEY:test-jwt-signing-secret-key-32chars-min-length',
+    '--var', 'SARVAM_WEBHOOK_SECRET:dev_webhook_secret_key_12345',
+    '--var', 'SARVAM_API_KEY:sk_test_mock_sarvam_api_key',
+  ], {
     stdio: 'ignore',
     detached: true,
   });
