@@ -5,6 +5,8 @@ import { safeJsonParse } from '../utils/json';
 import { encryptAtRest } from '../utils/crypto_data';
 import { isOptOutRequest } from '../services/compliance';
 import { sendBusinessPushNotification } from '../services/fcm';
+import { billableMinutes, claimWebhookEvent, recordCallUsage } from '../services/billing';
+import { MAX_DIAL_ATTEMPTS, requeueLead } from '../services/campaign_queue';
 
 const voiceApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -554,15 +556,21 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     return c.json({ message: 'Call not found.', code: 'call_not_found' }, 404);
   }
 
-  // Replayed interaction_id is a no-op
-  if (call.status === 'completed') {
-    return c.json({ message: 'Already processed.', status: 'idempotent' }, 200);
-  }
-
   // Derive business_id and lead_id strictly from our DB row
   const businessId = call.business_id;
   const leadId = call.lead_id;
   const callId = call.id;
+
+  // 2. Right after resolving callId + businessId, claim webhook event (idempotency)
+  const rawStatus = String(data.status || data.call_status || '').toLowerCase().trim();
+  const finalStatus = ['completed', 'connected', 'answered', 'ended'].includes(rawStatus)
+    ? 'completed'
+    : (rawStatus || 'no_answer');
+
+  const firstTime = await claimWebhookEvent(c.env.DB, `sarvam:${callId}:${finalStatus}`);
+  if (!firstTime) {
+    return c.json({ success: true, duplicate: true, status: 'idempotent', message: 'Already processed.' }, 200);
+  }
 
   // Validate payload against schema: if invalid: score 0, temperature cold, flag for review, return 200
   const rawOutput = data.output_variables || data.extracted_variables || data.extracted_data || data;
@@ -571,8 +579,16 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
 
   const lead = await c.env.DB.prepare('SELECT name, phone FROM leads WHERE id = ? AND business_id = ?').bind(leadId, businessId).first<any>();
   const leadName = lead?.name || call.lead_name || 'Customer';
-  const durationSeconds = data.duration_seconds || data.duration || 60;
-  const callStatus = data.status === 'completed' || data.call_status === 'completed' ? 'completed' : 'no_answer';
+
+  // 3. Billing calculation
+  const bill = billableMinutes(finalStatus, data.duration_seconds ?? data.duration);
+  await recordCallUsage(c.env, businessId, callId, bill.minutes, bill.seconds);
+  if (bill.flagged) {
+    console.warn(JSON.stringify({ msg: 'call_duration_missing_flagged', callId, businessId, finalStatus }));
+  }
+
+  let callStatus = bill.flagged ? 'flagged_for_review' : finalStatus;
+  const durationSeconds = bill.seconds;
 
   const objections = JSON.stringify(data.output_variables?.objections || []);
   const positiveSignals = JSON.stringify(data.output_variables?.positive_signals || []);
@@ -586,14 +602,6 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
   const encryptedTranscript = await encryptAtRest(transcript, encSecret);
   const encryptedRawMetadata = await encryptAtRest(rawBody, encSecret);
 
-  // 2.3: Atomic billing tracking (minutes_used and calls_made)
-  const durationMinutes = Math.max(1, Math.ceil(durationSeconds / 60));
-  statements.push(
-    c.env.DB.prepare(
-      `UPDATE usage SET minutes_used = minutes_used + ?, calls_made = calls_made + 1 WHERE business_id = ?`
-    ).bind(durationMinutes, businessId)
-  );
-
   // 2.2: Opt-out detection from caller responses/intents
   const optOutRequested = isOptOutRequest(data);
   if (optOutRequested) {
@@ -604,8 +612,9 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     );
   }
 
-  // Create FollowUp if required
-  if (norm.whatsapp_followup_required || data.output_variables?.whatsapp_message) {
+  // 4. Only create FollowUp when finalStatus is a connected status
+  const isConnected = ['completed', 'connected', 'answered', 'ended'].includes(finalStatus);
+  if (isConnected && (norm.whatsapp_followup_required || data.output_variables?.whatsapp_message)) {
     followUpId = `fu_${crypto.randomUUID().slice(0, 12)}`;
     const msg = data.output_variables?.whatsapp_message || `Hi ${leadName.split(' ')[0]} 👋 Thanks for speaking with us!`;
     statements.push(
@@ -670,6 +679,42 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
   }
 
   await c.env.DB.batch(statements);
+
+  // 5. Close the campaign loop
+  const cl = await c.env.DB.prepare(
+    'SELECT campaign_id, lead_id, attempts FROM campaign_leads WHERE call_id = ? OR (campaign_id = ? AND lead_id = ?)'
+  ).bind(callId, call.campaign_id ?? '', leadId).first<any>();
+
+  if (cl) {
+    const connected = bill.minutes > 0 || ['completed', 'connected', 'answered'].includes(finalStatus);
+    const next = connected ? 'completed' : (cl.attempts >= MAX_DIAL_ATTEMPTS ? 'failed' : 'retry_pending');
+    await c.env.DB.batch([
+      c.env.DB.prepare('UPDATE campaign_leads SET status = ? WHERE call_id = ? OR (campaign_id = ? AND lead_id = ?)').bind(next, callId, cl.campaign_id, cl.lead_id),
+      c.env.DB.prepare(`UPDATE campaigns SET
+          completed_leads = completed_leads + ?,
+          connected_leads = connected_leads + ?,
+          hot_leads  = hot_leads  + ?,
+          warm_leads = warm_leads + ?
+        WHERE id = ? AND business_id = ?`)
+        .bind(next !== 'retry_pending' ? 1 : 0, connected ? 1 : 0, norm.temperature === 'hot' ? 1 : 0, norm.temperature === 'warm' ? 1 : 0, cl.campaign_id, businessId),
+    ]);
+
+    if (next === 'retry_pending') {
+      await requeueLead(c.env, cl.campaign_id, businessId, cl.lead_id, 2 * 60 * 60); // retry no-answers after 2h
+    }
+
+    // 6. Check whether the campaign is finished
+    const unfinished = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS cnt FROM campaign_leads
+       WHERE campaign_id = ? AND status IN ('pending', 'queued', 'calling', 'retry_pending', 'rescheduled')`
+    ).bind(cl.campaign_id).first<{ cnt: number }>();
+
+    if ((unfinished?.cnt ?? 0) === 0) {
+      await c.env.DB.prepare(
+        `UPDATE campaigns SET status = 'completed', completed_at = datetime('now') WHERE id = ? AND business_id = ?`
+      ).bind(cl.campaign_id, businessId).run();
+    }
+  }
 
   // 2.5: Push Notifications (FCM data-messages)
   const safeWaitUntil = (promise: Promise<any>) => {
