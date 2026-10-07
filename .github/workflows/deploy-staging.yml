@@ -15,7 +15,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check Cloudflare credentials
+        id: check_creds
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CF_TOKEN" ]; then
+            echo "::notice ::CLOUDFLARE_API_TOKEN is not configured in repository secrets. Skipping staging deploy until credentials are provided."
+            echo "has_token=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Setup Node.js
+        if: steps.check_creds.outputs.has_token == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -23,9 +36,11 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
+        if: steps.check_creds.outputs.has_token == 'true'
         run: npm ci
 
       - name: Apply Staging D1 Migrations
+        if: steps.check_creds.outputs.has_token == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -35,6 +50,7 @@ jobs:
           npx wrangler d1 execute callpilot-db-staging --env staging --file=./migrations/0004_compliance_and_billing.sql --remote || true
 
       - name: Deploy Worker to Staging
+        if: steps.check_creds.outputs.has_token == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
