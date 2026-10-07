@@ -4,6 +4,7 @@ import { signJWT, verifyJWT, getJwtSecret, authMiddleware } from '../auth';
 import { getSmsProvider } from '../sms';
 import { parseJsonBody, otpRequestSchema, registerSchema, loginSchema, refreshSchema } from '../schemas/validation';
 import { requireSecret, isDevEnv } from '../utils/secrets';
+import { deleteR2Prefix } from '../utils/r2';
 
 const authApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -323,7 +324,21 @@ authApp.delete('/account', authMiddleware, async (c) => {
   const user = c.get('user');
   const businessId = user.business_id;
 
-  // Delete all business data and user account
+  // 1. Delete all R2 storage objects under business prefix
+  await deleteR2Prefix(c.env.KNOWLEDGE_BUCKET, `${businessId}/`);
+
+  // 2. Delete from optional / future tables if present (Phase 6 RAG & chat)
+  const optionalTables = ['chat_messages', 'knowledge_chunks', 'knowledge_fts'];
+  for (const tbl of optionalTables) {
+    try {
+      const exists = await c.env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").bind(tbl).first();
+      if (exists) {
+        await c.env.DB.prepare(`DELETE FROM ${tbl} WHERE business_id = ?`).bind(businessId).run().catch(() => {});
+      }
+    } catch {}
+  }
+
+  // 3. Delete all business data and user account
   await c.env.DB.batch([
     c.env.DB.prepare('DELETE FROM refresh_tokens_v2 WHERE user_id = ?').bind(user.id),
     c.env.DB.prepare('DELETE FROM campaign_leads WHERE campaign_id IN (SELECT id FROM campaigns WHERE business_id = ?)').bind(businessId),
@@ -336,6 +351,9 @@ authApp.delete('/account', authMiddleware, async (c) => {
     c.env.DB.prepare('DELETE FROM devices WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM notifications WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM usage WHERE business_id = ?').bind(businessId),
+    c.env.DB.prepare('DELETE FROM usage_ledger WHERE business_id = ?').bind(businessId),
+    c.env.DB.prepare('DELETE FROM voice_sessions WHERE business_id = ?').bind(businessId),
+    c.env.DB.prepare("DELETE FROM rate_limits WHERE bucket LIKE ?").bind(`chat:biz:${businessId}%`),
     c.env.DB.prepare('DELETE FROM agents WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM businesses WHERE id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(user.id),

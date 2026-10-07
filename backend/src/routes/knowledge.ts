@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
+import { r2KeyFromFileUrl } from '../utils/r2';
 
 const knowledgeApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -57,8 +58,17 @@ knowledgeApp.post('/knowledge', async (c) => {
 
     const file = formData['file'];
     if (file instanceof File) {
-      detail = `${file.name} · ${(file.size / 1024).toFixed(0)} KB`;
-      const key = `${user.business_id}/${crypto.randomUUID()}-${file.name}`;
+      if (file.size > 10 * 1024 * 1024) {
+        return c.json({ message: 'File size exceeds 10 MB limit.', code: 'file_too_large' }, 400);
+      }
+      const allowedMimes = new Set(['application/pdf', 'text/plain', 'text/markdown', 'text/csv']);
+      if (!allowedMimes.has(file.type)) {
+        return c.json({ message: 'Unsupported file type. Allowed: PDF, TXT, MD, CSV.', code: 'invalid_file_type' }, 400);
+      }
+
+      const safeName = file.name.replace(/[^\w.\-]/g, '_').slice(0, 100);
+      detail = `${safeName} · ${(file.size / 1024).toFixed(0)} KB`;
+      const key = `${user.business_id}/${crypto.randomUUID()}-${safeName}`;
 
       // Upload file to Cloudflare R2 if bucket binding is available
       if (c.env.KNOWLEDGE_BUCKET) {
@@ -96,11 +106,24 @@ knowledgeApp.post('/knowledge', async (c) => {
 knowledgeApp.delete('/knowledge/:id', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');
-  const existing = await c.env.DB.prepare('SELECT id FROM knowledge_sources WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
+  const existing = await c.env.DB.prepare(
+    'SELECT id, file_url FROM knowledge_sources WHERE id = ? AND business_id = ?'
+  ).bind(id, user.business_id).first<{ id: string; file_url: string | null }>();
   if (!existing) {
     return c.json({ message: 'Knowledge source not found.', code: 'not_found' }, 404);
   }
   await c.env.DB.prepare('DELETE FROM knowledge_sources WHERE id = ? AND business_id = ?').bind(id, user.business_id).run();
+
+  const key = r2KeyFromFileUrl(existing.file_url);
+  if (key && c.env.KNOWLEDGE_BUCKET) {
+    await c.env.KNOWLEDGE_BUCKET.delete(key);
+  }
+
+  // Delete related knowledge_chunks rows if table exists (Phase 6)
+  try {
+    await c.env.DB.prepare('DELETE FROM knowledge_chunks WHERE source_id = ?').bind(id).run();
+  } catch {}
+
   return c.json({ success: true });
 });
 
