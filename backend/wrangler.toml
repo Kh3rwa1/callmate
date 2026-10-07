@@ -23,9 +23,12 @@ binding = "CAMPAIGN_QUEUE"
 [[queues.consumers]]
 queue = "callpilot-campaign-dispatch"
 max_batch_size = 10
-max_batch_timeout = 1
-max_retries = 3
+max_batch_timeout = 5
+max_retries = 100
 dead_letter_queue = "callpilot-campaign-dlq"
+
+[triggers]
+crons = ["*/10 * * * *"]
 
 [env.staging]
 name = "callpilot-backend-staging"
@@ -49,7 +52,10 @@ binding = "CAMPAIGN_QUEUE"
 [[env.staging.queues.consumers]]
 queue = "callpilot-campaign-dispatch-staging"
 max_batch_size = 10
-max_batch_timeout = 1
-max_retries = 3
+max_batch_timeout = 5
+max_retries = 100
 dead_letter_queue = "callpilot-campaign-dlq-staging"
+
+[env.staging.triggers]
+crons = ["*/10 * * * *"]
 

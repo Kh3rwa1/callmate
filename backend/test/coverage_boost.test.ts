@@ -249,7 +249,7 @@ describe('Comprehensive Coverage Boost Test Suite (Target ≥80% Lines)', () => 
         idempotency_key: `${campId}:${leadId}`,
         attempts: 0,
       });
-      expect(rStopped.reason).toBe('campaign_stopped');
+      expect(rStopped.reason).toBe('campaign_not_running');
 
       // Make campaign running
       await env.DB.prepare(`UPDATE campaigns SET status = 'running' WHERE id = ?`).bind(campId).run();
@@ -276,7 +276,7 @@ describe('Comprehensive Coverage Boost Test Suite (Target ≥80% Lines)', () => 
         VALUES (?, ?, 'completed', 1)
       `).bind(campId, leadId).run();
 
-      // 3. Already processed
+      // 3. Already processed / not claimable
       const rAlready = await processCampaignJob(env, {
         campaign_id: campId,
         lead_id: leadId,
@@ -284,7 +284,7 @@ describe('Comprehensive Coverage Boost Test Suite (Target ≥80% Lines)', () => 
         idempotency_key: `${campId}:${leadId}`,
         attempts: 0,
       });
-      expect(rAlready.reason).toBe('already_processed');
+      expect(rAlready.reason).toBe('not_claimable:completed');
 
       // Reset campaign_lead to queued
       await env.DB.prepare(`UPDATE campaign_leads SET status = 'queued', attempts = 0 WHERE campaign_id = ? AND lead_id = ?`).bind(campId, leadId).run();

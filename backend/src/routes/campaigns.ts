@@ -142,34 +142,32 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
     }
   }
 
-  // Set campaign status to running
-  await c.env.DB.prepare(
-    `UPDATE campaigns SET status = 'running', started_at = datetime('now') WHERE id = ? AND business_id = ?`
+  // Atomic transition: only draft/paused campaigns can start (prevents double-start)
+  const started = await c.env.DB.prepare(
+    `UPDATE campaigns SET status = 'running', started_at = COALESCE(started_at, datetime('now'))
+     WHERE id = ? AND business_id = ? AND status IN ('draft','paused')`
   ).bind(id, user.business_id).run();
+  if ((started.meta?.changes ?? 0) === 0) {
+    return c.json({ message: 'Campaign is already running or finished.', code: 'invalid_state' }, 409);
+  }
 
-  // Fetch campaign leads with strict tenant isolation: AND l.business_id = ?
-  const campaignLeads = await c.env.DB.prepare(`
-    SELECT l.id, l.do_not_call FROM campaign_leads cl
-    JOIN leads l ON cl.lead_id = l.id
+  const { results } = await c.env.DB.prepare(`
+    SELECT l.id, l.do_not_call, l.consent, cl.status AS cl_status
+    FROM campaign_leads cl JOIN leads l ON cl.lead_id = l.id
     WHERE cl.campaign_id = ? AND l.business_id = ?
-  `).bind(id, user.business_id).all<{ id: string; do_not_call: number }>();
+  `).bind(id, user.business_id).all<{ id: string; do_not_call: number; consent: string; cl_status: string }>();
 
-  // Filter out any DNC leads and mark them skipped immediately
-  const validLeadIds: string[] = [];
-  for (const lead of campaignLeads.results || []) {
-    if (lead.do_not_call === 1) {
-      await c.env.DB.prepare(
-        `UPDATE campaign_leads SET status = 'skipped_dnc' WHERE campaign_id = ? AND lead_id = ?`
-      ).bind(id, lead.id).run();
-    } else {
-      validLeadIds.push(lead.id);
+  const toQueue: string[] = [];
+  const skipStmts: D1PreparedStatement[] = [];
+  for (const l of results ?? []) {
+    if (l.do_not_call === 1) {
+      skipStmts.push(c.env.DB.prepare(`UPDATE campaign_leads SET status = 'skipped_dnc' WHERE campaign_id = ? AND lead_id = ?`).bind(id, l.id));
+    } else if (['pending', 'rescheduled', 'retry_pending'].includes(l.cl_status)) {
+      toQueue.push(l.id); // completed / failed / calling leads are never re-dialled
     }
   }
-
-  // 2.1: Enqueue jobs to Cloudflare Queues
-  if (validLeadIds.length > 0) {
-    await enqueueCampaignJobs(c.env, id, user.business_id, validLeadIds);
-  }
+  for (let i = 0; i < skipStmts.length; i += 80) await c.env.DB.batch(skipStmts.slice(i, i + 80));
+  if (toQueue.length) await enqueueCampaignJobs(c.env, id, user.business_id, toQueue);
 
   const updated = await c.env.DB.prepare('SELECT * FROM campaigns WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatCampaign(updated));
