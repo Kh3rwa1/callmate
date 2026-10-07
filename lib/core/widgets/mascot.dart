@@ -137,7 +137,7 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
           512,
         ),
         filterQuality: FilterQuality.medium,
-        errorBuilder: (_, __, ___) => _MascotFallback(size: s),
+        errorBuilder: (_, _, _) => _MascotFallback(size: s),
       ),
     );
 
@@ -283,7 +283,7 @@ class MascotAvatar extends StatelessWidget {
           cacheWidth: (size * 1.35 * MediaQuery.devicePixelRatioOf(context))
               .round()
               .clamp(48, 512),
-          errorBuilder: (_, __, ___) => _MascotFallback(size: size),
+          errorBuilder: (_, _, _) => _MascotFallback(size: size),
         ),
       ),
     );

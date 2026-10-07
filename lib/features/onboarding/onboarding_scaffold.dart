@@ -50,7 +50,7 @@ class OnboardingScaffold extends StatelessWidget {
                         child: TweenAnimationBuilder<double>(
                           tween: Tween(end: step / total),
                           duration: const Duration(milliseconds: 400),
-                          builder: (_, v, __) => LinearProgressIndicator(
+                          builder: (_, v, _) => LinearProgressIndicator(
                             value: v,
                             minHeight: 6,
                             backgroundColor: AppColors.border,

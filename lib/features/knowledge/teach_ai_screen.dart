@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:file_picker/file_picker.dart';
+import '../../core/utils/file_pick.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -62,23 +62,20 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
     KnowledgeInput? input;
     if (type == KnowledgeType.pdf) {
       try {
-        final r = await FilePicker.pickFiles(
-          type: FileType.custom,
-          allowedExtensions: ['pdf'],
-          withData: true,
+        final f = await pickSingleFile(
+          extensions: ['pdf'],
+          maxBytes: 15 * 1024 * 1024,
         );
-        final f = r?.files.firstOrNull;
         if (f == null) return;
-        if (f.size > 15 * 1024 * 1024) {
-          _snack('That PDF is over 15 MB. Try a smaller file.');
-          return;
-        }
         input = KnowledgeInput(
           type: KnowledgeType.pdf,
           title: f.name.replaceAll(RegExp(r'\.pdf$', caseSensitive: false), ''),
           fileName: f.name,
           bytes: f.bytes,
         );
+      } on FileTooLargeException {
+        _snack('That PDF is over 15 MB. Try a smaller file.');
+        return;
       } catch (_) {
         _snack('Couldn\'t open that file. Try another PDF.');
         return;

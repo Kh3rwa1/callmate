@@ -38,7 +38,7 @@ class NotificationsScreen extends ConsumerWidget {
                   32,
                 ),
                 itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (_, i) {
                   final x = items[i];
                   return AppCard(

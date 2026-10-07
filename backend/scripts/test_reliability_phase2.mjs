@@ -196,7 +196,7 @@ async function run() {
       purpose: 'Billing check campaign',
       lead_ids: [billingLeadId],
       calling_hours_start: 0,
-      calling_hours_end: 23,
+      calling_hours_end: 24,
     }),
   });
   assert.strictEqual(testCamp.status, 200);
@@ -351,7 +351,7 @@ async function run() {
       purpose: 'Opt-out test',
       lead_ids: [optOutLead.data.id],
       calling_hours_start: 0,
-      calling_hours_end: 23,
+      calling_hours_end: 24,
     }),
   });
   await req(`/campaigns/${optOutCamp.data.id}/start`, {

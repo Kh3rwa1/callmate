@@ -450,18 +450,16 @@ async function handleSarvamProxy(c: Context<{ Bindings: Env; Variables: { user: 
   }
 
   // 3. Per-business rate limit (max 60 req/min)
-  const countRow = await c.env.DB.prepare(
-    `SELECT COUNT(*) as cnt FROM voice_proxy_rate_limits
-     WHERE business_id = ? AND created_at > datetime('now', '-1 minute')`
-  ).bind(payload.business_id).first<{ cnt: number }>();
+  const slot = await c.env.DB.prepare(
+    `INSERT INTO voice_proxy_rate_limits (id, business_id, created_at)
+     SELECT ?, ?, datetime('now')
+     WHERE (SELECT COUNT(*) FROM voice_proxy_rate_limits
+            WHERE business_id = ? AND created_at > datetime('now', '-1 minute')) < 60`
+  ).bind(crypto.randomUUID(), payload.business_id, payload.business_id).run();
 
-  if (countRow && countRow.cnt >= 60) {
+  if ((slot.meta?.changes ?? 0) === 0) {
     return c.json({ message: 'Voice proxy rate limit exceeded.', code: 'rate_limited' }, 429);
   }
-
-  await c.env.DB.prepare(
-    `INSERT INTO voice_proxy_rate_limits (id, business_id, created_at) VALUES (?, ?, datetime('now'))`
-  ).bind(crypto.randomUUID(), payload.business_id).run();
 
   // 4. Do not forward client headers blindly; build clean header set and inject X-API-Key
   const forwardHeaders = new Headers();

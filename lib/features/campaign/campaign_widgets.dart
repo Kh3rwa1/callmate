@@ -61,7 +61,7 @@ class CampaignLiveBanner extends ConsumerWidget {
                 TweenAnimationBuilder<double>(
                   tween: Tween(end: s.progress),
                   duration: const Duration(milliseconds: 500),
-                  builder: (_, v, __) => LinearProgressIndicator(
+                  builder: (_, v, _) => LinearProgressIndicator(
                     value: v,
                     minHeight: 6,
                     borderRadius: BorderRadius.circular(9),

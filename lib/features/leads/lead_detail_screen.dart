@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
@@ -15,6 +14,8 @@ import '../../data/models/models.dart';
 import '../calls/transcript_view.dart';
 import '../callbacks/callback_sheet.dart';
 import '../followups/whatsapp_handoff.dart';
+import 'lead_detail_widgets.dart';
+import 'lead_call_action.dart';
 
 class LeadDetailScreen extends ConsumerWidget {
   const LeadDetailScreen({super.key, required this.leadId});
@@ -111,7 +112,7 @@ class _Body extends ConsumerWidget {
                   minimumSize: const Size(0, 44),
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
-                onPressed: () => _handleCall(
+                onPressed: () => handleLeadCall(
                   context,
                   ref,
                   l,
@@ -178,27 +179,27 @@ class _Body extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
           child: Column(
             children: [
-              _Kv(wf.interestLabel, l.interest ?? 'Not known yet'),
+              LeadDetailRow(wf.interestLabel, l.interest ?? 'Not known yet'),
               for (final a in wf.attributes)
                 if (l.attributes[a.key] != null)
-                  _Kv(a.label, _fmtAttr(a.key, l.attributes[a.key]!)),
+                  LeadDetailRow(a.label, _fmtAttr(a.key, l.attributes[a.key]!)),
               for (final e in l.attributes.entries)
                 if (!wf.attributes.any((a) => a.key == e.key))
-                  _Kv(_titleCase(e.key), _fmtAttr(e.key, e.value)),
-              if (l.language != null) _Kv('Language', l.language!),
-              _Kv(
+                  LeadDetailRow(_titleCase(e.key), _fmtAttr(e.key, e.value)),
+              if (l.language != null) LeadDetailRow('Language', l.language!),
+              LeadDetailRow(
                 'Next action',
                 l.nextAction.label,
                 highlight: l.nextAction != NextAction.none,
               ),
-              _Kv(
+              LeadDetailRow(
                 'Callback',
                 l.callbackAt == null
                     ? 'Not scheduled'
                     : Fmt.friendlyFuture(l.callbackAt!),
                 highlight: l.callbackAt != null,
               ),
-              _Kv('Added', Fmt.relative(l.createdAt), last: true),
+              LeadDetailRow('Added', Fmt.relative(l.createdAt), last: true),
             ],
           ),
         ),
@@ -211,8 +212,9 @@ class _Body extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 for (final p in l.score!.positiveSignals)
-                  _Signal(text: p, positive: true),
-                for (final o in l.objections) _Signal(text: o, positive: false),
+                  LeadSignalChip(text: p, positive: true),
+                for (final o in l.objections)
+                  LeadSignalChip(text: o, positive: false),
               ],
             ),
           ),
@@ -321,157 +323,3 @@ String _titleCase(String k) =>
 
 String _fmtAttr(String key, String v) =>
     key == 'budget' && int.tryParse(v) != null ? Fmt.inr(int.parse(v)) : v;
-
-class _Kv extends StatelessWidget {
-  const _Kv(this.k, this.v, {this.highlight = false, this.last = false});
-  final String k;
-  final String v;
-  final bool highlight;
-  final bool last;
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        border: last
-            ? null
-            : const Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(width: 130, child: Text(k, style: t.bodyMedium)),
-          Expanded(
-            child: Text(
-              v,
-              style: t.titleSmall?.copyWith(
-                color: highlight ? AppColors.brand : AppColors.ink,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Signal extends StatelessWidget {
-  const _Signal({required this.text, required this.positive});
-  final String text;
-  final bool positive;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 5),
-    child: Row(
-      children: [
-        Icon(
-          positive ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
-          size: 21,
-          color: positive ? AppColors.success : AppColors.warm,
-          semanticLabel: positive ? 'Positive' : 'Concern',
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-Future<void> _handleCall(
-  BuildContext context,
-  WidgetRef ref,
-  Lead l,
-  String agentName,
-) async {
-  final action = await showModalBottomSheet<String>(
-    context: context,
-    builder: (ctx) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Call ${l.name}', style: Theme.of(ctx).textTheme.titleLarge),
-            const SizedBox(height: 4),
-            Text(
-              PhoneUtils.display(l.phone),
-              style: Theme.of(ctx).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: AppColors.brandSoft,
-                child: Icon(Icons.smart_toy_rounded, color: AppColors.brand),
-              ),
-              title: Text('AI Call with $agentName (Sarvam AI)'),
-              subtitle: const Text(
-                'Agent calls lead phone directly with voice AI',
-              ),
-              onTap: () => Navigator.pop(ctx, 'ai_call'),
-            ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: AppColors.infoSoft,
-                child: Icon(Icons.mic_rounded, color: AppColors.info),
-              ),
-              title: Text('Talk in-app with $agentName'),
-              subtitle: const Text('Live conversational voice session in-app'),
-              onTap: () => Navigator.pop(ctx, 'in_app'),
-            ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: AppColors.surfaceMuted,
-                child: Icon(Icons.call_rounded, color: AppColors.inkSoft),
-              ),
-              title: const Text('Manual Phone Call'),
-              subtitle: const Text('Open phone dialer using your SIM card'),
-              onTap: () => Navigator.pop(ctx, 'sim_call'),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-
-  if (!context.mounted || action == null) return;
-
-  if (action == 'ai_call') {
-    try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Calling ${l.name} via Sarvam AI voice agent... 📞'),
-        ),
-      );
-      await ref.read(callRepoProvider).triggerCall(l.id);
-      ref.invalidate(leadCallsProvider(l.id));
-      ref.read(dataVersionProvider.notifier).bump();
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '$agentName is calling ${l.name}! Call logged in activity.',
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
-    }
-  } else if (action == 'in_app') {
-    context.push('/voice-test');
-  } else if (action == 'sim_call') {
-    final d = PhoneUtils.normalize(l.phone);
-    if (d != null) launchUrl(Uri.parse('tel:+$d'));
-  }
-}

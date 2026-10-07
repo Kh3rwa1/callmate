@@ -70,7 +70,7 @@ class LeadsList extends Notifier<PagedState<Lead>> {
   @override
   PagedState<Lead> build() {
     ref.watch(leadQueryProvider);
-    ref.listen(dataVersionProvider, (_, __) => refresh(silent: true));
+    ref.listen(dataVersionProvider, (_, _) => refresh(silent: true));
     Future.microtask(refresh);
     return const PagedState(loading: true);
   }
@@ -84,14 +84,14 @@ class LeadsList extends Notifier<PagedState<Lead>> {
       final p = await ref
           .read(leadRepoProvider)
           .list(query: q.search, filter: q.filter, limit: keep);
-      if (gen != _gen) return;
+      if (!ref.mounted || gen != _gen) return;
       state = PagedState(
         items: p.items,
         hasMore: p.hasMore,
         cursor: p.nextCursor,
       );
     } catch (e) {
-      if (gen != _gen) return;
+      if (!ref.mounted || gen != _gen) return;
       state = state.copyWith(loading: false, error: e);
     }
   }
@@ -105,7 +105,7 @@ class LeadsList extends Notifier<PagedState<Lead>> {
       final p = await ref
           .read(leadRepoProvider)
           .list(query: q.search, filter: q.filter, cursor: state.cursor);
-      if (gen != _gen) return;
+      if (!ref.mounted || gen != _gen) return;
       state = state.copyWith(
         items: [...state.items, ...p.items],
         hasMore: p.hasMore,
@@ -113,6 +113,7 @@ class LeadsList extends Notifier<PagedState<Lead>> {
         loadingMore: false,
       );
     } catch (_) {
+      if (!ref.mounted) return;
       state = state.copyWith(loadingMore: false);
     }
   }

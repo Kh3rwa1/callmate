@@ -13,6 +13,7 @@
 import { Env } from '../types';
 import { checkCallCompliance } from './compliance';
 import { maskPhone } from '../utils/crypto_data';
+import { isMockSarvam } from '../utils/secrets';
 
 export interface CampaignJobMessage {
   campaign_id: string;
@@ -44,14 +45,14 @@ export function retryDelaySeconds(attemptsSoFar: number): number {
   return Math.min(900, 60 * 2 ** Math.max(0, attemptsSoFar - 1));
 }
 
-type DialResult =
+export type DialResult =
   | { ok: true; interactionId: string | null }
   | { ok: false; retryable: boolean; error: string };
 
-async function dialSarvam(env: Env, body: unknown): Promise<DialResult> {
+export async function dialSarvam(env: Env, body: unknown): Promise<DialResult> {
   const orgId = env.SARVAM_ORG_ID;
   const workspaceId = env.SARVAM_WORKSPACE_ID;
-  if (!orgId || !workspaceId) {
+  if (!env.SARVAM_API_KEY || !orgId || !workspaceId) {
     return { ok: false, retryable: false, error: 'sarvam_not_configured' };
   }
   try {
@@ -163,7 +164,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
   ).bind(callId, business_id, lead.id, lead.name, lead.phone, campaign_id).run();
 
   // Mock mode (dev / CI): leave the call in 'calling'; the mock webhook or maintenance sweeper finishes it.
-  if (!env.SARVAM_API_KEY || env.SARVAM_API_KEY.startsWith('mock-') || env.SARVAM_API_KEY.startsWith('sk_test_')) {
+  if (isMockSarvam(env)) {
     return { success: true, reason: 'mock_dial' };
   }
 

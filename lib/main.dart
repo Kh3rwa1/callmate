@@ -3,10 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
+import 'core/config/app_env.dart';
 import 'core/providers.dart';
 import 'core/storage/local_prefs.dart';
 
 Future<void> main() async {
+  // Refuse to start a staging/prod build that points at a placeholder or
+  // insecure backend.
+  AppEnv.ensureValid();
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

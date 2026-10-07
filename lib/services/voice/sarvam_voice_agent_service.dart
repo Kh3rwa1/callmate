@@ -14,7 +14,9 @@ import 'voice_agent_service.dart';
 
 /// Real in-app voice using the official `sarvamconv_ai_sdk` (v1.0.x).
 ///
-/// Connects through the Cloudflare Worker voice proxy, or directly to Sarvam AI.
+/// Always connects through OUR backend's Sarvam proxy using the short-lived
+/// session token from `/voice/test-session`. The client never holds a Sarvam
+/// API key; the backend injects it server-side.
 class SarvamVoiceAgentService implements VoiceAgentService {
   SarvamVoiceAgentService(this._sessions);
 
@@ -147,32 +149,24 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       );
     }
 
-    VoiceTestSession? session;
+    final VoiceTestSession session;
     try {
       session = await _sessions.createTestSession();
     } catch (e) {
       debugPrint('[SarvamVoiceAgent] Server session creation error: $e');
-      // If server session failed but direct Sarvam key is provided, allow direct fallback
-      if (AppEnv.sarvamApiKey.isNotEmpty) {
-        session = VoiceTestSession(
-          sessionToken: '',
-          orgId: AppEnv.sarvamOrgId,
-          workspaceId: AppEnv.sarvamWorkspaceId,
-          appId: AppEnv.sarvamAppId,
-          proxyBaseUrl: 'https://apps.sarvam.ai/api/app-runtime/',
-        );
-      } else {
-        _set(VoiceConnectionState.error);
-        throw VoiceAgentException(
-          "Your AI employee couldn't connect to backend. Please check connection ($e).",
-        );
-      }
+      _set(VoiceConnectionState.error);
+      throw VoiceAgentException(
+        "Your AI employee couldn't connect to backend. Please check connection ($e).",
+      );
+    }
+    if (session.sessionToken.isEmpty) {
+      _set(VoiceConnectionState.error);
+      throw const VoiceAgentException(
+        "Your AI employee couldn't start a secure voice session. Please try again.",
+      );
     }
 
-    final rawBaseUrl = session.proxyBaseUrl.isEmpty
-        ? 'https://apps.sarvam.ai/api/app-runtime/'
-        : session.proxyBaseUrl;
-    final proxyBaseUrl = rawBaseUrl.endsWith('/') ? rawBaseUrl : '$rawBaseUrl/';
+    final proxyBaseUrl = resolveSarvamProxyBaseUrl(session.proxyBaseUrl);
 
     final config = InteractionConfig(
       orgId: session.orgId,
@@ -193,13 +187,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       },
     );
 
-    final headers = session.sessionToken.isNotEmpty
-        ? {'Authorization': 'Bearer ${session.sessionToken}'}
-        : null;
-    final apiKey =
-        session.sessionToken.isEmpty && AppEnv.sarvamApiKey.isNotEmpty
-        ? AppEnv.sarvamApiKey
-        : null;
+    final headers = {'Authorization': 'Bearer ${session.sessionToken}'};
 
     _audio = _MutableAudioInterface(
       DefaultAudioInterface(inputSampleRate: 16000),
@@ -209,7 +197,6 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       config: config,
       baseUrl: proxyBaseUrl,
       headers: headers,
-      apiKey: apiKey,
       audioInterface: _audio,
       textCallback: _onText,
       eventCallback: _onEvent,
@@ -429,6 +416,28 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     await _transcript.close();
     await _level.close();
   }
+}
+
+/// Resolves the base URL the Sarvam SDK should talk to.
+///
+/// Uses the backend-provided [sessionProxyBaseUrl] when present, otherwise
+/// falls back to [apiBaseUrl] + [proxyPath] (`SARVAM_PROXY_PATH`). It never
+/// points at Sarvam directly. The result always ends with `/`.
+String resolveSarvamProxyBaseUrl(
+  String sessionProxyBaseUrl, {
+  String? apiBaseUrl,
+  String proxyPath = AppEnv.sarvamProxyPath,
+}) {
+  var url = sessionProxyBaseUrl.trim();
+  if (url.isEmpty) {
+    final base = (apiBaseUrl ?? AppEnv.effectiveApiBaseUrl).replaceFirst(
+      RegExp(r'/+$'),
+      '',
+    );
+    final path = proxyPath.startsWith('/') ? proxyPath : '/$proxyPath';
+    url = '$base$path';
+  }
+  return url.endsWith('/') ? url : '$url/';
 }
 
 /// Wraps the SDK's DefaultAudioInterface to support mute + level metering

@@ -54,22 +54,25 @@ authApp.post('/otp/request', async (c) => {
 
   const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || '127.0.0.1';
 
-  // Rate limit check: D1 chosen because it is serverless, persistent across restarts,
+  // Rate limit: D1 chosen because it is serverless, persistent across restarts,
   // globally consistent, and eliminates extra infrastructure/Durable Object costs.
-  const phoneCount = await c.env.DB.prepare(
-    `SELECT COUNT(*) as cnt FROM otp_rate_limits WHERE phone = ? AND created_at > datetime('now', '-10 minutes')`
-  ).bind(phone).first<{ cnt: number }>();
-
-  if (phoneCount && phoneCount.cnt >= 3) {
-    return c.json({ message: 'Too many OTP requests for this number. Please wait 10 minutes.', code: 'rate_limited' }, 429);
-  }
-
+  // Check-and-record is a single statement so concurrent requests cannot overshoot the limits.
+  const phoneLimit = 3;
   const ipLimit = isDevEnv(c.env) ? 100 : 10;
-  const ipCount = await c.env.DB.prepare(
-    `SELECT COUNT(*) as cnt FROM otp_rate_limits WHERE ip = ? AND created_at > datetime('now', '-10 minutes')`
-  ).bind(clientIp).first<{ cnt: number }>();
+  const slot = await c.env.DB.prepare(
+    `INSERT INTO otp_rate_limits (id, phone, ip, created_at)
+     SELECT ?, ?, ?, datetime('now')
+     WHERE (SELECT COUNT(*) FROM otp_rate_limits WHERE phone = ? AND created_at > datetime('now', '-10 minutes')) < ?
+       AND (SELECT COUNT(*) FROM otp_rate_limits WHERE ip = ? AND created_at > datetime('now', '-10 minutes')) < ?`
+  ).bind(`rl_${crypto.randomUUID().slice(0, 12)}`, phone, clientIp, phone, phoneLimit, clientIp, ipLimit).run();
 
-  if (ipCount && ipCount.cnt >= ipLimit) {
+  if ((slot.meta?.changes ?? 0) === 0) {
+    const phoneCount = await c.env.DB.prepare(
+      `SELECT COUNT(*) as cnt FROM otp_rate_limits WHERE phone = ? AND created_at > datetime('now', '-10 minutes')`
+    ).bind(phone).first<{ cnt: number }>();
+    if ((phoneCount?.cnt ?? 0) >= phoneLimit) {
+      return c.json({ message: 'Too many OTP requests for this number. Please wait 10 minutes.', code: 'rate_limited' }, 429);
+    }
     return c.json({ message: 'Too many OTP requests from your network. Please wait.', code: 'rate_limited' }, 429);
   }
 
@@ -80,16 +83,10 @@ authApp.post('/otp/request', async (c) => {
   const otpHash = await hashOtp(c.env, phone, otpCode);
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 minutes
 
-  // Record OTP code and rate limit entry
-  await c.env.DB.batch([
-    c.env.DB.prepare(
-      `INSERT OR REPLACE INTO otp_codes (phone, otp_hash, attempts, expires_at, created_at)
-       VALUES (?, ?, 0, ?, datetime('now'))`
-    ).bind(phone, otpHash, expiresAt),
-    c.env.DB.prepare(
-      `INSERT INTO otp_rate_limits (id, phone, ip, created_at) VALUES (?, ?, ?, datetime('now'))`
-    ).bind(`rl_${crypto.randomUUID().slice(0, 12)}`, phone, clientIp),
-  ]);
+  await c.env.DB.prepare(
+    `INSERT OR REPLACE INTO otp_codes (phone, otp_hash, attempts, expires_at, created_at)
+     VALUES (?, ?, 0, ?, datetime('now'))`
+  ).bind(phone, otpHash, expiresAt).run();
 
   // Dispatch via SMS provider
   const smsProvider = getSmsProvider(c.env);

@@ -33,8 +33,7 @@ describe('Phase 1 Campaign Queue Reliability Bug Reproductions', () => {
   it('prevents double-start on running campaign (returns 409 invalid_state)', async () => {
     const campId = `camp_double_${Date.now()}`;
     await env.DB.prepare(
-      `INSERT INTO campaigns (id, business_id, purpose, status, total_leads, created_at)
-       VALUES (?, ?, 'Double Start Test', 'running', 1, datetime('now'))`
+      `INSERT INTO campaigns (id, business_id, purpose, status, total_leads, created_at, calling_hours_start, calling_hours_end) VALUES (?, ?, 'Double Start Test', 'running', 1, datetime('now'), 0, 24)`
     ).bind(campId, bizId).run();
 
     const res = await app.fetch(
@@ -59,7 +58,7 @@ describe('Phase 1 Campaign Queue Reliability Bug Reproductions', () => {
     const leadPending = `lead_pend_${Date.now()}`;
 
     await env.DB.batch([
-      env.DB.prepare(`INSERT INTO campaigns (id, business_id, purpose, status, total_leads, created_at) VALUES (?, ?, 'Resume Test', 'paused', 2, datetime('now'))`).bind(campId, bizId),
+      env.DB.prepare(`INSERT INTO campaigns (id, business_id, purpose, status, total_leads, created_at, calling_hours_start, calling_hours_end) VALUES (?, ?, 'Resume Test', 'paused', 2, datetime('now'), 0, 24)`).bind(campId, bizId),
       env.DB.prepare(`INSERT INTO leads (id, business_id, name, phone, status, created_at, updated_at) VALUES (?, ?, 'Done Lead', '919830001111', 'called', datetime('now'), datetime('now'))`).bind(leadDone, bizId),
       env.DB.prepare(`INSERT INTO leads (id, business_id, name, phone, status, created_at, updated_at) VALUES (?, ?, 'Pending Lead', '919830002222', 'new', datetime('now'), datetime('now'))`).bind(leadPending, bizId),
       env.DB.prepare(`INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts) VALUES (?, ?, 'completed', 1)`).bind(campId, leadDone),
@@ -92,7 +91,7 @@ describe('Phase 1 Campaign Queue Reliability Bug Reproductions', () => {
     const leadPending = `lead_pen_${Date.now()}`;
 
     await env.DB.batch([
-      env.DB.prepare(`INSERT INTO campaigns (id, business_id, purpose, status, created_at) VALUES (?, ?, 'Enq Test', 'running', datetime('now'))`).bind(campId, bizId),
+      env.DB.prepare(`INSERT INTO campaigns (id, business_id, purpose, status, created_at, calling_hours_start, calling_hours_end) VALUES (?, ?, 'Enq Test', 'running', datetime('now'), 0, 24)`).bind(campId, bizId),
       env.DB.prepare(`INSERT INTO leads (id, business_id, name, phone, created_at, updated_at) VALUES (?, ?, 'Comp', '919830003333', datetime('now'), datetime('now'))`).bind(leadCompleted, bizId),
       env.DB.prepare(`INSERT INTO leads (id, business_id, name, phone, created_at, updated_at) VALUES (?, ?, 'Pend', '919830004444', datetime('now'), datetime('now'))`).bind(leadPending, bizId),
       env.DB.prepare(`INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts) VALUES (?, ?, 'completed', 1)`).bind(campId, leadCompleted),
@@ -113,7 +112,7 @@ describe('Phase 1 Campaign Queue Reliability Bug Reproductions', () => {
     const leadId = `lead_dial_fail_${Date.now()}`;
 
     await env.DB.batch([
-      env.DB.prepare(`INSERT INTO campaigns (id, business_id, purpose, status, created_at) VALUES (?, ?, 'Fail Dial Test', 'running', datetime('now'))`).bind(campId, bizId),
+      env.DB.prepare(`INSERT INTO campaigns (id, business_id, purpose, status, created_at, calling_hours_start, calling_hours_end) VALUES (?, ?, 'Fail Dial Test', 'running', datetime('now'), 0, 24)`).bind(campId, bizId),
       env.DB.prepare(`INSERT INTO leads (id, business_id, name, phone, created_at, updated_at) VALUES (?, ?, 'Fail Lead', '919830005555', datetime('now'), datetime('now'))`).bind(leadId, bizId),
       env.DB.prepare(`INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts) VALUES (?, ?, 'queued', 0)`).bind(campId, leadId),
     ]);

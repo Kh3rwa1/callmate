@@ -21,7 +21,7 @@ class BrandMark extends StatelessWidget {
       height: size,
       cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
       semanticLabel: Brand.appName,
-      errorBuilder: (_, __, ___) => Container(
+      errorBuilder: (_, _, _) => Container(
         width: size,
         height: size,
         color: AppColors.brand,

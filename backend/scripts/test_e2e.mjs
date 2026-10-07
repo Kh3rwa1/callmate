@@ -223,6 +223,14 @@ async function run() {
 
   // 9b. Trigger Outbound Lead Call via Sarvam
   console.log('9b. Trigger Lead Call via Sarvam Outbound...');
+  // Calls are blocked outside the agent's calling hours. Open the window all day
+  // so this run does not depend on the time of day it happens to execute.
+  const openHours = await req('/agent', {
+    method: 'PATCH',
+    headers: authHeader,
+    body: JSON.stringify({ calling_hours_start: 0, calling_hours_end: 24 }),
+  });
+  assert.strictEqual(openHours.status, 200);
   const triggerRes = await req(`/leads/${singleLead.data.id}/call`, {
     method: 'POST',
     headers: authHeader,

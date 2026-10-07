@@ -53,7 +53,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
       const leadId = `lead_q1_${Date.now()}`;
 
       await env.DB.batch([
-        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads) VALUES (?, ?, 'Q1 Test', 'running', 1)").bind(campId, bizId),
+        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads, calling_hours_start, calling_hours_end) VALUES (?, ?, 'Q1 Test', 'running', 1, 0, 24)").bind(campId, bizId),
         env.DB.prepare("INSERT INTO leads (id, business_id, name, phone, status, consent) VALUES (?, ?, 'Lead Q1', '919800000001', 'pending', 'explicit')").bind(leadId, bizId),
         env.DB.prepare("INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts) VALUES (?, ?, 'queued', 0)").bind(campId, leadId),
       ]);
@@ -118,7 +118,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
       const leadId = `lead_q2_${Date.now()}`;
 
       await env.DB.batch([
-        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads) VALUES (?, ?, 'Q2 Test', 'running', 1)").bind(campId, bizId),
+        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads, calling_hours_start, calling_hours_end) VALUES (?, ?, 'Q2 Test', 'running', 1, 0, 24)").bind(campId, bizId),
         env.DB.prepare("INSERT INTO leads (id, business_id, name, phone, status, consent) VALUES (?, ?, 'Lead Q2', '919800000002', 'pending', 'explicit')").bind(leadId, bizId),
         env.DB.prepare("INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts) VALUES (?, ?, 'queued', 0)").bind(campId, leadId),
       ]);
@@ -159,7 +159,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
       const leadId = `lead_q3_${Date.now()}`;
 
       await env.DB.batch([
-        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads) VALUES (?, ?, 'Q3 Test', 'running', 1)").bind(campId, bizId),
+        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads, calling_hours_start, calling_hours_end) VALUES (?, ?, 'Q3 Test', 'running', 1, 0, 24)").bind(campId, bizId),
         env.DB.prepare("INSERT INTO leads (id, business_id, name, phone, status, consent) VALUES (?, ?, 'Lead Q3', '919800000003', 'pending', 'explicit')").bind(leadId, bizId),
         env.DB.prepare("INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts) VALUES (?, ?, 'queued', 0)").bind(campId, leadId),
       ]);
@@ -211,7 +211,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
       const leadId = `lead_q4_${Date.now()}`;
 
       await env.DB.batch([
-        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads) VALUES (?, ?, 'Q4 Test', 'running', 1)").bind(campId, bizId),
+        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads, calling_hours_start, calling_hours_end) VALUES (?, ?, 'Q4 Test', 'running', 1, 0, 24)").bind(campId, bizId),
         env.DB.prepare("INSERT INTO leads (id, business_id, name, phone, status, consent) VALUES (?, ?, 'Lead Q4', '919800000004', 'pending', 'explicit')").bind(leadId, bizId),
         env.DB.prepare("INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts) VALUES (?, ?, 'queued', 0)").bind(campId, leadId),
       ]);
@@ -255,7 +255,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
       const leadPending = `lead_q5_pend_${Date.now()}`;
 
       await env.DB.batch([
-        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads) VALUES (?, ?, 'Q5 Resume Test', 'paused', 2)").bind(campId, bizId),
+        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads, calling_hours_start, calling_hours_end) VALUES (?, ?, 'Q5 Resume Test', 'paused', 2, 0, 24)").bind(campId, bizId),
         env.DB.prepare("INSERT INTO leads (id, business_id, name, phone, status, consent) VALUES (?, ?, 'Done', '919800000005', 'completed', 'explicit')").bind(leadDone, bizId),
         env.DB.prepare("INSERT INTO leads (id, business_id, name, phone, status, consent) VALUES (?, ?, 'Pending', '919800000006', 'pending', 'explicit')").bind(leadPending, bizId),
         env.DB.prepare("INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts) VALUES (?, ?, 'completed', 1)").bind(campId, leadDone),
@@ -284,7 +284,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
     it('Q6: Double start: POST /start twice -> second returns 409', async () => {
       const campId = `camp_q6_${Date.now()}`;
       await env.DB.prepare(
-        "INSERT INTO campaigns (id, business_id, purpose, status, total_leads) VALUES (?, ?, 'Q6 Double Start', 'draft', 0)"
+        "INSERT INTO campaigns (id, business_id, purpose, status, total_leads, calling_hours_start, calling_hours_end) VALUES (?, ?, 'Q6 Double Start', 'draft', 0, 0, 24)"
       ).bind(campId, bizId).run();
 
       const startReq = () => app.fetch(
@@ -420,7 +420,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
       const callId = `call_w3_${Date.now()}`;
 
       await env.DB.batch([
-        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads) VALUES (?, ?, 'W3 Test', 'running', 1)").bind(campId, bizId),
+        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads, calling_hours_start, calling_hours_end) VALUES (?, ?, 'W3 Test', 'running', 1, 0, 24)").bind(campId, bizId),
         env.DB.prepare("INSERT INTO leads (id, business_id, name, phone, status) VALUES (?, ?, 'Lead W3', '919800000030', 'calling')").bind(leadId, bizId),
         env.DB.prepare("INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts, call_id) VALUES (?, ?, 'calling', 1, ?)").bind(campId, leadId, callId),
         env.DB.prepare("INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, campaign_id, status) VALUES (?, ?, ?, 'Lead W3', '919800000030', ?, 'calling')").bind(callId, bizId, leadId, campId),
@@ -458,7 +458,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
       const callId = `call_w4_${Date.now()}`;
 
       await env.DB.batch([
-        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads) VALUES (?, ?, 'W4 Test', 'running', 1)").bind(campId, bizId),
+        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads, calling_hours_start, calling_hours_end) VALUES (?, ?, 'W4 Test', 'running', 1, 0, 24)").bind(campId, bizId),
         env.DB.prepare("INSERT INTO leads (id, business_id, name, phone, status) VALUES (?, ?, 'Lead W4', '919800000040', 'calling')").bind(leadId, bizId),
         env.DB.prepare("INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts, call_id) VALUES (?, ?, 'calling', 1, ?)").bind(campId, leadId, callId),
         env.DB.prepare("INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, campaign_id, status) VALUES (?, ?, ?, 'Lead W4', '919800000040', ?, 'calling')").bind(callId, bizId, leadId, campId),
@@ -689,7 +689,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
       const callId = `call_m1_${Date.now()}`;
 
       await env.DB.batch([
-        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads) VALUES (?, ?, 'M1 Test', 'running', 1)").bind(campId, bizId),
+        env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads, calling_hours_start, calling_hours_end) VALUES (?, ?, 'M1 Test', 'running', 1, 0, 24)").bind(campId, bizId),
         env.DB.prepare("INSERT INTO leads (id, business_id, name, phone, status) VALUES (?, ?, 'Lead M1', '919800000099', 'calling')").bind(leadId, bizId),
         env.DB.prepare("INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts, call_id) VALUES (?, ?, 'calling', 1, ?)").bind(campId, leadId, callId),
         // Started 50 minutes ago

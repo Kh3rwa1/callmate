@@ -89,7 +89,8 @@ export const createCampaignSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   lead_ids: z.array(z.string()).default([]),
   calling_hours_start: z.number().int().min(0).max(23).default(10),
-  calling_hours_end: z.number().int().min(0).max(23).default(19),
+  // Exclusive end hour: calls allowed while hour < end, so 24 means "until midnight".
+  calling_hours_end: z.number().int().min(1).max(24).default(19),
   options: z.record(z.string(), z.any()).optional(),
 });
 
@@ -120,7 +121,7 @@ export const patchAgentSchema = z.object({
   formality: z.number().min(0).max(1).optional(),
   capabilities: z.array(z.string()).optional(),
   calling_hours_start: z.number().int().min(0).max(23).optional(),
-  calling_hours_end: z.number().int().min(0).max(23).optional(),
+  calling_hours_end: z.number().int().min(1).max(24).optional(),
   transfer_number: z.string().nullable().optional(),
   voice: z.string().optional(),
   status: z.enum(['active', 'paused', 'inactive']).optional(),

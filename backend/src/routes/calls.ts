@@ -1,7 +1,10 @@
 import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { safeJsonParse } from '../utils/json';
-import { decryptAtRest } from '../utils/crypto_data';
+import { decryptAtRest, maskPhone } from '../utils/crypto_data';
+import { requireSecret, isMockSarvam } from '../utils/secrets';
+import { checkCallCompliance } from '../services/compliance';
+import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS } from '../services/campaign_queue';
 
 const callsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -62,7 +65,7 @@ callsApp.get('/calls', async (c) => {
   const leadId = c.req.query('lead_id');
   const rawCursor = c.req.query('cursor');
   const limit = Math.min(Math.max(1, parseInt(c.req.query('limit') || '20', 10)), 100);
-  const secret = c.env.ENCRYPTION_KEY || c.env.JWT_SIGNING_KEY;
+  const secret = requireSecret(c.env, 'ENCRYPTION_KEY');
 
   let sql = 'SELECT * FROM calls WHERE business_id = ?';
   const params: any[] = [user.business_id];
@@ -133,87 +136,111 @@ callsApp.get('/calls', async (c) => {
 callsApp.get('/calls/:id', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');
-  const secret = c.env.ENCRYPTION_KEY || c.env.JWT_SIGNING_KEY;
+  const secret = requireSecret(c.env, 'ENCRYPTION_KEY');
   const row = await c.env.DB.prepare('SELECT * FROM calls WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   if (!row) return c.json({ message: 'Call not found.', code: 'not_found' }, 404);
   return c.json(await formatCall(row, secret));
 });
 
-// POST /leads/:id/call (or trigger a call for lead)
+// POST /leads/:id/call: manual single call. Same guardrails as campaign dispatch.
+const BLOCKED_CALL_MESSAGES: Record<string, string> = {
+  outside_hours: 'This lead can only be called during calling hours.',
+  do_not_call: 'This lead has opted out of calls.',
+  max_daily_attempts: 'This lead has already been called 3 times today.',
+};
+
 callsApp.post('/leads/:id/call', async (c) => {
   const user = c.get('user');
   const leadId = c.req.param('id');
-  const secret = c.env.ENCRYPTION_KEY || c.env.JWT_SIGNING_KEY;
+  const secret = requireSecret(c.env, 'ENCRYPTION_KEY');
 
   const lead = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ? AND business_id = ?').bind(leadId, user.business_id).first<any>();
   if (!lead) return c.json({ message: 'Lead not found.', code: 'not_found' }, 404);
 
-  const business = await c.env.DB.prepare('SELECT * FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
   const agent = await c.env.DB.prepare('SELECT * FROM agents WHERE business_id = ?').bind(user.business_id).first<any>();
 
+  const compliance = await checkCallCompliance(c.env.DB, {
+    businessId: user.business_id,
+    leadId,
+    hoursStart: agent?.calling_hours_start,
+    hoursEnd: agent?.calling_hours_end,
+    timezone: lead.timezone || 'Asia/Kolkata',
+  });
+  if (!compliance.allowed) {
+    return c.json({
+      message: BLOCKED_CALL_MESSAGES[compliance.reason!] ?? 'This call is not allowed right now.',
+      code: compliance.reason,
+    }, 409);
+  }
+
+  const active = await c.env.DB.prepare(
+    `SELECT COUNT(*) AS cnt FROM calls
+     WHERE business_id = ? AND status = 'calling' AND started_at > datetime('now', '-20 minutes')`
+  ).bind(user.business_id).first<{ cnt: number }>();
+  if ((active?.cnt ?? 0) >= MAX_CONCURRENT_CALLS_PER_BUSINESS) {
+    return c.json({ message: 'Too many calls in progress. Try again in a minute.', code: 'concurrency_limit' }, 429);
+  }
+
+  const usage = await c.env.DB.prepare('SELECT included_minutes, minutes_used FROM usage WHERE business_id = ?')
+    .bind(user.business_id).first<{ included_minutes: number; minutes_used: number }>();
+  if (usage && usage.included_minutes - usage.minutes_used <= 0) {
+    return c.json({ message: 'You have used all included calling minutes.', code: 'exhausted_minutes' }, 402);
+  }
+
+  const business = await c.env.DB.prepare('SELECT name FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
   const callId = `call_${crypto.randomUUID().slice(0, 12)}`;
 
-  // Record active call in D1
   await c.env.DB.prepare(`
     INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, status, started_at, created_at)
     VALUES (?, ?, ?, ?, ?, 'calling', datetime('now'), datetime('now'))
   `).bind(callId, user.business_id, lead.id, lead.name, lead.phone).run();
 
-  await c.env.DB.prepare(`
-    UPDATE leads SET status = 'calling', updated_at = datetime('now') WHERE id = ? AND business_id = ?
-  `).bind(leadId, user.business_id).run();
+  const markLeadCalling = c.env.DB.prepare(
+    `UPDATE leads SET status = 'calling', updated_at = datetime('now') WHERE id = ? AND business_id = ?`
+  ).bind(leadId, user.business_id);
 
-  // Trigger real Sarvam Outbound Call via API
-  const sarvamApiKey = c.env.SARVAM_API_KEY;
-  const orgId = c.env.SARVAM_ORG_ID;
-  const workspaceId = c.env.SARVAM_WORKSPACE_ID;
-  const appId = c.env.SARVAM_ADMISSIONS_APP_ID;
+  let dispatched = false;
+  if (isMockSarvam(c.env)) {
+    // Dev/test: the mock webhook or maintenance sweeper completes the call.
+    await markLeadCalling.run();
+  } else {
+    const dial = await dialSarvam(c.env, {
+      app_config: { app_id: c.env.SARVAM_ADMISSIONS_APP_ID },
+      user_config: { phone_number: lead.phone },
+      agent_variables: {
+        call_id: callId,
+        lead_id: lead.id,
+        lead_name: lead.name,
+        business_name: business?.name ?? 'our business',
+        agent_name: agent?.name ?? 'Riya',
+        agent_role: agent?.role ?? 'Assistant',
+        interest: lead.interest ?? lead.course_interest ?? '',
+      },
+      webhook_config: { webhook_url: `${new URL(c.req.url).origin}/webhooks/sarvam` },
+    });
 
-  let sarvamResult: any = null;
-  if (sarvamApiKey && !sarvamApiKey.startsWith('mock-') && orgId && workspaceId && appId) {
-    try {
-      const url = new URL(c.req.url);
-      const webhookUrl = `${url.origin}/webhooks/sarvam`;
-
-      const sarvamRes = await fetch(`https://apps.sarvam.ai/api/outbounds/v1/orgs/${orgId}/workspaces/${workspaceId}/outbounds`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': sarvamApiKey,
-        },
-        body: JSON.stringify({
-          app_config: { app_id: appId },
-          user_config: { phone_number: lead.phone },
-          agent_variables: {
-            call_id: callId,
-            lead_id: lead.id,
-            lead_name: lead.name,
-            business_name: business?.name || 'CallPilot Business',
-            agent_name: agent?.name || 'Riya',
-            agent_role: agent?.role || 'Assistant',
-            course_interest: lead.course_interest || lead.interest || '',
-          },
-          webhook_config: {
-            webhook_url: webhookUrl,
-          },
-        }),
-      });
-
-      sarvamResult = await sarvamRes.json().catch(() => null);
-      if (sarvamResult?.interaction_id || sarvamResult?.id || sarvamResult?.attempt_id) {
-        const interactionId = sarvamResult.interaction_id || sarvamResult.id || sarvamResult.attempt_id;
-        await c.env.DB.prepare('UPDATE calls SET interaction_id = ? WHERE id = ? AND business_id = ?').bind(interactionId, callId, user.business_id).run();
-      }
-    } catch (err: any) {
-      console.error('[Sarvam Outbound Call Error]:', err?.message || err);
+    if (dial.ok) {
+      dispatched = true;
+      await c.env.DB.batch([
+        c.env.DB.prepare('UPDATE calls SET interaction_id = ? WHERE id = ? AND business_id = ?')
+          .bind(dial.interactionId, callId, user.business_id),
+        markLeadCalling,
+      ]);
+    } else {
+      console.error(JSON.stringify({ msg: 'sarvam_manual_dial_failed', lead: maskPhone(lead.phone), error: dial.error }));
+      await c.env.DB.prepare(`UPDATE calls SET status = 'failed', failure_reason = ? WHERE id = ? AND business_id = ?`)
+        .bind(dial.error, callId, user.business_id).run();
+      return c.json({
+        message: dial.retryable ? 'The calling service is busy. Please try again shortly.' : 'The call could not be placed.',
+        code: 'dial_failed',
+      }, dial.retryable ? 503 : 502);
     }
   }
 
   const created = await c.env.DB.prepare('SELECT * FROM calls WHERE id = ? AND business_id = ?').bind(callId, user.business_id).first();
   return c.json({
     call: await formatCall(created, secret),
-    sarvam_dispatched: !!sarvamResult,
-    sarvam_response: sarvamResult,
+    sarvam_dispatched: dispatched,
   });
 });
 
