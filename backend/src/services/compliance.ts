@@ -83,7 +83,7 @@ export async function checkCallCompliance(
     'SELECT do_not_call, consent FROM leads WHERE id = ? AND business_id = ?'
   ).bind(params.leadId, params.businessId).first<{ do_not_call: number; consent: string }>();
 
-  if (!lead || lead.do_not_call === 1) {
+  if (!lead || lead.do_not_call === 1 || lead.consent === 'opt_out') {
     return {
       allowed: false,
       reason: 'do_not_call',
@@ -124,45 +124,45 @@ export async function checkCallCompliance(
   return { allowed: true };
 }
 
+export const OPT_OUT_PATTERNS: RegExp[] = [
+  // English
+  /\b(do ?n[o']?t|never)\s+(call|phone|contact|ring)\s+(me|again|this number)\b/,
+  /\bstop\s+(calling|contacting|messaging)\b/,
+  /\b(remove|delete|take)\s+(my|this)\s+number\b/,
+  /\bremove me from (your|the) list\b/,
+  /\b(unsubscribe|opt ?out|block (my|this) number|report (you|this) (as )?spam)\b/,
+  // Hinglish (romanised)
+  /\b(call|phone|fon)\s+(mat|na|nahi|nai)\s+(karo|karna|kijiye|karein|karo na)\b/,
+  /\b(dobara|phir se|fir se|wapas)\s+(call|phone)\s+(mat|na|nahi)\b/,
+  /\b(mujhe|humein|hame)\s+(call|phone)\s+(mat|na|nahi)\b/,
+  /\bnumber\s+(hata|hatao|hata do|delete kar do)\b/,
+  /\b(band karo|bandh karo)\s+(call|calling|phone)\b/,
+  // Hindi (Devanagari)
+  /(कॉल|काल|फोन|फ़ोन)\s*(मत|ना|नहीं)\s*(करो|करना|करें|कीजिए)/,
+  /(दोबारा|फिर से)\s*(कॉल|फोन|फ़ोन)\s*(मत|ना|नहीं)/,
+  /नंबर\s*(हटा|हटाओ|हटा दो|डिलीट)/,
+];
+
+export function normalizeTranscript(s: string): string {
+  return s.normalize('NFKC').toLowerCase().replace(/[’‘`]/g, "'").replace(/[^\p{L}\p{M}\p{N}'\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /**
  * Checks if the caller or call output indicates an opt-out request ("don't call me").
  */
 export function isOptOutRequest(payload: any): boolean {
   if (!payload) return false;
-  
-  // Explicit intent
-  const intent = String(payload.intent || payload.output_variables?.intent || '').toLowerCase();
-  if (intent === 'opt_out' || intent === 'dnc' || intent === 'do_not_call' || intent === 'unsubscribe') {
-    return true;
-  }
+  const intent = String(payload.intent ?? payload.output_variables?.intent ?? '').toLowerCase();
+  const next = String(payload.next_action ?? payload.output_variables?.next_action ?? '').toLowerCase();
+  if (['opt_out', 'dnc', 'do_not_call', 'unsubscribe'].includes(intent)) return true;
+  if (['opt_out', 'dnc', 'do_not_call'].includes(next)) return true;
 
-  // Next action
-  const nextAction = String(payload.next_action || payload.output_variables?.next_action || '').toLowerCase();
-  if (nextAction === 'opt_out' || nextAction === 'do_not_call' || nextAction === 'dnc') {
-    return true;
-  }
-
-  // Transcript inspection
-  const transcript = payload.transcript || [];
-  let transcriptText = '';
-  if (Array.isArray(transcript)) {
-    transcriptText = transcript.map((t: any) => t?.text || t?.content || t?.message || '').join(' ').toLowerCase();
-  } else if (typeof transcript === 'string') {
-    transcriptText = transcript.toLowerCase();
-  }
-
-  const optOutPhrases = [
-    'don\'t call me',
-    'dont call me',
-    'stop calling',
-    'do not call',
-    'remove my number',
-    'remove me from your list',
-    'wrong number don\'t call',
-    'block my number',
-    'spam report',
-    'never call again',
-  ];
-
-  return optOutPhrases.some((phrase) => transcriptText.includes(phrase));
+  const t = payload.transcript;
+  // Only inspect what the CUSTOMER said, not the agent (avoid "you can say stop calling anytime" false positives)
+  const text = Array.isArray(t)
+    ? t.filter((x: any) => !['agent', 'assistant', 'bot'].includes(String(x?.role ?? x?.speaker ?? '').toLowerCase()))
+        .map((x: any) => x?.text ?? x?.content ?? x?.message ?? '').join(' ')
+    : typeof t === 'string' ? t : '';
+  const norm = normalizeTranscript(text);
+  return OPT_OUT_PATTERNS.some((re) => re.test(norm));
 }

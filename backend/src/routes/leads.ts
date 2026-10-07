@@ -30,7 +30,7 @@ function formatLead(row: any) {
     callback_at: row.callback_at,
     attributes: safeJsonParse(row.attributes, {}),
     do_not_call: row.do_not_call === 1,
-    consent: row.consent || 'implicit_inquiry',
+    consent: row.consent || 'unknown',
     timezone: row.timezone || 'Asia/Kolkata',
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -163,7 +163,7 @@ leadsApp.post('/leads', async (c) => {
   const source = body.source || 'Manual entry';
   const attributes = JSON.stringify(body.attributes || {});
   const doNotCall = body.do_not_call ? 1 : 0;
-  const consent = body.consent || 'implicit_inquiry';
+  const consent = body.consent || 'unknown';
   const timezone = body.timezone || 'Asia/Kolkata';
 
   await c.env.DB.prepare(
@@ -219,7 +219,7 @@ leadsApp.post('/leads/import', async (c) => {
     const source = item.source || 'CSV Import';
     const attributes = JSON.stringify(item.attributes || {});
     const doNotCall = item.do_not_call ? 1 : 0;
-    const consent = item.consent || 'implicit_inquiry';
+    const consent = item.consent || 'unknown';
 
     statements.push(
       c.env.DB.prepare(

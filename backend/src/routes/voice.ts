@@ -50,7 +50,7 @@ voiceApp.post('/test-session', async (c) => {
 
   const agentName = agent?.name || 'Riya';
   const businessName = business?.name || 'CallPilot Business';
-  const greetingText = `Hello, I am ${agentName} from ${businessName}. How can I assist you today?`;
+  const greetingText = `Hello, I'm ${agentName}, an AI assistant from ${businessName}. How can I assist you today?`;
   const greetingAudioBase64 = await synthesizeFemaleAudio(c.env, greetingText);
 
   return c.json({
@@ -372,7 +372,7 @@ function validateCallOutput(output: any): { valid: boolean; normalized: any } {
     };
   }
 
-  const validIntents = ['interested', 'exploring', 'not_interested', 'callback_requested', 'unknown'];
+  const validIntents = ['interested', 'exploring', 'not_interested', 'callback_requested', 'unknown', 'opt_out'];
   const validTemps = ['hot', 'warm', 'cold'];
   const validNextActions = ['human_followup', 'send_whatsapp', 'whatsapp_and_callback', 'book_appointment', 'retry_call', 'none'];
 

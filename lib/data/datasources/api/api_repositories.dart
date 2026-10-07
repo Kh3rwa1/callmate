@@ -275,8 +275,12 @@ class ApiCampaignRepository implements CampaignRepository {
   Future<Campaign> get(String id) =>
       api.get('/campaigns/$id', (d) => Campaign.fromJson(_j(d)));
   @override
-  Future<Campaign> start(String id) =>
-      api.post('/campaigns/$id/start', (d) => Campaign.fromJson(_j(d)));
+  Future<Campaign> start(String id, {bool consentAttestation = false}) =>
+      api.post(
+        '/campaigns/$id/start',
+        (d) => Campaign.fromJson(_j(d)),
+        data: {'consent_attestation': consentAttestation},
+      );
   @override
   Future<Campaign> stop(String id) =>
       api.post('/campaigns/$id/stop', (d) => Campaign.fromJson(_j(d)));

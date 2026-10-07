@@ -101,7 +101,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
 
     final greeting =
         session?.greetingText ??
-        'Hello, I am $agentName with $bizName. How can I assist you today?';
+        "Hello, I'm $agentName, an AI assistant from $bizName. How can I assist you today?";
     _entries.add(
       VoiceTranscriptEntry(
         id: 'web_agent_1',

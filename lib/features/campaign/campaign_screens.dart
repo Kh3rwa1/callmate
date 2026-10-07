@@ -29,65 +29,123 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
   Future<void> _start(List<Lead> leads, Agent agent) async {
     final repo = ref.read(campaignRepoProvider);
     final cost = repo.estimateCostInr(leads.length);
+    final skippedNoConsent = leads.where((l) => !l.hasConsent).length;
+    var consentAttestation = false;
+
     final ok = await showModalBottomSheet<bool>(
       context: context,
       useSafeArea: true,
+      isScrollControlled: true,
       builder: (ctx) {
         final t = Theme.of(ctx).textTheme;
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpace.page,
-              0,
-              AppSpace.page,
-              16,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Mascot(state: MascotState.calling, size: 120),
-                const SizedBox(height: 12),
-                Text(
-                  'Start calling ${leads.length} leads?',
-                  style: t.headlineSmall,
-                  textAlign: TextAlign.center,
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.page,
+                  0,
+                  AppSpace.page,
+                  16,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '${agent.name} will call between ${Fmt.hour(_hours!.start.round())} and ${Fmt.hour(_hours!.end.round())}, '
-                  'introduce herself as an AI assistant, and notify you about hot leads.',
-                  style: t.bodyMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Text('Estimated usage', style: t.bodyMedium),
-                      const Spacer(),
-                      Text('≈ ${Fmt.inr(cost)}', style: t.titleMedium),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Mascot(state: MascotState.calling, size: 120),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Start calling ${leads.length} leads?',
+                      style: t.headlineSmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${agent.name} will call between ${Fmt.hour(_hours!.start.round())} and ${Fmt.hour(_hours!.end.round())}, '
+                      'introduce herself as an AI assistant, and notify you about hot leads.',
+                      style: t.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    if (skippedNoConsent > 0) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$skippedNoConsent leads skipped (no consent recorded)',
+                              style: t.bodyMedium?.copyWith(
+                                color: AppColors.inkSoft,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Checkbox(
+                                  value: consentAttestation,
+                                  onChanged: (v) {
+                                    setModalState(() {
+                                      consentAttestation = v ?? false;
+                                    });
+                                  },
+                                ),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setModalState(() {
+                                        consentAttestation =
+                                            !consentAttestation;
+                                      });
+                                    },
+                                    child: Text(
+                                      'I confirm these contacts asked to be contacted',
+                                      style: t.bodySmall,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Text('Estimated usage', style: t.bodyMedium),
+                          const Spacer(),
+                          Text('≈ ${Fmt.inr(cost)}', style: t.titleMedium),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    PrimaryButton(
+                      label: '🚀  Yes, start calling',
+                      color: AppColors.brand,
+                      onPressed: () => Navigator.pop(ctx, true),
+                    ),
+                    const SizedBox(height: 4),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Not now'),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                PrimaryButton(
-                  label: '🚀  Yes, start calling',
-                  color: AppColors.brand,
-                  onPressed: () => Navigator.pop(ctx, true),
-                ),
-                const SizedBox(height: 4),
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Not now'),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -102,7 +160,10 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
         options: _opts,
       );
       final c = await repo.create(draft);
-      final started = await repo.start(c.id);
+      final started = await repo.start(
+        c.id,
+        consentAttestation: consentAttestation,
+      );
       ref.read(activeCampaignProvider.notifier).set(started);
       ref.read(analyticsProvider).track('campaign_started', {
         'leads': leads.length,

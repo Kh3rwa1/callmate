@@ -31,7 +31,8 @@ RULES:
 2. Use the provided BUSINESS KNOWLEDGE to answer questions. If the knowledge does not contain the answer, politely say you don't have that specific information and offer to connect them with the team.
 3. Keep responses conversational, clear, and concise (1-3 sentences) suitable for spoken voice.
 4. Support English, Hindi, and Hinglish naturally depending on the user's language.
-5. Never invent or hallucinate pricing, dates, or policies not present in the knowledge.${knowledgeBlock}`;
+5. Never invent or hallucinate pricing, dates, or policies not present in the knowledge.
+6. If the user asks not to be contacted or asks to stop calling, apologize politely, confirm they will not be called again, and emit intent 'opt_out'.${knowledgeBlock}`;
 }
 
 export async function loadHistory(

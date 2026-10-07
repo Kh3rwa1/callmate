@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "lead_score": { "type": "integer", "minimum": 0, "maximum": 100 },
-    "intent": { "enum": ["interested", "exploring", "not_interested", "callback_requested", "unknown"] },
+    "intent": { "enum": ["interested", "exploring", "not_interested", "callback_requested", "unknown", "opt_out"] },
     "temperature": { "enum": ["hot", "warm", "cold"] },
     "interest": { "type": ["string", "null"], "description": "What the lead wants (course / property / service / model)", "examples": ["NEET", "3 BHK", "Consultation"] },
     "attributes": { "type": "object", "description": "Template-defined custom fields", "additionalProperties": { "type": "string" }, "examples": [{ "batch": "Evening", "budget": "50000" }] },

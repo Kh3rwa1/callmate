@@ -22,6 +22,14 @@ export const refreshSchema = z.object({
   refresh_token: z.string().min(20, 'Invalid refresh token format'),
 });
 
+export const consentEnum = z.enum([
+  'explicit_opt_in',
+  'inquiry',
+  'existing_customer',
+  'unknown',
+  'opt_out',
+]);
+
 // ==========================================
 // Lead Schemas
 // ==========================================
@@ -33,7 +41,7 @@ export const createLeadSchema = z.object({
   source: z.string().optional(),
   attributes: z.record(z.string(), z.any()).optional(),
   do_not_call: z.boolean().optional(),
-  consent: z.string().optional(),
+  consent: consentEnum.optional(),
   timezone: z.string().optional(),
 });
 
@@ -45,7 +53,7 @@ export const leadItemSchema = z.object({
   source: z.string().optional(),
   attributes: z.record(z.string(), z.any()).optional(),
   do_not_call: z.boolean().optional(),
-  consent: z.string().optional(),
+  consent: consentEnum.optional(),
 });
 
 export const importLeadsSchema = z.object({
@@ -66,13 +74,16 @@ export const patchLeadSchema = z.object({
   callback_at: z.string().nullable().optional(),
   attributes: z.record(z.string(), z.any()).optional(),
   do_not_call: z.boolean().optional(),
-  consent: z.string().optional(),
+  consent: consentEnum.optional(),
   timezone: z.string().optional(),
 });
 
 // ==========================================
 // Campaign Schemas
 // ==========================================
+export const startCampaignSchema = z.object({
+  consent_attestation: z.boolean().optional(),
+});
 export const createCampaignSchema = z.object({
   purpose: z.string().min(1, 'Campaign purpose is required').max(255).optional(),
   title: z.string().min(1).max(255).optional(),

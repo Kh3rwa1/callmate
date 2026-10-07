@@ -66,7 +66,7 @@ enum CallFilter { all, connected, noAnswer, hot }
 abstract class CampaignRepository {
   Future<Campaign> create(CampaignDraft draft);
   Future<Campaign> get(String id);
-  Future<Campaign> start(String id);
+  Future<Campaign> start(String id, {bool consentAttestation = false});
   Future<Campaign> stop(String id);
   Future<Campaign?> active();
   int estimateCostInr(int leadCount);

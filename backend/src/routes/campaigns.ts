@@ -25,6 +25,8 @@ function formatCampaign(row: any) {
     cost_inr: row.cost_inr || 0,
     started_at: row.started_at,
     completed_at: row.completed_at,
+    attested_by: row.attested_by || null,
+    attested_at: row.attested_at || null,
   };
 }
 
@@ -142,11 +144,25 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
     }
   }
 
+  let consentAttestation = false;
+  try {
+    const rawBody = await c.req.json().catch(() => ({}));
+    if (rawBody && typeof rawBody === 'object' && rawBody.consent_attestation === true) {
+      consentAttestation = true;
+    }
+  } catch {
+    // optional body
+  }
+
   // Atomic transition: only draft/paused campaigns can start (prevents double-start)
   const started = await c.env.DB.prepare(
-    `UPDATE campaigns SET status = 'running', started_at = COALESCE(started_at, datetime('now'))
+    `UPDATE campaigns
+     SET status = 'running',
+         started_at = COALESCE(started_at, datetime('now')),
+         attested_by = CASE WHEN ? = 1 THEN ? ELSE attested_by END,
+         attested_at = CASE WHEN ? = 1 THEN datetime('now') ELSE attested_at END
      WHERE id = ? AND business_id = ? AND status IN ('draft','paused')`
-  ).bind(id, user.business_id).run();
+  ).bind(consentAttestation ? 1 : 0, user.id, consentAttestation ? 1 : 0, id, user.business_id).run();
   if ((started.meta?.changes ?? 0) === 0) {
     return c.json({ message: 'Campaign is already running or finished.', code: 'invalid_state' }, 409);
   }
@@ -160,8 +176,10 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
   const toQueue: string[] = [];
   const skipStmts: D1PreparedStatement[] = [];
   for (const l of results ?? []) {
-    if (l.do_not_call === 1) {
+    if (l.do_not_call === 1 || l.consent === 'opt_out') {
       skipStmts.push(c.env.DB.prepare(`UPDATE campaign_leads SET status = 'skipped_dnc' WHERE campaign_id = ? AND lead_id = ?`).bind(id, l.id));
+    } else if (l.consent === 'unknown' && !consentAttestation) {
+      skipStmts.push(c.env.DB.prepare(`UPDATE campaign_leads SET status = 'skipped_no_consent' WHERE campaign_id = ? AND lead_id = ?`).bind(id, l.id));
     } else if (['pending', 'rescheduled', 'retry_pending'].includes(l.cl_status)) {
       toQueue.push(l.id); // completed / failed / calling leads are never re-dialled
     }

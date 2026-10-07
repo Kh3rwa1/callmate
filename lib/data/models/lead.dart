@@ -68,6 +68,8 @@ class Lead {
     this.callbackAt,
     this.lastCallId,
     this.language,
+    this.consent = 'unknown',
+    this.doNotCall = false,
   });
 
   final String id;
@@ -89,9 +91,12 @@ class Lead {
   final DateTime? callbackAt;
   final String? lastCallId;
   final String? language;
+  final String consent;
+  final bool doNotCall;
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  bool get hasConsent => consent != 'unknown' && consent != 'opt_out';
   LeadTemperature get temperature =>
       score?.temperature ?? LeadTemperature.unknown;
   bool get isHot => temperature == LeadTemperature.hot;
@@ -127,6 +132,8 @@ class Lead {
     bool clearCallback = false,
     String? lastCallId,
     String? language,
+    String? consent,
+    bool? doNotCall,
     DateTime? updatedAt,
   }) => Lead(
     id: id,
@@ -144,6 +151,8 @@ class Lead {
     callbackAt: clearCallback ? null : (callbackAt ?? this.callbackAt),
     lastCallId: lastCallId ?? this.lastCallId,
     language: language ?? this.language,
+    consent: consent ?? this.consent,
+    doNotCall: doNotCall ?? this.doNotCall,
     createdAt: createdAt,
     updatedAt: updatedAt ?? DateTime.now(),
   );
@@ -176,6 +185,8 @@ class Lead {
       callbackAt: jDate(j, 'callback_at'),
       lastCallId: jStrN(j, 'last_call_id'),
       language: jStrN(j, 'language'),
+      consent: jStr(j, 'consent', 'unknown'),
+      doNotCall: jBool(j, 'do_not_call'),
       createdAt: jDate(j, 'created_at') ?? DateTime.now(),
       updatedAt: jDate(j, 'updated_at') ?? DateTime.now(),
     );
@@ -197,6 +208,8 @@ class Lead {
     'callback_at': dateOut(callbackAt),
     'last_call_id': lastCallId,
     'language': language,
+    'consent': consent,
+    'do_not_call': doNotCall,
     'created_at': dateOut(createdAt),
     'updated_at': dateOut(updatedAt),
   };
@@ -210,12 +223,14 @@ class NewLeadInput {
     this.interest,
     this.source = 'Manual',
     this.attributes = const {},
+    this.consent = 'unknown',
   });
   final String name;
   final String phone;
   final String? interest;
   final String source;
   final Map<String, String> attributes;
+  final String consent;
 
   Json toJson() => {
     'name': name,
@@ -223,6 +238,7 @@ class NewLeadInput {
     'interest': interest,
     'source': source,
     'attributes': attributes,
+    'consent': consent,
   };
 }
 

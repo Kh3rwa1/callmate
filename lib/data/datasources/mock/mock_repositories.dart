@@ -323,7 +323,8 @@ class MockCampaignRepository implements CampaignRepository {
     120,
   );
   @override
-  Future<Campaign> start(String id) => _lag(() => b.startCampaign(id), 500);
+  Future<Campaign> start(String id, {bool consentAttestation = false}) =>
+      _lag(() => b.startCampaign(id), 500);
   @override
   Future<Campaign> stop(String id) => _lag(() => b.stopCampaign(id));
   @override
