@@ -183,6 +183,8 @@ describe('All Routes Unit & Integration Tests (Workers Runtime)', () => {
     let callAId: string;
 
     it('POST /leads/:id/call initiates test call', async () => {
+      // Open the calling window all day so this test does not depend on the time it runs.
+      await env.DB.prepare('UPDATE agents SET calling_hours_start = 0, calling_hours_end = 24 WHERE business_id = ?').bind(bizA).run();
       const lead = await env.DB.prepare('SELECT id FROM leads WHERE business_id = ?').bind(bizA).first<any>();
       const res = await authedReq(`/leads/${lead.id}/call`, tokenA, 'POST');
       expect(res.status).toBe(200);

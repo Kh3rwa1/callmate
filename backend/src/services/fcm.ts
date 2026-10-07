@@ -54,6 +54,27 @@ export async function deleteUnregisteredToken(db: D1Database, fcmToken: string):
 }
 
 /**
+ * Atomically claims the cooldown slot for a push type: records the send and returns true only if
+ * no push of this type went out within the cooldown. Concurrent callers cannot both win.
+ */
+export async function claimPushSlot(
+  db: D1Database,
+  businessId: string,
+  type: string,
+  cooldownSeconds: number = 600
+): Promise<boolean> {
+  const res = await db.prepare(
+    `INSERT INTO push_rate_limits (id, business_id, type, created_at)
+     SELECT ?, ?, ?, datetime('now')
+     WHERE NOT EXISTS (
+       SELECT 1 FROM push_rate_limits
+       WHERE business_id = ? AND type = ? AND created_at > datetime('now', '-' || ? || ' seconds')
+     )`
+  ).bind(`prl_${crypto.randomUUID().slice(0, 12)}`, businessId, type, businessId, type, cooldownSeconds).run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
+/**
  * Sends an FCM push notification (both notification and data blocks) to all registered devices of a business.
  */
 export async function sendBusinessPushNotification(
@@ -69,8 +90,8 @@ export async function sendBusinessPushNotification(
 
   // If follow-up ready, enforce max 1 per 10 minutes (600s) batching limit
   if (cleanPayload.type === 'follow_up_ready') {
-    const isThrottled = await shouldThrottlePush(env.DB, businessId, cleanPayload.type, 600);
-    if (isThrottled) {
+    const claimed = await claimPushSlot(env.DB, businessId, cleanPayload.type, 600);
+    if (!claimed) {
       console.log(`[FCM Push] Throttled follow_up_ready push for business ${businessId} (max 1 per 10 min)`);
       return { sent: 0, throttled: true };
     }
@@ -82,16 +103,7 @@ export async function sendBusinessPushNotification(
   ).bind(businessId).all<{ fcm_token: string }>();
 
   if (!devices.results || devices.results.length === 0) {
-    // If sent, still record push rate limit for follow-ups
-    if (cleanPayload.type === 'follow_up_ready') {
-      await recordPushSent(env.DB, businessId, cleanPayload.type);
-    }
     return { sent: 0, throttled: false };
-  }
-
-  // Record push send for throttling
-  if (cleanPayload.type === 'follow_up_ready') {
-    await recordPushSent(env.DB, businessId, cleanPayload.type);
   }
 
   // Both notification block (for background/killed display on Android/iOS) and data block (for app handling)
