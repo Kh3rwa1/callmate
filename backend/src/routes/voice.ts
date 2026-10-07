@@ -758,7 +758,7 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     safeWaitUntil(
       sendBusinessPushNotification(c.env, businessId, {
         type: 'hot_lead',
-        title: '🔥 Hot Lead Alert',
+        title: 'Hot Lead Alert',
         body: `${leadName} is very interested (${norm.score}/100)`,
         route: `/leads/${leadId}`,
       })
@@ -781,7 +781,7 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     safeWaitUntil(
       sendBusinessPushNotification(c.env, businessId, {
         type: 'follow_up_ready',
-        title: '💬 Follow-up Ready',
+        title: 'Follow-up Ready',
         body: `Follow-up message ready for ${leadName}`,
         route: `/followups/${followUpId}`,
       })

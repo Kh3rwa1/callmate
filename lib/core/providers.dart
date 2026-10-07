@@ -10,12 +10,14 @@ import '../data/repositories/repositories.dart';
 import '../data/templates/templates.dart';
 import '../services/analytics/analytics_service.dart';
 import '../services/notifications/notification_service.dart';
+import '../services/notifications/push_service.dart';
 import '../services/voice/sarvam_voice_agent_service.dart';
 import '../services/voice/voice_agent_service.dart';
 import '../services/whatsapp/whatsapp_service.dart';
 import 'config/app_env.dart';
 import 'config/brand.dart';
 import 'network/api_client.dart';
+import 'routing/app_router.dart';
 import 'storage/local_prefs.dart';
 import 'storage/secure_store.dart';
 
@@ -110,6 +112,15 @@ class SessionNotifier extends AsyncNotifier<bool> {
   Future<void> logout() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
+      try {
+        final push = ref.read(pushServiceProvider);
+        final token = push.currentToken;
+        if (token != null) {
+          await ref.read(deviceRepoProvider).unregisterDevice(token);
+        }
+        await PushService.deleteToken();
+      } catch (_) {}
+
       await ref.read(authRepoProvider).logout();
       ref.read(dataVersionProvider.notifier).bump();
       return false;
@@ -119,6 +130,15 @@ class SessionNotifier extends AsyncNotifier<bool> {
   Future<void> deleteAccount() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
+      try {
+        final push = ref.read(pushServiceProvider);
+        final token = push.currentToken;
+        if (token != null) {
+          await ref.read(deviceRepoProvider).unregisterDevice(token);
+        }
+        await PushService.deleteToken();
+      } catch (_) {}
+
       await ref.read(authRepoProvider).deleteAccount();
       ref.read(dataVersionProvider.notifier).bump();
       return false;
@@ -183,6 +203,27 @@ final analyticsProvider = Provider<AnalyticsService>(
 final notificationServiceProvider = Provider<NotificationService>(
   (_) => NotificationService(),
 );
+
+final pushServiceProvider = Provider<PushService>((ref) {
+  final deviceRepo = ref.watch(deviceRepoProvider);
+  final router = ref.watch(routerProvider);
+  final service = PushService(
+    registerToken: (token, platform) =>
+        deviceRepo.registerDevice(token: token, platform: platform),
+    onRoute: (route) => router.go(route),
+  );
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+final pushServiceInitializerProvider = Provider<void>((ref) {
+  final session = ref.watch(sessionProvider);
+  final isAuthed = session.asData?.value ?? false;
+  if (isAuthed) {
+    final push = ref.read(pushServiceProvider);
+    push.init();
+  }
+});
 
 /// Voice service instance (100% real Sarvam AI voice agent).
 final voiceAgentServiceProvider = Provider<VoiceAgentService>((ref) {

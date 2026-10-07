@@ -129,8 +129,25 @@ dashApp.patch('/notifications/:id', async (c) => {
   return c.json({ success: true });
 });
 
-// POST /devices/register
-dashApp.post('/devices/register', async (c) => {
+async function upsertDevice(db: D1Database, businessId: string, token: string, platform: string = 'unknown') {
+  const existing = await db.prepare(
+    'SELECT id FROM devices WHERE business_id = ? AND fcm_token = ?'
+  ).bind(businessId, token).first<{ id: string }>();
+
+  if (existing) {
+    await db.prepare(
+      `UPDATE devices SET platform = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(platform, existing.id).run();
+  } else {
+    const id = `dev_${crypto.randomUUID().slice(0, 12)}`;
+    await db.prepare(
+      `INSERT INTO devices (id, business_id, fcm_token, platform, updated_at)
+       VALUES (?, ?, ?, ?, datetime('now'))`
+    ).bind(id, businessId, token, platform).run();
+  }
+}
+
+async function handleDeviceRegistration(c: any) {
   const user = c.get('user');
   const body: any = await c.req.json().catch(() => ({}));
 
@@ -138,13 +155,23 @@ dashApp.post('/devices/register', async (c) => {
     return c.json({ message: 'Token is required.', code: 'invalid_request' }, 400);
   }
 
-  const id = `dev_${crypto.randomUUID().slice(0, 12)}`;
-  await c.env.DB.prepare(
-    `INSERT OR REPLACE INTO devices (id, business_id, fcm_token, platform, updated_at)
-     VALUES (?, ?, ?, ?, datetime('now'))`
-  ).bind(id, user.business_id, body.token, body.platform || 'unknown').run();
-
+  await upsertDevice(c.env.DB, user.business_id, body.token, body.platform || 'unknown');
   return c.json({ registered: true });
+}
+
+// POST /devices and POST /devices/register
+dashApp.post('/devices', handleDeviceRegistration);
+dashApp.post('/devices/register', handleDeviceRegistration);
+
+// DELETE /devices/:token
+dashApp.delete('/devices/:token', async (c) => {
+  const user = c.get('user');
+  const token = c.req.param('token');
+  await c.env.DB.prepare(
+    'DELETE FROM devices WHERE business_id = ? AND fcm_token = ?'
+  ).bind(user.business_id, token).run();
+
+  return c.json({ deleted: true });
 });
 
 export { dashApp };

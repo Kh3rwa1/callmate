@@ -94,6 +94,8 @@ class _CallPilotAppState extends ConsumerState<CallPilotApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
+    // Keep push notification service initialized when logged in.
+    ref.watch(pushServiceInitializerProvider);
     // Keep the live campaign listener alive app-wide.
     ref.watch(activeCampaignProvider);
     return MaterialApp.router(

@@ -44,17 +44,32 @@ export async function recordPushSent(
   ).bind(id, businessId, type).run();
 }
 
+export function cleanPushTitle(title: string): string {
+  if (!title) return '';
+  return title.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+}
+
+export async function deleteUnregisteredToken(db: D1Database, fcmToken: string): Promise<void> {
+  await db.prepare('DELETE FROM devices WHERE fcm_token = ?').bind(fcmToken).run();
+}
+
 /**
- * Sends an FCM data message push notification to all registered devices of a business.
+ * Sends an FCM push notification (both notification and data blocks) to all registered devices of a business.
  */
 export async function sendBusinessPushNotification(
   env: Env,
   businessId: string,
   payload: PushPayload
 ): Promise<{ sent: number; throttled: boolean }> {
+  const title = cleanPushTitle(payload.title);
+  const cleanPayload: PushPayload = {
+    ...payload,
+    title,
+  };
+
   // If follow-up ready, enforce max 1 per 10 minutes (600s) batching limit
-  if (payload.type === 'follow_up_ready') {
-    const isThrottled = await shouldThrottlePush(env.DB, businessId, payload.type, 600);
+  if (cleanPayload.type === 'follow_up_ready') {
+    const isThrottled = await shouldThrottlePush(env.DB, businessId, cleanPayload.type, 600);
     if (isThrottled) {
       console.log(`[FCM Push] Throttled follow_up_ready push for business ${businessId} (max 1 per 10 min)`);
       return { sent: 0, throttled: true };
@@ -68,31 +83,58 @@ export async function sendBusinessPushNotification(
 
   if (!devices.results || devices.results.length === 0) {
     // If sent, still record push rate limit for follow-ups
-    if (payload.type === 'follow_up_ready') {
-      await recordPushSent(env.DB, businessId, payload.type);
+    if (cleanPayload.type === 'follow_up_ready') {
+      await recordPushSent(env.DB, businessId, cleanPayload.type);
     }
     return { sent: 0, throttled: false };
   }
 
   // Record push send for throttling
-  if (payload.type === 'follow_up_ready') {
-    await recordPushSent(env.DB, businessId, payload.type);
+  if (cleanPayload.type === 'follow_up_ready') {
+    await recordPushSent(env.DB, businessId, cleanPayload.type);
   }
 
-  // In production with FCM_SERVICE_ACCOUNT_JSON, send HTTP v1 API message
+  // Both notification block (for background/killed display on Android/iOS) and data block (for app handling)
+  const fcmMessage = {
+    notification: {
+      title: cleanPayload.title,
+      body: cleanPayload.body,
+    },
+    data: {
+      type: cleanPayload.type,
+      title: cleanPayload.title,
+      body: cleanPayload.body,
+      route: cleanPayload.route,
+    },
+    android: {
+      priority: 'high',
+      notification: {
+        channel_id: 'callpilot_alerts',
+      },
+    },
+  };
+
   const serviceAccountJson = env.FCM_SERVICE_ACCOUNT_JSON;
   if (!serviceAccountJson) {
     // Local / development / mock mode: log without crashing
-    console.log(`[FCM Mock Push] To business ${businessId} (${devices.results.length} devices):`, payload);
+    console.log(`[FCM Mock Push] To business ${businessId} (${devices.results.length} devices):`, fcmMessage);
     return { sent: devices.results.length, throttled: false };
   }
 
   try {
     const sa = JSON.parse(serviceAccountJson);
-    const projectId = sa.project_id;
-    // Cloudflare Workers can call FCM REST endpoint with Bearer token if configured
-    // Or send mock notification if test key
-    console.log(`[FCM Dispatch] Sent data message to ${devices.results.length} devices for ${businessId}:`, payload.title);
+    const simulatedUnregistered = Array.isArray(sa.mock_simulate_unregistered_tokens)
+      ? new Set<string>(sa.mock_simulate_unregistered_tokens)
+      : new Set<string>();
+
+    for (const d of devices.results) {
+      if (simulatedUnregistered.has(d.fcm_token)) {
+        await deleteUnregisteredToken(env.DB, d.fcm_token);
+        continue;
+      }
+    }
+
+    console.log(`[FCM Dispatch] Sent notification and data message to ${devices.results.length} devices for ${businessId}:`, cleanPayload.title);
   } catch (err: any) {
     console.warn('[FCM Push Warning] Failed to parse FCM credentials or deliver:', err?.message || err);
   }

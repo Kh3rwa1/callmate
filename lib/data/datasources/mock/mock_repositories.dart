@@ -520,4 +520,7 @@ class MockDeviceRepository implements DeviceRepository {
     required String token,
     String? platform,
   }) async {}
+
+  @override
+  Future<void> unregisterDevice(String token) async {}
 }

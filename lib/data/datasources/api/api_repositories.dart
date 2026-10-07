@@ -421,10 +421,12 @@ class ApiDeviceRepository implements DeviceRepository {
   @override
   Future<void> registerDevice({required String token, String? platform}) =>
       api.post(
-        '/devices/register',
+        '/devices',
         (_) {},
         data: {'token': token, if (platform != null) 'platform': platform},
       );
+  @override
+  Future<void> unregisterDevice(String token) => api.delete('/devices/$token');
 }
 
 /// Production event source. Remote push (FCM data messages) is forwarded here

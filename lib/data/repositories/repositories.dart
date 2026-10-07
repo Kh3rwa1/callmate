@@ -113,6 +113,7 @@ abstract class VoiceSessionRepository {
 
 abstract class DeviceRepository {
   Future<void> registerDevice({required String token, String? platform});
+  Future<void> unregisterDevice(String token);
 }
 
 /// Realtime-ish backend events (in production: FCM data messages / SSE).
