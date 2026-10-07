@@ -3,6 +3,7 @@ import { Env, AuthUser } from '../types';
 import { signJWT, verifyJWT, getJwtSecret, authMiddleware } from '../auth';
 import { getSmsProvider } from '../sms';
 import { parseJsonBody, otpRequestSchema, registerSchema, loginSchema, refreshSchema } from '../schemas/validation';
+import { requireSecret, isDevEnv } from '../utils/secrets';
 
 const authApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -21,6 +22,15 @@ async function sha256(text: string): Promise<string> {
   return Array.from(new Uint8Array(hash))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
+}
+
+async function hashOtp(env: Env, phone: string, code: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(requireSecret(env, 'OTP_PEPPER')),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${phone}:${code}`));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 // POST /auth/otp/request
@@ -53,7 +63,7 @@ authApp.post('/otp/request', async (c) => {
     return c.json({ message: 'Too many OTP requests for this number. Please wait 10 minutes.', code: 'rate_limited' }, 429);
   }
 
-  const ipLimit = (clientIp === '127.0.0.1' || clientIp === 'localhost' || c.env.ENVIRONMENT !== 'production') ? 100 : 10;
+  const ipLimit = isDevEnv(c.env) ? 100 : 10;
   const ipCount = await c.env.DB.prepare(
     `SELECT COUNT(*) as cnt FROM otp_rate_limits WHERE ip = ? AND created_at > datetime('now', '-10 minutes')`
   ).bind(clientIp).first<{ cnt: number }>();
@@ -66,7 +76,7 @@ authApp.post('/otp/request', async (c) => {
   const randArr = new Uint32Array(1);
   crypto.getRandomValues(randArr);
   const otpCode = String((randArr[0] % 900000) + 100000); // 100000 - 999999
-  const otpHash = await sha256(otpCode);
+  const otpHash = await hashOtp(c.env, phone, otpCode);
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 minutes
 
   // Record OTP code and rate limit entry
@@ -87,7 +97,7 @@ authApp.post('/otp/request', async (c) => {
   return c.json({
     success: true,
     message: 'Verification code sent.',
-    ...(c.env.ENVIRONMENT !== 'production' ? { debug_otp: otpCode } : {}),
+    ...(isDevEnv(c.env) ? { debug_otp: otpCode } : {}),
   });
 });
 
@@ -131,7 +141,7 @@ authApp.post('/register', async (c) => {
     return c.json({ message: 'Verification code has expired. Please request a new code.', code: 'otp_expired' }, 400);
   }
 
-  const inputHash = await sha256(otp);
+  const inputHash = await hashOtp(c.env, phone, otp);
   if (inputHash !== record.otp_hash) {
     await c.env.DB.prepare('UPDATE otp_codes SET attempts = attempts + 1 WHERE phone = ?').bind(phone).run();
     return c.json({ message: 'Invalid verification code.', code: 'invalid_otp' }, 400);
@@ -210,7 +220,7 @@ authApp.post('/login', async (c) => {
     return c.json({ message: 'Verification code has expired. Please request a new code.', code: 'otp_expired' }, 400);
   }
 
-  const inputHash = await sha256(otp);
+  const inputHash = await hashOtp(c.env, phone, otp);
   if (inputHash !== record.otp_hash) {
     await c.env.DB.prepare('UPDATE otp_codes SET attempts = attempts + 1 WHERE phone = ?').bind(phone).run();
     return c.json({ message: 'Invalid verification code.', code: 'invalid_otp' }, 400);

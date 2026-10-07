@@ -88,6 +88,8 @@ jobs:
           echo "JWT_SIGNING_KEY=test-jwt-signing-secret-key-32chars-min-length" >> .dev.vars
           echo "SARVAM_WEBHOOK_SECRET=dev_webhook_secret_key_12345" >> .dev.vars
           echo "SARVAM_API_KEY=sk_test_mock_sarvam_api_key" >> .dev.vars
+          echo "OTP_PEPPER=ci-test-otp-pepper-secret-key-32chars-min" >> .dev.vars
+          echo "ENCRYPTION_KEY=ci-test-encryption-key-secret-32chars-min" >> .dev.vars
 
       - name: Run Cloudflare & Sarvam E2E tests
         run: npm test

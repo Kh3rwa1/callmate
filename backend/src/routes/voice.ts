@@ -8,6 +8,7 @@ import { sendBusinessPushNotification } from '../services/fcm';
 import { billableMinutes, claimWebhookEvent, recordCallUsage } from '../services/billing';
 import { MAX_DIAL_ATTEMPTS, requeueLead } from '../services/campaign_queue';
 import { isAllowedSarvamPath } from '../services/sarvam_proxy_guard';
+import { hitRateLimit } from '../utils/rate_limit';
 
 const voiceApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -83,6 +84,14 @@ voiceApp.post('/chat', async (c) => {
   if (!userMessage) {
     return c.json({ message: 'Message is required.', code: 'invalid_request' }, 400);
   }
+
+  const perUser = await hitRateLimit(c.env.DB, `chat:user:${user.id}`, 20, 60);         // 20 msgs/min
+  const perBiz  = await hitRateLimit(c.env.DB, `chat:biz:${user.business_id}`, 300, 86400); // 300/day
+  if (!perUser.allowed || !perBiz.allowed) {
+    c.header('Retry-After', String(Math.max(perUser.retryAfter, perBiz.retryAfter)));
+    return c.json({ message: 'Slow down a little, try again shortly.', code: 'rate_limited' }, 429);
+  }
+  if (userMessage.length > 1000) return c.json({ message: 'Message too long.', code: 'invalid_request' }, 400);
 
   const business = await c.env.DB.prepare('SELECT * FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
   const agent = await c.env.DB.prepare('SELECT * FROM agents WHERE business_id = ?').bind(user.business_id).first<any>();

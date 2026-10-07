@@ -4,6 +4,8 @@ import { logger } from 'hono/logger';
 import { Env, AuthUser } from './types';
 import { authMiddleware } from './auth';
 import { logError } from './utils/logger';
+import { isDevEnv } from './utils/secrets';
+import { runMaintenance } from './services/maintenance';
 
 import { authApp } from './routes/auth';
 import { businessApp } from './routes/business';
@@ -19,7 +21,15 @@ const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
 // Enable CORS for mobile app & web clients
 app.use('*', cors({
-  origin: '*',
+  origin: (origin, c) => {
+    if (isDevEnv(c.env)) return '*';
+    if (!origin) return null;
+    const allowed = (c.env.ALLOWED_ORIGINS || '')
+      .split(',')
+      .map((s: string) => s.trim())
+      .filter(Boolean);
+    return allowed.includes(origin) ? origin : null;
+  },
   allowHeaders: ['Authorization', 'Content-Type', 'X-App-Flavor', 'X-API-Key'],
   allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   exposeHeaders: ['Content-Length', 'X-App-Flavor'],
@@ -106,6 +116,9 @@ export default {
   fetch: app.fetch,
   async queue(batch: MessageBatch<any>, env: Env): Promise<void> {
     await handleCampaignQueueBatch(batch, env);
+  },
+  async scheduled(_ctrl: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(runMaintenance(env));
   },
 };
 

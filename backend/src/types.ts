@@ -16,6 +16,8 @@ export interface Env {
   CF_AI_API_TOKEN?: string;
   CAMPAIGN_QUEUE?: Queue<any>;
   ENCRYPTION_KEY?: string;
+  OTP_PEPPER?: string;
+  ALLOWED_ORIGINS?: string;
 }
 
 export interface AuthUser {

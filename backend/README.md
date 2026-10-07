@@ -69,6 +69,8 @@ Configure with `wrangler secret put <KEY>`:
 | Variable | Description | Requirement |
 |---|---|---|
 | `JWT_SIGNING_KEY` | HS256 secret key | **Mandatory** (≥ 32 characters, fail-closed) |
+| `OTP_PEPPER` | HMAC-SHA256 secret pepper for OTP hashing | **Mandatory** (≥ 32 characters, fail-closed) |
+| `ENCRYPTION_KEY` | AES-256 key for data encryption at rest | **Mandatory** (≥ 32 characters) |
 | `SARVAM_API_KEY` | Sarvam AI API secret | **Mandatory** for outbound calls & proxy |
 | `SARVAM_WEBHOOK_SECRET`| HMAC-SHA256 signature secret | **Mandatory** for `/webhooks/sarvam` |
 | `DATA_ENCRYPTION_KEY` | AES-256 key for metadata encryption | Recommended (32-byte hex/base64 string) |
