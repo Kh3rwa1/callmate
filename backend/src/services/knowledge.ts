@@ -55,8 +55,8 @@ export async function indexKnowledgeSource(
 
   // clear any previous chunks
   await env.DB.batch([
-    env.DB.prepare('DELETE FROM knowledge_chunks WHERE source_id = ?').bind(sourceId),
-    env.DB.prepare('DELETE FROM knowledge_fts WHERE source_id = ?').bind(sourceId),
+    env.DB.prepare('DELETE FROM knowledge_chunks WHERE source_id = ? AND business_id = ?').bind(sourceId, businessId),
+    env.DB.prepare('DELETE FROM knowledge_fts WHERE source_id = ? AND business_id = ?').bind(sourceId, businessId),
   ]);
 
   const chunkStmts: D1PreparedStatement[] = [];
@@ -115,8 +115,8 @@ export async function ingestKnowledge(
   source: { id: string; type: string; content?: string | null; url?: string | null; file_url?: string | null }
 ): Promise<void> {
   const setStatus = (status: string, progress: number, detail?: string) =>
-    env.DB.prepare("UPDATE knowledge_sources SET status = ?, progress = ?, detail = ?, updated_at = datetime('now') WHERE id = ?")
-      .bind(status, progress, detail ?? null, source.id).run();
+    env.DB.prepare("UPDATE knowledge_sources SET status = ?, progress = ?, detail = ?, updated_at = datetime('now') WHERE id = ? AND business_id = ?")
+      .bind(status, progress, detail ?? null, source.id, businessId).run();
 
   try {
     await setStatus('processing', 0.1, 'Extracting text...');

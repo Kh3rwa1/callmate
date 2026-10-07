@@ -15,18 +15,18 @@ export async function runMaintenance(env: Env): Promise<void> {
                     WHERE status = 'active' AND started_at < datetime('now', '-1 hour')`),
   ]);
 
-  // 2. Sweep stuck calls (no webhook within 20 min)
+  // 2. Sweep stuck calls (no webhook within 45 min)
   const { results: stuck } = await env.DB.prepare(
     `SELECT c.id, c.business_id, cl.campaign_id, cl.lead_id, cl.attempts
      FROM calls c LEFT JOIN campaign_leads cl ON cl.call_id = c.id
-     WHERE c.status = 'calling' AND c.started_at < datetime('now', '-20 minutes')
+     WHERE c.status = 'calling' AND c.started_at < datetime('now', '-45 minutes')
      LIMIT 200`
   ).all<any>();
 
   for (const s of stuck ?? []) {
     const retry = s.campaign_id && s.attempts < MAX_DIAL_ATTEMPTS;
     await env.DB.batch([
-      env.DB.prepare(`UPDATE calls SET status = 'timed_out', failure_reason = 'no_webhook_20m' WHERE id = ?`).bind(s.id),
+      env.DB.prepare(`UPDATE calls SET status = 'timed_out', failure_reason = 'no_webhook_45m' WHERE id = ?`).bind(s.id),
       ...(s.campaign_id ? [env.DB.prepare(`UPDATE campaign_leads SET status = ? WHERE call_id = ?`)
         .bind(retry ? 'retry_pending' : 'failed', s.id)] : []),
     ]);

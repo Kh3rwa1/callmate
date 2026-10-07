@@ -130,8 +130,8 @@ knowledgeApp.delete('/knowledge/:id', async (c) => {
   // Delete related knowledge_chunks and knowledge_fts rows if tables exist (Phase 6)
   try {
     await c.env.DB.batch([
-      c.env.DB.prepare('DELETE FROM knowledge_chunks WHERE source_id = ?').bind(id),
-      c.env.DB.prepare('DELETE FROM knowledge_fts WHERE source_id = ?').bind(id),
+      c.env.DB.prepare('DELETE FROM knowledge_chunks WHERE source_id = ? AND business_id = ?').bind(id, user.business_id),
+      c.env.DB.prepare('DELETE FROM knowledge_fts WHERE source_id = ? AND business_id = ?').bind(id, user.business_id),
     ]);
   } catch {}
 

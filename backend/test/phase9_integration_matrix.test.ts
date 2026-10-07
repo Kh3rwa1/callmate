@@ -683,7 +683,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
   });
 
   describe('Maintenance Sweeper Integration (M1)', () => {
-    it('M1: runMaintenance marks 25-min-old calling call as timed_out and requeues it', async () => {
+    it('M1: runMaintenance marks 50-min-old calling call as timed_out and requeues it', async () => {
       const campId = `camp_m1_${Date.now()}`;
       const leadId = `lead_m1_${Date.now()}`;
       const callId = `call_m1_${Date.now()}`;
@@ -692,8 +692,8 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
         env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status, total_leads) VALUES (?, ?, 'M1 Test', 'running', 1)").bind(campId, bizId),
         env.DB.prepare("INSERT INTO leads (id, business_id, name, phone, status) VALUES (?, ?, 'Lead M1', '919800000099', 'calling')").bind(leadId, bizId),
         env.DB.prepare("INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts, call_id) VALUES (?, ?, 'calling', 1, ?)").bind(campId, leadId, callId),
-        // Started 25 minutes ago
-        env.DB.prepare("INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, campaign_id, status, started_at) VALUES (?, ?, ?, 'Lead M1', '919800000099', ?, 'calling', datetime('now', '-25 minutes'))").bind(callId, bizId, leadId, campId),
+        // Started 50 minutes ago
+        env.DB.prepare("INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, campaign_id, status, started_at) VALUES (?, ?, ?, 'Lead M1', '919800000099', ?, 'calling', datetime('now', '-50 minutes'))").bind(callId, bizId, leadId, campId),
       ]);
 
       await runMaintenance(env);
@@ -701,7 +701,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
       const call = await env.DB.prepare('SELECT status, failure_reason FROM calls WHERE id = ?')
         .bind(callId).first<any>();
       expect(call.status).toBe('timed_out');
-      expect(call.failure_reason).toBe('no_webhook_20m');
+      expect(call.failure_reason).toBe('no_webhook_45m');
 
       const cl = await env.DB.prepare('SELECT status FROM campaign_leads WHERE campaign_id = ? AND lead_id = ?')
         .bind(campId, leadId).first<any>();

@@ -179,7 +179,7 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(v4Payload),
-        signal: AbortSignal.timeout(2000),
+        signal: AbortSignal.timeout(6000),
       });
 
       // Fallback to bulbul:v4 research preview if v4-flash fails
@@ -193,7 +193,7 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ ...v4Payload, model: 'bulbul:v4' }),
-          signal: AbortSignal.timeout(2000),
+          signal: AbortSignal.timeout(6000),
         });
       }
 
@@ -225,7 +225,7 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
             text: cleanText,
             voice: 'luna',
           }),
-          signal: AbortSignal.timeout(2000),
+          signal: AbortSignal.timeout(6000),
         }
       );
       if (cfTtsRes.ok) {
@@ -587,11 +587,6 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     return c.json({ message: 'Call not found.', code: 'call_not_found' }, 404);
   }
 
-  // Bug 4: Ignore webhooks for calls in timed_out
-  if (call.status === 'timed_out') {
-    return c.json({ success: true, ignored: true, message: 'Call already timed out.' }, 200);
-  }
-
   // Derive business_id and lead_id strictly from our DB row
   const businessId = call.business_id;
   const leadId = call.lead_id;
@@ -718,7 +713,7 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
       statements.push(
         c.env.DB.prepare(
           `INSERT INTO notifications (id, business_id, type, title, body, route, action_label, is_read, created_at)
-           VALUES (?, ?, 'hot_lead', '🔥 Hot lead', ?, ?, 'View Result', 0, datetime('now'))`
+           VALUES (?, ?, 'hot_lead', 'Hot Lead Alert', ?, ?, 'View Result', 0, datetime('now'))`
         ).bind(
           notifId, businessId,
           `${leadName} is very interested (${norm.score}/100)`,
@@ -729,39 +724,42 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
 
     await c.env.DB.batch(statements);
 
-    // 5. Close the campaign loop - Bug 4: match on call_id only
-    const cl = await c.env.DB.prepare(
-      'SELECT campaign_id, lead_id, attempts FROM campaign_leads WHERE call_id = ?'
-    ).bind(callId).first<any>();
+    // 5. Close the campaign loop
+    // Skip campaign update if call was timed_out or if campaign_leads is no longer 'calling'
+    if (call.status !== 'timed_out') {
+      const cl = await c.env.DB.prepare(
+        'SELECT campaign_id, lead_id, attempts, status FROM campaign_leads WHERE call_id = ?'
+      ).bind(callId).first<any>();
 
-    if (cl) {
-      const connected = bill.minutes > 0 || ['completed', 'connected', 'answered'].includes(finalStatus);
-      const next = connected ? 'completed' : (cl.attempts >= MAX_DIAL_ATTEMPTS ? 'failed' : 'retry_pending');
-      await c.env.DB.batch([
-        c.env.DB.prepare('UPDATE campaign_leads SET status = ? WHERE call_id = ?').bind(next, callId),
-        c.env.DB.prepare(`UPDATE campaigns SET
-            completed_leads = completed_leads + ?,
-            connected_leads = connected_leads + ?,
-            hot_leads  = hot_leads  + ?,
-            warm_leads = warm_leads + ?
-          WHERE id = ? AND business_id = ?`)
-          .bind(next !== 'retry_pending' ? 1 : 0, connected ? 1 : 0, (isConnected && norm.temperature === 'hot') ? 1 : 0, (isConnected && norm.temperature === 'warm') ? 1 : 0, cl.campaign_id, businessId),
-      ]);
+      if (cl && cl.status === 'calling') {
+        const connected = bill.minutes > 0 || ['completed', 'connected', 'answered'].includes(finalStatus);
+        const next = connected ? 'completed' : (cl.attempts >= MAX_DIAL_ATTEMPTS ? 'failed' : 'retry_pending');
+        await c.env.DB.batch([
+          c.env.DB.prepare('UPDATE campaign_leads SET status = ? WHERE call_id = ?').bind(next, callId),
+          c.env.DB.prepare(`UPDATE campaigns SET
+              completed_leads = completed_leads + ?,
+              connected_leads = connected_leads + ?,
+              hot_leads  = hot_leads  + ?,
+              warm_leads = warm_leads + ?
+            WHERE id = ? AND business_id = ?`)
+            .bind(next !== 'retry_pending' ? 1 : 0, connected ? 1 : 0, (isConnected && norm.temperature === 'hot') ? 1 : 0, (isConnected && norm.temperature === 'warm') ? 1 : 0, cl.campaign_id, businessId),
+        ]);
 
-      if (next === 'retry_pending') {
-        await requeueLead(c.env, cl.campaign_id, businessId, cl.lead_id, 2 * 60 * 60); // retry no-answers after 2h
-      }
+        if (next === 'retry_pending') {
+          await requeueLead(c.env, cl.campaign_id, businessId, cl.lead_id, 2 * 60 * 60); // retry no-answers after 2h
+        }
 
-      // 6. Check whether the campaign is finished
-      const unfinished = await c.env.DB.prepare(
-        `SELECT COUNT(*) AS cnt FROM campaign_leads
-         WHERE campaign_id = ? AND status IN ('pending', 'queued', 'calling', 'retry_pending', 'rescheduled')`
-      ).bind(cl.campaign_id).first<{ cnt: number }>();
+        // 6. Check whether the campaign is finished
+        const unfinished = await c.env.DB.prepare(
+          `SELECT COUNT(*) AS cnt FROM campaign_leads
+           WHERE campaign_id = ? AND status IN ('pending', 'queued', 'calling', 'retry_pending', 'rescheduled')`
+        ).bind(cl.campaign_id).first<{ cnt: number }>();
 
-      if ((unfinished?.cnt ?? 0) === 0) {
-        await c.env.DB.prepare(
-          `UPDATE campaigns SET status = 'completed', completed_at = datetime('now') WHERE id = ? AND business_id = ?`
-        ).bind(cl.campaign_id, businessId).run();
+        if ((unfinished?.cnt ?? 0) === 0) {
+          await c.env.DB.prepare(
+            `UPDATE campaigns SET status = 'completed', completed_at = datetime('now') WHERE id = ? AND business_id = ?`
+          ).bind(cl.campaign_id, businessId).run();
+        }
       }
     }
 

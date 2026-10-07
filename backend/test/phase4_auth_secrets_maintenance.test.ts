@@ -208,7 +208,7 @@ describe('Phase 4: Auth, Secrets Hardening, Rate Limits, Maintenance Cron', () =
         env.DB.prepare("INSERT INTO voice_sessions (id, business_id, user_id, status, started_at) VALUES ('vs_stale', ?, ?, 'active', datetime('now', '-2 hours'))").bind(bizId, userId),
       ]);
 
-      // 2. Seed a stuck call (>20 min in 'calling') for a campaign lead
+      // 2. Seed a stuck call (>45 min in 'calling') for a campaign lead
       const campId = `camp_stuck_${crypto.randomUUID().slice(0, 8)}`;
       const leadId = `lead_stuck_${crypto.randomUUID().slice(0, 8)}`;
       const callId = `call_stuck_${crypto.randomUUID().slice(0, 8)}`;
@@ -217,7 +217,7 @@ describe('Phase 4: Auth, Secrets Hardening, Rate Limits, Maintenance Cron', () =
         env.DB.prepare("INSERT INTO campaigns (id, business_id, purpose, status) VALUES (?, ?, 'Stuck Camp', 'running')").bind(campId, bizId),
         env.DB.prepare("INSERT INTO leads (id, business_id, name, phone, status) VALUES (?, ?, 'Stuck Lead', '919888877771', 'calling')").bind(leadId, bizId),
         env.DB.prepare("INSERT INTO campaign_leads (campaign_id, lead_id, status, attempts, call_id) VALUES (?, ?, 'calling', 1, ?)").bind(campId, leadId, callId),
-        env.DB.prepare("INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, campaign_id, status, started_at) VALUES (?, ?, ?, 'Stuck Lead', '919888877771', ?, 'calling', datetime('now', '-25 minutes'))").bind(callId, bizId, leadId, campId),
+        env.DB.prepare("INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, campaign_id, status, started_at) VALUES (?, ?, ?, 'Stuck Lead', '919888877771', ?, 'calling', datetime('now', '-50 minutes'))").bind(callId, bizId, leadId, campId),
       ]);
 
       const mockSent: any[] = [];
@@ -247,7 +247,7 @@ describe('Phase 4: Auth, Secrets Hardening, Rate Limits, Maintenance Cron', () =
       // Verify stuck call swept
       const sweptCall = await env.DB.prepare("SELECT * FROM calls WHERE id = ?").bind(callId).first<any>();
       expect(sweptCall.status).toBe('timed_out');
-      expect(sweptCall.failure_reason).toBe('no_webhook_20m');
+      expect(sweptCall.failure_reason).toBe('no_webhook_45m');
 
       // Verify campaign lead updated to retry_pending and requeued
       const cl = await env.DB.prepare("SELECT * FROM campaign_leads WHERE call_id = ?").bind(callId).first<any>();

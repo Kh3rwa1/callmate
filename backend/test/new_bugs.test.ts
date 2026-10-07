@@ -128,8 +128,8 @@ describe('New Bug Fixes Verification Suite', () => {
     expect(lead.score).toBe(95);
   });
 
-  // Bug 4: Late webhook ignores timed_out call
-  it('Bug 4: ignores webhook when call is in timed_out status', async () => {
+  // Bug 4: Late webhook processes billing & analysis for timed_out call
+  it('Bug 4: processes billing and analysis for timed_out call', async () => {
     const leadId = 'lead_timed_out_1';
     const callId = 'call_timed_out_1';
 
@@ -161,11 +161,10 @@ describe('New Bug Fixes Verification Suite', () => {
       env
     );
     expect(res.status).toBe(200);
-    const body = await res.json() as any;
-    expect(body.ignored).toBe(true);
 
-    const call = await env.DB.prepare('SELECT status FROM calls WHERE id = ?').bind(callId).first<any>();
-    expect(call.status).toBe('timed_out');
+    const call = await env.DB.prepare('SELECT status, duration_seconds FROM calls WHERE id = ?').bind(callId).first<any>();
+    expect(call.status).toBe('completed');
+    expect(call.duration_seconds).toBe(45);
   });
 
   // Bug 5: Release webhook event on processing failure
