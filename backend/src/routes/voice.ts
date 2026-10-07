@@ -9,6 +9,8 @@ import { billableMinutes, claimWebhookEvent, recordCallUsage } from '../services
 import { MAX_DIAL_ATTEMPTS, requeueLead } from '../services/campaign_queue';
 import { isAllowedSarvamPath } from '../services/sarvam_proxy_guard';
 import { hitRateLimit } from '../utils/rate_limit';
+import { retrieveKnowledge } from '../services/knowledge';
+import { buildSystemPrompt, loadHistory, saveTurn } from '../services/prompt';
 
 const voiceApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -93,6 +95,10 @@ voiceApp.post('/chat', async (c) => {
   }
   if (userMessage.length > 1000) return c.json({ message: 'Message too long.', code: 'invalid_request' }, 400);
 
+  const conversationId = (body.conversation_id && typeof body.conversation_id === 'string' && body.conversation_id.trim())
+    ? body.conversation_id.trim()
+    : `conv_${crypto.randomUUID()}`;
+
   const business = await c.env.DB.prepare('SELECT * FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
   const agent = await c.env.DB.prepare('SELECT * FROM agents WHERE business_id = ?').bind(user.business_id).first<any>();
 
@@ -101,17 +107,34 @@ voiceApp.post('/chat', async (c) => {
   const businessName = business?.name || 'our business';
   const category = business?.category || 'business';
 
-  const { reply, audioBase64 } = await generateAIReply(
-    c.env,
+  const knowledge = await retrieveKnowledge(c.env, user.business_id, userMessage, 5);
+  const systemPrompt = buildSystemPrompt({
     agentName,
     agentRole,
     businessName,
-    userMessage
+    category,
+    knowledge,
+  });
+
+  const history = await loadHistory(c.env.DB, user.business_id, conversationId, 10);
+
+  const { reply, audioBase64 } = await generateAIReply(
+    c.env,
+    systemPrompt,
+    history,
+    userMessage,
+    agentName,
+    agentRole,
+    businessName,
+    knowledge
   );
+
+  await saveTurn(c.env.DB, user.business_id, conversationId, userMessage, reply);
 
   return c.json({
     reply,
     audio_base64: audioBase64,
+    conversation_id: conversationId,
     agent_name: agentName,
     agent_role: agentRole,
     business_name: businessName,
@@ -155,6 +178,7 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(v4Payload),
+        signal: AbortSignal.timeout(2000),
       });
 
       // Fallback to bulbul:v4 research preview if v4-flash fails
@@ -168,6 +192,7 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ ...v4Payload, model: 'bulbul:v4' }),
+          signal: AbortSignal.timeout(2000),
         });
       }
 
@@ -199,6 +224,7 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
             text: cleanText,
             voice: 'luna',
           }),
+          signal: AbortSignal.timeout(2000),
         }
       );
       if (cfTtsRes.ok) {
@@ -215,21 +241,21 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
 
 async function generateAIReply(
   env: Env,
+  systemPrompt: string,
+  history: Array<{ role: 'user' | 'assistant'; content: string }>,
+  userMessage: string,
   agentName: string,
   agentRole: string,
   businessName: string,
-  userMessage: string
+  knowledge?: string[]
 ): Promise<{ reply: string; audioBase64?: string }> {
-  const systemPrompt = `You are ${agentName}, a polite, professional, and calm female admissions coordinator and AI assistant at ${businessName}.
-You are speaking live on a phone call with a customer or applicant.
-Tone & Persona Guidelines:
-1. Speak in a calm, natural, polite, and warm female executive phone voice.
-2. Keep your response to 1 or 2 concise, clear sentences.
-3. Address the caller's specific question directly and accurately.
-4. Never use exclamation marks. Do not sound theatrical, dramatic, or robotic.
-5. If they ask about fees, admissions, courses, or scheduling, answer helpfully and offer to note their contact or schedule a callback.`;
-
   let replyText = '';
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...history,
+    { role: 'user', content: userMessage },
+  ];
 
   // 1. Try Sarvam AI Chat if non-mock key is available
   const sarvamKey = env.SARVAM_API_KEY || '';
@@ -245,11 +271,9 @@ Tone & Persona Guidelines:
         },
         body: JSON.stringify({
           model: 'sarvam-105b',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessage },
-          ],
+          messages,
         }),
+        signal: AbortSignal.timeout(2000),
       });
       if (sarvamRes.ok) {
         const data: any = await sarvamRes.json();
@@ -276,11 +300,9 @@ Tone & Persona Guidelines:
             },
             body: JSON.stringify({
               model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userMessage },
-              ],
+              messages,
             }),
+            signal: AbortSignal.timeout(2000),
           }
         );
         if (cfRes.ok) {
@@ -293,10 +315,7 @@ Tone & Persona Guidelines:
     } else if (env.AI) {
       try {
         const aiRes: any = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessage },
-          ],
+          messages,
         });
         replyText = aiRes?.response?.trim() || '';
       } catch (e) {
@@ -308,7 +327,9 @@ Tone & Persona Guidelines:
   // 3. Fallback: Calm, grounded, non-dramatic sentences
   if (!replyText) {
     const lower = userMessage.toLowerCase();
-    if (/^(hi|hello|hey|namaste|good\s*(morning|afternoon|evening)|salaam)/i.test(lower)) {
+    if (knowledge && knowledge.length > 0 && !/^(hi|hello|hey|namaste|good\s*(morning|afternoon|evening)|salaam)/i.test(lower)) {
+      replyText = `${knowledge[0]}`;
+    } else if (/^(hi|hello|hey|namaste|good\s*(morning|afternoon|evening)|salaam)/i.test(lower)) {
       replyText = `Hello, I am ${agentName} from ${businessName}. How can I assist you today?`;
     } else if (/what\s*(do\s*you\s*do|is\s*your\s*role)|who\s*are\s*you/i.test(lower)) {
       replyText = `I am ${agentName}, the ${agentRole} for ${businessName}. I answer caller questions, verify requirements, and coordinate follow-ups for our team.`;

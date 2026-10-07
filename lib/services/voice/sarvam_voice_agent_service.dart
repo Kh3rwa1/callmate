@@ -30,6 +30,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
   Timer? _speakingDecay;
   bool _muted = false;
   int _seq = 0;
+  String? _conversationId;
   final List<Timer> _webTimers = [];
   Timer? _webLevelTimer;
   final Random _rnd = Random();
@@ -72,6 +73,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
   Future<void> _startWebSession({
     Map<String, dynamic> agentVariables = const {},
   }) async {
+    _conversationId = null;
     _stopWebTimers();
     _entries.clear();
     _emit();
@@ -328,7 +330,13 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       _startWebLevel(speaking: false);
 
       try {
-        final chatReply = await _sessions.sendChatMessage(clean);
+        final chatReply = await _sessions.sendChatMessage(
+          clean,
+          conversationId: _conversationId,
+        );
+        if (chatReply.conversationId != null) {
+          _conversationId = chatReply.conversationId;
+        }
         if (_current == VoiceConnectionState.disconnected ||
             _current == VoiceConnectionState.idle) {
           return;
@@ -385,6 +393,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
   }
 
   Future<void> _teardown(VoiceConnectionState end) async {
+    _conversationId = null;
     _stopWebTimers();
     stopAgentSpeech();
     final a = _agent;

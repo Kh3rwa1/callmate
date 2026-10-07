@@ -186,12 +186,18 @@ class VoiceTestSession {
 }
 
 class VoiceChatReply {
-  const VoiceChatReply({required this.reply, this.audioBase64});
+  const VoiceChatReply({
+    required this.reply,
+    this.audioBase64,
+    this.conversationId,
+  });
   final String reply;
   final String? audioBase64;
+  final String? conversationId;
 
   factory VoiceChatReply.fromJson(Json j) => VoiceChatReply(
     reply: jStr(j, 'reply'),
     audioBase64: jStrN(j, 'audio_base64'),
+    conversationId: jStrN(j, 'conversation_id'),
   );
 }

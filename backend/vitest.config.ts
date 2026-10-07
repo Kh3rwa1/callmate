@@ -12,6 +12,8 @@ export default defineConfig({
           JWT_SIGNING_KEY: 'test-jwt-signing-secret-key-32chars-min-length',
           SARVAM_WEBHOOK_SECRET: 'test_webhook_secret_12345',
           SARVAM_API_KEY: 'sk_test_mock_key_for_unit_tests',
+          CF_AI_API_TOKEN: '',
+          CF_ACCOUNT_ID: '',
           OTP_PEPPER: 'test-otp-pepper-secret-32chars-min-length',
           ENCRYPTION_KEY: 'test-encryption-key-32chars-min-length',
         },

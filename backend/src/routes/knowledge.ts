@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { r2KeyFromFileUrl } from '../utils/r2';
+import { ingestKnowledge } from '../services/knowledge';
 
 const knowledgeApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -95,8 +96,15 @@ knowledgeApp.post('/knowledge', async (c) => {
 
   await c.env.DB.prepare(
     `INSERT INTO knowledge_sources (id, business_id, type, title, detail, status, progress, content, file_url, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 'ready', 1.0, ?, ?, datetime('now'), datetime('now'))`
+     VALUES (?, ?, ?, ?, ?, 'processing', 0.1, ?, ?, datetime('now'), datetime('now'))`
   ).bind(id, user.business_id, type, title, detail, content, fileUrl).run();
+
+  const sourceData = { id, type, content, url, file_url: fileUrl };
+  try {
+    c.executionCtx.waitUntil(ingestKnowledge(c.env, user.business_id, sourceData));
+  } catch {
+    await ingestKnowledge(c.env, user.business_id, sourceData);
+  }
 
   const created = await c.env.DB.prepare('SELECT * FROM knowledge_sources WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatKnowledge(created));
@@ -119,9 +127,12 @@ knowledgeApp.delete('/knowledge/:id', async (c) => {
     await c.env.KNOWLEDGE_BUCKET.delete(key);
   }
 
-  // Delete related knowledge_chunks rows if table exists (Phase 6)
+  // Delete related knowledge_chunks and knowledge_fts rows if tables exist (Phase 6)
   try {
-    await c.env.DB.prepare('DELETE FROM knowledge_chunks WHERE source_id = ?').bind(id).run();
+    await c.env.DB.batch([
+      c.env.DB.prepare('DELETE FROM knowledge_chunks WHERE source_id = ?').bind(id),
+      c.env.DB.prepare('DELETE FROM knowledge_fts WHERE source_id = ?').bind(id),
+    ]);
   } catch {}
 
   return c.json({ success: true });

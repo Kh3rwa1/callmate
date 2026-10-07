@@ -72,6 +72,14 @@ class MockKnowledgeRepository implements KnowledgeRepository {
   Future<List<KnowledgeSource>> list() => _lag(() => List.of(b.knowledge));
 
   @override
+  Future<KnowledgeSource> get(String id) => _lag(() {
+    return b.knowledge.firstWhere(
+      (k) => k.id == id,
+      orElse: () => throw StateError('Knowledge source not found.'),
+    );
+  });
+
+  @override
   Stream<KnowledgeSource> add(KnowledgeInput input) async* {
     final detail = switch (input.type) {
       KnowledgeType.pdf => input.fileName ?? 'document.pdf',
@@ -492,10 +500,14 @@ class MockVoiceSessionRepository implements VoiceSessionRepository {
   );
 
   @override
-  Future<VoiceChatReply> sendChatMessage(String message) => _lag(
-    () => const VoiceChatReply(
+  Future<VoiceChatReply> sendChatMessage(
+    String message, {
+    String? conversationId,
+  }) => _lag(
+    () => VoiceChatReply(
       reply:
           'I am here to help you answer questions and schedule follow-ups for your business.',
+      conversationId: conversationId ?? 'conv_mock_123',
     ),
     400,
   );

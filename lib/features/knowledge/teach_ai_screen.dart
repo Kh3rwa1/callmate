@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +21,42 @@ class TeachAiScreen extends ConsumerStatefulWidget {
 
 class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
   final Map<String, KnowledgeSource> _inFlight = {};
+  Timer? _pollTimer;
+
+  void _checkProcessingPoll(List<KnowledgeSource> items) {
+    final hasProcessing = items.any(
+      (e) => e.status == KnowledgeStatus.processing,
+    );
+    if (hasProcessing && (_pollTimer == null || !_pollTimer!.isActive)) {
+      _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+        if (!mounted) return;
+        final current = ref.read(knowledgeProvider).asData?.value ?? [];
+        final processing = current
+            .where((e) => e.status == KnowledgeStatus.processing)
+            .toList();
+        if (processing.isEmpty) {
+          _pollTimer?.cancel();
+          _pollTimer = null;
+          return;
+        }
+        for (final item in processing) {
+          try {
+            await ref.read(knowledgeRepoProvider).get(item.id);
+          } catch (_) {}
+        }
+        ref.invalidate(knowledgeProvider);
+      });
+    } else if (!hasProcessing && _pollTimer != null) {
+      _pollTimer?.cancel();
+      _pollTimer = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
 
   Future<void> _add(KnowledgeType type) async {
     KnowledgeInput? input;
@@ -160,6 +198,9 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
         value: k,
         onRetry: () => ref.invalidate(knowledgeProvider),
         data: (items) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _checkProcessingPoll(items);
+          });
           final latest = items.isEmpty
               ? null
               : items

@@ -103,6 +103,10 @@ class ApiKnowledgeRepository implements KnowledgeRepository {
   );
 
   @override
+  Future<KnowledgeSource> get(String id) =>
+      api.get('/knowledge/$id', (d) => KnowledgeSource.fromJson(_j(d)));
+
+  @override
   Stream<KnowledgeSource> add(KnowledgeInput input) {
     final c = StreamController<KnowledgeSource>();
     () async {
@@ -394,10 +398,16 @@ class ApiVoiceSessionRepository implements VoiceSessionRepository {
   Future<VoiceTestSession> createTestSession() =>
       api.post('/voice/test-session', (d) => VoiceTestSession.fromJson(_j(d)));
   @override
-  Future<VoiceChatReply> sendChatMessage(String message) => api.post(
+  Future<VoiceChatReply> sendChatMessage(
+    String message, {
+    String? conversationId,
+  }) => api.post(
     '/voice/chat',
     (d) => VoiceChatReply.fromJson(_j(d)),
-    data: {'message': message},
+    data: {
+      'message': message,
+      if (conversationId != null) 'conversation_id': conversationId,
+    },
   );
 }
 

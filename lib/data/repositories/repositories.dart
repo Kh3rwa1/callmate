@@ -27,6 +27,7 @@ abstract class BusinessRepository {
 
 abstract class KnowledgeRepository {
   Future<List<KnowledgeSource>> list();
+  Future<KnowledgeSource> get(String id);
 
   /// Emits the source while it uploads/processes, ending in ready/failed.
   Stream<KnowledgeSource> add(KnowledgeInput input);
@@ -104,7 +105,10 @@ abstract class DashboardRepository {
 abstract class VoiceSessionRepository {
   /// POST /voice/test-session – backend returns ids + short-lived proxy token.
   Future<VoiceTestSession> createTestSession();
-  Future<VoiceChatReply> sendChatMessage(String message);
+  Future<VoiceChatReply> sendChatMessage(
+    String message, {
+    String? conversationId,
+  });
 }
 
 abstract class DeviceRepository {
