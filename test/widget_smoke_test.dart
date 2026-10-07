@@ -5,13 +5,19 @@ import 'package:callpilot/core/widgets/lead_widgets.dart';
 import 'package:callpilot/data/models/models.dart';
 
 void main() {
-  testWidgets('ScoreBadge shows number + word (not colour alone)', (tester) async {
+  testWidgets('ScoreBadge shows number + word (not colour alone)', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(
           home: Scaffold(
             body: ScoreBadge(
-              score: LeadScore(value: 87, temperature: LeadTemperature.hot, intent: LeadIntent.interested),
+              score: LeadScore(
+                value: 87,
+                temperature: LeadTemperature.hot,
+                intent: LeadIntent.interested,
+              ),
             ),
           ),
         ),

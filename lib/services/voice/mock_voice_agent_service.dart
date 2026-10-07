@@ -48,11 +48,14 @@ class MockVoiceAgentService implements VoiceAgentService {
     _current = s;
     if (!_state.isClosed) _state.add(s);
     _levelTimer?.cancel();
-    if (s == VoiceConnectionState.speaking || (s == VoiceConnectionState.listening && !_muted)) {
+    if (s == VoiceConnectionState.speaking ||
+        (s == VoiceConnectionState.listening && !_muted)) {
       final speaking = s == VoiceConnectionState.speaking;
       _levelTimer = Timer.periodic(const Duration(milliseconds: 90), (_) {
         if (_level.isClosed) return;
-        _level.add(speaking ? 0.35 + _rnd.nextDouble() * 0.6 : _rnd.nextDouble() * 0.22);
+        _level.add(
+          speaking ? 0.35 + _rnd.nextDouble() * 0.6 : _rnd.nextDouble() * 0.22,
+        );
       });
     } else if (!_level.isClosed) {
       _level.add(0);
@@ -63,18 +66,31 @@ class MockVoiceAgentService implements VoiceAgentService {
     if (!_transcript.isClosed) _transcript.add(List.unmodifiable(_entries));
   }
 
-  List<(bool, String)> get _script => vertical == 'coaching' ? _coachingScript : _genericScript;
+  List<(bool, String)> get _script =>
+      vertical == 'coaching' ? _coachingScript : _genericScript;
 
   String get _human => humanLabel.toLowerCase();
 
   List<(bool, String)> get _genericScript => [
-    (true, 'Namaste! I\'m $agentName, an AI ${agentRole.toLowerCase()} from $businessName. How can I help you today?'),
+    (
+      true,
+      'Namaste! I\'m $agentName, an AI ${agentRole.toLowerCase()} from $businessName. How can I help you today?',
+    ),
     (false, 'Hi, I saw your ad. Can you tell me the price?'),
-    (true, 'Of course! Our standard plan starts at ₹4,999, and there\'s a premium option too. What are you looking for exactly?'),
+    (
+      true,
+      'Of course! Our standard plan starts at ₹4,999, and there\'s a premium option too. What are you looking for exactly?',
+    ),
     (false, 'The standard plan sounds fine. How soon can you start?'),
-    (true, 'We can start this week. Would you like our $_human to call you and confirm the details?'),
+    (
+      true,
+      'We can start this week. Would you like our $_human to call you and confirm the details?',
+    ),
     (false, 'Yes, tomorrow evening works.'),
-    (true, 'Perfect – I\'ve booked a call for tomorrow at 6 PM and I\'ll send the details on WhatsApp. Thank you! 🙏'),
+    (
+      true,
+      'Perfect – I\'ve booked a call for tomorrow at 6 PM and I\'ll send the details on WhatsApp. Thank you! 🙏',
+    ),
   ];
 
   List<(bool, String)> get _coachingScript => [
@@ -83,11 +99,20 @@ class MockVoiceAgentService implements VoiceAgentService {
       'Namaste! I\'m $agentName, an AI ${agentRole.toLowerCase()} from $businessName. Are you enquiring for yourself or for your child?',
     ),
     (false, 'For my son. He wants to prepare for NEET.'),
-    (true, 'Wonderful! We have morning, evening and weekend batches. Which timing suits him best?'),
+    (
+      true,
+      'Wonderful! We have morning, evening and weekend batches. Which timing suits him best?',
+    ),
     (false, 'Evening would be better. What are the fees?'),
-    (true, 'The evening batch is ₹52,000 per year, payable in three easy instalments.'),
+    (
+      true,
+      'The evening batch is ₹52,000 per year, payable in three easy instalments.',
+    ),
     (false, 'Okay. I\'ll need to discuss it at home once.'),
-    (true, 'Of course! Shall I ask our $_human to call you tomorrow at 6 PM? I\'ll also send the details on WhatsApp.'),
+    (
+      true,
+      'Of course! Shall I ask our $_human to call you tomorrow at 6 PM? I\'ll also send the details on WhatsApp.',
+    ),
     (false, 'Yes, that works.'),
     (true, 'Perfect – callback booked for tomorrow, 6 PM. Thank you! 🙏'),
   ];
@@ -99,7 +124,9 @@ class MockVoiceAgentService implements VoiceAgentService {
   );
 
   @override
-  Future<void> startTestSession({Map<String, dynamic> agentVariables = const {}}) async {
+  Future<void> startTestSession({
+    Map<String, dynamic> agentVariables = const {},
+  }) async {
     if (_running) return;
     _attempts++;
     _running = true;
@@ -111,7 +138,9 @@ class MockVoiceAgentService implements VoiceAgentService {
     if (failFirstAttempt && _attempts == 1) {
       _running = false;
       _set(VoiceConnectionState.error);
-      throw const VoiceAgentException("Your AI employee couldn't connect. Check your connection and try again.");
+      throw const VoiceAgentException(
+        "Your AI employee couldn't connect. Check your connection and try again.",
+      );
     }
     var t = 0;
     for (final (isAgent, text) in _script) {
@@ -143,7 +172,12 @@ class MockVoiceAgentService implements VoiceAgentService {
       final done = i == words.length - 1;
       _at(t, () {
         final idx = _entries.indexWhere((e) => e.id == id);
-        final entry = VoiceTranscriptEntry(id: id, isAgent: isAgent, text: partial, isFinal: done);
+        final entry = VoiceTranscriptEntry(
+          id: id,
+          isAgent: isAgent,
+          text: partial,
+          isFinal: done,
+        );
         if (idx < 0) {
           _entries.add(entry);
         } else {
@@ -174,18 +208,23 @@ class MockVoiceAgentService implements VoiceAgentService {
   @override
   Future<void> sendText(String text) async {
     if (!_running) return;
-    _entries.add(VoiceTranscriptEntry(id: 'u${_seq++}', isAgent: false, text: text));
+    _entries.add(
+      VoiceTranscriptEntry(id: 'u${_seq++}', isAgent: false, text: text),
+    );
     _emit();
   }
 
   @override
   Future<void> setMuted(bool muted) async {
     _muted = muted;
-    if (_current == VoiceConnectionState.listening) _set(VoiceConnectionState.listening);
+    if (_current == VoiceConnectionState.listening) {
+      _set(VoiceConnectionState.listening);
+    }
   }
 
   @override
-  Stream<List<VoiceTranscriptEntry>> getTranscriptStream() => _transcript.stream;
+  Stream<List<VoiceTranscriptEntry>> getTranscriptStream() =>
+      _transcript.stream;
   @override
   Stream<VoiceConnectionState> getConnectionState() => _state.stream;
   @override

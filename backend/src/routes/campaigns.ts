@@ -180,6 +180,9 @@ campaignsApp.post('/campaigns/:id/stop', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');
 
+  const existing = await c.env.DB.prepare('SELECT id FROM campaigns WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
+  if (!existing) return c.json({ message: 'Campaign not found.', code: 'not_found' }, 404);
+
   await c.env.DB.prepare(
     `UPDATE campaigns SET status = 'paused', completed_at = datetime('now') WHERE id = ? AND business_id = ?`
   ).bind(id, user.business_id).run();

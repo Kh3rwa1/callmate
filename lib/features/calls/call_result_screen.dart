@@ -17,7 +17,11 @@ import 'transcript_view.dart';
 
 /// Post-call result – the "AI understood" moment.
 class CallResultScreen extends ConsumerWidget {
-  const CallResultScreen({super.key, required this.callId, this.detailOnly = false});
+  const CallResultScreen({
+    super.key,
+    required this.callId,
+    this.detailOnly = false,
+  });
   final String callId;
   final bool detailOnly;
 
@@ -29,7 +33,9 @@ class CallResultScreen extends ConsumerWidget {
       body: AsyncView<Call>(
         value: call,
         onRetry: () => ref.invalidate(callProvider(callId)),
-        data: (c) => c.status.isConnected && !detailOnly ? _Result(call: c) : _Detail(call: c),
+        data: (c) => c.status.isConnected && !detailOnly
+            ? _Result(call: c)
+            : _Detail(call: c),
       ),
     );
   }
@@ -51,7 +57,12 @@ class _Result extends ConsumerWidget {
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 24),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.page,
+              0,
+              AppSpace.page,
+              24,
+            ),
             children: [
               Row(
                 children: [
@@ -61,13 +72,24 @@ class _Result extends ConsumerWidget {
                       children: [
                         Text('Call completed ✓', style: t.headlineMedium),
                         const SizedBox(height: 6),
-                        Text(c.leadName, style: t.titleLarge?.copyWith(color: AppColors.inkSoft)),
+                        Text(
+                          c.leadName,
+                          style: t.titleLarge?.copyWith(
+                            color: AppColors.inkSoft,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text('${Fmt.friendlyFuture(c.startedAt)} · ${Fmt.duration(c.duration)}', style: t.bodySmall),
+                        Text(
+                          '${Fmt.friendlyFuture(c.startedAt)} · ${Fmt.duration(c.duration)}',
+                          style: t.bodySmall,
+                        ),
                       ],
                     ),
                   ),
-                  Mascot(state: hot ? MascotState.hotLead : MascotState.success, size: 110),
+                  Mascot(
+                    state: hot ? MascotState.hotLead : MascotState.success,
+                    size: 110,
+                  ),
                 ],
               ),
               const SectionLabel('AI summary'),
@@ -77,22 +99,42 @@ class _Result extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.auto_awesome_rounded, size: 18, color: AppColors.brand),
+                        const Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 18,
+                          color: AppColors.brand,
+                        ),
                         const SizedBox(width: 6),
-                        Text('What ${ref.watch(employeeNameProvider)} understood', style: t.labelMedium?.copyWith(color: AppColors.brand)),
+                        Text(
+                          'What ${ref.watch(employeeNameProvider)} understood',
+                          style: t.labelMedium?.copyWith(
+                            color: AppColors.brand,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Text('“${c.summary ?? 'No summary available.'}”', style: t.bodyLarge?.copyWith(fontSize: 17, height: 1.5)),
+                    Text(
+                      '“${c.summary ?? 'No summary available.'}”',
+                      style: t.bodyLarge?.copyWith(fontSize: 17, height: 1.5),
+                    ),
                     if ((c.interest ?? '').isNotEmpty) ...[
                       const SizedBox(height: 14),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          Pill(label: '📌 ${c.interest}', color: AppColors.ink, background: AppColors.surfaceMuted),
+                          Pill(
+                            label: '📌 ${c.interest}',
+                            color: AppColors.ink,
+                            background: AppColors.surfaceMuted,
+                          ),
                           if (c.transcript.language != null)
-                            Pill(label: '🗣 ${c.transcript.language}', color: AppColors.ink, background: AppColors.surfaceMuted),
+                            Pill(
+                              label: '🗣 ${c.transcript.language}',
+                              color: AppColors.ink,
+                              background: AppColors.surfaceMuted,
+                            ),
                         ],
                       ),
                     ],
@@ -113,11 +155,17 @@ class _Result extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('${TempStyle.of(score.temperature).emoji} ${score.value} / 100', style: t.headlineSmall),
+                                Text(
+                                  '${TempStyle.of(score.temperature).emoji} ${score.value} / 100',
+                                  style: t.headlineSmall,
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
                                   score.intentLabel,
-                                  style: t.labelLarge?.copyWith(color: TempStyle.of(score.temperature).fg, letterSpacing: 1),
+                                  style: t.labelLarge?.copyWith(
+                                    color: TempStyle.of(score.temperature).fg,
+                                    letterSpacing: 1,
+                                  ),
                                 ),
                                 const SizedBox(height: 6),
                                 Text(score.intent.label, style: t.bodySmall),
@@ -126,13 +174,18 @@ class _Result extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      if (score.positiveSignals.isNotEmpty || score.concerns.isNotEmpty) ...[
+                      if (score.positiveSignals.isNotEmpty ||
+                          score.concerns.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         const Divider(),
                         const SizedBox(height: 10),
-                        for (final p in score.positiveSignals) _Reason(text: p, positive: true),
-                        if (score.positiveSignals.isNotEmpty && score.concerns.isNotEmpty) const SizedBox(height: 6),
-                        for (final o in score.concerns) _Reason(text: o, positive: false),
+                        for (final p in score.positiveSignals)
+                          _Reason(text: p, positive: true),
+                        if (score.positiveSignals.isNotEmpty &&
+                            score.concerns.isNotEmpty)
+                          const SizedBox(height: 6),
+                        for (final o in score.concerns)
+                          _Reason(text: o, positive: false),
                       ],
                     ],
                   ),
@@ -142,13 +195,19 @@ class _Result extends ConsumerWidget {
               AppCard(
                 child: Row(
                   children: [
-                    const IconBubble(color: AppColors.infoSoft, child: Emoji('🤝')),
+                    const IconBubble(
+                      color: AppColors.infoSoft,
+                      child: Emoji('🤝'),
+                    ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(_actionTitle(c.nextAction), style: t.titleMedium),
+                          Text(
+                            _actionTitle(c.nextAction),
+                            style: t.titleMedium,
+                          ),
                           const SizedBox(height: 2),
                           Text(
                             c.callbackAt != null
@@ -179,7 +238,12 @@ class _Result extends ConsumerWidget {
         SafeArea(
           top: false,
           child: Container(
-            padding: const EdgeInsets.fromLTRB(AppSpace.page, 12, AppSpace.page, 12),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.page,
+              12,
+              AppSpace.page,
+              12,
+            ),
             decoration: const BoxDecoration(
               color: AppColors.background,
               border: Border(top: BorderSide(color: AppColors.border)),
@@ -191,8 +255,17 @@ class _Result extends ConsumerWidget {
                   child: SecondaryButton(
                     label: 'Schedule Callback',
                     onPressed: () async {
-                      final lead = await ref.read(leadRepoProvider).get(c.leadId);
-                      if (context.mounted) await showCallbackSheet(context, ref, lead: lead, suggested: c.callbackAt);
+                      final lead = await ref
+                          .read(leadRepoProvider)
+                          .get(c.leadId);
+                      if (context.mounted) {
+                        await showCallbackSheet(
+                          context,
+                          ref,
+                          lead: lead,
+                          suggested: c.callbackAt,
+                        );
+                      }
                     },
                   ),
                 ),
@@ -203,7 +276,9 @@ class _Result extends ConsumerWidget {
                     label: 'Prepare WhatsApp',
                     icon: Icons.chat_rounded,
                     color: AppColors.whatsapp,
-                    onPressed: fuId == null ? () => context.push('/leads/${c.leadId}') : () => context.push('/followups/$fuId'),
+                    onPressed: fuId == null
+                        ? () => context.push('/leads/${c.leadId}')
+                        : () => context.push('/followups/$fuId'),
                   ),
                 ),
               ],
@@ -217,7 +292,8 @@ class _Result extends ConsumerWidget {
 
 /// Owner-facing phrasing of the AI's structured next action.
 String _actionTitle(NextAction a) => switch (a) {
-  NextAction.whatsappAndCallback || NextAction.humanFollowUp => 'Human follow-up',
+  NextAction.whatsappAndCallback ||
+  NextAction.humanFollowUp => 'Human follow-up',
   NextAction.sendWhatsapp => 'Send a WhatsApp follow-up',
   NextAction.bookAppointment => 'Book an appointment / visit',
   NextAction.retryCall => 'Try calling again',
@@ -236,7 +312,12 @@ class _Reason extends StatelessWidget {
         Text(positive ? '✅' : '⚠️', style: const TextStyle(fontSize: 16)),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(text, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+          child: Text(
+            text,
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
         ),
       ],
     ),
@@ -254,17 +335,27 @@ class _Detail extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 32),
       children: [
-        Center(child: Mascot(state: c.status.isConnected ? MascotState.success : MascotState.error, size: 140)),
+        Center(
+          child: Mascot(
+            state: c.status.isConnected
+                ? MascotState.success
+                : MascotState.error,
+            size: 140,
+          ),
+        ),
         const SizedBox(height: 12),
         Center(child: Text(c.leadName, style: t.headlineSmall)),
-        Center(child: Text(PhoneUtils.display(c.leadPhone), style: t.bodyMedium)),
+        Center(
+          child: Text(PhoneUtils.display(c.leadPhone), style: t.bodyMedium),
+        ),
         const SizedBox(height: 18),
         AppCard(
           child: Column(
             children: [
               _kv(t, 'Status', c.status.label),
               _kv(t, 'When', Fmt.friendlyFuture(c.startedAt)),
-              if (c.status.isConnected) _kv(t, 'Duration', Fmt.duration(c.duration)),
+              if (c.status.isConnected)
+                _kv(t, 'Duration', Fmt.duration(c.duration)),
               _kv(t, 'Outcome', c.outcome ?? '—'),
               _kv(t, 'Next', c.nextAction.label),
             ],
@@ -278,7 +369,10 @@ class _Detail extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         const SizedBox(height: 16),
-        SecondaryButton(label: 'Open lead', onPressed: () => context.push('/leads/${c.leadId}')),
+        SecondaryButton(
+          label: 'Open lead',
+          onPressed: () => context.push('/leads/${c.leadId}'),
+        ),
       ],
     );
   }

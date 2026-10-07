@@ -28,7 +28,11 @@ class AgentScreen extends ConsumerWidget {
           value: agent,
           onRetry: () => ref.invalidate(agentProvider),
           data: (a) => a == null
-              ? EmptyState(title: 'No AI employee yet', actionLabel: 'Create My AI Employee', onAction: () => context.go('/onboarding'))
+              ? EmptyState(
+                  title: 'No AI employee yet',
+                  actionLabel: 'Create My AI Employee',
+                  onAction: () => context.go('/onboarding'),
+                )
               : _Body(agent: a),
         ),
       ),
@@ -52,22 +56,44 @@ class _Body extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(AppSpace.page, 12, AppSpace.page, 36),
       children: [
-        Semantics(header: true, child: Text('AI Employee', style: t.headlineMedium)),
+        Semantics(
+          header: true,
+          child: Text('AI Employee', style: t.headlineMedium),
+        ),
         const SizedBox(height: 16),
         AppCard(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
           child: Column(
             children: [
-              EmployeeMascot(state: active ? MascotState.welcome : MascotState.thinking, size: 190, agent: a),
+              EmployeeMascot(
+                state: active ? MascotState.welcome : MascotState.thinking,
+                size: 190,
+                agent: a,
+              ),
               const SizedBox(height: 8),
               Text(a.name, style: t.displaySmall),
-              Text(a.role, style: t.titleMedium?.copyWith(color: AppColors.brand)),
+              Text(
+                a.role,
+                style: t.titleMedium?.copyWith(color: AppColors.brand),
+              ),
               const SizedBox(height: 10),
-              StatusDot(label: active ? 'Active' : a.status.label, color: active ? AppColors.success : AppColors.cold, pulse: active),
+              StatusDot(
+                label: active ? 'Active' : a.status.label,
+                color: active ? AppColors.success : AppColors.cold,
+                pulse: active,
+              ),
               const SizedBox(height: 18),
-              PrimaryButton(label: 'Edit AI Employee', icon: Icons.tune_rounded, onPressed: () => context.push('/agent/edit')),
+              PrimaryButton(
+                label: 'Edit AI Employee',
+                icon: Icons.tune_rounded,
+                onPressed: () => context.push('/agent/edit'),
+              ),
               const SizedBox(height: 10),
-              SecondaryButton(label: 'Talk to ${a.name}', icon: Icons.mic_rounded, onPressed: () => context.push('/voice-test')),
+              SecondaryButton(
+                label: 'Talk to ${a.name}',
+                icon: Icons.mic_rounded,
+                onPressed: () => context.push('/voice-test'),
+              ),
             ],
           ),
         ),
@@ -91,7 +117,8 @@ class _Body extends ConsumerWidget {
               Text(a.personalityLabel, style: t.titleMedium),
               const SizedBox(height: 12),
               Semantics(
-                label: 'Personality: ${(100 - a.formality * 100).round()} percent friendly',
+                label:
+                    'Personality: ${(100 - a.formality * 100).round()} percent friendly',
                 child: ExcludeSemantics(
                   child: Column(
                     children: [
@@ -107,9 +134,19 @@ class _Body extends ConsumerWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Text('😊 Friendly', style: t.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                          Text(
+                            '😊 Friendly',
+                            style: t.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                           const Spacer(),
-                          Text('Formal 👔', style: t.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                          Text(
+                            'Formal 👔',
+                            style: t.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -123,7 +160,10 @@ class _Body extends ConsumerWidget {
         AppCard(
           child: Row(
             children: [
-              const IconBubble(color: AppColors.successSoft, child: Emoji('🎯')),
+              const IconBubble(
+                color: AppColors.successSoft,
+                child: Emoji('🎯'),
+              ),
               const SizedBox(width: 14),
               Expanded(child: Text(a.goal, style: t.titleMedium)),
             ],
@@ -141,7 +181,12 @@ class _Body extends ConsumerWidget {
                       const Text('✅', style: TextStyle(fontSize: 17)),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(c, style: t.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                        child: Text(
+                          c,
+                          style: t.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -161,7 +206,12 @@ class _Body extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Teach Your AI', style: t.titleMedium),
-                    Text(knowledge == null ? 'Loading…' : '${knowledge.length} sources · services, pricing, FAQs', style: t.bodySmall),
+                    Text(
+                      knowledge == null
+                          ? 'Loading…'
+                          : '${knowledge.length} sources · services, pricing, FAQs',
+                      style: t.bodySmall,
+                    ),
                   ],
                 ),
               ),
@@ -179,20 +229,28 @@ class _Body extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        Text(usage.subscription.planName.toUpperCase(), style: t.labelSmall?.copyWith(color: AppColors.brand)),
+                        Text(
+                          usage.subscription.planName.toUpperCase(),
+                          style: t.labelSmall?.copyWith(color: AppColors.brand),
+                        ),
                         const Spacer(),
                         const Icon(Icons.chevron_right_rounded),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text('${Fmt.number(usage.minutesRemaining)} minutes left', style: t.titleMedium),
+                    Text(
+                      '${Fmt.number(usage.minutesRemaining)} minutes left',
+                      style: t.titleMedium,
+                    ),
                     const SizedBox(height: 10),
                     LinearProgressIndicator(
                       value: usage.ratio,
                       minHeight: 8,
                       borderRadius: BorderRadius.circular(9),
                       backgroundColor: AppColors.brandSoft,
-                      color: usage.ratio > 0.85 ? AppColors.hot : AppColors.brand,
+                      color: usage.ratio > 0.85
+                          ? AppColors.hot
+                          : AppColors.brand,
                     ),
                   ],
                 ),
@@ -220,7 +278,9 @@ class _Body extends ConsumerWidget {
                 ListTile(
                   leading: const Icon(Icons.science_outlined),
                   title: const Text('Demo controls'),
-                  subtitle: const Text('Simulate calls, hot leads, notifications'),
+                  subtitle: const Text(
+                    'Simulate calls, hot leads, notifications',
+                  ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => context.push('/demo'),
                 ),
@@ -228,18 +288,29 @@ class _Body extends ConsumerWidget {
               const Divider(indent: 56),
               ListTile(
                 leading: const Icon(Icons.logout_rounded, color: AppColors.hot),
-                title: const Text('Sign out', style: TextStyle(color: AppColors.hot)),
+                title: const Text(
+                  'Sign out',
+                  style: TextStyle(color: AppColors.hot),
+                ),
                 onTap: () async {
                   final ok = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
                       title: const Text('Sign out?'),
-                      content: const Text('You will need to sign in again to access your workspace.'),
+                      content: const Text(
+                        'You will need to sign in again to access your workspace.',
+                      ),
                       actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel'),
+                        ),
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Sign out', style: TextStyle(color: AppColors.hot)),
+                          child: const Text(
+                            'Sign out',
+                            style: TextStyle(color: AppColors.hot),
+                          ),
                         ),
                       ],
                     ),
@@ -252,9 +323,18 @@ class _Body extends ConsumerWidget {
               ),
               const Divider(indent: 56),
               ListTile(
-                leading: const Icon(Icons.delete_outline_rounded, color: AppColors.inkFaint),
-                title: const Text('Delete account', style: TextStyle(color: AppColors.inkFaint)),
-                subtitle: const Text('Permanently erase account and data', style: TextStyle(fontSize: 12)),
+                leading: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.inkFaint,
+                ),
+                title: const Text(
+                  'Delete account',
+                  style: TextStyle(color: AppColors.inkFaint),
+                ),
+                subtitle: const Text(
+                  'Permanently erase account and data',
+                  style: TextStyle(fontSize: 12),
+                ),
                 onTap: () async {
                   final ok = await showDialog<bool>(
                     context: context,
@@ -264,10 +344,19 @@ class _Body extends ConsumerWidget {
                         'This action cannot be undone. All your business records, leads, calls, transcripts, and AI configurations will be permanently deleted.',
                       ),
                       actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel'),
+                        ),
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Delete permanently', style: TextStyle(color: AppColors.hot, fontWeight: FontWeight.bold)),
+                          child: const Text(
+                            'Delete permanently',
+                            style: TextStyle(
+                              color: AppColors.hot,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -297,7 +386,9 @@ class _Kv extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 15),
       decoration: BoxDecoration(
-        border: last ? null : const Border(bottom: BorderSide(color: AppColors.border)),
+        border: last
+            ? null
+            : const Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
         children: [

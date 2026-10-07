@@ -26,7 +26,9 @@ import 'storage/secure_store.dart';
 
 final useMockProvider = Provider<bool>((_) => AppEnv.useMock);
 
-final localPrefsProvider = Provider<LocalPrefs>((_) => throw UnimplementedError('override in main'));
+final localPrefsProvider = Provider<LocalPrefs>(
+  (_) => throw UnimplementedError('override in main'),
+);
 final secureStoreProvider = Provider<SecureStore>((_) => SecureStore());
 final apiClientProvider = Provider<ApiClient>((ref) {
   LocalPrefs? prefs;
@@ -49,14 +51,22 @@ final mockBackendProvider = Provider<MockBackend>((ref) {
 });
 
 T _pick<T>(Ref ref, T Function(MockBackend) mock, T Function(ApiClient) api) =>
-    ref.watch(useMockProvider) ? mock(ref.watch(mockBackendProvider)) : api(ref.watch(apiClientProvider));
+    ref.watch(useMockProvider)
+    ? mock(ref.watch(mockBackendProvider))
+    : api(ref.watch(apiClientProvider));
 
 final authRepoProvider = Provider<AuthRepository>(
-  (ref) =>
-      ref.watch(useMockProvider) ? MockAuthRepository() : ApiAuthRepository(ref.watch(apiClientProvider), ref.watch(secureStoreProvider)),
+  (ref) => ref.watch(useMockProvider)
+      ? MockAuthRepository()
+      : ApiAuthRepository(
+          ref.watch(apiClientProvider),
+          ref.watch(secureStoreProvider),
+        ),
 );
 
-final sessionProvider = AsyncNotifierProvider<SessionNotifier, bool>(SessionNotifier.new);
+final sessionProvider = AsyncNotifierProvider<SessionNotifier, bool>(
+  SessionNotifier.new,
+);
 
 class SessionNotifier extends AsyncNotifier<bool> {
   @override
@@ -77,10 +87,16 @@ class SessionNotifier extends AsyncNotifier<bool> {
     });
   }
 
-  Future<void> register({required String phone, required String businessName, required String otp}) async {
+  Future<void> register({
+    required String phone,
+    required String businessName,
+    required String otp,
+  }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await ref.read(authRepoProvider).register(phone: phone, businessName: businessName, otp: otp);
+      await ref
+          .read(authRepoProvider)
+          .register(phone: phone, businessName: businessName, otp: otp);
       ref.read(dataVersionProvider.notifier).bump();
       return true;
     });
@@ -110,20 +126,43 @@ class SessionNotifier extends AsyncNotifier<bool> {
   }
 }
 
-final businessRepoProvider = Provider<BusinessRepository>((ref) => _pick(ref, MockBusinessRepository.new, ApiBusinessRepository.new));
-final knowledgeRepoProvider = Provider<KnowledgeRepository>((ref) => _pick(ref, MockKnowledgeRepository.new, ApiKnowledgeRepository.new));
-final leadRepoProvider = Provider<LeadRepository>((ref) => _pick(ref, MockLeadRepository.new, ApiLeadRepository.new));
-final callRepoProvider = Provider<CallRepository>((ref) => _pick(ref, MockCallRepository.new, ApiCallRepository.new));
-final campaignRepoProvider = Provider<CampaignRepository>((ref) => _pick(ref, MockCampaignRepository.new, ApiCampaignRepository.new));
-final followUpRepoProvider = Provider<FollowUpRepository>((ref) => _pick(ref, MockFollowUpRepository.new, ApiFollowUpRepository.new));
-final callbackRepoProvider = Provider<CallbackRepository>((ref) => _pick(ref, MockCallbackRepository.new, ApiCallbackRepository.new));
-final usageRepoProvider = Provider<UsageRepository>((ref) => _pick(ref, MockUsageRepository.new, ApiUsageRepository.new));
-final notificationRepoProvider = Provider<NotificationRepository>(
-  (ref) => _pick(ref, MockNotificationRepository.new, ApiNotificationRepository.new),
+final businessRepoProvider = Provider<BusinessRepository>(
+  (ref) => _pick(ref, MockBusinessRepository.new, ApiBusinessRepository.new),
 );
-final dashboardRepoProvider = Provider<DashboardRepository>((ref) => _pick(ref, MockDashboardRepository.new, ApiDashboardRepository.new));
+final knowledgeRepoProvider = Provider<KnowledgeRepository>(
+  (ref) => _pick(ref, MockKnowledgeRepository.new, ApiKnowledgeRepository.new),
+);
+final leadRepoProvider = Provider<LeadRepository>(
+  (ref) => _pick(ref, MockLeadRepository.new, ApiLeadRepository.new),
+);
+final callRepoProvider = Provider<CallRepository>(
+  (ref) => _pick(ref, MockCallRepository.new, ApiCallRepository.new),
+);
+final campaignRepoProvider = Provider<CampaignRepository>(
+  (ref) => _pick(ref, MockCampaignRepository.new, ApiCampaignRepository.new),
+);
+final followUpRepoProvider = Provider<FollowUpRepository>(
+  (ref) => _pick(ref, MockFollowUpRepository.new, ApiFollowUpRepository.new),
+);
+final callbackRepoProvider = Provider<CallbackRepository>(
+  (ref) => _pick(ref, MockCallbackRepository.new, ApiCallbackRepository.new),
+);
+final usageRepoProvider = Provider<UsageRepository>(
+  (ref) => _pick(ref, MockUsageRepository.new, ApiUsageRepository.new),
+);
+final notificationRepoProvider = Provider<NotificationRepository>(
+  (ref) =>
+      _pick(ref, MockNotificationRepository.new, ApiNotificationRepository.new),
+);
+final dashboardRepoProvider = Provider<DashboardRepository>(
+  (ref) => _pick(ref, MockDashboardRepository.new, ApiDashboardRepository.new),
+);
 final voiceSessionRepoProvider = Provider<VoiceSessionRepository>(
-  (ref) => _pick(ref, (_) => MockVoiceSessionRepository(), ApiVoiceSessionRepository.new),
+  (ref) => _pick(
+    ref,
+    (_) => MockVoiceSessionRepository(),
+    ApiVoiceSessionRepository.new,
+  ),
 );
 final deviceRepoProvider = Provider<DeviceRepository>(
   (ref) => _pick(ref, (_) => MockDeviceRepository(), ApiDeviceRepository.new),
@@ -135,9 +174,15 @@ final backendEventsProvider = Provider<BackendEvents>((ref) {
 });
 
 /// Services
-final whatsappServiceProvider = Provider<WhatsAppService>((_) => const WhatsAppDeepLinkService());
-final analyticsProvider = Provider<AnalyticsService>((_) => DebugAnalyticsService());
-final notificationServiceProvider = Provider<NotificationService>((_) => NotificationService());
+final whatsappServiceProvider = Provider<WhatsAppService>(
+  (_) => const WhatsAppDeepLinkService(),
+);
+final analyticsProvider = Provider<AnalyticsService>(
+  (_) => DebugAnalyticsService(),
+);
+final notificationServiceProvider = Provider<NotificationService>(
+  (_) => NotificationService(),
+);
 
 /// Voice service instance (100% real Sarvam AI voice agent).
 final voiceAgentServiceProvider = Provider<VoiceAgentService>((ref) {
@@ -201,7 +246,9 @@ final leadCallsProvider = FutureProvider.family<List<Call>, String>((ref, id) {
   return ref.watch(callRepoProvider).forLead(id);
 });
 
-final callProvider = FutureProvider.family<Call, String>((ref, id) => ref.watch(callRepoProvider).get(id));
+final callProvider = FutureProvider.family<Call, String>(
+  (ref, id) => ref.watch(callRepoProvider).get(id),
+);
 
 final callbacksProvider = FutureProvider<List<Callback>>((ref) {
   ref.watch(dataVersionProvider);
@@ -229,7 +276,9 @@ final newLeadsProvider = FutureProvider<List<Lead>>((ref) {
 });
 
 /// Live campaign (if any) – kept in sync from backend progress events.
-final activeCampaignProvider = NotifierProvider<ActiveCampaign, Campaign?>(ActiveCampaign.new);
+final activeCampaignProvider = NotifierProvider<ActiveCampaign, Campaign?>(
+  ActiveCampaign.new,
+);
 
 class ActiveCampaign extends Notifier<Campaign?> {
   @override
@@ -263,7 +312,11 @@ final businessTemplateProvider = Provider<BusinessTemplate>((ref) {
   return templateFor(cat);
 });
 
-final workflowProvider = Provider<WorkflowTemplate>((ref) => ref.watch(businessTemplateProvider).workflow);
+final workflowProvider = Provider<WorkflowTemplate>(
+  (ref) => ref.watch(businessTemplateProvider).workflow,
+);
 
 /// Employee display name – never falls back to a hardcoded persona.
-final employeeNameProvider = Provider<String>((ref) => ref.watch(agentProvider).value?.name ?? Brand.employeeFallbackName);
+final employeeNameProvider = Provider<String>(
+  (ref) => ref.watch(agentProvider).value?.name ?? Brand.employeeFallbackName,
+);

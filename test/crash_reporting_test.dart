@@ -3,18 +3,22 @@ import 'package:callpilot/services/crash/crash_reporting_service.dart';
 
 void main() {
   group('SafeCrashReportingService PII scrubbing', () {
-    test('scrubs phone numbers, bearer tokens, JWTs, and emails from strings', () {
-      const input = 'Call failed for user +919830012345 (also 9876543210) with auth Header: Bearer eyJhbGciOiJIUzI1NiJ9.test.sig and email client@example.com';
-      final scrubbed = SafeCrashReportingService.scrubPii(input);
+    test(
+      'scrubs phone numbers, bearer tokens, JWTs, and emails from strings',
+      () {
+        const input =
+            'Call failed for user +919830012345 (also 9876543210) with auth Header: Bearer eyJhbGciOiJIUzI1NiJ9.test.sig and email client@example.com';
+        final scrubbed = SafeCrashReportingService.scrubPii(input);
 
-      expect(scrubbed.contains('+919830012345'), isFalse);
-      expect(scrubbed.contains('9876543210'), isFalse);
-      expect(scrubbed.contains('client@example.com'), isFalse);
-      expect(scrubbed.contains('eyJhbGciOiJIUzI1NiJ9'), isFalse);
-      expect(scrubbed, contains('[PHONE_REDACTED]'));
-      expect(scrubbed, contains('[EMAIL_REDACTED]'));
-      expect(scrubbed, contains('Bearer [TOKEN_REDACTED]'));
-    });
+        expect(scrubbed.contains('+919830012345'), isFalse);
+        expect(scrubbed.contains('9876543210'), isFalse);
+        expect(scrubbed.contains('client@example.com'), isFalse);
+        expect(scrubbed.contains('eyJhbGciOiJIUzI1NiJ9'), isFalse);
+        expect(scrubbed, contains('[PHONE_REDACTED]'));
+        expect(scrubbed, contains('[EMAIL_REDACTED]'));
+        expect(scrubbed, contains('Bearer [TOKEN_REDACTED]'));
+      },
+    );
 
     test('scrubs blocked keys from context maps', () {
       final service = SafeCrashReportingService(enabled: true);

@@ -29,7 +29,9 @@ class LeadScore {
     final v = jInt(j, 'value');
     return LeadScore(
       value: v,
-      temperature: j['temperature'] == null ? LeadTemperature.fromScore(v) : LeadTemperature.parse(jStrN(j, 'temperature')),
+      temperature: j['temperature'] == null
+          ? LeadTemperature.fromScore(v)
+          : LeadTemperature.parse(jStrN(j, 'temperature')),
       intent: LeadIntent.parse(jStrN(j, 'intent')),
       positiveSignals: jStrList(j, 'positive_signals'),
       concerns: jStrList(j, 'concerns'),
@@ -90,7 +92,8 @@ class Lead {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  LeadTemperature get temperature => score?.temperature ?? LeadTemperature.unknown;
+  LeadTemperature get temperature =>
+      score?.temperature ?? LeadTemperature.unknown;
   bool get isHot => temperature == LeadTemperature.hot;
   bool get isWarm => temperature == LeadTemperature.warm;
   bool get hasBeenCalled => lastCallId != null;
@@ -99,8 +102,14 @@ class Lead {
 
   /// "NEET · Evening" / "3 BHK · Site visit" – interest plus the first attribute.
   String get interestLine {
-    final first = attributes.entries.where((e) => e.key != 'budget').map((e) => e.value).firstOrNull;
-    final parts = [interest, first].whereType<String>().where((s) => s.isNotEmpty);
+    final first = attributes.entries
+        .where((e) => e.key != 'budget')
+        .map((e) => e.value)
+        .firstOrNull;
+    final parts = [
+      interest,
+      first,
+    ].whereType<String>().where((s) => s.isNotEmpty);
     return parts.isEmpty ? 'Interest not known yet' : parts.join(' · ');
   }
 
@@ -158,7 +167,9 @@ class Lead {
       interest: jStrN(j, 'interest') ?? jStrN(j, 'course_interest'),
       attributes: attrs,
       status: LeadStatus.parse(jStrN(j, 'status')),
-      score: jObj(j, 'score') == null ? null : LeadScore.fromJson(jObj(j, 'score')!),
+      score: jObj(j, 'score') == null
+          ? null
+          : LeadScore.fromJson(jObj(j, 'score')!),
       summary: jStrN(j, 'summary'),
       objections: jStrList(j, 'objections'),
       nextAction: NextAction.parse(jStrN(j, 'next_action')),
@@ -193,22 +204,41 @@ class Lead {
 
 /// Input used when creating/importing leads.
 class NewLeadInput {
-  const NewLeadInput({required this.name, required this.phone, this.interest, this.source = 'Manual', this.attributes = const {}});
+  const NewLeadInput({
+    required this.name,
+    required this.phone,
+    this.interest,
+    this.source = 'Manual',
+    this.attributes = const {},
+  });
   final String name;
   final String phone;
   final String? interest;
   final String source;
   final Map<String, String> attributes;
 
-  Json toJson() => {'name': name, 'phone': phone, 'interest': interest, 'source': source, 'attributes': attributes};
+  Json toJson() => {
+    'name': name,
+    'phone': phone,
+    'interest': interest,
+    'source': source,
+    'attributes': attributes,
+  };
 }
 
 class LeadImportResult {
-  const LeadImportResult({required this.imported, required this.skipped, this.errors = const []});
+  const LeadImportResult({
+    required this.imported,
+    required this.skipped,
+    this.errors = const [],
+  });
   final int imported;
   final int skipped;
   final List<String> errors;
 
-  factory LeadImportResult.fromJson(Json j) =>
-      LeadImportResult(imported: jInt(j, 'imported'), skipped: jInt(j, 'skipped'), errors: jStrList(j, 'errors'));
+  factory LeadImportResult.fromJson(Json j) => LeadImportResult(
+    imported: jInt(j, 'imported'),
+    skipped: jInt(j, 'skipped'),
+    errors: jStrList(j, 'errors'),
+  );
 }

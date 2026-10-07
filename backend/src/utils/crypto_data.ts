@@ -43,9 +43,11 @@ function fromBase64(str: string): Uint8Array {
  */
 export async function encryptAtRest(plaintext: string | null | undefined, secret?: string): Promise<string | null> {
   if (plaintext === null || plaintext === undefined) return null;
-  const keySecret = secret || 'default-fallback-must-provide-secret';
-  
-  const key = await deriveKey(keySecret);
+  if (!secret || secret.trim().length === 0) {
+    throw new Error('Encryption key secret is required. Fail closed.');
+  }
+
+  const key = await deriveKey(secret);
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
   const enc = new TextEncoder();
   const encryptedBuf = await crypto.subtle.encrypt(
@@ -71,14 +73,17 @@ export async function decryptAtRest(ciphertext: string | null | undefined, secre
     return ciphertext;
   }
 
-  const keySecret = secret || 'default-fallback-must-provide-secret';
+  if (!secret || secret.trim().length === 0) {
+    throw new Error('Decryption key secret is required. Fail closed.');
+  }
+
   const parts = ciphertext.slice(PREFIX.length).split(':');
   if (parts.length !== 2) return ciphertext;
 
   try {
     const iv = fromBase64(parts[0]);
     const data = fromBase64(parts[1]);
-    const key = await deriveKey(keySecret);
+    const key = await deriveKey(secret);
     const decryptedBuf = await crypto.subtle.decrypt(
       { name: ALGORITHM, iv },
       key,
@@ -90,4 +95,15 @@ export async function decryptAtRest(ciphertext: string | null | undefined, secre
     console.warn('[AES-GCM Decryption Warning] Failed to decrypt data, returning raw:', err);
     return ciphertext;
   }
+}
+
+/**
+ * Masks phone numbers to avoid PII logging (e.g. 91XXXXXX2345)
+ */
+export function maskPhone(phone: string): string {
+  if (!phone || phone.length < 5) return '***';
+  const prefix = phone.slice(0, 2);
+  const suffix = phone.slice(-4);
+  const maskLen = Math.max(0, phone.length - 6);
+  return `${prefix}${'X'.repeat(maskLen)}${suffix}`;
 }

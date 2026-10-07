@@ -232,15 +232,16 @@ class KnowledgeSource {
   final double progress;
   final DateTime updatedAt;
 
-  KnowledgeSource copyWith({KnowledgeStatus? status, double? progress}) => KnowledgeSource(
-    id: id,
-    type: type,
-    title: title,
-    detail: detail,
-    status: status ?? this.status,
-    progress: progress ?? this.progress,
-    updatedAt: DateTime.now(),
-  );
+  KnowledgeSource copyWith({KnowledgeStatus? status, double? progress}) =>
+      KnowledgeSource(
+        id: id,
+        type: type,
+        title: title,
+        detail: detail,
+        status: status ?? this.status,
+        progress: progress ?? this.progress,
+        updatedAt: DateTime.now(),
+      );
 
   factory KnowledgeSource.fromJson(Json j) => KnowledgeSource(
     id: jStr(j, 'id'),
@@ -266,7 +267,14 @@ class KnowledgeSource {
 /// Input for adding knowledge. File bytes are uploaded to our backend which
 /// extracts text and syncs it to the Sarvam agent's knowledge base.
 class KnowledgeInput {
-  const KnowledgeInput({required this.type, required this.title, this.content, this.url, this.fileName, this.bytes});
+  const KnowledgeInput({
+    required this.type,
+    required this.title,
+    this.content,
+    this.url,
+    this.fileName,
+    this.bytes,
+  });
   final KnowledgeType type;
   final String title;
   final String? content;

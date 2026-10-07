@@ -38,14 +38,22 @@ class Fmt {
   /// "tomorrow at 6:00 PM" / "today at 6:00 PM" / "on Sat, 12 Oct at 6:00 PM"
   static String callbackPhrase(DateTime d, {DateTime? now}) {
     final n = now ?? DateTime.now();
-    final delta = DateTime(d.year, d.month, d.day).difference(DateTime(n.year, n.month, n.day)).inDays;
+    final delta = DateTime(
+      d.year,
+      d.month,
+      d.day,
+    ).difference(DateTime(n.year, n.month, n.day)).inDays;
     final t = time(d);
     if (delta == 0) return 'today at $t';
     if (delta == 1) return 'tomorrow at $t';
     return 'on ${DateFormat('EEE, d MMM').format(d)} at $t';
   }
 
-  static String inr(num v) => NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(v);
+  static String inr(num v) => NumberFormat.currency(
+    locale: 'en_IN',
+    symbol: '₹',
+    decimalDigits: 0,
+  ).format(v);
 
   static String number(num v) => NumberFormat.decimalPattern('en_IN').format(v);
 

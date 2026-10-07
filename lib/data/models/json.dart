@@ -57,13 +57,20 @@ DateTime? jDate(Json j, String k) {
 
 List<String> jStrList(Json j, String k) {
   final v = j[k];
-  if (v is List) return v.where((e) => e != null).map((e) => e.toString()).toList();
+  if (v is List) {
+    return v.where((e) => e != null).map((e) => e.toString()).toList();
+  }
   return const [];
 }
 
 List<T> jList<T>(Json j, String k, T Function(Json) f) {
   final v = j[k];
-  if (v is List) return v.whereType<Map>().map((e) => f(Map<String, dynamic>.from(e))).toList();
+  if (v is List) {
+    return v
+        .whereType<Map>()
+        .map((e) => f(Map<String, dynamic>.from(e)))
+        .toList();
+  }
   return const [];
 }
 

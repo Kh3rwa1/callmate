@@ -672,8 +672,18 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
   await c.env.DB.batch(statements);
 
   // 2.5: Push Notifications (FCM data-messages)
+  const safeWaitUntil = (promise: Promise<any>) => {
+    try {
+      if (c.executionCtx) {
+        c.executionCtx.waitUntil(promise);
+        return;
+      }
+    } catch {}
+    promise.catch((e) => console.error('[Push Notification Error]:', e));
+  };
+
   if (norm.temperature === 'hot') {
-    c.executionCtx?.waitUntil(
+    safeWaitUntil(
       sendBusinessPushNotification(c.env, businessId, {
         type: 'hot_lead',
         title: '🔥 Hot Lead Alert',
@@ -684,7 +694,7 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
   }
 
   if (callbackAt) {
-    c.executionCtx?.waitUntil(
+    safeWaitUntil(
       sendBusinessPushNotification(c.env, businessId, {
         type: 'callback',
         title: 'Callback Scheduled',
@@ -696,7 +706,7 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
 
   if (followUpId) {
     // Batched to max 1 per 10 min
-    c.executionCtx?.waitUntil(
+    safeWaitUntil(
       sendBusinessPushNotification(c.env, businessId, {
         type: 'follow_up_ready',
         title: '💬 Follow-up Ready',

@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { Env, AuthUser } from './types';
 import { authMiddleware } from './auth';
+import { logError } from './utils/logger';
 
 import { authApp } from './routes/auth';
 import { businessApp } from './routes/business';
@@ -25,6 +26,13 @@ app.use('*', cors({
   maxAge: 86400,
 }));
 
+app.use('*', async (c, next) => {
+  const reqId = c.req.header('X-Request-Id') || crypto.randomUUID();
+  c.set('requestId' as any, reqId);
+  c.header('X-Request-Id', reqId);
+  await next();
+});
+
 app.use('*', logger());
 
 // Health check
@@ -45,7 +53,13 @@ app.route('/auth', authApp);
 app.post('/webhooks/sarvam', handleSarvamWebhook);
 
 // Voice proxy (has its own session token verification in route)
-app.all('/voice/sarvam-proxy/*', (c) => voiceApp.fetch(c.req.raw, c.env, c.executionCtx));
+app.all('/voice/sarvam-proxy/*', (c) => {
+  let ctx: any;
+  try {
+    ctx = c.executionCtx;
+  } catch {}
+  return voiceApp.fetch(c.req.raw, c.env, ctx);
+});
 
 // ------------------------------------------------------------- Protected Routes
 const protectedApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -63,10 +77,14 @@ protectedApp.route('/voice', voiceApp);
 
 app.route('/', protectedApp);
 
-// Global Error Handler - 1.6: Return generic messages to clients, log server-side with request ID
+// Global Error Handler - 1.6 & 5: Generic message with request ID, structured JSON log
 app.onError((err, c) => {
-  const requestId = crypto.randomUUID();
-  console.error(`[Unhandled Server Error] [RequestID: ${requestId}]:`, err);
+  const requestId = (c.get as any)('requestId') || crypto.randomUUID();
+  logError('Unhandled Server Error', err, {
+    requestId,
+    method: c.req.method,
+    path: c.req.path,
+  });
   return c.json({
     message: 'An internal server error occurred.',
     code: 'server_error',

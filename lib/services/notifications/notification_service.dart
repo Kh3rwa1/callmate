@@ -59,7 +59,11 @@ class NotificationService {
       await _plugin.initialize(
         settings: const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-          iOS: DarwinInitializationSettings(requestAlertPermission: false, requestBadgePermission: false, requestSoundPermission: false),
+          iOS: DarwinInitializationSettings(
+            requestAlertPermission: false,
+            requestBadgePermission: false,
+            requestSoundPermission: false,
+          ),
         ),
         onDidReceiveNotificationResponse: (r) {
           final p = r.payload;
@@ -80,10 +84,20 @@ class NotificationService {
   Future<bool> requestPermission() async {
     if (kIsWeb) return true;
     try {
-      final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      final ios = _plugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      final ios = _plugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
       final a = await android?.requestNotificationsPermission();
-      final i = await ios?.requestPermissions(alert: true, badge: true, sound: true);
+      final i = await ios?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
       return (a ?? true) && (i ?? true);
     } catch (_) {
       return false;
@@ -103,7 +117,10 @@ class NotificationService {
         payload: n.route,
         notificationDetails: const NotificationDetails(
           android: _channel,
-          iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentSound: true,
+          ),
         ),
       );
     } catch (e) {

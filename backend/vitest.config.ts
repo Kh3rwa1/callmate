@@ -1,0 +1,33 @@
+import { defineConfig } from 'vitest/config';
+import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
+
+export default defineConfig({
+  plugins: [
+    cloudflareTest({
+      wrangler: { configPath: './wrangler.toml' },
+      miniflare: {
+        compatibilityFlags: ['nodejs_compat'],
+        bindings: {
+          ENVIRONMENT: 'development',
+          JWT_SIGNING_KEY: 'test-jwt-signing-secret-key-32chars-min-length',
+          SARVAM_WEBHOOK_SECRET: 'test_webhook_secret_12345',
+          SARVAM_API_KEY: 'sk_test_mock_key_for_unit_tests',
+        },
+      },
+    }),
+  ],
+  test: {
+    coverage: {
+      provider: 'istanbul',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/**/*.ts'],
+      exclude: ['src/types.ts'],
+      thresholds: {
+        lines: 80,
+        'src/auth.ts': {
+          lines: 100,
+        },
+      },
+    },
+  },
+});

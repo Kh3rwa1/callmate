@@ -66,7 +66,9 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
   void _applyInitial() {
     final f = parseFilter(widget.initialFilter);
     if (f != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => ref.read(leadQueryProvider.notifier).setFilter(f));
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => ref.read(leadQueryProvider.notifier).setFilter(f),
+      );
     }
   }
 
@@ -101,7 +103,10 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Semantics(header: true, child: Text('Leads', style: t.headlineMedium)),
+                    child: Semantics(
+                      header: true,
+                      child: Text('Leads', style: t.headlineMedium),
+                    ),
                   ),
                   IconButton(
                     tooltip: 'Add or import leads',
@@ -112,7 +117,12 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpace.page, 12, AppSpace.page, 0),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.page,
+                12,
+                AppSpace.page,
+                0,
+              ),
               child: TextField(
                 controller: _search,
                 textInputAction: TextInputAction.search,
@@ -135,7 +145,10 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                 onChanged: (v) {
                   setState(() {});
                   _debounce?.cancel();
-                  _debounce = Timer(const Duration(milliseconds: 300), () => ref.read(leadQueryProvider.notifier).setSearch(v));
+                  _debounce = Timer(
+                    const Duration(milliseconds: 300),
+                    () => ref.read(leadQueryProvider.notifier).setSearch(v),
+                  );
                 },
               ),
             ),
@@ -143,7 +156,10 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
               height: 60,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.page, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.page,
+                  vertical: 12,
+                ),
                 children: [
                   for (final (f, label) in _filters)
                     Padding(
@@ -151,7 +167,12 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                       child: ChoiceChip(
                         label: Text(label),
                         selected: q.filter == f,
-                        labelStyle: TextStyle(fontWeight: FontWeight.w700, color: q.filter == f ? Colors.white : AppColors.inkSoft),
+                        labelStyle: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: q.filter == f
+                              ? Colors.white
+                              : AppColors.inkSoft,
+                        ),
                         onSelected: (_) {
                           HapticFeedback.selectionClick();
                           ref.read(leadQueryProvider.notifier).setFilter(f);
@@ -169,31 +190,48 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
   }
 
   Widget _body(PagedState<Lead> s, LeadQuery q, int newCount) {
-    if (s.loading && s.items.isEmpty) return const SkeletonList(padding: EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 20));
+    if (s.loading && s.items.isEmpty) {
+      return const SkeletonList(
+        padding: EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 20),
+      );
+    }
     if (s.error != null && s.items.isEmpty) {
-      return ErrorState(message: friendlyError(s.error!), onRetry: () => ref.read(leadsListProvider.notifier).refresh());
+      return ErrorState(
+        message: friendlyError(s.error!),
+        onRetry: () => ref.read(leadsListProvider.notifier).refresh(),
+      );
     }
     if (s.items.isEmpty) {
       if (q.search.isNotEmpty) {
-        return EmptyState(title: 'No matches', message: 'No leads match “${q.search}”.', mascot: MascotState.thinking);
+        return EmptyState(
+          title: 'No matches',
+          message: 'No leads match “${q.search}”.',
+          mascot: MascotState.thinking,
+        );
       }
       if (q.filter == LeadFilter.hot) {
         return const EmptyState(
           title: 'No hot leads yet',
-          message: 'Your AI employee will flag leads that are ready to buy or book.',
+          message:
+              'Your AI employee will flag leads that are ready to buy or book.',
           mascot: MascotState.thinking,
         );
       }
       return EmptyState(
         title: 'No leads here',
-        message: 'Your AI employee is ready. Add your first leads to start calling.',
+        message:
+            'Your AI employee is ready. Add your first leads to start calling.',
         actionLabel: 'Add leads',
         onAction: () => context.push('/leads/import'),
       );
     }
-    final showCta = newCount > 0 && (q.filter == LeadFilter.all || q.filter == LeadFilter.newLeads) && q.search.isEmpty;
+    final showCta =
+        newCount > 0 &&
+        (q.filter == LeadFilter.all || q.filter == LeadFilter.newLeads) &&
+        q.search.isEmpty;
     return RefreshIndicator(
-      onRefresh: () => ref.read(leadsListProvider.notifier).refresh(silent: true),
+      onRefresh: () =>
+          ref.read(leadsListProvider.notifier).refresh(silent: true),
       child: ListView.builder(
         controller: _scroll,
         padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 28),
@@ -210,7 +248,9 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
             return s.hasMore
                 ? const Padding(
                     padding: EdgeInsets.all(20),
-                    child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
+                    child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    ),
                   )
                 : const SizedBox(height: 12);
           }
@@ -237,7 +277,8 @@ class LeadCard extends ConsumerWidget {
       child: AppCard(
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
         onTap: () => context.push('/leads/${l.id}'),
-        semanticLabel: '${l.name}. ${l.score == null ? l.status.label : 'Score ${l.score!.value}, ${l.temperature.label}'}',
+        semanticLabel:
+            '${l.name}. ${l.score == null ? l.status.label : 'Score ${l.score!.value}, ${l.temperature.label}'}',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -250,11 +291,18 @@ class LeadCard extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(l.name, style: t.titleMedium, overflow: TextOverflow.ellipsis),
+                      Text(
+                        l.name,
+                        style: t.titleMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       const SizedBox(height: 2),
                       Text(
                         l.interestLine,
-                        style: t.bodySmall?.copyWith(color: AppColors.inkSoft, fontWeight: FontWeight.w600),
+                        style: t.bodySmall?.copyWith(
+                          color: AppColors.inkSoft,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -264,7 +312,11 @@ class LeadCard extends ConsumerWidget {
                   const Pill(
                     label: 'On call',
                     color: AppColors.success,
-                    icon: Icon(Icons.call_rounded, size: 13, color: AppColors.success),
+                    icon: Icon(
+                      Icons.call_rounded,
+                      size: 13,
+                      color: AppColors.success,
+                    ),
                   )
                 else if (l.status == LeadStatus.queued)
                   const Pill(label: 'Queued', color: AppColors.brand)
@@ -287,11 +339,17 @@ class LeadCard extends ConsumerWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Text('Next: ', style: t.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(
+                    'Next: ',
+                    style: t.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
                   Expanded(
                     child: Text(
                       l.nextAction.label,
-                      style: t.bodySmall?.copyWith(color: AppColors.brand, fontWeight: FontWeight.w800),
+                      style: t.bodySmall?.copyWith(
+                        color: AppColors.brand,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
@@ -311,10 +369,18 @@ class LeadCard extends ConsumerWidget {
                   ),
                 ),
                 Expanded(
-                  child: _LeadAction(icon: Icons.call_rounded, label: 'Call', onTap: () => _call(context)),
+                  child: _LeadAction(
+                    icon: Icons.call_rounded,
+                    label: 'Call',
+                    onTap: () => _call(context),
+                  ),
                 ),
                 Expanded(
-                  child: _LeadAction(icon: Icons.chevron_right_rounded, label: 'Details', onTap: () => context.push('/leads/${l.id}')),
+                  child: _LeadAction(
+                    icon: Icons.chevron_right_rounded,
+                    label: 'Details',
+                    onTap: () => context.push('/leads/${l.id}'),
+                  ),
                 ),
               ],
             ),
@@ -325,7 +391,9 @@ class LeadCard extends ConsumerWidget {
   }
 
   Future<void> _whatsapp(BuildContext context, WidgetRef ref) async {
-    final fu = (await ref.read(followUpRepoProvider).list()).where((f) => f.leadId == lead.id).firstOrNull;
+    final fu = (await ref.read(followUpRepoProvider).list())
+        .where((f) => f.leadId == lead.id)
+        .firstOrNull;
     if (!context.mounted) return;
     if (fu != null && fu.isPending) {
       context.push('/followups/${fu.id}');
@@ -346,25 +414,39 @@ class LeadCard extends ConsumerWidget {
     if (digits == null) return;
     final ok = await launchUrl(Uri.parse('tel:+$digits'));
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Call ${PhoneUtils.display(lead.phone)}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Call ${PhoneUtils.display(lead.phone)}')),
+      );
     }
   }
 }
 
 class _LeadAction extends StatelessWidget {
-  const _LeadAction({required this.icon, required this.label, required this.onTap, this.color = AppColors.ink});
+  const _LeadAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color = AppColors.ink,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final Color color;
   @override
   Widget build(BuildContext context) => TextButton.icon(
-    style: TextButton.styleFrom(foregroundColor: color, minimumSize: const Size(0, 44)),
+    style: TextButton.styleFrom(
+      foregroundColor: color,
+      minimumSize: const Size(0, 44),
+    ),
     onPressed: onTap,
     icon: Icon(icon, size: 19),
     label: FittedBox(
       fit: BoxFit.scaleDown,
-      child: Text(label, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+      child: Text(
+        label,
+        maxLines: 1,
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+      ),
     ),
   );
 }

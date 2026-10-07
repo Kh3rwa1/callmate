@@ -17,7 +17,8 @@ import '../../data/models/models.dart';
 class CampaignSetupScreen extends ConsumerStatefulWidget {
   const CampaignSetupScreen({super.key});
   @override
-  ConsumerState<CampaignSetupScreen> createState() => _CampaignSetupScreenState();
+  ConsumerState<CampaignSetupScreen> createState() =>
+      _CampaignSetupScreenState();
 }
 
 class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
@@ -35,13 +36,22 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
         final t = Theme.of(ctx).textTheme;
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 16),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.page,
+              0,
+              AppSpace.page,
+              16,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Mascot(state: MascotState.calling, size: 120),
                 const SizedBox(height: 12),
-                Text('Start calling ${leads.length} leads?', style: t.headlineSmall, textAlign: TextAlign.center),
+                Text(
+                  'Start calling ${leads.length} leads?',
+                  style: t.headlineSmall,
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   '${agent.name} will call between ${Fmt.hour(_hours!.start.round())} and ${Fmt.hour(_hours!.end.round())}, '
@@ -52,7 +62,10 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: Row(
                     children: [
                       Text('Estimated usage', style: t.bodyMedium),
@@ -62,9 +75,16 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                PrimaryButton(label: '🚀  Yes, start calling', color: AppColors.brand, onPressed: () => Navigator.pop(ctx, true)),
+                PrimaryButton(
+                  label: '🚀  Yes, start calling',
+                  color: AppColors.brand,
+                  onPressed: () => Navigator.pop(ctx, true),
+                ),
                 const SizedBox(height: 4),
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Not now')),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Not now'),
+                ),
               ],
             ),
           ),
@@ -84,15 +104,21 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
       final c = await repo.create(draft);
       final started = await repo.start(c.id);
       ref.read(activeCampaignProvider.notifier).set(started);
-      ref.read(analyticsProvider).track('campaign_started', {'leads': leads.length});
+      ref.read(analyticsProvider).track('campaign_started', {
+        'leads': leads.length,
+      });
       HapticFeedback.heavyImpact();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${agent.name} is on it 🚀')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${agent.name} is on it 🚀')));
       context.pushReplacement('/campaigns/${c.id}');
     } catch (e) {
       if (!mounted) return;
       setState(() => _starting = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyError(e))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
     }
   }
 
@@ -101,7 +127,10 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
     final t = Theme.of(context).textTheme;
     final leadsAsync = ref.watch(newLeadsProvider);
     final agent = ref.watch(agentProvider).value;
-    _hours ??= RangeValues((agent?.callingHoursStart ?? 10).toDouble(), (agent?.callingHoursEnd ?? 19).toDouble());
+    _hours ??= RangeValues(
+      (agent?.callingHoursStart ?? 10).toDouble(),
+      (agent?.callingHoursEnd ?? 19).toDouble(),
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Call New Leads')),
@@ -112,17 +141,25 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
           if (leads.isEmpty) {
             return EmptyState(
               title: 'No new leads to call',
-              message: 'Your AI employee is ready. Add your first leads to start calling.',
+              message:
+                  'Your AI employee is ready. Add your first leads to start calling.',
               actionLabel: 'Add leads',
               onAction: () => context.pushReplacement('/leads/import'),
             );
           }
-          final cost = ref.read(campaignRepoProvider).estimateCostInr(leads.length);
+          final cost = ref
+              .read(campaignRepoProvider)
+              .estimateCostInr(leads.length);
           return Column(
             children: [
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 24),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.page,
+                    4,
+                    AppSpace.page,
+                    24,
+                  ),
                   children: [
                     AppCard(
                       child: Row(
@@ -133,10 +170,18 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('${leads.length}', style: t.displaySmall?.copyWith(color: AppColors.brand)),
+                                Text(
+                                  '${leads.length}',
+                                  style: t.displaySmall?.copyWith(
+                                    color: AppColors.brand,
+                                  ),
+                                ),
                                 Text('leads ready', style: t.titleMedium),
                                 const SizedBox(height: 4),
-                                Text('${agent?.name ?? 'Your AI employee'} will call each one and report back.', style: t.bodySmall),
+                                Text(
+                                  '${agent?.name ?? 'Your AI employee'} will call each one and report back.',
+                                  style: t.bodySmall,
+                                ),
                               ],
                             ),
                           ),
@@ -145,28 +190,48 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                     ),
                     const SizedBox(height: 14),
                     AppCard(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 6,
+                      ),
                       child: Column(
                         children: [
                           _Row(
                             label: 'AI Employee',
-                            value: agent == null ? '—' : '${agent.name} · ${agent.role}',
+                            value: agent == null
+                                ? '—'
+                                : '${agent.name} · ${agent.role}',
                             leading: const MascotAvatar(size: 30),
                           ),
                           const Divider(),
-                          _Row(label: 'Purpose', value: ref.watch(businessTemplateProvider).agent.callPurpose),
+                          _Row(
+                            label: 'Purpose',
+                            value: ref
+                                .watch(businessTemplateProvider)
+                                .agent
+                                .callPurpose,
+                          ),
                           const Divider(),
                           const _Row(label: 'Languages', value: 'Auto detect'),
                           const Divider(),
-                          _Row(label: 'Calling hours', value: '${Fmt.hour(_hours!.start.round())} – ${Fmt.hour(_hours!.end.round())}'),
+                          _Row(
+                            label: 'Calling hours',
+                            value:
+                                '${Fmt.hour(_hours!.start.round())} – ${Fmt.hour(_hours!.end.round())}',
+                          ),
                           RangeSlider(
                             values: _hours!,
                             min: 8,
                             max: 21,
                             divisions: 13,
-                            labels: RangeLabels(Fmt.hour(_hours!.start.round()), Fmt.hour(_hours!.end.round())),
+                            labels: RangeLabels(
+                              Fmt.hour(_hours!.start.round()),
+                              Fmt.hour(_hours!.end.round()),
+                            ),
                             onChanged: (v) {
-                              if (v.end - v.start >= 2) setState(() => _hours = v);
+                              if (v.end - v.start >= 2) {
+                                setState(() => _hours = v);
+                              }
                             },
                           ),
                         ],
@@ -177,18 +242,35 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Column(
                         children: [
-                          _Check('Score lead', _opts.scoreLead, (v) => setState(() => _opts = _opts.copyWith(scoreLead: v))),
+                          _Check(
+                            'Score lead',
+                            _opts.scoreLead,
+                            (v) => setState(
+                              () => _opts = _opts.copyWith(scoreLead: v),
+                            ),
+                          ),
                           _Check(
                             'Generate WhatsApp follow-up',
                             _opts.generateWhatsapp,
-                            (v) => setState(() => _opts = _opts.copyWith(generateWhatsapp: v)),
+                            (v) => setState(
+                              () => _opts = _opts.copyWith(generateWhatsapp: v),
+                            ),
                           ),
                           _Check(
                             'Recommend callback',
                             _opts.recommendCallback,
-                            (v) => setState(() => _opts = _opts.copyWith(recommendCallback: v)),
+                            (v) => setState(
+                              () =>
+                                  _opts = _opts.copyWith(recommendCallback: v),
+                            ),
                           ),
-                          _Check('Notify me for hot leads', _opts.notifyHot, (v) => setState(() => _opts = _opts.copyWith(notifyHot: v))),
+                          _Check(
+                            'Notify me for hot leads',
+                            _opts.notifyHot,
+                            (v) => setState(
+                              () => _opts = _opts.copyWith(notifyHot: v),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -201,7 +283,9 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                         children: [
                           const Emoji('💳', size: 20),
                           const SizedBox(width: 10),
-                          Expanded(child: Text('Estimated usage', style: t.bodyMedium)),
+                          Expanded(
+                            child: Text('Estimated usage', style: t.bodyMedium),
+                          ),
                           Text('≈ ${Fmt.inr(cost)}', style: t.titleMedium),
                         ],
                       ),
@@ -209,7 +293,10 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                     const SizedBox(height: 6),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Text('Only connected minutes are counted. Deducted from your plan minutes first.', style: t.bodySmall),
+                      child: Text(
+                        'Only connected minutes are counted. Deducted from your plan minutes first.',
+                        style: t.bodySmall,
+                      ),
                     ),
                   ],
                 ),
@@ -217,12 +304,19 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
               SafeArea(
                 top: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpace.page, 8, AppSpace.page, 12),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.page,
+                    8,
+                    AppSpace.page,
+                    12,
+                  ),
                   child: PrimaryButton(
                     label: '🚀  Start Campaign',
                     loading: _starting,
                     color: AppColors.brand,
-                    onPressed: agent == null ? null : () => _start(leads, agent),
+                    onPressed: agent == null
+                        ? null
+                        : () => _start(leads, agent),
                   ),
                 ),
               ),
@@ -270,7 +364,12 @@ class _Check extends StatelessWidget {
       HapticFeedback.selectionClick();
       onChanged(v ?? false);
     },
-    title: Text(label, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+    title: Text(
+      label,
+      style: Theme.of(
+        context,
+      ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+    ),
     controlAffinity: ListTileControlAffinity.leading,
     contentPadding: const EdgeInsets.symmetric(horizontal: 12),
   );
@@ -293,9 +392,17 @@ class CampaignProgressScreen extends ConsumerWidget {
           future: ref.read(campaignRepoProvider).get(campaignId),
           builder: (context, snap) {
             if (snap.hasData) {
-              WidgetsBinding.instance.addPostFrameCallback((_) => ref.read(activeCampaignProvider.notifier).set(snap.data!));
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) =>
+                    ref.read(activeCampaignProvider.notifier).set(snap.data!),
+              );
             }
-            if (snap.hasError) return ErrorState(message: friendlyError(snap.error!), onRetry: () => context.pop());
+            if (snap.hasError) {
+              return ErrorState(
+                message: friendlyError(snap.error!),
+                onRetry: () => context.pop(),
+              );
+            }
             return const SkeletonList(count: 3);
           },
         ),
@@ -317,18 +424,28 @@ class CampaignProgressScreen extends ConsumerWidget {
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: const Text('Pause calling?'),
-                    content: Text('$agentName will stop after the current call. Remaining leads stay in your list.'),
+                    content: Text(
+                      '$agentName will stop after the current call. Remaining leads stay in your list.',
+                    ),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep going')),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Keep going'),
+                      ),
                       TextButton(
                         onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Stop', style: TextStyle(color: AppColors.hot)),
+                        child: const Text(
+                          'Stop',
+                          style: TextStyle(color: AppColors.hot),
+                        ),
                       ),
                     ],
                   ),
                 );
                 if (ok == true) {
-                  final stopped = await ref.read(campaignRepoProvider).stop(c.id);
+                  final stopped = await ref
+                      .read(campaignRepoProvider)
+                      .stop(c.id);
                   ref.read(activeCampaignProvider.notifier).set(stopped);
                 }
               },
@@ -342,16 +459,27 @@ class CampaignProgressScreen extends ConsumerWidget {
           AppCard(
             child: Column(
               children: [
-                Mascot(state: done ? MascotState.success : (running ? MascotState.calling : MascotState.welcome), size: 150),
+                Mascot(
+                  state: done
+                      ? MascotState.success
+                      : (running ? MascotState.calling : MascotState.welcome),
+                  size: 150,
+                ),
                 const SizedBox(height: 10),
                 Text(
-                  done ? '$agentName finished calling ✓' : (running ? '$agentName is doing the work for you' : 'Campaign stopped'),
+                  done
+                      ? '$agentName finished calling ✓'
+                      : (running
+                            ? '$agentName is doing the work for you'
+                            : 'Campaign stopped'),
                   style: t.titleLarge,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  running ? 'You\'ll get a notification for every hot lead.' : '${s.completed} of ${s.total} leads called',
+                  running
+                      ? 'You\'ll get a notification for every hot lead.'
+                      : '${s.completed} of ${s.total} leads called',
                   style: t.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
@@ -413,7 +541,10 @@ class CampaignProgressScreen extends ConsumerWidget {
               onPressed: () => context.go('/followups'),
             ),
             const SizedBox(height: 10),
-            SecondaryButton(label: 'View hot leads', onPressed: () => context.go('/leads?filter=hot')),
+            SecondaryButton(
+              label: 'View hot leads',
+              onPressed: () => context.go('/leads?filter=hot'),
+            ),
           ],
         ],
       ),
@@ -464,16 +595,30 @@ class _RecentCall extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final call = ref.watch(callProvider(callId)).value;
-    if (call == null) return const SizedBox(height: 70, child: Center(child: Skeleton(height: 50)));
+    if (call == null) {
+      return const SizedBox(
+        height: 70,
+        child: Center(child: Skeleton(height: 50)),
+      );
+    }
     final t = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppCard(
         padding: const EdgeInsets.all(14),
-        onTap: () => context.push(call.status.isConnected ? '/calls/${call.id}/result' : '/calls/${call.id}'),
+        onTap: () => context.push(
+          call.status.isConnected
+              ? '/calls/${call.id}/result'
+              : '/calls/${call.id}',
+        ),
         child: Row(
           children: [
-            LeadAvatar(name: call.leadName, temperature: call.leadScore?.temperature ?? LeadTemperature.unknown, size: 40),
+            LeadAvatar(
+              name: call.leadName,
+              temperature:
+                  call.leadScore?.temperature ?? LeadTemperature.unknown,
+              size: 40,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -481,14 +626,19 @@ class _RecentCall extends ConsumerWidget {
                 children: [
                   Text(call.leadName, style: t.titleSmall),
                   Text(
-                    call.status.isConnected ? call.outcome ?? 'Connected' : call.status.label,
+                    call.status.isConnected
+                        ? call.outcome ?? 'Connected'
+                        : call.status.label,
                     style: t.bodySmall,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            if (call.leadScore != null) ScoreBadge(score: call.leadScore) else const Pill(label: 'No answer'),
+            if (call.leadScore != null)
+              ScoreBadge(score: call.leadScore)
+            else
+              const Pill(label: 'No answer'),
           ],
         ),
       ),

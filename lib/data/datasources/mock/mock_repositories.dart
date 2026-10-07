@@ -15,7 +15,11 @@ Future<T> _lag<T>(T Function() f, [int ms = 280]) async {
 Page<T> _page<T>(List<T> all, String? cursor, int limit) {
   final start = int.tryParse(cursor ?? '0') ?? 0;
   final end = (start + limit).clamp(0, all.length);
-  return Page(items: all.sublist(start.clamp(0, all.length), end), hasMore: end < all.length, nextCursor: '$end');
+  return Page(
+    items: all.sublist(start.clamp(0, all.length), end),
+    hasMore: end < all.length,
+    nextCursor: '$end',
+  );
 }
 
 class MockAuthRepository implements AuthRepository {
@@ -25,9 +29,14 @@ class MockAuthRepository implements AuthRepository {
   @override
   Future<void> requestOtp({required String phone}) => _lag(() {});
   @override
-  Future<void> login({required String phone, required String otp}) => _lag(() => _session = true);
+  Future<void> login({required String phone, required String otp}) =>
+      _lag(() => _session = true);
   @override
-  Future<void> register({required String phone, required String businessName, required String otp}) => _lag(() => _session = true);
+  Future<void> register({
+    required String phone,
+    required String businessName,
+    required String otp,
+  }) => _lag(() => _session = true);
   @override
   Future<void> logout() async => _session = false;
   @override
@@ -67,7 +76,8 @@ class MockKnowledgeRepository implements KnowledgeRepository {
     final detail = switch (input.type) {
       KnowledgeType.pdf => input.fileName ?? 'document.pdf',
       KnowledgeType.website => input.url,
-      KnowledgeType.faq => '${(input.content ?? '').split('\n').where((l) => l.trim().endsWith('?')).length.clamp(1, 99)} questions',
+      KnowledgeType.faq =>
+        '${(input.content ?? '').split('\n').where((l) => l.trim().endsWith('?')).length.clamp(1, 99)} questions',
       _ => '${(input.content ?? '').split(RegExp(r'\s+')).length} words',
     };
     var src = KnowledgeSource(
@@ -75,7 +85,9 @@ class MockKnowledgeRepository implements KnowledgeRepository {
       type: input.type,
       title: input.title,
       detail: detail,
-      status: input.type == KnowledgeType.pdf ? KnowledgeStatus.uploading : KnowledgeStatus.processing,
+      status: input.type == KnowledgeType.pdf
+          ? KnowledgeStatus.uploading
+          : KnowledgeStatus.processing,
       progress: 0,
       updatedAt: DateTime.now(),
     );
@@ -86,7 +98,8 @@ class MockKnowledgeRepository implements KnowledgeRepository {
         yield src = src.copyWith(progress: p);
       }
     }
-    if (input.type == KnowledgeType.website && !(input.url ?? '').contains('.')) {
+    if (input.type == KnowledgeType.website &&
+        !(input.url ?? '').contains('.')) {
       await Future<void>.delayed(const Duration(milliseconds: 600));
       yield src.copyWith(status: KnowledgeStatus.failed);
       return;
@@ -109,7 +122,8 @@ class MockKnowledgeRepository implements KnowledgeRepository {
 int _rank(Lead l) => switch (l.temperature) {
   LeadTemperature.hot => 0,
   LeadTemperature.warm => 1,
-  LeadTemperature.unknown => l.status == LeadStatus.calling || l.status == LeadStatus.queued ? 2 : 3,
+  LeadTemperature.unknown =>
+    l.status == LeadStatus.calling || l.status == LeadStatus.queued ? 2 : 3,
   LeadTemperature.cold => 4,
 };
 
@@ -123,11 +137,15 @@ int leadPriority(Lead a, Lead b) {
 
 bool matchesLeadFilter(Lead l, LeadFilter f) => switch (f) {
   LeadFilter.all => true,
-  LeadFilter.newLeads => l.status == LeadStatus.newLead || l.status == LeadStatus.queued || l.status == LeadStatus.calling,
+  LeadFilter.newLeads =>
+    l.status == LeadStatus.newLead ||
+        l.status == LeadStatus.queued ||
+        l.status == LeadStatus.calling,
   LeadFilter.called => l.hasBeenCalled,
   LeadFilter.hot => l.isHot,
   LeadFilter.warm => l.isWarm,
-  LeadFilter.callback => l.status == LeadStatus.callback || l.callbackAt != null,
+  LeadFilter.callback =>
+    l.status == LeadStatus.callback || l.callbackAt != null,
 };
 
 class MockLeadRepository implements LeadRepository {
@@ -135,7 +153,12 @@ class MockLeadRepository implements LeadRepository {
   final MockBackend b;
 
   @override
-  Future<Page<Lead>> list({String? query, LeadFilter filter = LeadFilter.all, String? cursor, int limit = 20}) => _lag(() {
+  Future<Page<Lead>> list({
+    String? query,
+    LeadFilter filter = LeadFilter.all,
+    String? cursor,
+    int limit = 20,
+  }) => _lag(() {
     final q = query?.trim().toLowerCase() ?? '';
     final all =
         b.leads.values
@@ -144,7 +167,11 @@ class MockLeadRepository implements LeadRepository {
               (l) =>
                   q.isEmpty ||
                   l.name.toLowerCase().contains(q) ||
-                  l.phone.contains(q.replaceAll(RegExp(r'\D'), '').isEmpty ? '\u0000' : q.replaceAll(RegExp(r'\D'), '')) ||
+                  l.phone.contains(
+                    q.replaceAll(RegExp(r'\D'), '').isEmpty
+                        ? '\u0000'
+                        : q.replaceAll(RegExp(r'\D'), ''),
+                  ) ||
                   (l.interest ?? '').toLowerCase().contains(q),
             )
             .toList()
@@ -219,7 +246,10 @@ class MockLeadRepository implements LeadRepository {
   }, 150);
 
   @override
-  Future<List<Lead>> newLeads() => _lag(() => b.leads.values.where((l) => l.status == LeadStatus.newLead).toList(), 150);
+  Future<List<Lead>> newLeads() => _lag(
+    () => b.leads.values.where((l) => l.status == LeadStatus.newLead).toList(),
+    150,
+  );
 }
 
 class MockCallRepository implements CallRepository {
@@ -227,14 +257,20 @@ class MockCallRepository implements CallRepository {
   final MockBackend b;
 
   @override
-  Future<Page<Call>> list({CallFilter filter = CallFilter.all, String? cursor, int limit = 20}) => _lag(() {
+  Future<Page<Call>> list({
+    CallFilter filter = CallFilter.all,
+    String? cursor,
+    int limit = 20,
+  }) => _lag(() {
     final all =
         b.calls
             .where(
               (c) => switch (filter) {
                 CallFilter.all => true,
                 CallFilter.connected => c.status.isConnected,
-                CallFilter.noAnswer => c.status == CallStatus.noAnswer || c.status == CallStatus.busy,
+                CallFilter.noAnswer =>
+                  c.status == CallStatus.noAnswer ||
+                      c.status == CallStatus.busy,
                 CallFilter.hot => c.isHot,
               },
             )
@@ -244,11 +280,21 @@ class MockCallRepository implements CallRepository {
   });
 
   @override
-  Future<Call> get(String id) => _lag(() => b.calls.firstWhere((c) => c.id == id, orElse: () => throw StateError('Call not found')), 180);
+  Future<Call> get(String id) => _lag(
+    () => b.calls.firstWhere(
+      (c) => c.id == id,
+      orElse: () => throw StateError('Call not found'),
+    ),
+    180,
+  );
 
   @override
-  Future<List<Call>> forLead(String leadId) =>
-      _lag(() => b.calls.where((c) => c.leadId == leadId).toList()..sort((a, b) => b.startedAt.compareTo(a.startedAt)), 150);
+  Future<List<Call>> forLead(String leadId) => _lag(
+    () =>
+        b.calls.where((c) => c.leadId == leadId).toList()
+          ..sort((a, b) => b.startedAt.compareTo(a.startedAt)),
+    150,
+  );
 
   @override
   Future<Call> triggerCall(String leadId) => _lag(() {
@@ -261,15 +307,20 @@ class MockCampaignRepository implements CampaignRepository {
   final MockBackend b;
 
   @override
-  Future<Campaign> create(CampaignDraft draft) => _lag(() => b.createCampaign(draft));
+  Future<Campaign> create(CampaignDraft draft) =>
+      _lag(() => b.createCampaign(draft));
   @override
-  Future<Campaign> get(String id) => _lag(() => b.campaigns[id] ?? (throw StateError('Campaign not found')), 120);
+  Future<Campaign> get(String id) => _lag(
+    () => b.campaigns[id] ?? (throw StateError('Campaign not found')),
+    120,
+  );
   @override
   Future<Campaign> start(String id) => _lag(() => b.startCampaign(id), 500);
   @override
   Future<Campaign> stop(String id) => _lag(() => b.stopCampaign(id));
   @override
-  Future<Campaign?> active() => _lag(() => b.campaigns.values.where((c) => c.isActive).firstOrNull, 100);
+  Future<Campaign?> active() =>
+      _lag(() => b.campaigns.values.where((c) => c.isActive).firstOrNull, 100);
   @override
   int estimateCostInr(int leadCount) => b.estimateCost(leadCount);
 }
@@ -280,17 +331,21 @@ class MockFollowUpRepository implements FollowUpRepository {
 
   @override
   Future<List<FollowUp>> list({bool pendingOnly = false}) => _lag(() {
-    final l = b.followUps.values.where((f) => !pendingOnly || f.isPending).toList()
-      ..sort((a, b) {
-        if (a.isPending != b.isPending) return a.isPending ? -1 : 1;
-        final s = (b.scoreValue ?? 0).compareTo(a.scoreValue ?? 0);
-        return s != 0 ? s : b.createdAt.compareTo(a.createdAt);
-      });
+    final l =
+        b.followUps.values.where((f) => !pendingOnly || f.isPending).toList()
+          ..sort((a, b) {
+            if (a.isPending != b.isPending) return a.isPending ? -1 : 1;
+            final s = (b.scoreValue ?? 0).compareTo(a.scoreValue ?? 0);
+            return s != 0 ? s : b.createdAt.compareTo(a.createdAt);
+          });
     return l;
   });
 
   @override
-  Future<FollowUp> get(String id) => _lag(() => b.followUps[id] ?? (throw StateError('Follow-up not found')), 150);
+  Future<FollowUp> get(String id) => _lag(
+    () => b.followUps[id] ?? (throw StateError('Follow-up not found')),
+    150,
+  );
 
   @override
   Future<FollowUp> update(FollowUp f) => _lag(() {
@@ -300,7 +355,10 @@ class MockFollowUpRepository implements FollowUpRepository {
   }, 120);
 
   @override
-  Future<FollowUp?> forCall(String callId) => _lag(() => b.followUps.values.where((f) => f.callId == callId).firstOrNull, 100);
+  Future<FollowUp?> forCall(String callId) => _lag(
+    () => b.followUps.values.where((f) => f.callId == callId).firstOrNull,
+    100,
+  );
 }
 
 class MockCallbackRepository implements CallbackRepository {
@@ -308,22 +366,37 @@ class MockCallbackRepository implements CallbackRepository {
   final MockBackend b;
 
   @override
-  Future<List<Callback>> list() => _lag(() => b.callbacks.values.toList()..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt)));
+  Future<List<Callback>> list() => _lag(
+    () =>
+        b.callbacks.values.toList()
+          ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt)),
+  );
 
   @override
-  Future<Callback> schedule({required String leadId, required DateTime at, String? note}) => _lag(() {
+  Future<Callback> schedule({
+    required String leadId,
+    required DateTime at,
+    String? note,
+  }) => _lag(() {
     final lead = b.leads[leadId];
     if (lead == null) throw StateError('Lead not found');
-    b.callbacks.removeWhere((_, c) => c.leadId == leadId && c.status == CallbackStatus.scheduled);
+    b.callbacks.removeWhere(
+      (_, c) => c.leadId == leadId && c.status == CallbackStatus.scheduled,
+    );
     final cb = Callback(
       id: 'cb_${DateTime.now().microsecondsSinceEpoch}',
       leadId: leadId,
       leadName: lead.name,
       scheduledAt: at,
-      note: note ?? '${templateFor(b.business.category).workflow.humanLabel} follow-up',
+      note:
+          note ??
+          '${templateFor(b.business.category).workflow.humanLabel} follow-up',
     );
     b.callbacks[cb.id] = cb;
-    b.leads[leadId] = lead.copyWith(callbackAt: at, status: LeadStatus.callback);
+    b.leads[leadId] = lead.copyWith(
+      callbackAt: at,
+      status: LeadStatus.callback,
+    );
     b.emitChanged('callbacks');
     return cb;
   });
@@ -333,7 +406,12 @@ class MockCallbackRepository implements CallbackRepository {
     final cb = b.callbacks[id]!.copyWith(status: CallbackStatus.done);
     b.callbacks[id] = cb;
     final lead = b.leads[cb.leadId];
-    if (lead != null) b.leads[cb.leadId] = lead.copyWith(clearCallback: true, status: LeadStatus.called);
+    if (lead != null) {
+      b.leads[cb.leadId] = lead.copyWith(
+        clearCallback: true,
+        status: LeadStatus.called,
+      );
+    }
     b.emitChanged('callbacks');
     return cb;
   });
@@ -350,7 +428,8 @@ class MockNotificationRepository implements NotificationRepository {
   MockNotificationRepository(this.b);
   final MockBackend b;
   @override
-  Future<List<AppNotification>> list() => _lag(() => List.of(b.notifications), 150);
+  Future<List<AppNotification>> list() =>
+      _lag(() => List.of(b.notifications), 150);
   @override
   Future<void> markRead(String id) async {
     final i = b.notifications.indexWhere((n) => n.id == id);
@@ -365,12 +444,24 @@ class MockDashboardRepository implements DashboardRepository {
   @override
   Future<DailySummary> today() => _lag(() {
     final now = DateTime.now();
-    final todayCalls = b.calls.where((c) => c.startedAt.year == now.year && c.startedAt.day == now.day && c.startedAt.month == now.month);
+    final todayCalls = b.calls.where(
+      (c) =>
+          c.startedAt.year == now.year &&
+          c.startedAt.day == now.day &&
+          c.startedAt.month == now.month,
+    );
     final calledLeadIds = todayCalls.map((c) => c.leadId).toSet();
-    final connected = todayCalls.where((c) => c.status.isConnected).map((c) => c.leadId).toSet();
-    final interested = b.leads.values.where((l) => connected.contains(l.id) && (l.isHot || l.isWarm)).length;
+    final connected = todayCalls
+        .where((c) => c.status.isConnected)
+        .map((c) => c.leadId)
+        .toSet();
+    final interested = b.leads.values
+        .where((l) => connected.contains(l.id) && (l.isHot || l.isWarm))
+        .length;
     final hot = b.leads.values.where((l) => l.isHot).length;
-    final cbToday = b.callbacks.values.where((c) => c.status == CallbackStatus.scheduled).length;
+    final cbToday = b.callbacks.values
+        .where((c) => c.status == CallbackStatus.scheduled)
+        .length;
     return DailySummary(
       leads: b.leads.length,
       connected: connected.length,
@@ -379,7 +470,9 @@ class MockDashboardRepository implements DashboardRepository {
       callsToday: calledLeadIds.isEmpty ? 0 : todayCalls.length,
       followUpsReady: b.followUps.values.where((f) => f.isPending).length,
       callbacksToday: cbToday,
-      newLeadsReady: b.leads.values.where((l) => l.status == LeadStatus.newLead).length,
+      newLeadsReady: b.leads.values
+          .where((l) => l.status == LeadStatus.newLead)
+          .length,
       activity: List.of(b.activity.take(5)),
     );
   });
@@ -387,15 +480,31 @@ class MockDashboardRepository implements DashboardRepository {
 
 class MockVoiceSessionRepository implements VoiceSessionRepository {
   @override
-  Future<VoiceTestSession> createTestSession() =>
-      _lag(() => const VoiceTestSession(sessionToken: 'demo', orgId: 'demo', workspaceId: 'demo', appId: 'demo', proxyBaseUrl: ''), 400);
+  Future<VoiceTestSession> createTestSession() => _lag(
+    () => const VoiceTestSession(
+      sessionToken: 'demo',
+      orgId: 'demo',
+      workspaceId: 'demo',
+      appId: 'demo',
+      proxyBaseUrl: '',
+    ),
+    400,
+  );
 
   @override
-  Future<VoiceChatReply> sendChatMessage(String message) =>
-      _lag(() => const VoiceChatReply(reply: 'I am here to help you answer questions and schedule follow-ups for your business.'), 400);
+  Future<VoiceChatReply> sendChatMessage(String message) => _lag(
+    () => const VoiceChatReply(
+      reply:
+          'I am here to help you answer questions and schedule follow-ups for your business.',
+    ),
+    400,
+  );
 }
 
 class MockDeviceRepository implements DeviceRepository {
   @override
-  Future<void> registerDevice({required String token, String? platform}) async {}
+  Future<void> registerDevice({
+    required String token,
+    String? platform,
+  }) async {}
 }

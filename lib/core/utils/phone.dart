@@ -9,7 +9,10 @@ class PhoneUtils {
   static const defaultCountryCode = '91';
 
   /// Returns digits-only international number, or null if invalid.
-  static String? normalize(String? input, {String countryCode = defaultCountryCode}) {
+  static String? normalize(
+    String? input, {
+    String countryCode = defaultCountryCode,
+  }) {
     if (input == null) return null;
     var raw = input.trim();
     if (raw.isEmpty) return null;
@@ -22,7 +25,9 @@ class PhoneUtils {
       digits = digits.substring(2);
     } else if (!hasPlus) {
       // Domestic trunk prefix "0" (e.g. 09876543210)
-      if (digits.length == 11 && digits.startsWith('0')) digits = digits.substring(1);
+      if (digits.length == 11 && digits.startsWith('0')) {
+        digits = digits.substring(1);
+      }
       if (digits.length == 10) digits = '$countryCode$digits';
     }
 

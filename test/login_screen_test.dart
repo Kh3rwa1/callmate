@@ -32,7 +32,11 @@ class TestAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> register({required String phone, required String businessName, required String otp}) async {
+  Future<void> register({
+    required String phone,
+    required String businessName,
+    required String otp,
+  }) async {
     registerPhone = phone;
     registerBiz = businessName;
     registerOtp = otp;
@@ -62,9 +66,7 @@ void main() {
           authRepoProvider.overrideWithValue(testRepo),
           localPrefsProvider.overrideWithValue(localPrefs),
         ],
-        child: const MaterialApp(
-          home: LoginScreen(),
-        ),
+        child: const MaterialApp(home: LoginScreen()),
       ),
     );
 

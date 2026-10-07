@@ -26,18 +26,29 @@ class NotificationsScreen extends ConsumerWidget {
         data: (items) => items.isEmpty
             ? const EmptyState(
                 title: 'All caught up 🎉',
-                message: 'We only notify you when something needs your attention.',
+                message:
+                    'We only notify you when something needs your attention.',
                 mascot: MascotState.success,
               )
             : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 32),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.page,
+                  4,
+                  AppSpace.page,
+                  32,
+                ),
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 10),
                 itemBuilder: (_, i) {
                   final x = items[i];
                   return AppCard(
                     padding: const EdgeInsets.all(16),
-                    border: x.read ? null : Border.all(color: AppColors.brand.withValues(alpha: 0.35), width: 1.5),
+                    border: x.read
+                        ? null
+                        : Border.all(
+                            color: AppColors.brand.withValues(alpha: 0.35),
+                            width: 1.5,
+                          ),
                     onTap: () async {
                       await ref.read(notificationRepoProvider).markRead(x.id);
                       ref.invalidate(notificationsProvider);
@@ -49,7 +60,8 @@ class NotificationsScreen extends ConsumerWidget {
                         IconBubble(
                           color: switch (x.type) {
                             NotificationType.hotLead => AppColors.hotSoft,
-                            NotificationType.followUpReady => AppColors.whatsappSoft,
+                            NotificationType.followUpReady =>
+                              AppColors.whatsappSoft,
                             NotificationType.callback => AppColors.infoSoft,
                             NotificationType.campaign => AppColors.successSoft,
                           },
@@ -63,14 +75,28 @@ class NotificationsScreen extends ConsumerWidget {
                             children: [
                               Row(
                                 children: [
-                                  Expanded(child: Text(x.title.characters.skip(2).toString(), style: t.titleSmall)),
-                                  Text(Fmt.relative(x.createdAt), style: t.bodySmall),
+                                  Expanded(
+                                    child: Text(
+                                      x.title.characters.skip(2).toString(),
+                                      style: t.titleSmall,
+                                    ),
+                                  ),
+                                  Text(
+                                    Fmt.relative(x.createdAt),
+                                    style: t.bodySmall,
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 3),
                               Text(x.body, style: t.bodyMedium),
                               const SizedBox(height: 8),
-                              Text('${x.actionLabel} →', style: t.labelMedium?.copyWith(color: AppColors.brand, fontSize: 14)),
+                              Text(
+                                '${x.actionLabel} →',
+                                style: t.labelMedium?.copyWith(
+                                  color: AppColors.brand,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -86,7 +112,12 @@ class NotificationsScreen extends ConsumerWidget {
 
 /// Foreground in-app banner shown when a notification arrives.
 class InAppNotificationBanner extends StatelessWidget {
-  const InAppNotificationBanner({super.key, required this.n, required this.onOpen, required this.onClose});
+  const InAppNotificationBanner({
+    super.key,
+    required this.n,
+    required this.onOpen,
+    required this.onClose,
+  });
   final AppNotification n;
   final VoidCallback onOpen;
   final VoidCallback onClose;
@@ -106,7 +137,13 @@ class InAppNotificationBanner extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.ink,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 24, offset: Offset(0, 10))],
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 24,
+                offset: Offset(0, 10),
+              ),
+            ],
           ),
           child: Row(
             children: [
@@ -117,11 +154,17 @@ class InAppNotificationBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(n.title, style: t.titleSmall?.copyWith(color: Colors.white)),
+                    Text(
+                      n.title,
+                      style: t.titleSmall?.copyWith(color: Colors.white),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       n.body,
-                      style: t.bodySmall?.copyWith(color: Colors.white70, fontWeight: FontWeight.w600),
+                      style: t.bodySmall?.copyWith(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -135,7 +178,10 @@ class InAppNotificationBanner extends StatelessWidget {
                   foregroundColor: AppColors.ink,
                   minimumSize: const Size(0, 40),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
                 ),
                 onPressed: onOpen,
                 child: Text(n.actionLabel),

@@ -47,7 +47,9 @@ class AiCallOutput {
     return AiCallOutput(
       leadScore: score,
       intent: LeadIntent.parse(jStrN(j, 'intent')),
-      temperature: j['temperature'] == null ? LeadTemperature.fromScore(score) : LeadTemperature.parse(jStrN(j, 'temperature')),
+      temperature: j['temperature'] == null
+          ? LeadTemperature.fromScore(score)
+          : LeadTemperature.parse(jStrN(j, 'temperature')),
       interest: jStrN(j, 'interest') ?? jStrN(j, 'course_interest'),
       attributes: {
         for (final e in (jObj(j, 'attributes') ?? const {}).entries)

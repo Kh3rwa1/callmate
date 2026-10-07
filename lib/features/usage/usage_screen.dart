@@ -23,14 +23,22 @@ class UsageScreen extends ConsumerWidget {
         value: u,
         onRetry: () => ref.invalidate(usageProvider),
         data: (u) => ListView(
-          padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 32),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.page,
+            0,
+            AppSpace.page,
+            32,
+          ),
           children: [
             AppCard(
               color: AppColors.ink,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(u.subscription.planName.toUpperCase(), style: t.labelSmall?.copyWith(color: Colors.white70)),
+                  Text(
+                    u.subscription.planName.toUpperCase(),
+                    style: t.labelSmall?.copyWith(color: Colors.white70),
+                  ),
                   const SizedBox(height: 10),
                   Text(
                     '${Fmt.number(u.subscription.includedMinutes)} calling minutes',
@@ -53,7 +61,12 @@ class UsageScreen extends ConsumerWidget {
                   Row(
                     children: [
                       Expanded(child: _Big(Fmt.number(u.minutesUsed), 'used')),
-                      Expanded(child: _Big(Fmt.number(u.minutesRemaining), 'remaining')),
+                      Expanded(
+                        child: _Big(
+                          Fmt.number(u.minutesRemaining),
+                          'remaining',
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -67,8 +80,15 @@ class UsageScreen extends ConsumerWidget {
                   _Kv('Calls made', Fmt.number(u.callsMade)),
                   _Kv('Minutes used', '${Fmt.number(u.minutesUsed)} min'),
                   _Kv('Remaining', '${Fmt.number(u.minutesRemaining)} min'),
-                  _Kv('Renews on', DateFormat('d MMM yyyy').format(u.subscription.renewsAt)),
-                  _Kv('Extra minutes', '${Fmt.inr(u.ratePerMinuteInr)} / min', last: true),
+                  _Kv(
+                    'Renews on',
+                    DateFormat('d MMM yyyy').format(u.subscription.renewsAt),
+                  ),
+                  _Kv(
+                    'Extra minutes',
+                    '${Fmt.inr(u.ratePerMinuteInr)} / min',
+                    last: true,
+                  ),
                 ],
               ),
             ),
@@ -77,12 +97,20 @@ class UsageScreen extends ConsumerWidget {
               label: 'Upgrade',
               icon: Icons.workspace_premium_rounded,
               color: AppColors.brand,
-              onPressed: () => ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('Our team will reach out on WhatsApp to upgrade your plan.'))),
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Our team will reach out on WhatsApp to upgrade your plan.',
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 10),
-            Text('Only connected call minutes are counted.', style: t.bodySmall, textAlign: TextAlign.center),
+            Text(
+              'Only connected call minutes are counted.',
+              style: t.bodySmall,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -118,7 +146,9 @@ class _Kv extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 15),
       decoration: BoxDecoration(
-        border: last ? null : const Border(bottom: BorderSide(color: AppColors.border)),
+        border: last
+            ? null
+            : const Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
         children: [

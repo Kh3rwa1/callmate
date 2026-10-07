@@ -25,8 +25,12 @@ class CallbacksScreen extends ConsumerWidget {
         value: cbs,
         onRetry: () => ref.invalidate(callbacksProvider),
         data: (list) {
-          final upcoming = list.where((c) => c.status == CallbackStatus.scheduled).toList();
-          final done = list.where((c) => c.status != CallbackStatus.scheduled).toList();
+          final upcoming = list
+              .where((c) => c.status == CallbackStatus.scheduled)
+              .toList();
+          final done = list
+              .where((c) => c.status != CallbackStatus.scheduled)
+              .toList();
           if (upcoming.isEmpty && done.isEmpty) {
             return const EmptyState(
               title: 'No callbacks yet',
@@ -35,11 +39,20 @@ class CallbacksScreen extends ConsumerWidget {
             );
           }
           return ListView(
-            padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 32),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.page,
+              0,
+              AppSpace.page,
+              32,
+            ),
             children: [
-              Text('Customers who asked to speak with your team.', style: t.bodyMedium),
+              Text(
+                'Customers who asked to speak with your team.',
+                style: t.bodyMedium,
+              ),
               const SectionLabel('Upcoming'),
-              if (upcoming.isEmpty) AppCard(child: Text('All caught up 🎉', style: t.titleSmall)),
+              if (upcoming.isEmpty)
+                AppCard(child: Text('All caught up 🎉', style: t.titleSmall)),
               for (final c in upcoming)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -49,16 +62,23 @@ class CallbacksScreen extends ConsumerWidget {
                     confirmDismiss: (_) async {
                       await ref.read(callbackRepoProvider).markDone(c.id);
                       if (context.mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text('Marked ${c.leadName.split(' ').first}\'s callback as done ✓')));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Marked ${c.leadName.split(' ').first}\'s callback as done ✓',
+                            ),
+                          ),
+                        );
                       }
                       return true;
                     },
                     background: Container(
                       alignment: Alignment.centerRight,
                       padding: const EdgeInsets.only(right: 24),
-                      decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(AppRadius.card)),
+                      decoration: BoxDecoration(
+                        color: AppColors.success,
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                      ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -66,7 +86,10 @@ class CallbacksScreen extends ConsumerWidget {
                           SizedBox(width: 6),
                           Text(
                             'Done',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ],
                       ),
@@ -76,7 +99,10 @@ class CallbacksScreen extends ConsumerWidget {
                       padding: const EdgeInsets.all(16),
                       child: Row(
                         children: [
-                          LeadAvatar(name: c.leadName, temperature: LeadTemperature.hot),
+                          LeadAvatar(
+                            name: c.leadName,
+                            temperature: LeadTemperature.hot,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -90,8 +116,17 @@ class CallbacksScreen extends ConsumerWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              const Icon(Icons.event_rounded, size: 18, color: AppColors.info),
-                              Text(Fmt.friendlyFuture(c.scheduledAt), style: t.labelMedium?.copyWith(color: AppColors.info)),
+                              const Icon(
+                                Icons.event_rounded,
+                                size: 18,
+                                color: AppColors.info,
+                              ),
+                              Text(
+                                Fmt.friendlyFuture(c.scheduledAt),
+                                style: t.labelMedium?.copyWith(
+                                  color: AppColors.info,
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -108,9 +143,15 @@ class CallbacksScreen extends ConsumerWidget {
                 const SectionLabel('Done'),
                 for (final c in done.take(10))
                   ListTile(
-                    leading: const Icon(Icons.check_circle_rounded, color: AppColors.success),
+                    leading: const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.success,
+                    ),
                     title: Text(c.leadName, style: t.titleSmall),
-                    subtitle: Text(Fmt.friendlyFuture(c.scheduledAt), style: t.bodySmall),
+                    subtitle: Text(
+                      Fmt.friendlyFuture(c.scheduledAt),
+                      style: t.bodySmall,
+                    ),
                   ),
               ],
             ],

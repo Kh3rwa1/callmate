@@ -5,7 +5,10 @@ import '../../core/widgets/app_card.dart';
 import '../../data/models/models.dart';
 
 /// Bottom sheet that collects website / FAQ / pasted text.
-Future<KnowledgeInput?> showKnowledgeInputSheet(BuildContext context, KnowledgeType type) {
+Future<KnowledgeInput?> showKnowledgeInputSheet(
+  BuildContext context,
+  KnowledgeType type,
+) {
   return showModalBottomSheet<KnowledgeInput>(
     context: context,
     isScrollControlled: true,
@@ -41,9 +44,15 @@ class _KnowledgeSheetState extends State<_KnowledgeSheet> {
     KnowledgeInput input;
     if (_isWeb) {
       final url = v.startsWith('http') ? v : 'https://$v';
-      input = KnowledgeInput(type: KnowledgeType.website, title: 'Website', url: url);
+      input = KnowledgeInput(
+        type: KnowledgeType.website,
+        title: 'Website',
+        url: url,
+      );
     } else {
-      final title = _title.text.trim().isNotEmpty ? _title.text.trim() : (widget.type == KnowledgeType.faq ? 'FAQ' : 'Notes');
+      final title = _title.text.trim().isNotEmpty
+          ? _title.text.trim()
+          : (widget.type == KnowledgeType.faq ? 'FAQ' : 'Notes');
       input = KnowledgeInput(type: widget.type, title: title, content: v);
     }
     Navigator.pop(context, input);
@@ -58,8 +67,14 @@ class _KnowledgeSheetState extends State<_KnowledgeSheet> {
         'Add FAQ',
         'Q: Do you offer a free consultation?\nA: Yes, every Saturday at 11 AM.\n\nQ: Do you accept UPI?\nA: …',
       ),
-      KnowledgeType.businessInfo => ('Add business information', 'Opening hours, location, parking, payment options, cancellation policy…'),
-      _ => ('Paste information', 'Anything your AI employee should know – services, pricing, offers, policies…'),
+      KnowledgeType.businessInfo => (
+        'Add business information',
+        'Opening hours, location, parking, payment options, cancellation policy…',
+      ),
+      _ => (
+        'Paste information',
+        'Anything your AI employee should know – services, pricing, offers, policies…',
+      ),
     };
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -75,27 +90,46 @@ class _KnowledgeSheetState extends State<_KnowledgeSheet> {
               if (!_isWeb) ...[
                 TextFormField(
                   controller: _title,
-                  decoration: const InputDecoration(hintText: 'Title (optional)'),
+                  decoration: const InputDecoration(
+                    hintText: 'Title (optional)',
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
               TextFormField(
                 controller: _c,
                 autofocus: true,
-                keyboardType: _isWeb ? TextInputType.url : TextInputType.multiline,
+                keyboardType: _isWeb
+                    ? TextInputType.url
+                    : TextInputType.multiline,
                 maxLines: _isWeb ? 1 : 8,
                 minLines: _isWeb ? 1 : 5,
-                decoration: InputDecoration(hintText: hint, prefixIcon: _isWeb ? const Icon(Icons.language_rounded) : null),
+                decoration: InputDecoration(
+                  hintText: hint,
+                  prefixIcon: _isWeb
+                      ? const Icon(Icons.language_rounded)
+                      : null,
+                ),
                 validator: (v) {
                   final s = (v ?? '').trim();
                   if (s.isEmpty) return 'Please add something';
-                  if (_isWeb && !RegExp(r'^(https?://)?[\w-]+(\.[\w-]+)+(/\S*)?$').hasMatch(s)) return 'Enter a valid website';
-                  if (!_isWeb && s.length < 10) return 'Add a little more detail';
+                  if (_isWeb &&
+                      !RegExp(
+                        r'^(https?://)?[\w-]+(\.[\w-]+)+(/\S*)?$',
+                      ).hasMatch(s)) {
+                    return 'Enter a valid website';
+                  }
+                  if (!_isWeb && s.length < 10) {
+                    return 'Add a little more detail';
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 20),
-              PrimaryButton(label: 'Add to your AI\'s knowledge', onPressed: _save),
+              PrimaryButton(
+                label: 'Add to your AI\'s knowledge',
+                onPressed: _save,
+              ),
             ],
           ),
         ),

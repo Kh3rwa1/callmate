@@ -5,7 +5,6 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "production"
-JWT_SIGNING_KEY = "callpilot-super-secret-jwt-key-change-in-production"
 SARVAM_PROXY_BASE = "https://apps.sarvam.ai/api/app-runtime"
 
 [[d1_databases]]
@@ -27,4 +26,30 @@ max_batch_size = 10
 max_batch_timeout = 1
 max_retries = 3
 dead_letter_queue = "callpilot-campaign-dlq"
+
+[env.staging]
+name = "callpilot-backend-staging"
+[env.staging.vars]
+ENVIRONMENT = "staging"
+SARVAM_PROXY_BASE = "https://apps.sarvam.ai/api/app-runtime"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "callpilot-db-staging"
+database_id = "staging-d1-callpilot-db"
+
+[[env.staging.r2_buckets]]
+binding = "KNOWLEDGE_BUCKET"
+bucket_name = "callpilot-knowledge-staging"
+
+[[env.staging.queues.producers]]
+queue = "callpilot-campaign-dispatch-staging"
+binding = "CAMPAIGN_QUEUE"
+
+[[env.staging.queues.consumers]]
+queue = "callpilot-campaign-dispatch-staging"
+max_batch_size = 10
+max_batch_timeout = 1
+max_retries = 3
+dead_letter_queue = "callpilot-campaign-dlq-staging"
 

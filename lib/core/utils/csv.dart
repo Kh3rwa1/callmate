@@ -58,13 +58,28 @@ class CsvLeadParser {
 
   static CsvLeadParseResult toLeads(String csv) {
     final rows = parse(csv);
-    if (rows.isEmpty) return const CsvLeadParseResult(leads: [], skipped: 0, errors: ['The file is empty.']);
+    if (rows.isEmpty) {
+      return const CsvLeadParseResult(
+        leads: [],
+        skipped: 0,
+        errors: ['The file is empty.'],
+      );
+    }
 
     final header = rows.first.map((h) => h.trim().toLowerCase()).toList();
-    int find(List<String> keys) => header.indexWhere((h) => keys.any((k) => h.contains(k)));
+    int find(List<String> keys) =>
+        header.indexWhere((h) => keys.any((k) => h.contains(k)));
     var nameIdx = find(['name', 'customer', 'student', 'client']);
     var phoneIdx = find(['phone', 'mobile', 'contact', 'number', 'whatsapp']);
-    final interestIdx = find(['interest', 'course', 'service', 'product', 'property', 'model', 'program']);
+    final interestIdx = find([
+      'interest',
+      'course',
+      'service',
+      'product',
+      'property',
+      'model',
+      'program',
+    ]);
     final sourceIdx = find(['source', 'channel', 'campaign']);
 
     var dataRows = rows.skip(1);
@@ -108,7 +123,11 @@ class CsvLeadParser {
 }
 
 class CsvLeadParseResult {
-  const CsvLeadParseResult({required this.leads, required this.skipped, required this.errors});
+  const CsvLeadParseResult({
+    required this.leads,
+    required this.skipped,
+    required this.errors,
+  });
   final List<NewLeadInput> leads;
   final int skipped;
   final List<String> errors;

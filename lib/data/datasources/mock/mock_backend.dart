@@ -14,7 +14,8 @@ import 'mock_brain.dart';
 /// (simulated) Sarvam completed-call webhook, normalises the structured AI
 /// output into Call / Lead / FollowUp / Callback, and pushes events.
 class MockBackend implements BackendEvents {
-  MockBackend({int seed = 7, Business? business, Agent? agent}) : _rnd = Random(seed) {
+  MockBackend({int seed = 7, Business? business, Agent? agent})
+    : _rnd = Random(seed) {
     brain = MockBrain(_rnd);
     this.business = business ?? _defaultBusiness;
     this.agent = agent ?? _defaultAgent;
@@ -49,7 +50,13 @@ class MockBackend implements BackendEvents {
     name: 'ABC Coaching Centre',
     category: BusinessCategory.coaching,
     address: '12 Park Street, Kolkata',
-    offerings: ['NEET', 'JEE Main', 'WBJEE', 'Class 10 Boards', 'Class 12 Science'],
+    offerings: [
+      'NEET',
+      'JEE Main',
+      'WBJEE',
+      'Class 10 Boards',
+      'Class 12 Science',
+    ],
     pricing: 'NEET ₹52,000/yr · JEE ₹56,000/yr · Boards from ₹24,000/yr',
     openingHours: 'Mon–Sat, 9 AM – 8 PM',
     location: 'Park Street, Kolkata',
@@ -134,29 +141,81 @@ class MockBackend implements BackendEvents {
     // Hero leads (stable for demos)
     final heroes = <(String, String, String, String, LeadTemperature?, int?)>[
       ('Rahul Kumar', '9830011122', 'NEET', 'Evening', LeadTemperature.hot, 87),
-      ('Priya Das', '9831022233', 'JEE Main', 'Weekend', LeadTemperature.hot, 82),
-      ('Ankit Singh', '9874033344', 'WBJEE', 'Evening', LeadTemperature.warm, 64),
-      ('Suman Murmu', '9007044455', 'Class 12 Science', 'Morning', LeadTemperature.warm, 58),
-      ('Sneha Chatterjee', '9433055566', 'NEET', 'Morning', LeadTemperature.hot, 91),
-      ('Arif Khan', '9123066677', 'JEE Advanced', 'Evening', LeadTemperature.cold, 22),
+      (
+        'Priya Das',
+        '9831022233',
+        'JEE Main',
+        'Weekend',
+        LeadTemperature.hot,
+        82,
+      ),
+      (
+        'Ankit Singh',
+        '9874033344',
+        'WBJEE',
+        'Evening',
+        LeadTemperature.warm,
+        64,
+      ),
+      (
+        'Suman Murmu',
+        '9007044455',
+        'Class 12 Science',
+        'Morning',
+        LeadTemperature.warm,
+        58,
+      ),
+      (
+        'Sneha Chatterjee',
+        '9433055566',
+        'NEET',
+        'Morning',
+        LeadTemperature.hot,
+        91,
+      ),
+      (
+        'Arif Khan',
+        '9123066677',
+        'JEE Advanced',
+        'Evening',
+        LeadTemperature.cold,
+        22,
+      ),
     ];
 
     final dayStart = DateTime(now.year, now.month, now.day, 9, 30);
     final windowMinutes = max(60, now.difference(dayStart).inMinutes);
-    DateTime callTime(int i, int n) => now.subtract(Duration(minutes: ((i + 1) / (n + 1) * windowMinutes).round()));
+    DateTime callTime(int i, int n) => now.subtract(
+      Duration(minutes: ((i + 1) / (n + 1) * windowMinutes).round()),
+    );
 
     var idx = 0;
     const calledCount = 110;
     for (final h in heroes) {
-      final lead = _makeLead(h.$1, h.$2, h.$3, h.$4, now.subtract(Duration(hours: 3 + idx)));
+      final lead = _makeLead(
+        h.$1,
+        h.$2,
+        h.$3,
+        h.$4,
+        now.subtract(Duration(hours: 3 + idx)),
+      );
       leads[lead.id] = lead;
-      _runCall(lead, temperature: h.$5, forcedScore: h.$6, at: callTime(idx, calledCount), connected: true, quiet: true);
+      _runCall(
+        lead,
+        temperature: h.$5,
+        forcedScore: h.$6,
+        at: callTime(idx, calledCount),
+        connected: true,
+        quiet: true,
+      );
       idx++;
     }
 
     // Distribution for the remaining called leads: ~68% connected.
-    final hotTarget = 12 - heroes.where((h) => h.$5 == LeadTemperature.hot).length;
-    final warmTarget = 22 - heroes.where((h) => h.$5 == LeadTemperature.warm).length;
+    final hotTarget =
+        12 - heroes.where((h) => h.$5 == LeadTemperature.hot).length;
+    final warmTarget =
+        22 - heroes.where((h) => h.$5 == LeadTemperature.warm).length;
     var hot = 0, warm = 0;
     for (; idx < calledCount; idx++) {
       final lead = _makeLead(
@@ -180,7 +239,13 @@ class MockBackend implements BackendEvents {
           t = LeadTemperature.cold;
         }
       }
-      _runCall(lead, temperature: t, at: callTime(idx, calledCount), connected: connected, quiet: true);
+      _runCall(
+        lead,
+        temperature: t,
+        at: callTime(idx, calledCount),
+        connected: connected,
+        quiet: true,
+      );
     }
 
     // Fresh leads waiting to be called.
@@ -196,9 +261,13 @@ class MockBackend implements BackendEvents {
     }
 
     // Older follow-ups were already handled – keep ~18 pending.
-    final pending = followUps.values.where((f) => f.isPending).toList()..sort((a, b) => (b.scoreValue ?? 0).compareTo(a.scoreValue ?? 0));
+    final pending = followUps.values.where((f) => f.isPending).toList()
+      ..sort((a, b) => (b.scoreValue ?? 0).compareTo(a.scoreValue ?? 0));
     for (final f in pending.skip(18)) {
-      followUps[f.id] = f.copyWith(status: FollowUpStatus.opened, openedAt: f.createdAt.add(const Duration(minutes: 20)));
+      followUps[f.id] = f.copyWith(
+        status: FollowUpStatus.opened,
+        openedAt: f.createdAt.add(const Duration(minutes: 20)),
+      );
     }
 
     usage = usage.copyWith(callsMade: calls.length);
@@ -212,7 +281,8 @@ class MockBackend implements BackendEvents {
         id: 'n_1',
         type: NotificationType.hotLead,
         title: '🔥 Hot lead detected',
-        body: 'Your AI employee identified a high-intent lead: Rahul (score 87).',
+        body:
+            'Your AI employee identified a high-intent lead: Rahul (score 87).',
         route: '/followups/${followUpForLead(rahul.id)?.id ?? ''}',
         actionLabel: 'Review Follow-up',
         createdAt: now.subtract(const Duration(minutes: 42)),
@@ -260,24 +330,36 @@ class MockBackend implements BackendEvents {
         ),
         ActivityItem(
           emoji: '💬',
-          text: '${followUps.values.where((f) => f.isPending).length} WhatsApp follow-ups were drafted.',
+          text:
+              '${followUps.values.where((f) => f.isPending).length} WhatsApp follow-ups were drafted.',
           at: now.subtract(const Duration(hours: 1)),
           route: '/followups',
         ),
       ]);
   }
 
-  String _randomName() => '${brain.pick(mockFirstNames)} ${brain.pick(mockLastNames)}';
-  String _randomPhone() => '${brain.pick(['98', '97', '90', '91', '83', '70', '62'])}${(10000000 + _rnd.nextInt(89999999))}';
+  String _randomName() =>
+      '${brain.pick(mockFirstNames)} ${brain.pick(mockLastNames)}';
+  String _randomPhone() =>
+      '${brain.pick(['98', '97', '90', '91', '83', '70', '62'])}${(10000000 + _rnd.nextInt(89999999))}';
 
-  Lead _makeLead(String name, String phone, String interest, String? option, DateTime created, {String? source}) => Lead(
+  Lead _makeLead(
+    String name,
+    String phone,
+    String interest,
+    String? option,
+    DateTime created, {
+    String? source,
+  }) => Lead(
     id: _nextId('lead'),
     businessId: business.id,
     name: name,
     phone: PhoneUtils.normalize(phone) ?? phone,
     source: source ?? brain.pick(mockSources),
     interest: interest,
-    attributes: option == null ? const {} : {verticalFor(business.category).optionKey: option},
+    attributes: option == null
+        ? const {}
+        : {verticalFor(business.category).optionKey: option},
     status: LeadStatus.newLead,
     createdAt: created,
     updatedAt: created,
@@ -300,7 +382,9 @@ class MockBackend implements BackendEvents {
     final interactionId = 'int_${_rnd.nextInt(1 << 31).toRadixString(16)}';
 
     if (!connected) {
-      final status = _rnd.nextDouble() < 0.8 ? CallStatus.noAnswer : CallStatus.busy;
+      final status = _rnd.nextDouble() < 0.8
+          ? CallStatus.noAnswer
+          : CallStatus.busy;
       final call = Call(
         id: callId,
         leadId: lead.id,
@@ -317,13 +401,32 @@ class MockBackend implements BackendEvents {
         rawMetadata: {'connectivity_status': status.wire, 'provider': 'mock'},
       );
       calls.insert(0, call);
-      leads[lead.id] = lead.copyWith(status: LeadStatus.noAnswer, lastCallId: callId, nextAction: NextAction.retryCall, updatedAt: start);
+      leads[lead.id] = lead.copyWith(
+        status: LeadStatus.noAnswer,
+        lastCallId: callId,
+        nextAction: NextAction.retryCall,
+        updatedAt: start,
+      );
       return call;
     }
 
     final t = temperature ?? LeadTemperature.cold;
-    final out = brain.think(lead: lead, temperature: t, business: business, agent: agent, forcedScore: forcedScore);
-    return _ingestWebhook(lead, out, callId: callId, interactionId: interactionId, start: start, campaignId: campaignId, quiet: quiet);
+    final out = brain.think(
+      lead: lead,
+      temperature: t,
+      business: business,
+      agent: agent,
+      forcedScore: forcedScore,
+    );
+    return _ingestWebhook(
+      lead,
+      out,
+      callId: callId,
+      interactionId: interactionId,
+      start: start,
+      campaignId: campaignId,
+      quiet: quiet,
+    );
   }
 
   /// Mirrors backend webhook handler: AiCallOutput → normalised entities.
@@ -336,8 +439,15 @@ class MockBackend implements BackendEvents {
     String? campaignId,
     bool quiet = false,
   }) {
-    final transcript = brain.transcript(lead: lead, out: out, business: business, agent: agent);
-    final duration = Duration(seconds: (transcript.lines.lastOrNull?.offset?.inSeconds ?? 60) + 8);
+    final transcript = brain.transcript(
+      lead: lead,
+      out: out,
+      business: business,
+      agent: agent,
+    );
+    final duration = Duration(
+      seconds: (transcript.lines.lastOrNull?.offset?.inSeconds ?? 60) + 8,
+    );
     final score = LeadScore(
       value: out.leadScore,
       temperature: out.temperature,
@@ -364,14 +474,18 @@ class MockBackend implements BackendEvents {
     }
 
     if (out.callbackAt != null) {
-      callbacks.removeWhere((_, c) => c.leadId == lead.id && c.status == CallbackStatus.scheduled);
+      callbacks.removeWhere(
+        (_, c) => c.leadId == lead.id && c.status == CallbackStatus.scheduled,
+      );
       final cbId = _nextId('cb');
       callbacks[cbId] = Callback(
         id: cbId,
         leadId: lead.id,
         leadName: lead.name,
         scheduledAt: out.callbackAt!,
-        note: out.temperature == LeadTemperature.hot ? '${templateFor(business.category).workflow.humanLabel} follow-up' : 'Follow-up call',
+        note: out.temperature == LeadTemperature.hot
+            ? '${templateFor(business.category).workflow.humanLabel} follow-up'
+            : 'Follow-up call',
       );
     }
 
@@ -394,12 +508,18 @@ class MockBackend implements BackendEvents {
       callbackAt: out.callbackAt,
       interest: [
         out.interest,
-        ...out.attributes.entries.where((e) => e.key != 'budget').map((e) => e.value),
+        ...out.attributes.entries
+            .where((e) => e.key != 'budget')
+            .map((e) => e.value),
       ].whereType<String>().join(' · '),
       objections: out.objections,
       followUpId: followUpId,
       interactionId: interactionId,
-      rawMetadata: {'connectivity_status': 'connected', 'agent_outputs': out.toJson(), 'provider': 'mock'},
+      rawMetadata: {
+        'connectivity_status': 'connected',
+        'agent_outputs': out.toJson(),
+        'provider': 'mock',
+      },
     );
     calls.insert(0, call);
 
@@ -422,14 +542,18 @@ class MockBackend implements BackendEvents {
     );
 
     if (!quiet) {
-      usage = usage.copyWith(minutesUsed: usage.minutesUsed + (duration.inSeconds / 60).ceil(), callsMade: usage.callsMade + 1);
+      usage = usage.copyWith(
+        minutesUsed: usage.minutesUsed + (duration.inSeconds / 60).ceil(),
+        callsMade: usage.callsMade + 1,
+      );
       agent = agent.copyWith(callsToday: agent.callsToday + 1);
     }
     return call;
   }
 
   FollowUp? followUpForLead(String leadId) {
-    final l = followUps.values.where((f) => f.leadId == leadId).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final l = followUps.values.where((f) => f.leadId == leadId).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return l.firstOrNull;
   }
 
@@ -441,7 +565,8 @@ class MockBackend implements BackendEvents {
         id: _nextId('n'),
         type: NotificationType.hotLead,
         title: '🔥 Hot lead detected',
-        body: 'Your AI employee identified a high-intent lead: ${call.leadName.split(' ').first} (score ${call.leadScore?.value}).',
+        body:
+            'Your AI employee identified a high-intent lead: ${call.leadName.split(' ').first} (score ${call.leadScore?.value}).',
         route: fu != null ? '/followups/${fu.id}' : '/calls/${call.id}/result',
         actionLabel: 'Review Follow-up',
         createdAt: DateTime.now(),
@@ -473,7 +598,12 @@ class MockBackend implements BackendEvents {
     return c;
   }
 
-  int estimateCost(int n) => (n * 0.68 * templateFor(business.category).workflow.estimatedMinutesPerCall * usage.ratePerMinuteInr).round();
+  int estimateCost(int n) =>
+      (n *
+              0.68 *
+              templateFor(business.category).workflow.estimatedMinutesPerCall *
+              usage.ratePerMinuteInr)
+          .round();
 
   Campaign startCampaign(String id) {
     var c = campaigns[id]!;
@@ -490,7 +620,9 @@ class MockBackend implements BackendEvents {
     var firstConnectedDone = false;
     String? liveLeadId;
     _campaignTimer?.cancel();
-    _campaignTimer = Timer.periodic(const Duration(milliseconds: 1400), (timer) {
+    _campaignTimer = Timer.periodic(const Duration(milliseconds: 1400), (
+      timer,
+    ) {
       var cur = campaigns[id]!;
       if (cur.status != CampaignStatus.running) {
         timer.cancel();
@@ -506,7 +638,9 @@ class MockBackend implements BackendEvents {
             t = LeadTemperature.hot; // make the demo moment land
           } else {
             final r = _rnd.nextDouble();
-            t = r < 0.24 ? LeadTemperature.hot : (r < 0.6 ? LeadTemperature.warm : LeadTemperature.cold);
+            t = r < 0.24
+                ? LeadTemperature.hot
+                : (r < 0.6 ? LeadTemperature.warm : LeadTemperature.cold);
           }
           firstConnectedDone = true;
         }
@@ -518,7 +652,9 @@ class MockBackend implements BackendEvents {
           at: DateTime.now().subtract(const Duration(minutes: 2)),
         );
         final s = cur.stats;
-        final interested = call.leadScore != null && call.leadScore!.temperature != LeadTemperature.cold;
+        final interested =
+            call.leadScore != null &&
+            call.leadScore!.temperature != LeadTemperature.cold;
         cur = cur.copyWith(
           stats: CampaignStats(
             total: s.total,
@@ -543,7 +679,8 @@ class MockBackend implements BackendEvents {
           id: _nextId('n'),
           type: NotificationType.campaign,
           title: '✅ ${agent.name} finished calling',
-          body: '${cur.stats.completed} calls · ${cur.stats.hot} hot leads · $ready follow-ups ready.',
+          body:
+              '${cur.stats.completed} calls · ${cur.stats.hot} hot leads · $ready follow-ups ready.',
           route: '/followups',
           actionLabel: 'Review & send',
           createdAt: DateTime.now(),
@@ -553,7 +690,8 @@ class MockBackend implements BackendEvents {
           0,
           ActivityItem(
             emoji: '🚀',
-            text: 'Campaign finished: ${cur.stats.completed} calls, ${cur.stats.hot} hot',
+            text:
+                'Campaign finished: ${cur.stats.completed} calls, ${cur.stats.hot} hot',
             at: DateTime.now(),
             route: '/campaigns/$id',
           ),
@@ -578,7 +716,8 @@ class MockBackend implements BackendEvents {
     campaigns[id] = c;
     for (final lid in c.leadIds) {
       final l = leads[lid];
-      if (l != null && (l.status == LeadStatus.queued || l.status == LeadStatus.calling)) {
+      if (l != null &&
+          (l.status == LeadStatus.queued || l.status == LeadStatus.calling)) {
         leads[lid] = l.copyWith(status: LeadStatus.newLead);
       }
     }
@@ -595,7 +734,9 @@ class MockBackend implements BackendEvents {
     if (leadId != null && leads[leadId] != null) {
       lead = leads[leadId]!;
     } else {
-      final fresh = leads.values.where((l) => l.status == LeadStatus.newLead).toList();
+      final fresh = leads.values
+          .where((l) => l.status == LeadStatus.newLead)
+          .toList();
       lead = fresh.isNotEmpty
           ? fresh.first
           : _makeLead(
@@ -608,22 +749,31 @@ class MockBackend implements BackendEvents {
             );
       leads[lead.id] = lead;
     }
-    final call = _runCall(lead, temperature: t, connected: true, at: DateTime.now().subtract(const Duration(minutes: 2)));
+    final call = _runCall(
+      lead,
+      temperature: t,
+      connected: true,
+      at: DateTime.now().subtract(const Duration(minutes: 2)),
+    );
     _emitCallCompleted(call);
     return call;
   }
 
   AppNotification simulateNotification(NotificationType type) {
-    final hotFu = followUps.values.where((f) => f.isPending).toList()..sort((a, b) => (b.scoreValue ?? 0).compareTo(a.scoreValue ?? 0));
+    final hotFu = followUps.values.where((f) => f.isPending).toList()
+      ..sort((a, b) => (b.scoreValue ?? 0).compareTo(a.scoreValue ?? 0));
     final fu = hotFu.firstOrNull;
-    final cb = callbacks.values.where((c) => c.status == CallbackStatus.scheduled).firstOrNull;
+    final cb = callbacks.values
+        .where((c) => c.status == CallbackStatus.scheduled)
+        .firstOrNull;
     final first = (fu?.leadName ?? 'Rahul').split(' ').first;
     final n = switch (type) {
       NotificationType.hotLead => AppNotification(
         id: _nextId('n'),
         type: type,
         title: '🔥 Hot lead detected',
-        body: 'Your AI employee identified a high-intent lead: $first (score ${fu?.scoreValue ?? 87}).',
+        body:
+            'Your AI employee identified a high-intent lead: $first (score ${fu?.scoreValue ?? 87}).',
         route: fu == null ? '/leads?filter=hot' : '/followups/${fu.id}',
         actionLabel: 'Review Follow-up',
         createdAt: DateTime.now(),
@@ -640,7 +790,8 @@ class MockBackend implements BackendEvents {
         id: _nextId('n'),
         type: type,
         title: '📅 Callback requested',
-        body: 'A customer asked for a callback: ${(cb?.leadName ?? 'Rahul').split(' ').first}, tomorrow at 6 PM.',
+        body:
+            'A customer asked for a callback: ${(cb?.leadName ?? 'Rahul').split(' ').first}, tomorrow at 6 PM.',
         route: cb == null ? '/callbacks' : '/leads/${cb.leadId}',
         actionLabel: 'View lead',
         createdAt: DateTime.now(),
