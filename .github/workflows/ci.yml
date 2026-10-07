@@ -47,8 +47,10 @@ jobs:
       - name: Run unit & widget tests with coverage
         run: flutter test --coverage
 
-      - name: Verify domain & services coverage gate (>=60%)
-        run: dart run tool/check_coverage.dart
+      - name: Verify coverage gate (data+services >=80%, lib/ >=85%)
+        # Plain `dart`, not `dart run`: the script only needs dart:io, and `dart run`
+        # refuses packages with native build hooks (objective_c via path_provider_foundation).
+        run: dart tool/check_coverage.dart
 
   cloudflare-backend:
     name: Cloudflare Worker Backend, Coverage & E2E Tests
