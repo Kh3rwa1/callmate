@@ -258,6 +258,30 @@ describe('Quality hardening regressions', () => {
     });
   });
 
+  describe('Agent calling hours', () => {
+    const patchAgent = (body: unknown) =>
+      app.fetch(
+        new Request('http://localhost/agent', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        }),
+        env
+      );
+
+    it('accepts 24 as an exclusive end hour (until midnight)', async () => {
+      const res = await patchAgent({ calling_hours_start: 9, calling_hours_end: 24 });
+      expect(res.status).toBe(200);
+      const row = await env.DB.prepare('SELECT calling_hours_end FROM agents WHERE business_id = ?').bind(bizId).first<any>();
+      expect(row.calling_hours_end).toBe(24);
+    });
+
+    it('rejects end hours outside 1-24', async () => {
+      expect((await patchAgent({ calling_hours_end: 25 })).status).toBe(400);
+      expect((await patchAgent({ calling_hours_end: 0 })).status).toBe(400);
+    });
+  });
+
   describe('Encryption key', () => {
     it('reading calls without ENCRYPTION_KEY fails closed instead of falling back to the JWT key', async () => {
       const noKey = { ...env, ENCRYPTION_KEY: undefined } as any;
