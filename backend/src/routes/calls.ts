@@ -165,12 +165,12 @@ callsApp.post('/leads/:id/call', async (c) => {
 
   // Trigger real Sarvam Outbound Call via API
   const sarvamApiKey = c.env.SARVAM_API_KEY;
-  const orgId = c.env.SARVAM_ORG_ID || 'org_callpilot';
-  const workspaceId = c.env.SARVAM_WORKSPACE_ID || 'ws_callpilot';
-  const appId = c.env.SARVAM_ADMISSIONS_APP_ID || 'app_callpilot_voice';
+  const orgId = c.env.SARVAM_ORG_ID;
+  const workspaceId = c.env.SARVAM_WORKSPACE_ID;
+  const appId = c.env.SARVAM_ADMISSIONS_APP_ID;
 
   let sarvamResult: any = null;
-  if (sarvamApiKey && !sarvamApiKey.startsWith('mock-')) {
+  if (sarvamApiKey && !sarvamApiKey.startsWith('mock-') && orgId && workspaceId && appId) {
     try {
       const url = new URL(c.req.url);
       const webhookUrl = `${url.origin}/webhooks/sarvam`;

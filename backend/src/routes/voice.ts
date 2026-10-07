@@ -7,6 +7,7 @@ import { isOptOutRequest } from '../services/compliance';
 import { sendBusinessPushNotification } from '../services/fcm';
 import { billableMinutes, claimWebhookEvent, recordCallUsage } from '../services/billing';
 import { MAX_DIAL_ATTEMPTS, requeueLead } from '../services/campaign_queue';
+import { isAllowedSarvamPath } from '../services/sarvam_proxy_guard';
 
 const voiceApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -51,9 +52,9 @@ voiceApp.post('/test-session', async (c) => {
 
   return c.json({
     session_token: sessionToken,
-    org_id: c.env.SARVAM_ORG_ID || 'org_callpilot',
-    workspace_id: c.env.SARVAM_WORKSPACE_ID || 'ws_callpilot',
-    app_id: c.env.SARVAM_ADMISSIONS_APP_ID || 'app_callpilot_voice',
+    org_id: c.env.SARVAM_ORG_ID || '',
+    workspace_id: c.env.SARVAM_WORKSPACE_ID || '',
+    app_id: c.env.SARVAM_ADMISSIONS_APP_ID || '',
     version: '1.0',
     proxy_base_url: proxyBaseUrl,
     greeting_text: greetingText,
@@ -406,16 +407,12 @@ async function handleSarvamProxy(c: Context<{ Bindings: Env; Variables: { user: 
     return c.json({ message: 'Invalid or expired voice session token. Only session tokens permitted.', code: 'session_expired' }, 401);
   }
 
-  // 2. Strict path allow-list: only Sarvam app-runtime paths SDK needs
+  // 2. Strict path allow-list: only allow proxying to our org/workspace/app
   const reqUrl = new URL(c.req.url);
   const subPath = reqUrl.pathname.replace(/^\/(voice\/)?sarvam-proxy\/?/, '');
 
-  const isAllowed =
-    /^(api\/app-runtime\/)?orgs\/[a-zA-Z0-9_-]+\/workspaces\/[a-zA-Z0-9_-]+\/apps\/[a-zA-Z0-9_-]+\/url\/?$/.test(subPath) ||
-    /^(api\/app-runtime\/)?(chat|ws|sessions)(\/[a-zA-Z0-9_-]+)*\/?$/.test(subPath);
-
-  if (!isAllowed) {
-    return c.json({ message: 'Forbidden proxy destination.', code: 'forbidden_path' }, 403);
+  if (!isAllowedSarvamPath(subPath, c.env)) {
+    return c.json({ message: 'Forbidden proxy destination.', code: 'forbidden_upstream' }, 403);
   }
 
   // 3. Per-business rate limit (max 60 req/min)
