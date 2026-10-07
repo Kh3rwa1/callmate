@@ -1,6 +1,6 @@
 # CallPilot – Backend API Contract (v1)
 
-> **Product:** CallPilot (`com.lexi.light`).  
+> **Product:** CallPilot (`com.callpilot.app`).  
 > **Backend Architecture:** Cloudflare Workers (Hono) + Cloudflare D1 (SQLite) + Cloudflare R2 + Cloudflare Queues + Sarvam AI Voice Agents.
 
 The mobile app communicates **only** with this backend. The backend manages authentication, telephony orchestration via Sarvam AI, webhook validation, tenant data isolation, encryption at rest, and FCM push notifications.

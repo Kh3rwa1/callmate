@@ -18,6 +18,7 @@ export interface Env {
   ENCRYPTION_KEY?: string;
   OTP_PEPPER?: string;
   ALLOWED_ORIGINS?: string;
+  HEALTH_CHECK_SECRET?: string;
 }
 
 export interface AuthUser {

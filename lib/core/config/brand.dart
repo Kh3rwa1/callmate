@@ -4,9 +4,8 @@
 /// CallPilot and are NEVER the product brand. Never hardcode an employee
 /// name in UI – always read it from the Agent.
 ///
-/// Note: the technical package id is `com.lexi.light` (Android
-/// applicationId/namespace + iOS bundle id). It intentionally does not match
-/// the visible brand.
+/// Note: the technical package id is `com.callpilot.app` (Android
+/// applicationId/namespace + iOS bundle id).
 class Brand {
   const Brand._();
 

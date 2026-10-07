@@ -56,6 +56,63 @@ app.get('/', (c) => c.json({
 
 app.get('/health', (c) => c.json({ status: 'ok' }));
 
+app.get('/health/deep', async (c) => {
+  const secret = c.env.HEALTH_CHECK_SECRET;
+  if (secret) {
+    const key =
+      c.req.header('x-health-key') ||
+      c.req.header('authorization')?.replace(/^Bearer\s+/i, '') ||
+      c.req.query('key');
+    if (key !== secret) {
+      return c.json({ error: 'Unauthorized deep health check probe' }, 401);
+    }
+  }
+
+  const checks = {
+    d1: false,
+    r2: false,
+    sarvam_config: false,
+  };
+
+  try {
+    const d1Res = await c.env.DB.prepare('SELECT 1 as alive').first<{ alive: number }>();
+    if (d1Res?.alive === 1) checks.d1 = true;
+  } catch (err: any) {
+    console.error('[Health Check] D1 check failed:', err?.message);
+  }
+
+  try {
+    if (c.env.KNOWLEDGE_BUCKET) {
+      await c.env.KNOWLEDGE_BUCKET.list({ limit: 1 });
+      checks.r2 = true;
+    } else {
+      checks.r2 = true;
+    }
+  } catch (err: any) {
+    console.error('[Health Check] R2 check failed:', err?.message);
+  }
+
+  checks.sarvam_config = Boolean(
+    c.env.SARVAM_API_KEY &&
+    c.env.SARVAM_ORG_ID &&
+    c.env.SARVAM_WORKSPACE_ID &&
+    c.env.SARVAM_ADMISSIONS_APP_ID
+  );
+
+  const healthy = checks.d1 && checks.r2 && checks.sarvam_config;
+  const status = healthy ? 'healthy' : 'unhealthy';
+  const statusCode = healthy ? 200 : 503;
+
+  return c.json(
+    {
+      status,
+      checks,
+      time: new Date().toISOString(),
+    },
+    statusCode
+  );
+});
+
 // ------------------------------------------------------------- Public Routes
 app.route('/auth', authApp);
 

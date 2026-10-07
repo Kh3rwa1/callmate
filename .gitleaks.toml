@@ -1,0 +1,17 @@
+[allowlist]
+description = "Ignore test dummy secrets and test files"
+regexes = [
+  '''test-jwt-signing-secret-key-32chars-min-length''',
+  '''ci-test-otp-pepper-secret-key-32chars-min''',
+  '''ci-test-encryption-key-secret-32chars-min''',
+  '''sk_live_real_key_for_test''',
+  '''sk_test_mock_sarvam_api_key''',
+  '''dev_webhook_secret_key_12345''',
+]
+paths = [
+  '''backend/test/.*''',
+  '''backend/scripts/test_e2e\.mjs''',
+  '''backend/vitest\.config\.ts''',
+  '''test/.*''',
+  '''\.github/workflows/ci\.yml''',
+]

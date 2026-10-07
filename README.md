@@ -7,13 +7,13 @@ AI that calls, qualifies, and follows up for your business.
 | Entity | Identifier / Value |
 |---|---|
 | Visible App Name | **CallPilot** |
-| Android `applicationId` / `namespace` | `com.lexi.light` |
-| iOS Bundle Identifier | `com.lexi.light` |
+| Android `applicationId` / `namespace` | `com.callpilot.app` |
+| iOS Bundle Identifier | `com.callpilot.app` |
 | Dart Package (Internal) | `callpilot` |
 
 > [!NOTE]  
-> **Brand & Application ID Notice for Project Owner:**  
-> The production brand is **CallPilot**, while the Android package and iOS bundle identifier are currently `com.lexi.light`. Per project ground rules, this identifier is preserved and must not be altered without explicit owner confirmation to avoid breaking existing store registrations and key configurations.
+> **Brand & Application ID:**  
+> The production brand is **CallPilot**, and the official Android package (`applicationId` / `namespace`) and iOS bundle identifier are unified under `com.callpilot.app`.
 
 > CallPilot is the **product**. Owners hire **AI employees** inside it – e.g. *Maya · Sales Assistant*, *Riya · Admissions Assistant*, *Arjun · Appointment Assistant*. The bundled demo data (ABC Coaching Centre + Riya) represents an example coaching vertical tenant.
 

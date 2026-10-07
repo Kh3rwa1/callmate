@@ -20,7 +20,6 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
 
   flutter-client:
     name: Flutter Lint, Format & Test
@@ -45,8 +44,11 @@ jobs:
       - name: Strict static analysis
         run: flutter analyze --fatal-infos
 
-      - name: Run unit & widget tests
-        run: flutter test
+      - name: Run unit & widget tests with coverage
+        run: flutter test --coverage
+
+      - name: Verify domain & services coverage gate (>=60%)
+        run: dart run tool/check_coverage.dart
 
   cloudflare-backend:
     name: Cloudflare Worker Backend, Coverage & E2E Tests
@@ -79,7 +81,7 @@ jobs:
           npm run db:migrate
           npm run db:seed
 
-      - name: Run unit & integration tests with coverage gate (≥80% lines)
+      - name: Run unit & integration tests with coverage gate (>=80% lines)
         run: npm run test:coverage
 
       - name: Initialize local dev environment variables for E2E
@@ -90,6 +92,9 @@ jobs:
           echo "SARVAM_API_KEY=sk_test_mock_sarvam_api_key" >> .dev.vars
           echo "OTP_PEPPER=ci-test-otp-pepper-secret-key-32chars-min" >> .dev.vars
           echo "ENCRYPTION_KEY=ci-test-encryption-key-secret-32chars-min" >> .dev.vars
+          echo "SARVAM_ORG_ID=org_test" >> .dev.vars
+          echo "SARVAM_WORKSPACE_ID=ws_test" >> .dev.vars
+          echo "SARVAM_ADMISSIONS_APP_ID=app_test" >> .dev.vars
 
       - name: Run Cloudflare & Sarvam E2E tests
         run: npm test

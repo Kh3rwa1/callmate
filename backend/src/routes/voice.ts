@@ -11,6 +11,7 @@ import { isAllowedSarvamPath } from '../services/sarvam_proxy_guard';
 import { hitRateLimit } from '../utils/rate_limit';
 import { retrieveKnowledge } from '../services/knowledge';
 import { buildSystemPrompt, loadHistory, saveTurn } from '../services/prompt';
+import { requireSecret } from '../utils/secrets';
 
 const voiceApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -625,7 +626,7 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
   let followUpId: string | null = null;
   const statements: D1PreparedStatement[] = [];
 
-  const encSecret = c.env.ENCRYPTION_KEY || c.env.JWT_SIGNING_KEY;
+  const encSecret = requireSecret(c.env, 'ENCRYPTION_KEY', 32);
   const encryptedTranscript = await encryptAtRest(transcript, encSecret);
   const encryptedRawMetadata = await encryptAtRest(rawBody, encSecret);
 

@@ -18,15 +18,15 @@ void main() {
       );
     });
 
-    test('package id stays com.lexi.light; launcher label is CallPilot', () {
+    test('package id is com.callpilot.app; launcher label is CallPilot', () {
       final gradle = File('android/app/build.gradle.kts').readAsStringSync();
-      expect(gradle, contains('applicationId = "com.lexi.light"'));
-      expect(gradle, contains('namespace = "com.lexi.light"'));
+      expect(gradle, contains('applicationId = "com.callpilot.app"'));
+      expect(gradle, contains('namespace = "com.callpilot.app"'));
       expect(
         File(
-          'android/app/src/main/kotlin/com/lexi/light/MainActivity.kt',
+          'android/app/src/main/kotlin/com/callpilot/app/MainActivity.kt',
         ).readAsStringSync(),
-        startsWith('package com.lexi.light'),
+        startsWith('package com.callpilot.app'),
       );
       expect(
         File('android/app/src/main/AndroidManifest.xml').readAsStringSync(),
@@ -37,7 +37,7 @@ void main() {
       ).readAsStringSync();
       expect(
         RegExp(
-          r'PRODUCT_BUNDLE_IDENTIFIER = com\.lexi\.light;',
+          r'PRODUCT_BUNDLE_IDENTIFIER = com\.callpilot\.app;',
         ).allMatches(pbx).length,
         3,
       );
