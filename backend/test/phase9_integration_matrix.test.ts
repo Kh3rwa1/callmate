@@ -713,6 +713,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
     it('GET /health/deep returns 200 and healthy checks when configured', async () => {
       const testEnv = {
         ...env,
+        HEALTH_CHECK_SECRET: 'test-health-secret',
         SARVAM_API_KEY: 'test_key',
         SARVAM_ORG_ID: 'org_1',
         SARVAM_WORKSPACE_ID: 'ws_1',
@@ -720,7 +721,9 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
       } as any;
 
       const res = await app.fetch(
-        new Request('http://localhost/health/deep'),
+        new Request('http://localhost/health/deep', {
+          headers: { 'x-health-key': 'test-health-secret' },
+        }),
         testEnv
       );
 
@@ -762,11 +765,14 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
     it('GET /health/deep returns 503 when Sarvam config is missing', async () => {
       const testEnv = {
         ...env,
+        HEALTH_CHECK_SECRET: 'test-health-secret',
         SARVAM_API_KEY: undefined,
       } as any;
 
       const res = await app.fetch(
-        new Request('http://localhost/health/deep'),
+        new Request('http://localhost/health/deep', {
+          headers: { 'x-health-key': 'test-health-secret' },
+        }),
         testEnv
       );
 

@@ -20,6 +20,11 @@ export async function claimWebhookEvent(db: D1Database, eventKey: string, source
   return (r.meta?.changes ?? 0) > 0;
 }
 
+/** Releases a webhook claim so a failed call attempt or crash can be retried cleanly. */
+export async function releaseWebhookEvent(db: D1Database, eventKey: string): Promise<void> {
+  await db.prepare('DELETE FROM webhook_events WHERE event_key = ?').bind(eventKey).run();
+}
+
 /** Idempotent billing: a call is billed at most once, at the highest duration seen. */
 export async function recordCallUsage(env: Env, businessId: string, callId: string, minutes: number, seconds: number): Promise<number> {
   const prev = await env.DB.prepare('SELECT billed_minutes FROM usage_ledger WHERE call_id = ?')

@@ -115,30 +115,36 @@ export async function ingestKnowledge(
   source: { id: string; type: string; content?: string | null; url?: string | null; file_url?: string | null }
 ): Promise<void> {
   const setStatus = (status: string, progress: number, detail?: string) =>
-    env.DB.prepare('UPDATE knowledge_sources SET status = ?, progress = ?, detail = ?, updated_at = datetime("now") WHERE id = ?')
+    env.DB.prepare("UPDATE knowledge_sources SET status = ?, progress = ?, detail = ?, updated_at = datetime('now') WHERE id = ?")
       .bind(status, progress, detail ?? null, source.id).run();
 
   try {
     await setStatus('processing', 0.1, 'Extracting text...');
     let text = '';
 
-    if (source.type === 'text') {
+    if (source.type === 'text' || source.type === 'faq' || source.type === 'business_info' || source.type === 'notes') {
       text = source.content || '';
     } else if (source.type === 'website') {
       if (!source.url || !/^https?:\/\//i.test(source.url)) {
         throw new Error('Invalid URL. Only http:// and https:// are supported.');
       }
-      const res = await fetch(source.url, { headers: { 'User-Agent': 'CallPilot-Knowledge-Bot/1.0' } });
+      const res = await fetch(source.url, {
+        headers: { 'User-Agent': 'CallPilot-Knowledge-Bot/1.0' },
+        signal: AbortSignal.timeout(10_000),
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status} fetching URL`);
-      const html = await res.text();
+      const html = (await res.text()).slice(0, 2_000_000);
       text = htmlToText(html);
-    } else if (source.type === 'document' || source.type === 'file') {
+    } else if (source.type === 'document' || source.type === 'file' || source.type === 'pdf') {
       const key = source.file_url ? r2KeyFromFileUrl(source.file_url) : null;
+      if (source.type === 'pdf' || (key && key.endsWith('.pdf'))) {
+        throw new Error('PDF reading coming soon. Paste the text instead.');
+      }
       if (!key || !env.KNOWLEDGE_BUCKET) throw new Error('Missing file in storage');
       const obj = await env.KNOWLEDGE_BUCKET.get(key);
       if (!obj) throw new Error('File not found in storage');
       const buf = await obj.arrayBuffer();
-      text = key.endsWith('.pdf') ? await extractPdfText(env, buf) : new TextDecoder().decode(buf);
+      text = new TextDecoder().decode(buf);
     }
 
     if (!text.trim()) {

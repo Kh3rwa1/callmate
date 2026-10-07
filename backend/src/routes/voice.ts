@@ -5,7 +5,7 @@ import { safeJsonParse } from '../utils/json';
 import { encryptAtRest } from '../utils/crypto_data';
 import { isOptOutRequest } from '../services/compliance';
 import { sendBusinessPushNotification } from '../services/fcm';
-import { billableMinutes, claimWebhookEvent, recordCallUsage } from '../services/billing';
+import { billableMinutes, claimWebhookEvent, releaseWebhookEvent, recordCallUsage } from '../services/billing';
 import { MAX_DIAL_ATTEMPTS, requeueLead } from '../services/campaign_queue';
 import { isAllowedSarvamPath } from '../services/sarvam_proxy_guard';
 import { hitRateLimit } from '../utils/rate_limit';
@@ -274,7 +274,7 @@ async function generateAIReply(
           model: 'sarvam-105b',
           messages,
         }),
-        signal: AbortSignal.timeout(2000),
+        signal: AbortSignal.timeout(8000),
       });
       if (sarvamRes.ok) {
         const data: any = await sarvamRes.json();
@@ -303,7 +303,7 @@ async function generateAIReply(
               model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
               messages,
             }),
-            signal: AbortSignal.timeout(2000),
+            signal: AbortSignal.timeout(8000),
           }
         );
         if (cfRes.ok) {
@@ -329,21 +329,24 @@ async function generateAIReply(
   if (!replyText) {
     const lower = userMessage.toLowerCase();
     if (knowledge && knowledge.length > 0 && !/^(hi|hello|hey|namaste|good\s*(morning|afternoon|evening)|salaam)/i.test(lower)) {
-      replyText = `${knowledge[0]}`;
+      const firstChunk = (knowledge[0] || '').trim();
+      const match = firstChunk.match(/^.*?[.?!](\s|$)/);
+      const firstSentence = match ? match[0].trim() : firstChunk;
+      replyText = firstSentence || firstChunk;
     } else if (/^(hi|hello|hey|namaste|good\s*(morning|afternoon|evening)|salaam)/i.test(lower)) {
       replyText = `Hello, I am ${agentName} from ${businessName}. How can I assist you today?`;
     } else if (/what\s*(do\s*you\s*do|is\s*your\s*role)|who\s*are\s*you/i.test(lower)) {
       replyText = `I am ${agentName}, the ${agentRole} for ${businessName}. I answer caller questions, verify requirements, and coordinate follow-ups for our team.`;
     } else if (/fee|cost|price|pricing|charge|rate/i.test(lower)) {
-      replyText = `Our fees depend on the specific program you are interested in. I can note your details and have our admissions office send you the breakdown.`;
+      replyText = `Our fees depend on the specific program or service. Let me check with the team and get back to you with the details.`;
     } else if (/book|schedule|appointment|visit|tour|meeting|call\s*back/i.test(lower)) {
       replyText = `I would be happy to schedule that for you. What day and time works best for you?`;
     } else if (/hour|time|when\s*(are\s*you\s*open|can\s*i\s*call)/i.test(lower)) {
-      replyText = `Our team is available from 10:00 AM to 7:00 PM Monday through Saturday.`;
+      replyText = `Let me check with the team and get back to you with our schedule.`;
     } else if (/human|manager|owner|speak\s*to\s*(someone|person)/i.test(lower)) {
-      replyText = `I will notify our senior team member and arrange a direct callback for you.`;
+      replyText = `I will notify our team and arrange a callback for you.`;
     } else {
-      replyText = `Thank you for asking. I am noting your inquiry for our team at ${businessName}, and we will follow up with the exact details.`;
+      replyText = `Thank you for asking. Let me check with the team and get back to you with the details.`;
     }
   }
 
@@ -584,6 +587,11 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     return c.json({ message: 'Call not found.', code: 'call_not_found' }, 404);
   }
 
+  // Bug 4: Ignore webhooks for calls in timed_out
+  if (call.status === 'timed_out') {
+    return c.json({ success: true, ignored: true, message: 'Call already timed out.' }, 200);
+  }
+
   // Derive business_id and lead_id strictly from our DB row
   const businessId = call.business_id;
   const leadId = call.lead_id;
@@ -595,207 +603,224 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     ? 'completed'
     : (rawStatus || 'no_answer');
 
-  const firstTime = await claimWebhookEvent(c.env.DB, `sarvam:${callId}:${finalStatus}`);
+  const eventKey = `sarvam:${callId}:${finalStatus}`;
+  const firstTime = await claimWebhookEvent(c.env.DB, eventKey);
   if (!firstTime) {
     return c.json({ success: true, duplicate: true, status: 'idempotent', message: 'Already processed.' }, 200);
   }
 
-  // Validate payload against schema: if invalid: score 0, temperature cold, flag for review, return 200
-  const rawOutput = data.output_variables || data.extracted_variables || data.extracted_data || data;
-  const validation = validateCallOutput(rawOutput);
-  const norm = validation.normalized;
+  try {
+    // Validate payload against schema: if invalid: score 0, temperature cold, flag for review, return 200
+    const rawOutput = data.output_variables || data.extracted_variables || data.extracted_data || data;
+    const validation = validateCallOutput(rawOutput);
+    const norm = validation.normalized;
 
-  const lead = await c.env.DB.prepare('SELECT name, phone FROM leads WHERE id = ? AND business_id = ?').bind(leadId, businessId).first<any>();
-  const leadName = lead?.name || call.lead_name || 'Customer';
+    const lead = await c.env.DB.prepare('SELECT name, phone FROM leads WHERE id = ? AND business_id = ?').bind(leadId, businessId).first<any>();
+    const leadName = lead?.name || call.lead_name || 'Customer';
 
-  // 3. Billing calculation
-  const bill = billableMinutes(finalStatus, data.duration_seconds ?? data.duration);
-  await recordCallUsage(c.env, businessId, callId, bill.minutes, bill.seconds);
-  if (bill.flagged) {
-    console.warn(JSON.stringify({ msg: 'call_duration_missing_flagged', callId, businessId, finalStatus }));
-  }
+    // 3. Billing calculation
+    const bill = billableMinutes(finalStatus, data.duration_seconds ?? data.duration);
+    await recordCallUsage(c.env, businessId, callId, bill.minutes, bill.seconds);
+    if (bill.flagged) {
+      console.warn(JSON.stringify({ msg: 'call_duration_missing_flagged', callId, businessId, finalStatus }));
+    }
 
-  let callStatus = bill.flagged ? 'flagged_for_review' : finalStatus;
-  const durationSeconds = bill.seconds;
+    let callStatus = bill.flagged ? 'flagged_for_review' : finalStatus;
+    const durationSeconds = bill.seconds;
 
-  const objections = JSON.stringify(data.output_variables?.objections || []);
-  const positiveSignals = JSON.stringify(data.output_variables?.positive_signals || []);
-  const transcript = JSON.stringify(data.transcript || []);
-  const callbackAt = data.output_variables?.callback_at || null;
+    const objections = JSON.stringify(data.output_variables?.objections || []);
+    const positiveSignals = JSON.stringify(data.output_variables?.positive_signals || []);
+    const transcript = JSON.stringify(data.transcript || []);
+    const callbackAt = data.output_variables?.callback_at || null;
 
-  let followUpId: string | null = null;
-  const statements: D1PreparedStatement[] = [];
+    let followUpId: string | null = null;
+    const statements: D1PreparedStatement[] = [];
 
-  const encSecret = requireSecret(c.env, 'ENCRYPTION_KEY', 32);
-  const encryptedTranscript = await encryptAtRest(transcript, encSecret);
-  const encryptedRawMetadata = await encryptAtRest(rawBody, encSecret);
+    const encSecret = requireSecret(c.env, 'ENCRYPTION_KEY', 32);
+    const encryptedTranscript = await encryptAtRest(transcript, encSecret);
+    const encryptedRawMetadata = await encryptAtRest(rawBody, encSecret);
 
-  // 2.2: Opt-out detection from caller responses/intents
-  const optOutRequested = isOptOutRequest(data);
-  if (optOutRequested) {
+    // 2.2: Opt-out detection from caller responses/intents
+    const optOutRequested = isOptOutRequest(data);
+    if (optOutRequested) {
+      statements.push(
+        c.env.DB.prepare(
+          `UPDATE leads SET do_not_call = 1, consent = 'opt_out', updated_at = datetime('now') WHERE id = ? AND business_id = ?`
+        ).bind(leadId, businessId)
+      );
+    }
+
+    // 4. Only create FollowUp when finalStatus is a connected status
+    const isConnected = ['completed', 'connected', 'answered', 'ended'].includes(finalStatus);
+    if (isConnected && (norm.whatsapp_followup_required || data.output_variables?.whatsapp_message)) {
+      followUpId = `fu_${crypto.randomUUID().slice(0, 12)}`;
+      const msg = data.output_variables?.whatsapp_message || `Hi ${leadName.split(' ')[0]} 👋 Thanks for speaking with us!`;
+      statements.push(
+        c.env.DB.prepare(
+          `INSERT INTO followups (id, business_id, lead_id, call_id, message, status, created_at)
+           VALUES (?, ?, ?, ?, ?, 'ready', datetime('now'))`
+        ).bind(followUpId, businessId, leadId, callId, msg)
+      );
+    }
+
+    // Update Call with encrypted transcript, raw_metadata, and AND business_id = ?
     statements.push(
       c.env.DB.prepare(
-        `UPDATE leads SET do_not_call = 1, consent = 'opt_out', updated_at = datetime('now') WHERE id = ? AND business_id = ?`
-      ).bind(leadId, businessId)
-    );
-  }
-
-  // 4. Only create FollowUp when finalStatus is a connected status
-  const isConnected = ['completed', 'connected', 'answered', 'ended'].includes(finalStatus);
-  if (isConnected && (norm.whatsapp_followup_required || data.output_variables?.whatsapp_message)) {
-    followUpId = `fu_${crypto.randomUUID().slice(0, 12)}`;
-    const msg = data.output_variables?.whatsapp_message || `Hi ${leadName.split(' ')[0]} 👋 Thanks for speaking with us!`;
-    statements.push(
-      c.env.DB.prepare(
-        `INSERT INTO followups (id, business_id, lead_id, call_id, message, status, created_at)
-         VALUES (?, ?, ?, ?, ?, 'ready', datetime('now'))`
-      ).bind(followUpId, businessId, leadId, callId, msg)
-    );
-  }
-
-  // Update Call with encrypted transcript, raw_metadata, and AND business_id = ?
-  statements.push(
-    c.env.DB.prepare(
-      `UPDATE calls SET
-        status = ?, duration_seconds = ?, recording_url = ?, transcript = ?, raw_metadata = ?,
-        score = ?, temperature = ?, intent = ?, summary = ?, objections = ?,
-        positive_signals = ?, next_action = ?, follow_up_id = ?, callback_at = ?,
-        completed_at = datetime('now')
-       WHERE id = ? AND business_id = ?`
-    ).bind(
-      callStatus, durationSeconds, data.recording_url || null, encryptedTranscript, encryptedRawMetadata,
-      norm.score, norm.temperature, norm.intent, norm.summary, objections,
-      positiveSignals, norm.next_action, followUpId, callbackAt,
-      callId, businessId
-    )
-  );
-
-  // Update Lead with AND business_id = ?
-  statements.push(
-    c.env.DB.prepare(
-      `UPDATE leads SET
-        status = 'called', temperature = ?, score = ?, summary = ?,
-        objections = ?, next_action = ?, callback_at = ?, updated_at = datetime('now')
-       WHERE id = ? AND business_id = ?`
-    ).bind(norm.temperature, norm.score, norm.summary, objections, norm.next_action, callbackAt, leadId, businessId)
-  );
-
-  // Create Callback if scheduled
-  if (callbackAt) {
-    const callbackId = `cb_${crypto.randomUUID().slice(0, 12)}`;
-    statements.push(
-      c.env.DB.prepare(
-        `INSERT INTO callbacks (id, business_id, lead_id, lead_name, scheduled_at, note, status, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'scheduled', datetime('now'))`
-      ).bind(callbackId, businessId, leadId, leadName, callbackAt, `Callback requested: ${norm.summary}`)
-    );
-  }
-
-  // Create Notification for Hot Lead
-  if (norm.temperature === 'hot') {
-    const notifId = `notif_${crypto.randomUUID().slice(0, 12)}`;
-    statements.push(
-      c.env.DB.prepare(
-        `INSERT INTO notifications (id, business_id, type, title, body, route, action_label, is_read, created_at)
-         VALUES (?, ?, 'hot_lead', '🔥 Hot lead', ?, ?, 'View Result', 0, datetime('now'))`
+        `UPDATE calls SET
+          status = ?, duration_seconds = ?, recording_url = ?, transcript = ?, raw_metadata = ?,
+          score = ?, temperature = ?, intent = ?, summary = ?, objections = ?,
+          positive_signals = ?, next_action = ?, follow_up_id = ?, callback_at = ?,
+          completed_at = datetime('now')
+         WHERE id = ? AND business_id = ?`
       ).bind(
-        notifId, businessId,
-        `${leadName} is very interested (${norm.score}/100)`,
-        `/calls/${callId}/result`
+        callStatus, durationSeconds, data.recording_url || null, encryptedTranscript, encryptedRawMetadata,
+        norm.score, norm.temperature, norm.intent, norm.summary, objections,
+        positiveSignals, norm.next_action, followUpId, callbackAt,
+        callId, businessId
       )
     );
-  }
 
-  await c.env.DB.batch(statements);
-
-  // 5. Close the campaign loop
-  const cl = await c.env.DB.prepare(
-    'SELECT campaign_id, lead_id, attempts FROM campaign_leads WHERE call_id = ? OR (campaign_id = ? AND lead_id = ?)'
-  ).bind(callId, call.campaign_id ?? '', leadId).first<any>();
-
-  if (cl) {
-    const connected = bill.minutes > 0 || ['completed', 'connected', 'answered'].includes(finalStatus);
-    const next = connected ? 'completed' : (cl.attempts >= MAX_DIAL_ATTEMPTS ? 'failed' : 'retry_pending');
-    await c.env.DB.batch([
-      c.env.DB.prepare('UPDATE campaign_leads SET status = ? WHERE call_id = ? OR (campaign_id = ? AND lead_id = ?)').bind(next, callId, cl.campaign_id, cl.lead_id),
-      c.env.DB.prepare(`UPDATE campaigns SET
-          completed_leads = completed_leads + ?,
-          connected_leads = connected_leads + ?,
-          hot_leads  = hot_leads  + ?,
-          warm_leads = warm_leads + ?
-        WHERE id = ? AND business_id = ?`)
-        .bind(next !== 'retry_pending' ? 1 : 0, connected ? 1 : 0, norm.temperature === 'hot' ? 1 : 0, norm.temperature === 'warm' ? 1 : 0, cl.campaign_id, businessId),
-    ]);
-
-    if (next === 'retry_pending') {
-      await requeueLead(c.env, cl.campaign_id, businessId, cl.lead_id, 2 * 60 * 60); // retry no-answers after 2h
+    // Update Lead with AND business_id = ?
+    // Bug 3: Only update score/temperature on connected calls; otherwise update status = 'not_reached'
+    if (isConnected) {
+      statements.push(
+        c.env.DB.prepare(
+          `UPDATE leads SET
+            status = 'called', temperature = ?, score = ?, summary = ?,
+            objections = ?, next_action = ?, callback_at = ?, updated_at = datetime('now')
+           WHERE id = ? AND business_id = ?`
+        ).bind(norm.temperature, norm.score, norm.summary, objections, norm.next_action, callbackAt, leadId, businessId)
+      );
+    } else {
+      statements.push(
+        c.env.DB.prepare(
+          `UPDATE leads SET
+            status = 'not_reached', updated_at = datetime('now')
+           WHERE id = ? AND business_id = ?`
+        ).bind(leadId, businessId)
+      );
     }
 
-    // 6. Check whether the campaign is finished
-    const unfinished = await c.env.DB.prepare(
-      `SELECT COUNT(*) AS cnt FROM campaign_leads
-       WHERE campaign_id = ? AND status IN ('pending', 'queued', 'calling', 'retry_pending', 'rescheduled')`
-    ).bind(cl.campaign_id).first<{ cnt: number }>();
-
-    if ((unfinished?.cnt ?? 0) === 0) {
-      await c.env.DB.prepare(
-        `UPDATE campaigns SET status = 'completed', completed_at = datetime('now') WHERE id = ? AND business_id = ?`
-      ).bind(cl.campaign_id, businessId).run();
+    // Create Callback if scheduled
+    if (isConnected && callbackAt) {
+      const callbackId = `cb_${crypto.randomUUID().slice(0, 12)}`;
+      statements.push(
+        c.env.DB.prepare(
+          `INSERT INTO callbacks (id, business_id, lead_id, lead_name, scheduled_at, note, status, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'scheduled', datetime('now'))`
+        ).bind(callbackId, businessId, leadId, leadName, callbackAt, `Callback requested: ${norm.summary}`)
+      );
     }
-  }
 
-  // 2.5: Push Notifications (FCM data-messages)
-  const safeWaitUntil = (promise: Promise<any>) => {
-    try {
-      if (c.executionCtx) {
-        c.executionCtx.waitUntil(promise);
-        return;
+    // Create Notification for Hot Lead
+    if (isConnected && norm.temperature === 'hot') {
+      const notifId = `notif_${crypto.randomUUID().slice(0, 12)}`;
+      statements.push(
+        c.env.DB.prepare(
+          `INSERT INTO notifications (id, business_id, type, title, body, route, action_label, is_read, created_at)
+           VALUES (?, ?, 'hot_lead', '🔥 Hot lead', ?, ?, 'View Result', 0, datetime('now'))`
+        ).bind(
+          notifId, businessId,
+          `${leadName} is very interested (${norm.score}/100)`,
+          `/calls/${callId}/result`
+        )
+      );
+    }
+
+    await c.env.DB.batch(statements);
+
+    // 5. Close the campaign loop - Bug 4: match on call_id only
+    const cl = await c.env.DB.prepare(
+      'SELECT campaign_id, lead_id, attempts FROM campaign_leads WHERE call_id = ?'
+    ).bind(callId).first<any>();
+
+    if (cl) {
+      const connected = bill.minutes > 0 || ['completed', 'connected', 'answered'].includes(finalStatus);
+      const next = connected ? 'completed' : (cl.attempts >= MAX_DIAL_ATTEMPTS ? 'failed' : 'retry_pending');
+      await c.env.DB.batch([
+        c.env.DB.prepare('UPDATE campaign_leads SET status = ? WHERE call_id = ?').bind(next, callId),
+        c.env.DB.prepare(`UPDATE campaigns SET
+            completed_leads = completed_leads + ?,
+            connected_leads = connected_leads + ?,
+            hot_leads  = hot_leads  + ?,
+            warm_leads = warm_leads + ?
+          WHERE id = ? AND business_id = ?`)
+          .bind(next !== 'retry_pending' ? 1 : 0, connected ? 1 : 0, (isConnected && norm.temperature === 'hot') ? 1 : 0, (isConnected && norm.temperature === 'warm') ? 1 : 0, cl.campaign_id, businessId),
+      ]);
+
+      if (next === 'retry_pending') {
+        await requeueLead(c.env, cl.campaign_id, businessId, cl.lead_id, 2 * 60 * 60); // retry no-answers after 2h
       }
-    } catch {}
-    promise.catch((e) => console.error('[Push Notification Error]:', e));
-  };
 
-  if (norm.temperature === 'hot') {
-    safeWaitUntil(
-      sendBusinessPushNotification(c.env, businessId, {
-        type: 'hot_lead',
-        title: 'Hot Lead Alert',
-        body: `${leadName} is very interested (${norm.score}/100)`,
-        route: `/leads/${leadId}`,
-      })
-    );
+      // 6. Check whether the campaign is finished
+      const unfinished = await c.env.DB.prepare(
+        `SELECT COUNT(*) AS cnt FROM campaign_leads
+         WHERE campaign_id = ? AND status IN ('pending', 'queued', 'calling', 'retry_pending', 'rescheduled')`
+      ).bind(cl.campaign_id).first<{ cnt: number }>();
+
+      if ((unfinished?.cnt ?? 0) === 0) {
+        await c.env.DB.prepare(
+          `UPDATE campaigns SET status = 'completed', completed_at = datetime('now') WHERE id = ? AND business_id = ?`
+        ).bind(cl.campaign_id, businessId).run();
+      }
+    }
+
+    // 2.5: Push Notifications (FCM data-messages)
+    const safeWaitUntil = (promise: Promise<any>) => {
+      try {
+        if (c.executionCtx) {
+          c.executionCtx.waitUntil(promise);
+          return;
+        }
+      } catch {}
+      promise.catch((e) => console.error('[Push Notification Error]:', e));
+    };
+
+    if (isConnected && norm.temperature === 'hot') {
+      safeWaitUntil(
+        sendBusinessPushNotification(c.env, businessId, {
+          type: 'hot_lead',
+          title: 'Hot Lead Alert',
+          body: `${leadName} is very interested (${norm.score}/100)`,
+          route: `/leads/${leadId}`,
+        })
+      );
+    }
+
+    if (isConnected && callbackAt) {
+      safeWaitUntil(
+        sendBusinessPushNotification(c.env, businessId, {
+          type: 'callback',
+          title: 'Callback Scheduled',
+          body: `Callback scheduled with ${leadName}`,
+          route: `/callbacks`,
+        })
+      );
+    }
+
+    if (followUpId) {
+      // Batched to max 1 per 10 min
+      safeWaitUntil(
+        sendBusinessPushNotification(c.env, businessId, {
+          type: 'follow_up_ready',
+          title: 'Follow-up Ready',
+          body: `Follow-up message ready for ${leadName}`,
+          route: `/followups/${followUpId}`,
+        })
+      );
+    }
+
+    return c.json({
+      success: true,
+      call_id: callId,
+      status: validation.valid ? 'processed' : 'flagged_for_review',
+      temperature: norm.temperature,
+      score: norm.score,
+    }, 200);
+  } catch (err) {
+    await releaseWebhookEvent(c.env.DB, eventKey);
+    throw err;
   }
-
-  if (callbackAt) {
-    safeWaitUntil(
-      sendBusinessPushNotification(c.env, businessId, {
-        type: 'callback',
-        title: 'Callback Scheduled',
-        body: `Callback scheduled with ${leadName}`,
-        route: `/callbacks`,
-      })
-    );
-  }
-
-  if (followUpId) {
-    // Batched to max 1 per 10 min
-    safeWaitUntil(
-      sendBusinessPushNotification(c.env, businessId, {
-        type: 'follow_up_ready',
-        title: 'Follow-up Ready',
-        body: `Follow-up message ready for ${leadName}`,
-        route: `/followups/${followUpId}`,
-      })
-    );
-  }
-
-  return c.json({
-    success: true,
-    call_id: callId,
-    status: validation.valid ? 'processed' : 'flagged_for_review',
-    temperature: norm.temperature,
-    score: norm.score,
-  }, 200);
 }
 
 // POST /webhooks/sarvam

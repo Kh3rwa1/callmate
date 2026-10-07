@@ -44,9 +44,9 @@ export async function loadHistory(
   const { results } = await db.prepare(
     `SELECT role, content FROM chat_messages
      WHERE conversation_id = ? AND business_id = ?
-     ORDER BY created_at ASC LIMIT ?`
+     ORDER BY created_at DESC, rowid DESC LIMIT ?`
   ).bind(conversationId, businessId, limit).all<{ role: 'user' | 'assistant'; content: string }>();
-  return results || [];
+  return (results ?? []).reverse();
 }
 
 export async function saveTurn(

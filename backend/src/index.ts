@@ -58,14 +58,15 @@ app.get('/health', (c) => c.json({ status: 'ok' }));
 
 app.get('/health/deep', async (c) => {
   const secret = c.env.HEALTH_CHECK_SECRET;
-  if (secret) {
-    const key =
-      c.req.header('x-health-key') ||
-      c.req.header('authorization')?.replace(/^Bearer\s+/i, '') ||
-      c.req.query('key');
-    if (key !== secret) {
-      return c.json({ error: 'Unauthorized deep health check probe' }, 401);
-    }
+  if (!secret) {
+    return c.json({ error: 'HEALTH_CHECK_SECRET is required on server' }, 500);
+  }
+
+  const key =
+    c.req.header('x-health-key') ||
+    c.req.header('authorization')?.replace(/^Bearer\s+/i, '');
+  if (!key || key !== secret) {
+    return c.json({ error: 'Unauthorized deep health check probe' }, 401);
   }
 
   const checks = {
