@@ -24,6 +24,8 @@ export interface Env {
   ENCRYPTION_KEY?: string;
   OTP_PEPPER?: string;
   ALLOWED_ORIGINS?: string;
+  /** Secret: comma-separated account emails exempt from the voice test-session cap (QA). */
+  VOICE_UNLIMITED_EMAILS?: string;
   HEALTH_CHECK_SECRET?: string;
   /** Firebase project whose Auth ID tokens /auth/google accepts. */
   FIREBASE_PROJECT_ID?: string;
