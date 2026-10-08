@@ -210,13 +210,17 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                   icon: Icons.upload_file_rounded,
                   onPressed: _busy ? null : _pickCsv,
                 ),
-                const SizedBox(height: 4),
-                Center(
-                  child: TextButton(
-                    onPressed: _useSample,
-                    child: const Text('Try with sample leads'),
+                // Sample rows are real-format numbers: against a live backend
+                // they could be dialled, so offer them only in mock mode.
+                if (ref.watch(useMockProvider)) ...[
+                  const SizedBox(height: 4),
+                  Center(
+                    child: TextButton(
+                      onPressed: _useSample,
+                      child: const Text('Try with sample leads'),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
