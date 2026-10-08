@@ -1,6 +1,6 @@
 {
   "APP_FLAVOR": "staging",
-  "API_BASE_URL": "https://staging-api.example.com",
+  "API_BASE_URL": "https://callpilot-backend-staging.dulalkisku0.workers.dev",
   "SARVAM_PROXY_PATH": "/voice/sarvam-proxy/",
   "USE_MOCK": false,
   "DEMO_TOOLS": true

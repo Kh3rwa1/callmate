@@ -57,3 +57,6 @@ android/*.jks
 google-services.json
 GoogleService-Info.plist
 
+
+# Claude Code local settings
+.claude/settings.local.json
