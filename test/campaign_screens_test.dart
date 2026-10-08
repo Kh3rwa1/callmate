@@ -109,32 +109,34 @@ void main() {
       expect(find.byType(CampaignSetupScreen), findsOneWidget);
     }, location: '/campaign/new');
 
-    appTest('starting creates a running campaign and opens its progress', (
-      h,
-    ) async {
-      final count = _newLeadCount(h.backend);
-      // Turn off one option to check it is carried into the campaign.
-      await h.tapText('Recommend callback');
-      await h.tapText('🚀  Start Campaign');
-      // Leads without recorded consent trigger the attestation checkbox.
-      final attest = find.text(
-        'I confirm these contacts asked to be contacted',
-      );
-      if (attest.evaluate().isNotEmpty) {
-        await h.tap(attest);
-      }
-      await h.tapText('🚀  Yes, start calling');
-      await h.settle(12);
+    appTest(
+      'starting creates a running campaign and opens its progress',
+      (h) async {
+        final count = _newLeadCount(h.backend);
+        // Turn off one option to check it is carried into the campaign.
+        await h.tapText('Recommend callback');
+        await h.tapText('🚀  Start Campaign');
+        // Leads without recorded consent trigger the attestation checkbox.
+        final attest = find.text(
+          'I confirm these contacts asked to be contacted',
+        );
+        if (attest.evaluate().isNotEmpty) {
+          await h.tap(attest);
+        }
+        await h.tapText('🚀  Yes, start calling');
+        await h.settle(12);
 
-      expect(h.backend.campaigns, hasLength(1));
-      final c = h.backend.campaigns.values.single;
-      expect(c.status, CampaignStatus.running);
-      expect(c.leadIds, hasLength(count));
-      expect(c.options.recommendCallback, isFalse);
-      expect(h.location, '/campaigns/${c.id}');
-      expect(find.byType(CampaignProgressScreen), findsOneWidget);
-      expect(find.textContaining('is doing the work for you'), findsOne);
-    }, location: '/campaign/new');
+        expect(h.backend.campaigns, hasLength(1));
+        final c = h.backend.campaigns.values.single;
+        expect(c.status, CampaignStatus.running);
+        expect(c.leadIds, hasLength(count));
+        expect(c.options.recommendCallback, isFalse);
+        expect(h.location, '/campaigns/${c.id}');
+        expect(find.byType(CampaignProgressScreen), findsOneWidget);
+        expect(find.textContaining('is doing the work for you'), findsOne);
+      },
+      location: '/campaign/new',
+    );
 
     appTest(
       'shows an empty state when there are no new leads',

@@ -36,32 +36,40 @@ Finder _navItem(String label) =>
 
 void main() {
   group('ImportLeadsScreen', () {
-    appTest('sample CSV previews valid rows and skips bad ones', (h) async {
-      expect(find.byType(ImportLeadsScreen), findsOneWidget);
-      await h.tapText('Try with sample leads');
-      // 6 data rows, one with an invalid phone number.
-      expect(find.text('5 ready'), findsOneWidget);
-      expect(find.text('1 skipped'), findsOneWidget);
-      expect(find.text('Riddhi Sen'), findsOneWidget);
-      expect(find.textContaining('⚠️'), findsOneWidget);
-      expect(find.text('Import 5 leads'), findsOneWidget);
-    }, location: '/leads/import');
+    appTest(
+      'sample CSV previews valid rows and skips bad ones',
+      (h) async {
+        expect(find.byType(ImportLeadsScreen), findsOneWidget);
+        await h.tapText('Try with sample leads');
+        // 6 data rows, one with an invalid phone number.
+        expect(find.text('5 ready'), findsOneWidget);
+        expect(find.text('1 skipped'), findsOneWidget);
+        expect(find.text('Riddhi Sen'), findsOneWidget);
+        expect(find.textContaining('⚠️'), findsOneWidget);
+        expect(find.text('Import 5 leads'), findsOneWidget);
+      },
+      location: '/leads/import',
+    );
 
-    appTest('importing the sample adds leads and offers to call', (h) async {
-      final before = h.backend.leads.length;
-      await h.tapText('Try with sample leads');
-      await _tapListItem(h, find.text('Import 5 leads'));
-      expect(h.backend.leads.length, before + 5);
-      expect(
-        h.backend.leads.values.where((l) => l.name == 'Karan Mehta'),
-        hasLength(1),
-      );
-      expect(find.text('5 leads imported'), findsOneWidget);
+    appTest(
+      'importing the sample adds leads and offers to call',
+      (h) async {
+        final before = h.backend.leads.length;
+        await h.tapText('Try with sample leads');
+        await _tapListItem(h, find.text('Import 5 leads'));
+        expect(h.backend.leads.length, before + 5);
+        expect(
+          h.backend.leads.values.where((l) => l.name == 'Karan Mehta'),
+          hasLength(1),
+        );
+        expect(find.text('5 leads imported'), findsOneWidget);
 
-      await h.tapText('Call them now');
-      expect(h.location, '/campaign/new');
-      expect(find.byType(CampaignSetupScreen), findsOneWidget);
-    }, location: '/leads/import');
+        await h.tapText('Call them now');
+        expect(h.location, '/campaign/new');
+        expect(find.byType(CampaignSetupScreen), findsOneWidget);
+      },
+      location: '/leads/import',
+    );
 
     appTest('"Later" closes the import result', (h) async {
       await h.push('/leads/import');

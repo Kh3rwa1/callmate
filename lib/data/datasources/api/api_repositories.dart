@@ -44,6 +44,31 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<GoogleSignInOutcome> signInWithGoogle({
+    required String idToken,
+    String? businessName,
+    String? phone,
+  }) async {
+    try {
+      await api.post(
+        '/auth/google',
+        (d) => _save(d),
+        data: {
+          'id_token': idToken,
+          'business_name': ?businessName,
+          'phone': ?phone,
+        },
+      );
+      return GoogleSignInOutcome.signedIn;
+    } on ApiException catch (e) {
+      if (e.code == 'registration_required') {
+        return GoogleSignInOutcome.registrationRequired;
+      }
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> requestOtp({required String phone}) =>
       api.post('/auth/otp/request', (_) {}, data: {'phone': phone});
 

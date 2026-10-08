@@ -27,6 +27,15 @@ class MockAuthRepository implements AuthRepository {
   @override
   Future<bool> hasSession() async => _session;
   @override
+  Future<GoogleSignInOutcome> signInWithGoogle({
+    required String idToken,
+    String? businessName,
+    String? phone,
+  }) => _lag(() {
+    _session = true;
+    return GoogleSignInOutcome.signedIn;
+  });
+  @override
   Future<void> requestOtp({required String phone}) => _lag(() {});
   @override
   Future<void> login({required String phone, required String otp}) =>

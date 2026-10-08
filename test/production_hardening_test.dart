@@ -71,6 +71,12 @@ class _AuthRepo implements AuthRepository {
   @override
   Future<bool> hasSession() async => session;
   @override
+  Future<GoogleSignInOutcome> signInWithGoogle({
+    required String idToken,
+    String? businessName,
+    String? phone,
+  }) async => GoogleSignInOutcome.signedIn;
+  @override
   Future<void> requestOtp({required String phone}) async {}
   @override
   Future<void> login({required String phone, required String otp}) async =>

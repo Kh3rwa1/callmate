@@ -5,8 +5,20 @@ import '../models/models.dart';
 ///   * Mock*  – in-memory demo backend with a simulated AI call engine
 ///   * Api*   – Dio client against our backend (see backend/API.md)
 
+/// Outcome of `POST /auth/google`.
+enum GoogleSignInOutcome { signedIn, registrationRequired }
+
 abstract class AuthRepository {
   Future<bool> hasSession();
+
+  /// Exchanges a Firebase ID token for our session. New accounts also need
+  /// [businessName] and [phone]; without them the result is
+  /// [GoogleSignInOutcome.registrationRequired].
+  Future<GoogleSignInOutcome> signInWithGoogle({
+    required String idToken,
+    String? businessName,
+    String? phone,
+  });
   Future<void> requestOtp({required String phone});
   Future<void> login({required String phone, required String otp});
   Future<void> register({

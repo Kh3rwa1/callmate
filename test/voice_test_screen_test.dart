@@ -115,46 +115,48 @@ void main() {
   group('VoiceTestScreen', () {
     late _SpyVoice voice;
 
-    appTest('runs a live session: suggestions, typed text, mute and end', (
-      h,
-    ) async {
-      await h.push('/voice-test');
-      expect(find.byType(VoiceTestScreen), findsOneWidget);
-      expect(find.textContaining('Talk to '), findsOneWidget);
-      expect(voice.lastVariables?['mode'], 'owner_test');
-      expect(voice.lastVariables?['business_name'], 'ABC Coaching Centre');
+    appTest(
+      'runs a live session: suggestions, typed text, mute and end',
+      (h) async {
+        await h.push('/voice-test');
+        expect(find.byType(VoiceTestScreen), findsOneWidget);
+        expect(find.textContaining('Talk to '), findsOneWidget);
+        expect(voice.lastVariables?['mode'], 'owner_test');
+        expect(voice.lastVariables?['business_name'], 'ABC Coaching Centre');
 
-      // Connected after the mock's 1.3 s handshake; agent greets.
-      await h.settle(20);
-      expect(find.textContaining('Namaste'), findsWidgets);
+        // Connected after the mock's 1.3 s handshake; agent greets.
+        await h.settle(20);
+        expect(find.textContaining('Namaste'), findsWidgets);
 
-      await h.tapText('“What do you do?”');
-      expect(voice.sent, ['What do you do?']);
+        await h.tapText('“What do you do?”');
+        expect(voice.sent, ['What do you do?']);
 
-      await h.tester.enterText(find.byType(TextField), '  Do you have  ');
-      await h.tester.testTextInput.receiveAction(TextInputAction.send);
-      await h.settle(2);
-      expect(voice.sent.last, 'Do you have');
-      expect(find.text('Do you have'), findsWidgets);
+        await h.tester.enterText(find.byType(TextField), '  Do you have  ');
+        await h.tester.testTextInput.receiveAction(TextInputAction.send);
+        await h.settle(2);
+        expect(voice.sent.last, 'Do you have');
+        expect(find.text('Do you have'), findsWidgets);
 
-      // Empty input is ignored.
-      await h.tap(find.byIcon(Icons.send_rounded));
-      expect(voice.sent, hasLength(2));
+        // Empty input is ignored.
+        await h.tap(find.byIcon(Icons.send_rounded));
+        expect(voice.sent, hasLength(2));
 
-      await h.tap(find.byIcon(Icons.mic_rounded));
-      expect(voice.mutes, [true]);
-      expect(find.text('Unmute'), findsOneWidget);
-      await h.tap(find.byIcon(Icons.mic_off_rounded));
-      expect(voice.mutes, [true, false]);
+        await h.tap(find.byIcon(Icons.mic_rounded));
+        expect(voice.mutes, [true]);
+        expect(find.text('Unmute'), findsOneWidget);
+        await h.tap(find.byIcon(Icons.mic_off_rounded));
+        expect(voice.mutes, [true, false]);
 
-      await h.tap(find.byIcon(Icons.call_end_rounded));
-      expect(find.text('Disconnected'), findsOneWidget);
-      expect(find.text('Talk again'), findsOneWidget);
+        await h.tap(find.byIcon(Icons.call_end_rounded));
+        expect(find.text('Disconnected'), findsOneWidget);
+        expect(find.text('Talk again'), findsOneWidget);
 
-      await h.tapText('Done');
-      expect(h.location, '/home');
-      expect(find.byType(HomeScreen), findsOneWidget);
-    }, voice: () => voice = _SpyVoice());
+        await h.tapText('Done');
+        expect(h.location, '/home');
+        expect(find.byType(HomeScreen), findsOneWidget);
+      },
+      voice: () => voice = _SpyVoice(),
+    );
 
     appTest(
       'from onboarding: finishing the scripted call completes onboarding',
@@ -180,18 +182,22 @@ void main() {
       location: '/onboarding',
     );
 
-    appTest('connection failure shows retry which reconnects', (h) async {
-      await h.push('/voice-test');
-      await h.settle(12);
-      expect(find.text('Couldn\'t connect'), findsOneWidget);
-      expect(find.textContaining('couldn\'t connect'), findsOneWidget);
-      expect(find.text('Go back'), findsOneWidget);
+    appTest(
+      'connection failure shows retry which reconnects',
+      (h) async {
+        await h.push('/voice-test');
+        await h.settle(12);
+        expect(find.text('Couldn\'t connect'), findsOneWidget);
+        expect(find.textContaining('couldn\'t connect'), findsOneWidget);
+        expect(find.text('Go back'), findsOneWidget);
 
-      await h.tapText('Try again');
-      await h.settle(12);
-      expect(find.text('Try again'), findsNothing);
-      expect(find.textContaining('Namaste'), findsWidgets);
-    }, voice: () => _SpyVoice(failFirstAttempt: true));
+        await h.tapText('Try again');
+        await h.settle(12);
+        expect(find.text('Try again'), findsNothing);
+        expect(find.textContaining('Namaste'), findsWidgets);
+      },
+      voice: () => _SpyVoice(failFirstAttempt: true),
+    );
 
     appTest(
       'error from onboarding offers to continue to the dashboard',
@@ -210,18 +216,20 @@ void main() {
       voice: _CrashingVoice.new,
     );
 
-    appTest('denied microphone shows open settings; End leaves the screen', (
-      h,
-    ) async {
-      await h.push('/voice-test');
-      await h.settle(4);
-      expect(find.text('Microphone access is needed.'), findsOneWidget);
-      expect(find.text('Open settings'), findsOneWidget);
-      expect(find.text('Try again'), findsNothing);
+    appTest(
+      'denied microphone shows open settings; End leaves the screen',
+      (h) async {
+        await h.push('/voice-test');
+        await h.settle(4);
+        expect(find.text('Microphone access is needed.'), findsOneWidget);
+        expect(find.text('Open settings'), findsOneWidget);
+        expect(find.text('Try again'), findsNothing);
 
-      await h.tap(find.byIcon(Icons.call_end_rounded));
-      expect(h.location, '/home');
-    }, voice: _DeniedVoice.new);
+        await h.tap(find.byIcon(Icons.call_end_rounded));
+        expect(h.location, '/home');
+      },
+      voice: _DeniedVoice.new,
+    );
 
     appTest('backgrounding the app stops a live session', (h) async {
       await h.push('/voice-test');

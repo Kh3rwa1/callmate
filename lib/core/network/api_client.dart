@@ -220,6 +220,9 @@ class ApiClient {
     return ApiException(
       msg ?? 'Something went wrong. Try again.',
       statusCode: status,
+      code: body is Map && body['code'] is String
+          ? body['code'] as String
+          : null,
     );
   }
 
