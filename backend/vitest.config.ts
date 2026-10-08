@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [
     cloudflareTest({
       wrangler: { configPath: './wrangler.toml' },
+      // Tests must never call real Cloudflare services (e.g. the AI binding).
+      remoteBindings: false,
       miniflare: {
         compatibilityFlags: ['nodejs_compat'],
         bindings: {

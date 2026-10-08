@@ -2,8 +2,9 @@ name = "callpilot-backend"
 main = "src/index.ts"
 compatibility_date = "2025-02-24"
 compatibility_flags = ["nodejs_compat"]
-# Production is served only on its custom route/domain, never on *.workers.dev.
-workers_dev = false
+# Served on <name>.<account>.workers.dev. If you move to a custom domain, add a
+# route here, set workers_dev = false and update API_BASE_URL in env/prod.json.
+workers_dev = true
 
 [observability]
 enabled = true
@@ -12,14 +13,17 @@ enabled = true
 ENVIRONMENT = "production"
 SARVAM_PROXY_BASE = "https://apps.sarvam.ai/api/app-runtime"
 
-# IMPORTANT: database_id below is a PLACEHOLDER. Replace it with the real UUID from
-# `wrangler d1 list` before deploying. Migrations: `npm run db:migrate:prod` (wrangler d1 migrations apply).
+# Migrations: `npm run db:migrate:prod` (wrangler d1 migrations apply).
 # Demo seed data lives in ./seeds and is NEVER applied by migrations.
 [[d1_databases]]
 binding = "DB"
 database_name = "callpilot-db"
-database_id = "local-d1-callpilot-db"
+database_id = "8e84cac9-2077-466e-8dd9-f1261d63d902"
 migrations_dir = "migrations"
+
+# Workers AI: powers the in-app "talk to your AI employee" chat.
+[ai]
+binding = "AI"
 
 [[r2_buckets]]
 binding = "KNOWLEDGE_BUCKET"
@@ -56,13 +60,15 @@ enabled = true
 ENVIRONMENT = "staging"
 SARVAM_PROXY_BASE = "https://apps.sarvam.ai/api/app-runtime"
 
-# IMPORTANT: database_id below is a PLACEHOLDER. Replace it with the real UUID from
-# `wrangler d1 list` before deploying. Migrations: `npm run db:migrate:staging`.
+# Migrations: `npm run db:migrate:staging`.
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "callpilot-db-staging"
-database_id = "staging-d1-callpilot-db"
+database_id = "82274b13-9290-4ab4-a701-a1fe985cbcef"
 migrations_dir = "migrations"
+
+[env.staging.ai]
+binding = "AI"
 
 [[env.staging.r2_buckets]]
 binding = "KNOWLEDGE_BUCKET"
