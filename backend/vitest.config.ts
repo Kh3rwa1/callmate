@@ -16,6 +16,7 @@ export default defineConfig({
           SARVAM_API_KEY: 'sk_test_mock_key_for_unit_tests',
           CF_AI_API_TOKEN: '',
           CF_ACCOUNT_ID: '',
+          PUBLIC_API_BASE_URL: '',
           OTP_PEPPER: 'test-otp-pepper-secret-32chars-min-length',
           ENCRYPTION_KEY: 'test-encryption-key-32chars-min-length',
         },
