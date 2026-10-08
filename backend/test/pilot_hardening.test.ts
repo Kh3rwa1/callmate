@@ -55,8 +55,8 @@ describe('Pilot Hardening Requirements', () => {
     expect(row50m.failure_reason).toBe('no_webhook_45m');
   });
 
-  // 1b. Late webhooks process billing & analysis, but skip campaign-state update
-  it('1b. Late webhook for timed_out call bills and analyzes, but skips campaign updates', async () => {
+  // 1b. Late webhooks process billing & analysis; a CONNECTED late call completes a retry_pending lead
+  it('1b. Late connected webhook for timed_out call bills, analyzes and completes the retry_pending lead', async () => {
     const campId = 'camp_late_1';
     const leadId = 'lead_late_1';
     const callId = 'call_late_1';
@@ -125,14 +125,16 @@ describe('Pilot Hardening Requirements', () => {
     expect(usage.billed_minutes).toBe(25);
     expect(usage.billable_seconds).toBe(1500);
 
-    // Campaign lead status must REMAIN retry_pending (did not get updated to completed)
+    // The call connected, so the lead the sweeper parked in retry_pending is now done (no re-dial)
     const cl = await env.DB.prepare('SELECT status FROM campaign_leads WHERE call_id = ?').bind(callId).first<any>();
-    expect(cl.status).toBe('retry_pending');
+    expect(cl.status).toBe('completed');
 
-    // Campaign stats must NOT have changed
-    const camp = await env.DB.prepare('SELECT completed_leads, connected_leads FROM campaigns WHERE id = ?').bind(campId).first<any>();
-    expect(camp.completed_leads).toBe(0);
-    expect(camp.connected_leads).toBe(0);
+    // Campaign stats count it once, and the (single-lead) campaign completes
+    const camp = await env.DB.prepare('SELECT completed_leads, connected_leads, hot_leads, status FROM campaigns WHERE id = ?').bind(campId).first<any>();
+    expect(camp.completed_leads).toBe(1);
+    expect(camp.connected_leads).toBe(1);
+    expect(camp.hot_leads).toBe(1);
+    expect(camp.status).toBe('completed');
   });
 
   // 2. Campaign stats not counted twice when Sarvam sends no_answer then completed

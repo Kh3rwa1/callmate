@@ -109,6 +109,85 @@ export async function extractPdfText(env: Pick<Env, 'AI'>, buffer: ArrayBuffer):
   return '';
 }
 
+export const WEBSITE_MAX_BYTES = 2_000_000;
+export const WEBSITE_MAX_REDIRECTS = 3;
+export const WEBSITE_TIMEOUT_MS = 10_000;
+
+function isPrivateIpv4(host: string): boolean {
+  const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  return a === 0 || a === 10 || a === 127 || a >= 224
+    || (a === 100 && b >= 64 && b <= 127)   // CGNAT
+    || (a === 169 && b === 254)             // link-local / cloud metadata
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 168)
+    || (a === 198 && (b === 18 || b === 19));
+}
+
+/**
+ * Only public https URLs on the default port may be fetched. Rejects localhost / internal names,
+ * private or reserved IPv4 literals, any IPv6 literal, and embedded credentials.
+ */
+export function assertSafePublicUrl(raw: string): URL {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    throw new Error('Invalid URL.');
+  }
+  if (u.protocol !== 'https:') throw new Error('Only https:// website URLs are supported.');
+  if (u.username || u.password || (u.port && u.port !== '443')) throw new Error('This website address is not allowed.');
+  const host = u.hostname.toLowerCase().replace(/\.$/, '');
+  if (
+    !host || !host.includes('.') || host.startsWith('[') ||
+    host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') ||
+    host.endsWith('.internal') || host.endsWith('.home.arpa') || isPrivateIpv4(host)
+  ) {
+    throw new Error('This website address is not allowed.');
+  }
+  return u;
+}
+
+/** Fetches a public web page with manual, re-validated redirects, a timeout and a size cap. */
+export async function fetchPublicPage(rawUrl: string): Promise<string> {
+  let url = assertSafePublicUrl(rawUrl);
+  for (let hop = 0; ; hop++) {
+    const res = await fetch(url.toString(), {
+      headers: { 'User-Agent': 'CallPilot-Knowledge-Bot/1.0' },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(WEBSITE_TIMEOUT_MS),
+    });
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('Location');
+      if (!location || hop >= WEBSITE_MAX_REDIRECTS) throw new Error('Too many redirects fetching URL');
+      url = assertSafePublicUrl(new URL(location, url).toString());
+      continue;
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching URL`);
+    const declared = Number(res.headers.get('Content-Length') || 0);
+    if (declared > WEBSITE_MAX_BYTES) throw new Error('Website page is too large (max 2 MB).');
+    if (!res.body) return '';
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > WEBSITE_MAX_BYTES) {
+        await reader.cancel();
+        throw new Error('Website page is too large (max 2 MB).');
+      }
+      chunks.push(value);
+    }
+    const buf = new Uint8Array(total);
+    let off = 0;
+    for (const ch of chunks) { buf.set(ch, off); off += ch.byteLength; }
+    return new TextDecoder().decode(buf);
+  }
+}
+
 export async function ingestKnowledge(
   env: Env,
   businessId: string,
@@ -125,15 +204,8 @@ export async function ingestKnowledge(
     if (source.type === 'text' || source.type === 'faq' || source.type === 'business_info' || source.type === 'notes') {
       text = source.content || '';
     } else if (source.type === 'website') {
-      if (!source.url || !/^https?:\/\//i.test(source.url)) {
-        throw new Error('Invalid URL. Only http:// and https:// are supported.');
-      }
-      const res = await fetch(source.url, {
-        headers: { 'User-Agent': 'CallPilot-Knowledge-Bot/1.0' },
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status} fetching URL`);
-      const html = (await res.text()).slice(0, 2_000_000);
+      if (!source.url) throw new Error('Invalid URL. Only https:// is supported.');
+      const html = await fetchPublicPage(source.url);
       text = htmlToText(html);
     } else if (source.type === 'document' || source.type === 'file' || source.type === 'pdf') {
       const key = source.file_url ? r2KeyFromFileUrl(source.file_url) : null;

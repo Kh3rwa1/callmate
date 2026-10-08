@@ -21,11 +21,18 @@ export interface CampaignJobMessage {
   business_id: string;
   idempotency_key: string;
   attempts: number; // kept for backward compat; DB `attempts` is the source of truth
+  /** Public origin of this worker, captured from the request that started the campaign (for Sarvam webhooks). */
+  webhook_base_url?: string;
 }
 
 export interface ProcessResult {
   success: boolean;
   retry?: boolean;
+  /**
+   * Deferral that is not a failure (e.g. concurrency cap): the consumer acks and sends a FRESH
+   * delayed message instead of message.retry(), so waiting never burns the queue's max_retries.
+   */
+  requeue?: boolean;
   delaySeconds?: number;
   reason?: string;
 }
@@ -35,6 +42,31 @@ export const MAX_CONCURRENT_CALLS_PER_BUSINESS = 5;
 /** Cloudflare Queues caps retry/send delay (12h at time of writing; verify in CF docs). */
 export const MAX_QUEUE_DELAY_SECONDS = 12 * 60 * 60;
 export const CLAIMABLE_STATUSES = ['pending', 'queued', 'rescheduled', 'retry_pending'] as const;
+/** campaign_leads statuses that still have work outstanding; a campaign is done when none remain. */
+export const UNFINISHED_LEAD_STATUSES = ['pending', 'queued', 'calling', 'retry_pending', 'rescheduled'] as const;
+
+/**
+ * Same webhook config shape for manual and campaign dials. `baseUrl` is the worker's public origin;
+ * PUBLIC_API_BASE_URL (if set) wins for queue/cron contexts that have no request.
+ */
+export function sarvamWebhookConfig(baseUrl?: string | null): { webhook_url: string } | undefined {
+  const base = (baseUrl || '').trim().replace(/\/+$/, '');
+  return base ? { webhook_url: `${base}/webhooks/sarvam` } : undefined;
+}
+
+/**
+ * Marks a running/paused campaign completed once no lead has outstanding work.
+ * Single statement, so concurrent finishers cannot double-complete. Returns true if it transitioned.
+ */
+export async function maybeCompleteCampaign(db: D1Database, campaignId: string): Promise<boolean> {
+  const placeholders = UNFINISHED_LEAD_STATUSES.map(() => '?').join(',');
+  const res = await db.prepare(
+    `UPDATE campaigns SET status = 'completed', completed_at = datetime('now')
+     WHERE id = ? AND status IN ('running', 'paused')
+       AND NOT EXISTS (SELECT 1 FROM campaign_leads WHERE campaign_id = ? AND status IN (${placeholders}))`
+  ).bind(campaignId, campaignId, ...UNFINISHED_LEAD_STATUSES).run();
+  return (res.meta?.changes ?? 0) > 0;
+}
 
 export function clampDelay(seconds: number): number {
   return Math.max(1, Math.min(MAX_QUEUE_DELAY_SECONDS, Math.floor(seconds)));
@@ -103,7 +135,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
      WHERE business_id = ? AND status = 'calling' AND started_at > datetime('now', '-20 minutes')`
   ).bind(business_id).first<{ cnt: number }>();
   if ((active?.cnt ?? 0) >= MAX_CONCURRENT_CALLS_PER_BUSINESS) {
-    return { success: false, retry: true, delaySeconds: 15 + Math.floor(Math.random() * 15), reason: 'concurrency_limit' };
+    return { success: false, retry: true, requeue: true, delaySeconds: 15 + Math.floor(Math.random() * 15), reason: 'concurrency_limit' };
   }
 
   // 4. Lead + compliance
@@ -133,6 +165,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
     if (compliance.reschedule) {
       return { success: false, retry: true, delaySeconds: clampDelay(compliance.rescheduleDelaySeconds ?? 3600), reason: compliance.reason };
     }
+    await maybeCompleteCampaign(env.DB, campaign_id);
     return { success: true, reason: compliance.reason };
   }
 
@@ -184,6 +217,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
       agent_role: agent?.role ?? 'Assistant',
       interest: lead.interest ?? '',
     },
+    webhook_config: sarvamWebhookConfig(env.PUBLIC_API_BASE_URL || job.webhook_base_url),
   });
 
   if (dial.ok) {
@@ -208,25 +242,35 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
       .bind(canRetry ? 'retry_pending' : 'failed', dial.error, campaign_id, lead_id),
   ]);
 
-  return canRetry
-    ? { success: false, retry: true, delaySeconds: retryDelaySeconds(attemptsNow), reason: dial.error }
-    : { success: true, reason: `dial_failed_terminal:${dial.error}` };
+  if (!canRetry) {
+    await maybeCompleteCampaign(env.DB, campaign_id);
+    return { success: true, reason: `dial_failed_terminal:${dial.error}` };
+  }
+  return { success: false, retry: true, delaySeconds: retryDelaySeconds(attemptsNow), reason: dial.error };
 }
 
 /** Enqueue only leads that are actually claimable. Never resurrects completed leads. */
-export async function enqueueCampaignJobs(env: Env, campaignId: string, businessId: string, leadIds: string[]): Promise<number> {
+export async function enqueueCampaignJobs(
+  env: Env, campaignId: string, businessId: string, leadIds: string[], webhookBaseUrl?: string
+): Promise<number> {
+  // Set-based transition (one statement per chunk; D1 caps bound parameters at 100 per query).
   const toQueue: string[] = [];
-  for (const lid of leadIds) {
-    const r = await env.DB.prepare(
+  const chunkSize = 80;
+  for (let i = 0; i < leadIds.length; i += chunkSize) {
+    const slice = leadIds.slice(i, i + chunkSize);
+    const placeholders = slice.map(() => '?').join(',');
+    const { results } = await env.DB.prepare(
       `UPDATE campaign_leads SET status = 'queued'
-       WHERE campaign_id = ? AND lead_id = ? AND status IN ('pending','rescheduled','retry_pending')`
-    ).bind(campaignId, lid).run();
-    if ((r.meta?.changes ?? 0) > 0) toQueue.push(lid);
+       WHERE campaign_id = ? AND lead_id IN (${placeholders}) AND status IN ('pending','rescheduled','retry_pending')
+       RETURNING lead_id`
+    ).bind(campaignId, ...slice).all<{ lead_id: string }>();
+    for (const r of results ?? []) toQueue.push(r.lead_id);
   }
 
   const messages: CampaignJobMessage[] = toQueue.map((lid) => ({
     campaign_id: campaignId, lead_id: lid, business_id: businessId,
     idempotency_key: `${campaignId}:${lid}`, attempts: 0,
+    ...(webhookBaseUrl ? { webhook_base_url: webhookBaseUrl } : {}),
   }));
 
   if (env.CAMPAIGN_QUEUE) {
@@ -241,19 +285,55 @@ export async function enqueueCampaignJobs(env: Env, campaignId: string, business
 }
 
 /** Re-enqueue a single lead with a delay (used by webhook no-answer + maintenance sweeper). */
-export async function requeueLead(env: Env, campaignId: string, businessId: string, leadId: string, delaySeconds: number) {
+export async function requeueLead(
+  env: Env, campaignId: string, businessId: string, leadId: string, delaySeconds: number, webhookBaseUrl?: string
+) {
   if (!env.CAMPAIGN_QUEUE) return;
   await env.CAMPAIGN_QUEUE.send(
-    { campaign_id: campaignId, lead_id: leadId, business_id: businessId, idempotency_key: `${campaignId}:${leadId}`, attempts: 0 },
+    {
+      campaign_id: campaignId, lead_id: leadId, business_id: businessId, idempotency_key: `${campaignId}:${leadId}`, attempts: 0,
+      ...(webhookBaseUrl ? { webhook_base_url: webhookBaseUrl } : {}),
+    },
     { delaySeconds: clampDelay(delaySeconds) }
   );
+}
+
+export function isDeadLetterQueue(queueName: string | undefined): boolean {
+  return /-dlq(-|$)/.test(queueName ?? '');
+}
+
+/**
+ * Dead-letter consumer: a job that exhausted its queue retries must not leave its lead stuck in
+ * 'queued' forever. Mark it failed (only if still waiting) and let the campaign complete.
+ */
+export async function handleCampaignDlqBatch(batch: MessageBatch<CampaignJobMessage>, env: Env): Promise<void> {
+  for (const message of batch.messages) {
+    try {
+      const { campaign_id, lead_id } = message.body ?? ({} as CampaignJobMessage);
+      if (campaign_id && lead_id) {
+        await env.DB.prepare(
+          `UPDATE campaign_leads SET status = 'failed', error = 'queue_retries_exhausted'
+           WHERE campaign_id = ? AND lead_id = ? AND status IN ('pending','queued','rescheduled','retry_pending')`
+        ).bind(campaign_id, lead_id).run();
+        await maybeCompleteCampaign(env.DB, campaign_id);
+      }
+      message.ack();
+    } catch (err: any) {
+      console.error(JSON.stringify({ msg: 'dlq_job_crashed', key: message.body?.idempotency_key, error: err?.message }));
+      message.retry({ delaySeconds: 60 });
+    }
+  }
 }
 
 export async function handleCampaignQueueBatch(batch: MessageBatch<CampaignJobMessage>, env: Env): Promise<void> {
   for (const message of batch.messages) {
     try {
       const result = await processCampaignJob(env, message.body);
-      if (result.retry) message.retry({ delaySeconds: clampDelay(result.delaySeconds ?? 30) });
+      if (result.retry && result.requeue && env.CAMPAIGN_QUEUE) {
+        // Fresh message: waiting for a free call slot must not consume max_retries (and eventually DLQ).
+        await env.CAMPAIGN_QUEUE.send(message.body, { delaySeconds: clampDelay(result.delaySeconds ?? 30) });
+        message.ack();
+      } else if (result.retry) message.retry({ delaySeconds: clampDelay(result.delaySeconds ?? 30) });
       else message.ack();
     } catch (err: any) {
       console.error(JSON.stringify({ msg: 'queue_job_crashed', key: message.body?.idempotency_key, error: err?.message }));

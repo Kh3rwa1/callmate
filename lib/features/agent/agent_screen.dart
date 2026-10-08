@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/config/app_env.dart';
 import '../../core/providers.dart';
@@ -287,6 +288,23 @@ class _Body extends ConsumerWidget {
               ],
               const Divider(indent: 56),
               ListTile(
+                leading: const Icon(Icons.notifications_active_outlined),
+                title: const Text('Allow alerts'),
+                subtitle: const Text(
+                  'Get pinged about hot leads and callbacks',
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () async {
+                  final granted = await ref
+                      .read(notificationServiceProvider)
+                      .requestPermission();
+                  // Once denied, Android only lets the user re-enable it
+                  // from system settings.
+                  if (!granted) await openAppSettings();
+                },
+              ),
+              const Divider(indent: 56),
+              ListTile(
                 leading: const Icon(Icons.logout_rounded, color: AppColors.hot),
                 title: const Text(
                   'Sign out',
@@ -362,8 +380,20 @@ class _Body extends ConsumerWidget {
                     ),
                   );
                   if (ok == true && context.mounted) {
-                    await ref.read(sessionProvider.notifier).deleteAccount();
-                    if (context.mounted) context.go('/login');
+                    try {
+                      await ref.read(sessionProvider.notifier).deleteAccount();
+                      if (context.mounted) context.go('/login');
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              "Account not deleted: ${friendlyError(e)}",
+                            ),
+                          ),
+                        );
+                      }
+                    }
                   }
                 },
               ),

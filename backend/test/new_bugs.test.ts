@@ -28,6 +28,8 @@ describe('New Bug Fixes Verification Suite', () => {
     await migrateTestDb(env.DB);
     await env.DB.prepare("INSERT INTO businesses (id, name, category) VALUES (?, 'Test Academy', 'education')")
       .bind(bizId).run();
+    await env.DB.prepare("INSERT OR REPLACE INTO users (id, phone, business_id) VALUES ('usr_1', '919800000000', ?)")
+      .bind(bizId).run();
 
     token = await signJWT({
       sub: 'usr_1',

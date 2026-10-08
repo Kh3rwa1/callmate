@@ -2,6 +2,12 @@ import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { r2KeyFromFileUrl } from '../utils/r2';
 import { ingestKnowledge } from '../services/knowledge';
+import { parseJsonBody, parseData, createKnowledgeSchema } from '../schemas/validation';
+import { hitRateLimit } from '../utils/rate_limit';
+import { parseLimit, MAX_LIST_LIMIT } from '../utils/pagination';
+
+/** Ingestion fetches/indexes content, so cap it per business. */
+export const KNOWLEDGE_INGEST_LIMIT_PER_HOUR = 30;
 
 const knowledgeApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -21,9 +27,10 @@ function formatKnowledge(row: any) {
 // GET /knowledge
 knowledgeApp.get('/knowledge', async (c) => {
   const user = c.get('user');
+  const limit = parseLimit(c.req.query('limit'), MAX_LIST_LIMIT, MAX_LIST_LIMIT);
   const { results } = await c.env.DB.prepare(
-    'SELECT * FROM knowledge_sources WHERE business_id = ? ORDER BY created_at DESC'
-  ).bind(user.business_id).all<any>();
+    'SELECT * FROM knowledge_sources WHERE business_id = ? ORDER BY created_at DESC LIMIT ?'
+  ).bind(user.business_id, limit).all<any>();
   return c.json(results.map(formatKnowledge));
 });
 
@@ -43,6 +50,12 @@ knowledgeApp.post('/knowledge', async (c) => {
   const user = c.get('user');
   const contentType = c.req.header('Content-Type') || '';
 
+  const slot = await hitRateLimit(c.env.DB, `knowledge:biz:${user.business_id}`, KNOWLEDGE_INGEST_LIMIT_PER_HOUR, 3600);
+  if (!slot.allowed) {
+    c.header('Retry-After', String(slot.retryAfter));
+    return c.json({ message: 'Too many knowledge uploads. Please try again later.', code: 'rate_limited' }, 429);
+  }
+
   let type = 'text';
   let title = 'Knowledge';
   let content: string | null = null;
@@ -52,10 +65,15 @@ knowledgeApp.post('/knowledge', async (c) => {
 
   if (contentType.includes('multipart/form-data')) {
     const formData = await c.req.parseBody();
-    type = (formData['type'] as string) || 'text';
-    title = (formData['title'] as string) || 'Knowledge';
-    content = (formData['content'] as string) || null;
-    url = (formData['url'] as string) || null;
+    const field = (k: string) => (typeof formData[k] === 'string' && formData[k] ? (formData[k] as string) : undefined);
+    const fields = parseData(c, createKnowledgeSchema, {
+      type: field('type'), title: field('title'), content: field('content'), url: field('url'),
+    });
+    if (!fields.success) return fields.response;
+    type = fields.data.type;
+    title = fields.data.title || 'Knowledge';
+    content = fields.data.content || null;
+    url = fields.data.url || null;
 
     const file = formData['file'];
     if (file instanceof File) {
@@ -84,11 +102,12 @@ knowledgeApp.post('/knowledge', async (c) => {
       detail = `${content.split(/\s+/).length} words`;
     }
   } else {
-    const json = await c.req.json<any>().catch(() => ({}));
-    type = json.type || 'text';
-    title = json.title || 'Knowledge';
-    content = json.content || null;
-    url = json.url || null;
+    const parsed = await parseJsonBody(c, createKnowledgeSchema);
+    if (!parsed.success) return parsed.response;
+    type = parsed.data.type;
+    title = parsed.data.title || 'Knowledge';
+    content = parsed.data.content || null;
+    url = parsed.data.url || null;
     detail = url || (content ? `${content.split(/\s+/).length} words` : null);
   }
 
@@ -150,9 +169,13 @@ knowledgeApp.get('/r2/*', async (c) => {
   }
   const obj = await c.env.KNOWLEDGE_BUCKET.get(path);
   if (!obj) return c.json({ message: 'File not found.', code: 'not_found' }, 404);
+  const fileName = (path.split('/').pop() || 'download').replace(/[^\w.\-]/g, '_');
   return new Response(obj.body, {
     headers: {
       'Content-Type': obj.httpMetadata?.contentType || 'application/octet-stream',
+      // Never let a browser render user-uploaded content inline (stored XSS / MIME sniffing).
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
     },
   });
 });

@@ -50,3 +50,19 @@ export function logError(message: string, error?: any, context?: Record<string, 
     : error ? { error_raw: String(error) } : undefined;
   logJson({ level: 'error', message, ...(errObj ? { err: errObj } : {}), ...context });
 }
+
+/**
+ * Request logger middleware. Logs method + path (never the query string, which can carry
+ * phone numbers like ?q=98...) + status + duration.
+ */
+export async function requestLogger(c: any, next: () => Promise<void>): Promise<void> {
+  const start = Date.now();
+  await next();
+  logInfo('request', {
+    requestId: c.get?.('requestId'),
+    method: c.req.method,
+    path: c.req.path,
+    status: c.res?.status,
+    duration_ms: Date.now() - start,
+  });
+}

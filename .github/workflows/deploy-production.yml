@@ -1,0 +1,81 @@
+name: Deploy Production
+
+# Manual, from a commit that already passed CI. Protect the `production`
+# environment with required reviewers in the repository settings.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit SHA or tag to deploy (must have passed CI)'
+        required: true
+
+permissions:
+  contents: read
+  checks: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-production:
+    name: Deploy to Cloudflare Production
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Require a green CI run for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          ok=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=$sha&status=success" \
+            --jq '[.workflow_runs[] | select(.name == "CI")] | length')
+          if [ "$ok" = "0" ]; then
+            echo "::error ::No successful CI run for $sha. Push it through CI first."
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply pending D1 migrations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run db:migrate:prod
+
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
+
+      - name: Smoke test
+        env:
+          HEALTH_URL: ${{ vars.PROD_HEALTH_URL }}
+        run: |
+          if [ -z "$HEALTH_URL" ]; then
+            echo "::warning ::Set the PROD_HEALTH_URL repository variable (e.g. https://api.yourdomain/health) to enable the post-deploy smoke test."
+            exit 0
+          fi
+          for i in 1 2 3 4 5; do
+            if curl -fsS --max-time 10 "$HEALTH_URL"; then exit 0; fi
+            sleep 5
+          done
+          echo "::error ::Health check failed after deploy: $HEALTH_URL"
+          exit 1

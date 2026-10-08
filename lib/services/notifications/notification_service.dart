@@ -58,7 +58,7 @@ class NotificationService {
     try {
       await _plugin.initialize(
         settings: const InitializationSettings(
-          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          android: AndroidInitializationSettings('@drawable/ic_stat_notify'),
           iOS: DarwinInitializationSettings(
             requestAlertPermission: false,
             requestBadgePermission: false,

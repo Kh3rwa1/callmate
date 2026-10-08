@@ -70,8 +70,17 @@ class AppEnv {
     required AppFlavor flavor,
     required bool useMock,
     required String apiBaseUrl,
+    bool releaseMode = false,
   }) {
-    if (useMock || flavor == AppFlavor.dev) return null;
+    if (useMock) return null;
+    if (flavor == AppFlavor.dev) {
+      // A release build without --dart-define-from-file would otherwise talk
+      // to the emulator dev server over cleartext http.
+      return releaseMode
+          ? 'This release build has no APP_FLAVOR. Build it with '
+                '--dart-define-from-file=env/prod.json.'
+          : null;
+    }
     final label = flavor.name;
     final url = apiBaseUrl.trim();
     if (url.isEmpty) {
@@ -91,14 +100,18 @@ class AppEnv {
     return null;
   }
 
-  /// Throws a [StateError] if the compiled-in configuration is not safe to
-  /// start with (see [configError]). Call once at startup.
+  /// Reason the compiled-in configuration is not safe to start with, or
+  /// `null` (see [configError]). Checked once at startup.
+  static String? startupError() => configError(
+    flavor: flavor,
+    useMock: useMock,
+    apiBaseUrl: apiBaseUrl,
+    releaseMode: kReleaseMode,
+  );
+
+  /// Throws a [StateError] if [startupError] reports a problem.
   static void ensureValid() {
-    final error = configError(
-      flavor: flavor,
-      useMock: useMock,
-      apiBaseUrl: apiBaseUrl,
-    );
+    final error = startupError();
     if (error != null) {
       throw StateError('Invalid app configuration: $error');
     }

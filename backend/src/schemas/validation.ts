@@ -84,14 +84,29 @@ export const patchLeadSchema = z.object({
 export const startCampaignSchema = z.object({
   consent_attestation: z.boolean().optional(),
 });
+export const MAX_CAMPAIGN_LEADS = 500;
 export const createCampaignSchema = z.object({
   purpose: z.string().min(1, 'Campaign purpose is required').max(255).optional(),
   title: z.string().min(1).max(255).optional(),
-  lead_ids: z.array(z.string()).default([]),
+  lead_ids: z.array(z.string()).max(MAX_CAMPAIGN_LEADS, `A campaign can include at most ${MAX_CAMPAIGN_LEADS} leads`).default([]),
   calling_hours_start: z.number().int().min(0).max(23).default(10),
   // Exclusive end hour: calls allowed while hour < end, so 24 means "until midnight".
   calling_hours_end: z.number().int().min(1).max(24).default(19),
   options: z.record(z.string(), z.any()).optional(),
+}).refine((d) => d.calling_hours_start < d.calling_hours_end, {
+  message: 'Calling hours start must be before calling hours end',
+  path: ['calling_hours_end'],
+});
+
+// ==========================================
+// Knowledge Schemas
+// ==========================================
+export const knowledgeTypeEnum = z.enum(['text', 'faq', 'business_info', 'notes', 'website', 'document', 'file', 'pdf']);
+export const createKnowledgeSchema = z.object({
+  type: knowledgeTypeEnum.default('text'),
+  title: z.string().max(200, 'Title cannot exceed 200 characters').nullable().optional(),
+  content: z.string().max(200_000, 'Content cannot exceed 200,000 characters').nullable().optional(),
+  url: z.string().max(2048, 'URL too long').nullable().optional(),
 });
 
 // ==========================================
@@ -167,6 +182,11 @@ export async function parseJsonBody<T>(c: any, schema: z.ZodType<T>): Promise<{ 
     };
   }
 
+  return parseData(c, schema, raw);
+}
+
+/** Validates already-parsed input (e.g. multipart fields) with the same error shape as parseJsonBody. */
+export function parseData<T>(c: any, schema: z.ZodType<T>, raw: unknown): { success: true; data: T } | { success: false; response: Response } {
   const result = schema.safeParse(raw);
   if (!result.success) {
     const issues = (result.error as any).issues || (result.error as any).errors || [];

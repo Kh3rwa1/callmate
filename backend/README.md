@@ -54,11 +54,21 @@ npm run dev
 
 ## Database Migrations
 
-Migrations live in `backend/migrations/`:
-- `0001_initial.sql`: Core schema (users, businesses, agents, leads, calls, campaigns, followups, callbacks, notifications, usage).
-- `0002_seed.sql`: Development seed data.
-- `0003_otp_and_security.sql`: `otp_codes`, `refresh_tokens`, `device_tokens`, and foreign key constraints.
-- `0004_compliance_and_billing.sql`: Compliance flags (`do_not_call`, `consent`, `call_attempts`), indexes on `calls(interaction_id)`, `followups(business_id, status)`, and `usage.minutes_used` triggers.
+Schema migrations live in `backend/migrations/` and are applied with
+`wrangler d1 migrations apply`, which records each applied file in the
+`d1_migrations` table, so re-running is safe and only new files are applied:
+
+```bash
+npm run db:migrate          # local
+npm run db:migrate:staging  # staging (remote)
+npm run db:migrate:prod     # production (remote)
+```
+
+Demo data is **not** a migration: it lives in `backend/seeds/0001_demo_seed.sql`
+and is only loaded locally with `npm run db:seed`. Never apply it remotely.
+
+To change the schema, add the next numbered file (e.g. `0008_<name>.sql`).
+Never edit a migration that has already been applied anywhere.
 
 ---
 
@@ -73,24 +83,24 @@ Configure with `wrangler secret put <KEY>`:
 | `ENCRYPTION_KEY` | AES-256 key for data encryption at rest | **Mandatory** (≥ 32 characters) |
 | `SARVAM_API_KEY` | Sarvam AI API secret | **Mandatory** for outbound calls & proxy |
 | `SARVAM_WEBHOOK_SECRET`| HMAC-SHA256 signature secret | **Mandatory** for `/webhooks/sarvam` |
-| `DATA_ENCRYPTION_KEY` | AES-256 key for metadata encryption | Recommended (32-byte hex/base64 string) |
 | `MSG91_AUTH_KEY` | MSG91 SMS gateway auth key | Required for production SMS |
 | `GUPSHUP_API_KEY` | Gupshup SMS gateway API key | Alternative SMS provider |
 | `EXOTEL_SID` / `EXOTEL_TOKEN` | Exotel SMS credentials | Alternative SMS provider |
-| `FCM_SERVICE_ACCOUNT` | Firebase service account JSON | Required for live FCM data pushes |
+| `FCM_SERVICE_ACCOUNT_JSON` | Firebase service account JSON (needs `project_id`, `client_email`, `private_key`) | Required for push notifications (FCM HTTP v1) |
+| `PUBLIC_API_BASE_URL` | Public https origin of this Worker, e.g. `https://api.yourdomain.com` (a `[vars]` entry, not a secret) | Required: Sarvam webhooks for queued/retried campaign calls use it |
+| `HEALTH_CHECK_SECRET` | Token for `GET /health/deep` | Recommended |
+| `ALLOWED_ORIGINS` | Comma-separated CORS origins | Optional (Android app needs none) |
 
 ---
 
 ## Deployment
 
-```bash
-# Staging Deployment (migrations run first)
-npm run db:migrate:staging
-npm run deploy:staging
+Both environments deploy from CI (see `RUNBOOK.md`). Manually:
 
-# Production Deployment
-npx wrangler d1 execute callpilot-db --remote --file=./migrations/0001_initial.sql
-npx wrangler d1 execute callpilot-db --remote --file=./migrations/0003_otp_and_security.sql
-npx wrangler d1 execute callpilot-db --remote --file=./migrations/0004_compliance_and_billing.sql
-npm run deploy
+```bash
+npm run db:migrate:staging && npm run deploy:staging   # staging
+npm run db:migrate:prod && npm run deploy              # production
 ```
+
+Before the first deploy, replace the placeholder `database_id` values in
+`wrangler.toml` with the real UUIDs from `npx wrangler d1 list`.

@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
+import { secureHeaders } from 'hono/secure-headers';
 import { Env, AuthUser } from './types';
 import { authMiddleware } from './auth';
-import { logError } from './utils/logger';
+import { requestLogger } from './utils/logger';
+import { jsonErrorHandler } from './utils/errors';
+import { timingSafeEqual } from './utils/compare';
 import { isDevEnv } from './utils/secrets';
 import { runMaintenance } from './services/maintenance';
 
@@ -43,7 +45,16 @@ app.use('*', async (c, next) => {
   await next();
 });
 
-app.use('*', logger());
+// Never log query strings (they can carry phone numbers, e.g. /leads?q=98...)
+app.use('*', requestLogger);
+
+// Security headers on everything except the voice proxy, which streams the upstream Response as-is
+// (including WebSocket upgrades whose headers are immutable).
+const secure = secureHeaders();
+app.use('*', async (c, next) => {
+  if (c.req.path.startsWith('/voice/sarvam-proxy/')) return next();
+  return secure(c, next);
+});
 
 // Health check
 app.get('/', (c) => c.json({
@@ -65,7 +76,7 @@ app.get('/health/deep', async (c) => {
   const key =
     c.req.header('x-health-key') ||
     c.req.header('authorization')?.replace(/^Bearer\s+/i, '');
-  if (!key || key !== secret) {
+  if (!key || !timingSafeEqual(key, secret)) {
     return c.json({ error: 'Unauthorized deep health check probe' }, 401);
   }
 
@@ -146,21 +157,9 @@ protectedApp.route('/voice', voiceApp);
 app.route('/', protectedApp);
 
 // Global Error Handler - 1.6 & 5: Generic message with request ID, structured JSON log
-app.onError((err, c) => {
-  const requestId = (c.get as any)('requestId') || crypto.randomUUID();
-  logError('Unhandled Server Error', err, {
-    requestId,
-    method: c.req.method,
-    path: c.req.path,
-  });
-  return c.json({
-    message: 'An internal server error occurred.',
-    code: 'server_error',
-    request_id: requestId,
-  }, 500);
-});
+app.onError(jsonErrorHandler);
 
-import { handleCampaignQueueBatch } from './services/campaign_queue';
+import { handleCampaignQueueBatch, handleCampaignDlqBatch, isDeadLetterQueue } from './services/campaign_queue';
 
 // 404 Handler
 app.notFound((c) => {
@@ -173,6 +172,10 @@ app.notFound((c) => {
 export default {
   fetch: app.fetch,
   async queue(batch: MessageBatch<any>, env: Env): Promise<void> {
+    if (isDeadLetterQueue(batch.queue)) {
+      await handleCampaignDlqBatch(batch, env);
+      return;
+    }
     await handleCampaignQueueBatch(batch, env);
   },
   async scheduled(_ctrl: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {

@@ -136,7 +136,7 @@ Receives post-call telemetry from Sarvam telephony.
 | `GET` | `/usage` | `Usage`: subscription plan, included minutes, minutes used, calls made, renewal date. |
 | `GET` | `/notifications` | List of in-app notifications. |
 | `PATCH` | `/notifications/:id` | `{"read": true}` |
-| `POST` | `/notifications/device` | `{"token": "...", "platform": "android"|"ios"}` registers FCM push token for business. |
+| `POST` | `/notifications/device` | `{"token": "...", "platform": "android"}` registers FCM push token for business. |
 
 ---
 

@@ -5,6 +5,8 @@ import { getSmsProvider } from '../sms';
 import { parseJsonBody, otpRequestSchema, registerSchema, loginSchema, refreshSchema } from '../schemas/validation';
 import { requireSecret, isDevEnv } from '../utils/secrets';
 import { deleteR2Prefix } from '../utils/r2';
+import { hitRateLimit } from '../utils/rate_limit';
+import { timingSafeEqual } from '../utils/compare';
 
 const authApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -34,6 +36,57 @@ async function hashOtp(env: Env, phone: string, code: string): Promise<string> {
   return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+export const MAX_OTP_ATTEMPTS = 5;
+
+function clientIpOf(c: any): string {
+  return c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || '127.0.0.1';
+}
+
+/** Per-IP limiter for OTP verification endpoints (login/register), on top of the per-code attempt cap. */
+async function verifyIpLimited(c: any): Promise<Response | null> {
+  const limit = isDevEnv(c.env) ? 1000 : 20;
+  const { allowed, retryAfter } = await hitRateLimit(c.env.DB, `auth:verify:ip:${clientIpOf(c)}`, limit, 600);
+  if (allowed) return null;
+  c.header('Retry-After', String(retryAfter));
+  return c.json({ message: 'Too many attempts from your network. Please wait a few minutes.', code: 'rate_limited' }, 429);
+}
+
+/**
+ * Verifies an OTP without a check-then-act race: the attempt is CLAIMED atomically first
+ * (attempts < MAX and not expired), and only a claimed attempt is compared. Concurrent guesses
+ * can therefore never exceed MAX_OTP_ATTEMPTS. On success the code is consumed exactly once.
+ */
+async function verifyOtp(c: any, phone: string, otp: string): Promise<Response | null> {
+  const claimed = await c.env.DB.prepare(
+    `UPDATE otp_codes SET attempts = attempts + 1
+     WHERE phone = ? AND attempts < ? AND expires_at > ?
+     RETURNING otp_hash`
+  ).bind(phone, MAX_OTP_ATTEMPTS, new Date().toISOString()).first();
+
+  if (!claimed) {
+    const record = await c.env.DB.prepare('SELECT attempts, expires_at FROM otp_codes WHERE phone = ?').bind(phone).first();
+    if (!record) {
+      return c.json({ message: 'Please request a verification code first.', code: 'invalid_otp' }, 400);
+    }
+    if (record.attempts >= MAX_OTP_ATTEMPTS) {
+      return c.json({ message: 'Too many failed attempts. Verification code locked. Request a new OTP.', code: 'otp_locked' }, 429);
+    }
+    return c.json({ message: 'Verification code has expired. Please request a new code.', code: 'otp_expired' }, 400);
+  }
+
+  const inputHash = await hashOtp(c.env, phone, otp);
+  if (!timingSafeEqual(inputHash, claimed.otp_hash)) {
+    return c.json({ message: 'Invalid verification code.', code: 'invalid_otp' }, 400);
+  }
+
+  // Consume the code; only one concurrent correct submission can win.
+  const consumed = await c.env.DB.prepare('DELETE FROM otp_codes WHERE phone = ? AND otp_hash = ?').bind(phone, claimed.otp_hash).run();
+  if ((consumed.meta?.changes ?? 0) !== 1) {
+    return c.json({ message: 'Verification code already used. Please request a new code.', code: 'invalid_otp' }, 400);
+  }
+  return null;
+}
+
 // POST /auth/otp/request
 // Rate limited: max 3 per 10min per phone, max 10 per 10min per IP
 authApp.post('/otp/request', async (c) => {
@@ -52,7 +105,7 @@ authApp.post('/otp/request', async (c) => {
     return c.json({ message: 'Invalid phone number format.', code: 'invalid_phone' }, 400);
   }
 
-  const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || '127.0.0.1';
+  const clientIp = clientIpOf(c);
 
   // Rate limit: D1 chosen because it is serverless, persistent across restarts,
   // globally consistent, and eliminates extra infrastructure/Durable Object costs.
@@ -90,7 +143,17 @@ authApp.post('/otp/request', async (c) => {
 
   // Dispatch via SMS provider
   const smsProvider = getSmsProvider(c.env);
-  await smsProvider.sendOtp(phone, otpCode);
+  let delivered = false;
+  try {
+    delivered = await smsProvider.sendOtp(phone, otpCode);
+  } catch {
+    delivered = false;
+  }
+  if (!delivered) {
+    // Don't leave a code the user never received; they can retry immediately.
+    await c.env.DB.prepare('DELETE FROM otp_codes WHERE phone = ? AND otp_hash = ?').bind(phone, otpHash).run();
+    return c.json({ error: 'sms_send_failed', code: 'sms_send_failed', message: "Couldn't send the code. Try again." }, 502);
+  }
 
   return c.json({
     success: true,
@@ -106,6 +169,8 @@ authApp.post('/register', async (c) => {
   if (!parsed.success) {
     return parsed.response;
   }
+  const limited = await verifyIpLimited(c);
+  if (limited) return limited;
   const body = parsed.data;
   const rawPhone = body.phone.trim();
   const businessName = body.business_name.trim();
@@ -119,34 +184,9 @@ authApp.post('/register', async (c) => {
     return c.json({ message: 'An account with this phone number already exists. Please log in.', code: 'user_exists' }, 409);
   }
 
-  // 2. Verify OTP
-  const record = await c.env.DB.prepare('SELECT * FROM otp_codes WHERE phone = ?').bind(phone).first<{
-    phone: string;
-    otp_hash: string;
-    attempts: number;
-    expires_at: string;
-  }>();
-
-  if (!record) {
-    return c.json({ message: 'Please request a verification code first.', code: 'invalid_otp' }, 400);
-  }
-
-  if (record.attempts >= 5) {
-    return c.json({ message: 'Too many failed attempts. Verification code locked.', code: 'otp_locked' }, 429);
-  }
-
-  if (new Date(record.expires_at).getTime() < Date.now()) {
-    return c.json({ message: 'Verification code has expired. Please request a new code.', code: 'otp_expired' }, 400);
-  }
-
-  const inputHash = await hashOtp(c.env, phone, otp);
-  if (inputHash !== record.otp_hash) {
-    await c.env.DB.prepare('UPDATE otp_codes SET attempts = attempts + 1 WHERE phone = ?').bind(phone).run();
-    return c.json({ message: 'Invalid verification code.', code: 'invalid_otp' }, 400);
-  }
-
-  // Valid OTP: delete OTP record
-  await c.env.DB.prepare('DELETE FROM otp_codes WHERE phone = ?').bind(phone).run();
+  // 2. Verify OTP (atomic attempt claim; consumes the code on success)
+  const otpError = await verifyOtp(c, phone, otp);
+  if (otpError) return otpError;
 
   const secret = getJwtSecret(c);
   const userId = `usr_${crypto.randomUUID().slice(0, 12)}`;
@@ -193,39 +233,17 @@ authApp.post('/login', async (c) => {
   if (!parsed.success) {
     return parsed.response;
   }
+  const limited = await verifyIpLimited(c);
+  if (limited) return limited;
   const body = parsed.data;
   const rawPhone = body.phone.trim();
   const otp = body.otp.trim();
 
   const phone = normalizePhone(rawPhone);
 
-  const record = await c.env.DB.prepare('SELECT * FROM otp_codes WHERE phone = ?').bind(phone).first<{
-    phone: string;
-    otp_hash: string;
-    attempts: number;
-    expires_at: string;
-  }>();
-
-  if (!record) {
-    return c.json({ message: 'Please request a verification code first.', code: 'invalid_otp' }, 400);
-  }
-
-  if (record.attempts >= 5) {
-    return c.json({ message: 'Too many failed attempts. Verification code locked. Request a new OTP.', code: 'otp_locked' }, 429);
-  }
-
-  if (new Date(record.expires_at).getTime() < Date.now()) {
-    return c.json({ message: 'Verification code has expired. Please request a new code.', code: 'otp_expired' }, 400);
-  }
-
-  const inputHash = await hashOtp(c.env, phone, otp);
-  if (inputHash !== record.otp_hash) {
-    await c.env.DB.prepare('UPDATE otp_codes SET attempts = attempts + 1 WHERE phone = ?').bind(phone).run();
-    return c.json({ message: 'Invalid verification code.', code: 'invalid_otp' }, 400);
-  }
-
-  // Delete OTP on success
-  await c.env.DB.prepare('DELETE FROM otp_codes WHERE phone = ?').bind(phone).run();
+  // Atomic attempt claim; consumes the code on success
+  const otpError = await verifyOtp(c, phone, otp);
+  if (otpError) return otpError;
 
   const user = await c.env.DB.prepare('SELECT * FROM users WHERE phone = ?').bind(phone).first<{ id: string; business_id: string }>();
   if (!user) {
@@ -289,8 +307,15 @@ authApp.post('/refresh', async (c) => {
     return c.json({ message: 'Refresh token has expired.', code: 'token_expired' }, 401);
   }
 
-  // Mark current token revoked (single use)
-  await c.env.DB.prepare('UPDATE refresh_tokens_v2 SET is_revoked = 1 WHERE token_hash = ?').bind(tokenHash).run();
+  // Mark current token revoked (single use). Conditional so two concurrent refreshes cannot both
+  // rotate the same token: the loser is treated exactly like reuse.
+  const rotated = await c.env.DB.prepare(
+    'UPDATE refresh_tokens_v2 SET is_revoked = 1 WHERE token_hash = ? AND is_revoked = 0'
+  ).bind(tokenHash).run();
+  if ((rotated.meta?.changes ?? 0) !== 1) {
+    await c.env.DB.prepare('UPDATE refresh_tokens_v2 SET is_revoked = 1 WHERE user_id = ?').bind(payload.sub).run();
+    return c.json({ message: 'Refresh token reuse detected. All sessions revoked for security.', code: 'token_reuse_detected' }, 401);
+  }
 
   // Issue new access token and rotated refresh token within the same family
   const newAccessToken = await signJWT({ sub: payload.sub, phone: payload.phone, business_id: payload.business_id, type: 'access' }, secret, 3600 * 24);
@@ -351,6 +376,11 @@ authApp.delete('/account', authMiddleware, async (c) => {
     c.env.DB.prepare('DELETE FROM usage_ledger WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM voice_sessions WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare("DELETE FROM rate_limits WHERE bucket LIKE ?").bind(`chat:biz:${businessId}%`),
+    c.env.DB.prepare("DELETE FROM rate_limits WHERE bucket LIKE ?").bind(`chat:user:${user.id}%`),
+    c.env.DB.prepare("DELETE FROM rate_limits WHERE bucket LIKE ?").bind(`knowledge:biz:${businessId}%`),
+    c.env.DB.prepare('DELETE FROM push_rate_limits WHERE business_id = ?').bind(businessId),
+    c.env.DB.prepare('DELETE FROM otp_codes WHERE phone = ?').bind(user.phone),
+    c.env.DB.prepare('DELETE FROM otp_rate_limits WHERE phone = ?').bind(user.phone),
     c.env.DB.prepare('DELETE FROM agents WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM businesses WHERE id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(user.id),

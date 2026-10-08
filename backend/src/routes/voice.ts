@@ -6,14 +6,32 @@ import { encryptAtRest } from '../utils/crypto_data';
 import { isOptOutRequest } from '../services/compliance';
 import { sendBusinessPushNotification } from '../services/fcm';
 import { billableMinutes, claimWebhookEvent, releaseWebhookEvent, recordCallUsage } from '../services/billing';
-import { MAX_DIAL_ATTEMPTS, requeueLead } from '../services/campaign_queue';
+import { MAX_DIAL_ATTEMPTS, requeueLead, maybeCompleteCampaign } from '../services/campaign_queue';
 import { isAllowedSarvamPath } from '../services/sarvam_proxy_guard';
 import { hitRateLimit } from '../utils/rate_limit';
 import { retrieveKnowledge } from '../services/knowledge';
 import { buildSystemPrompt, loadHistory, saveTurn } from '../services/prompt';
 import { requireSecret } from '../utils/secrets';
+import { timingSafeEqual } from '../utils/compare';
+import { jsonErrorHandler } from '../utils/errors';
 
 const voiceApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+// voiceApp is also dispatched directly (voiceApp.fetch) for the proxy, bypassing the main app's onError.
+voiceApp.onError(jsonErrorHandler);
+
+/** Upper bound for proxied non-WebSocket Sarvam requests. */
+export const VOICE_PROXY_TIMEOUT_MS = 30_000;
+
+/** Sarvam call statuses that mean the call connected. */
+const CONNECTED_STATUSES = ['completed', 'connected', 'answered', 'ended'];
+/**
+ * Sarvam statuses that mean the call is OVER without connecting. Anything else (ringing, initiated,
+ * in_progress, queued, ...) is an intermediate event: acknowledged with 200 and no side effects.
+ */
+const TERMINAL_FAILURE_STATUSES = new Set([
+  'no_answer', 'no-answer', 'not_answered', 'busy', 'failed', 'not_reached', 'unreachable',
+  'cancelled', 'canceled', 'rejected', 'declined', 'timeout', 'error',
+]);
 
 // POST /voice/test-session (Requires auth)
 voiceApp.post('/test-session', async (c) => {
@@ -486,6 +504,7 @@ async function handleSarvamProxy(c: Context<{ Bindings: Env; Variables: { user: 
       method: c.req.method,
       headers: forwardHeaders,
       body: isWebSocket || c.req.method === 'GET' || c.req.method === 'HEAD' ? undefined : c.req.raw.body,
+      signal: isWebSocket ? undefined : AbortSignal.timeout(VOICE_PROXY_TIMEOUT_MS),
     });
     return response;
   } catch (err: any) {
@@ -534,29 +553,12 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
 
   // Constant-time compare
   const cleanSig = signature.replace(/^sha256=/, '').trim();
-  let isValid = false;
-  if (cleanSig.length === hexSig.length) {
-    const a = enc.encode(cleanSig);
-    const b = enc.encode(hexSig);
-    let diff = 0;
-    for (let i = 0; i < a.length; i++) {
-      diff |= a[i] ^ b[i];
-    }
-    isValid = (diff === 0);
-  }
+  let isValid = timingSafeEqual(cleanSig, hexSig);
 
   if (!isValid && timestampHeader) {
     const altBuf = await crypto.subtle.sign('HMAC', key, enc.encode(`${timestampHeader}.${rawBody}`));
     const altHex = Array.from(new Uint8Array(altBuf)).map((b) => b.toString(16).padStart(2, '0')).join('');
-    if (cleanSig.length === altHex.length) {
-      const a = enc.encode(cleanSig);
-      const b = enc.encode(altHex);
-      let diff = 0;
-      for (let i = 0; i < a.length; i++) {
-        diff |= a[i] ^ b[i];
-      }
-      isValid = (diff === 0);
-    }
+    isValid = timingSafeEqual(cleanSig, altHex);
   }
 
   if (!isValid) {
@@ -592,7 +594,11 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
 
   // 2. Right after resolving callId + businessId, claim webhook event (idempotency)
   const rawStatus = String(data.status || data.call_status || '').toLowerCase().trim();
-  const finalStatus = ['completed', 'connected', 'answered', 'ended'].includes(rawStatus)
+  // Missing status keeps the legacy meaning (no answer). Unknown / intermediate statuses are not terminal.
+  if (rawStatus && !CONNECTED_STATUSES.includes(rawStatus) && !TERMINAL_FAILURE_STATUSES.has(rawStatus)) {
+    return c.json({ success: true, ignored: true, status: 'non_terminal', message: 'Intermediate call status ignored.' }, 200);
+  }
+  const finalStatus = CONNECTED_STATUSES.includes(rawStatus)
     ? 'completed'
     : (rawStatus || 'no_answer');
 
@@ -723,8 +729,28 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     await c.env.DB.batch(statements);
 
     // 5. Close the campaign loop
-    // Skip campaign update if call was timed_out or if campaign_leads is no longer 'calling'
-    if (call.status !== 'timed_out') {
+    const webhookOrigin = new URL(c.req.url).origin;
+    if (call.status === 'timed_out') {
+      // Late webhook after the sweeper gave up on this call. If the lead was set to retry but the call
+      // actually connected, it is done: record it (the queued retry will find it completed and ack).
+      const connectedLate = bill.minutes > 0 || isConnected;
+      if (connectedLate) {
+        const cl = await c.env.DB.prepare(
+          `UPDATE campaign_leads SET status = 'completed' WHERE call_id = ? AND status = 'retry_pending'
+           RETURNING campaign_id`
+        ).bind(callId).first<{ campaign_id: string }>();
+        if (cl) {
+          await c.env.DB.prepare(`UPDATE campaigns SET
+              completed_leads = completed_leads + 1,
+              connected_leads = connected_leads + 1,
+              hot_leads  = hot_leads  + ?,
+              warm_leads = warm_leads + ?
+            WHERE id = ? AND business_id = ?`)
+            .bind(norm.temperature === 'hot' ? 1 : 0, norm.temperature === 'warm' ? 1 : 0, cl.campaign_id, businessId).run();
+          await maybeCompleteCampaign(c.env.DB, cl.campaign_id);
+        }
+      }
+    } else {
       const cl = await c.env.DB.prepare(
         'SELECT campaign_id, lead_id, attempts, status FROM campaign_leads WHERE call_id = ?'
       ).bind(callId).first<any>();
@@ -744,20 +770,11 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
         ]);
 
         if (next === 'retry_pending') {
-          await requeueLead(c.env, cl.campaign_id, businessId, cl.lead_id, 2 * 60 * 60); // retry no-answers after 2h
+          await requeueLead(c.env, cl.campaign_id, businessId, cl.lead_id, 2 * 60 * 60, webhookOrigin); // retry no-answers after 2h
         }
 
         // 6. Check whether the campaign is finished
-        const unfinished = await c.env.DB.prepare(
-          `SELECT COUNT(*) AS cnt FROM campaign_leads
-           WHERE campaign_id = ? AND status IN ('pending', 'queued', 'calling', 'retry_pending', 'rescheduled')`
-        ).bind(cl.campaign_id).first<{ cnt: number }>();
-
-        if ((unfinished?.cnt ?? 0) === 0) {
-          await c.env.DB.prepare(
-            `UPDATE campaigns SET status = 'completed', completed_at = datetime('now') WHERE id = ? AND business_id = ?`
-          ).bind(cl.campaign_id, businessId).run();
-        }
+        await maybeCompleteCampaign(c.env.DB, cl.campaign_id);
       }
     }
 

@@ -65,8 +65,24 @@ class ApiAuthRepository implements AuthRepository {
     data: {'phone': phone, 'business_name': businessName, 'otp': otp},
   );
 
+  /// Revokes the refresh token server-side (best effort), then forgets it.
   @override
-  Future<void> logout() => store.clear();
+  Future<void> logout() async {
+    try {
+      final refresh = await store.refreshToken();
+      if (refresh != null) {
+        await api.post(
+          '/auth/logout',
+          (_) {},
+          data: {'refresh_token': refresh},
+        );
+      }
+    } catch (_) {
+      // Offline logout still has to work locally.
+    } finally {
+      await store.clear();
+    }
+  }
 
   @override
   Future<void> deleteAccount() async {
@@ -428,5 +444,9 @@ class PushBackendEvents implements BackendEvents {
   final _c = StreamController<BackendEvent>.broadcast();
   @override
   Stream<BackendEvent> get stream => _c.stream;
-  void add(BackendEvent e) => _c.add(e);
+  void add(BackendEvent e) {
+    if (!_c.isClosed) _c.add(e);
+  }
+
+  Future<void> dispose() => _c.close();
 }

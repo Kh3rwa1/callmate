@@ -1,33 +1,50 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import '../../core/bootstrap/firebase_bootstrap.dart';
+import '../crash/crash_reporting_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
+  // Runs in a separate isolate: nothing from the main isolate is set up here.
   try {
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp();
+    await FirebaseBootstrap.ensureInitialized();
+    // If the backend sends a `notification` block, the OS shows it itself.
+    // Data-only messages have to be shown by us.
+    if (message.notification == null) {
+      await PushService.ensureLocalReady();
+      await PushService.showLocal(message.data);
     }
-  } catch (_) {}
-  // If the backend sends a `notification` block, the OS shows it automatically.
-  // If it's data-only, show it ourselves:
-  if (message.notification == null) {
-    await PushService.showLocal(message.data);
+  } catch (_) {
+    // Never crash the background isolate over a notification.
   }
 }
 
 class PushService {
-  PushService({required this.registerToken, required this.onRoute});
+  PushService({
+    required this.registerToken,
+    required this.onRoute,
+    this.onData,
+    this.crash,
+  });
 
-  /// Wire to your existing API client, e.g. (t, p) => api.post('/devices', {...})
+  /// Registers the FCM token with our backend.
   final Future<void> Function(String token, String platform) registerToken;
+
+  /// Opens an in-app route (only internal routes are forwarded).
   final void Function(String route) onRoute;
 
+  /// Called with the data payload of every push received in the foreground,
+  /// so open screens can refresh.
+  final void Function(Map<String, dynamic> data)? onData;
+
+  final CrashReportingService? crash;
+
   static final _local = FlutterLocalNotificationsPlugin();
+  static bool _localReady = false;
   static const _channel = AndroidNotificationChannel(
     'callpilot_alerts',
     'Lead alerts',
@@ -35,29 +52,25 @@ class PushService {
     importance: Importance.high,
   );
 
-  StreamSubscription<String>? _tokenSub;
+  final _subs = <StreamSubscription<dynamic>>[];
+  Future<void>? _initFlight;
   String? _lastToken;
 
   String? get currentToken => _lastToken;
 
-  Future<void> init() async {
-    try {
-      if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp();
-      }
-    } catch (_) {
-      // Firebase not configured yet (e.g. running unit tests or missing google-services.json)
+  /// Safe to call repeatedly (e.g. on every login): the work runs once per
+  /// instance, so listeners are never doubled.
+  Future<void> init() => _initFlight ??= _init();
+
+  Future<void> _init() async {
+    if (!await FirebaseBootstrap.ensureInitialized()) {
+      crash?.log('push: Firebase unavailable, push notifications disabled');
       return;
     }
 
     try {
       FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
-
-      await _local
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.createNotificationChannel(_channel);
+      await ensureLocalReady();
 
       final messaging = FirebaseMessaging.instance;
       final settings = await messaging.requestPermission();
@@ -65,32 +78,42 @@ class PushService {
 
       final token = await messaging.getToken();
       if (token != null) await _safeRegister(token);
-      _tokenSub = messaging.onTokenRefresh.listen(_safeRegister);
-
-      FirebaseMessaging.onMessage.listen(
-        (m) => showLocal(
-          m.data,
-          title: m.notification?.title,
-          body: m.notification?.body,
-        ),
-      );
-      FirebaseMessaging.onMessageOpenedApp.listen(
-        (m) => _openRoute(m.data['route']),
-      );
+      _subs
+        ..add(messaging.onTokenRefresh.listen(_safeRegister))
+        ..add(FirebaseMessaging.onMessage.listen(handleForeground))
+        ..add(
+          FirebaseMessaging.onMessageOpenedApp.listen(
+            (m) => _openRoute(m.data['route']),
+          ),
+        );
       final initial = await messaging.getInitialMessage();
       if (initial != null) _openRoute(initial.data['route']);
-    } catch (_) {
-      // Graceful fallback when FCM services are unavailable
+    } catch (e, s) {
+      crash?.reportError(e, s, reason: 'push init failed');
+    }
+  }
+
+  /// Foreground push: refresh data, then show it as a local notification.
+  @visibleForTesting
+  Future<void> handleForeground(RemoteMessage m) async {
+    onData?.call(m.data);
+    try {
+      await showLocal(
+        m.data,
+        title: m.notification?.title,
+        body: m.notification?.body,
+      );
+    } catch (e, s) {
+      crash?.reportError(e, s, reason: 'push showLocal failed');
     }
   }
 
   Future<void> _safeRegister(String token) async {
     _lastToken = token;
     try {
-      final platform = kIsWeb ? 'web' : (Platform.isIOS ? 'ios' : 'android');
-      await registerToken(token, platform);
+      await registerToken(token, 'android');
     } catch (_) {
-      /* retry on next launch / refresh */
+      /* retried on next launch / token refresh */
     }
   }
 
@@ -98,6 +121,23 @@ class PushService {
     if (route is String && route.startsWith('/')) {
       onRoute(route); // only internal routes
     }
+  }
+
+  /// Initialises the local-notification plugin and our channel. Needed in
+  /// every isolate before [showLocal].
+  static Future<void> ensureLocalReady() async {
+    if (_localReady) return;
+    await _local.initialize(
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@drawable/ic_stat_notify'),
+      ),
+    );
+    await _local
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(_channel);
+    _localReady = true;
   }
 
   static Future<void> showLocal(
@@ -116,6 +156,7 @@ class PushService {
           channelDescription: _channel.description,
           importance: Importance.high,
           priority: Priority.high,
+          icon: '@drawable/ic_stat_notify',
         ),
       ),
       payload: data['route'] as String?,
@@ -128,5 +169,10 @@ class PushService {
     } catch (_) {}
   }
 
-  Future<void> dispose() async => _tokenSub?.cancel();
+  Future<void> dispose() async {
+    for (final s in _subs) {
+      await s.cancel();
+    }
+    _subs.clear();
+  }
 }

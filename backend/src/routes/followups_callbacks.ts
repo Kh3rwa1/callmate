@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { parseJsonBody, patchFollowupSchema, createCallbackSchema, patchCallbackSchema } from '../schemas/validation';
+import { parseLimit, MAX_LIST_LIMIT } from '../utils/pagination';
 
 const fcApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -42,7 +43,8 @@ fcApp.get('/followups', async (c) => {
     params.push(callId);
   }
 
-  sql += ' ORDER BY f.created_at DESC';
+  sql += ' ORDER BY f.created_at DESC LIMIT ?';
+  params.push(parseLimit(c.req.query('limit'), MAX_LIST_LIMIT, MAX_LIST_LIMIT));
   const { results } = await c.env.DB.prepare(sql).bind(...params).all<any>();
   return c.json(results.map(formatFollowUp));
 });
@@ -114,8 +116,10 @@ fcApp.get('/callbacks', async (c) => {
     LEFT JOIN leads l ON cb.lead_id = l.id
     WHERE cb.business_id = ?
     ORDER BY cb.scheduled_at ASC
+    LIMIT ?
   `;
-  const { results } = await c.env.DB.prepare(sql).bind(user.business_id).all<any>();
+  const limit = parseLimit(c.req.query('limit'), MAX_LIST_LIMIT, MAX_LIST_LIMIT);
+  const { results } = await c.env.DB.prepare(sql).bind(user.business_id, limit).all<any>();
   return c.json(results.map(formatCallback));
 });
 
