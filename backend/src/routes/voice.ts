@@ -33,6 +33,17 @@ const TERMINAL_FAILURE_STATUSES = new Set([
   'cancelled', 'canceled', 'rejected', 'declined', 'timeout', 'error',
 ]);
 
+/** QA accounts listed in the VOICE_UNLIMITED_EMAILS secret skip the session cap. */
+async function isUnlimitedTester(env: Env, userId: string): Promise<boolean> {
+  const allow = (env.VOICE_UNLIMITED_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (allow.length === 0) return false;
+  const row = await env.DB.prepare('SELECT email FROM users WHERE id = ?').bind(userId).first<{ email: string | null }>();
+  return !!row?.email && allow.includes(row.email.trim().toLowerCase());
+}
+
 // POST /voice/test-session (Requires auth)
 voiceApp.post('/test-session', async (c) => {
   const user = c.get('user');
@@ -47,7 +58,7 @@ voiceApp.post('/test-session', async (c) => {
      WHERE business_id = ? AND status = 'active' AND started_at > datetime('now', '-1 hour')`
   ).bind(user.business_id).first<{ cnt: number }>();
 
-  if (activeCount && activeCount.cnt >= 5) {
+  if (activeCount && activeCount.cnt >= 5 && !(await isUnlimitedTester(c.env, user.id))) {
     return c.json({ message: 'Maximum concurrent voice sessions reached for your business.', code: 'session_limit_exceeded' }, 429);
   }
 

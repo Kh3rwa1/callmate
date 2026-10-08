@@ -12,13 +12,13 @@ describe('voice test-session lifecycle', () => {
   const phone = '919876543299';
   let token: string;
 
-  const call = (path: string, auth = token) =>
+  const call = (path: string, auth = token, extraEnv: Record<string, string> = {}) =>
     app.fetch(
       new Request(`http://localhost${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth}` },
       }),
-      { ...env, JWT_SIGNING_KEY: secret, OTP_PEPPER: otpPepper },
+      { ...env, JWT_SIGNING_KEY: secret, OTP_PEPPER: otpPepper, ...extraEnv },
     );
 
   beforeAll(async () => {
@@ -56,5 +56,30 @@ describe('voice test-session lifecycle', () => {
     expect((await call('/voice/test-session/vsess_other/end')).status).toBe(200);
     const row = await env.DB.prepare("SELECT status FROM voice_sessions WHERE id = 'vsess_other'").first<{ status: string }>();
     expect(row?.status).toBe('active');
+  });
+
+  describe('VOICE_UNLIMITED_EMAILS', () => {
+    const qaBiz = 'biz_vs_qa';
+    const qaUser = 'usr_vs_qa';
+    let qaToken: string;
+
+    beforeAll(async () => {
+      await env.DB.batch([
+        env.DB.prepare("INSERT OR REPLACE INTO businesses (id, name, category) VALUES (?, 'QA', 'coaching')").bind(qaBiz),
+        env.DB.prepare("INSERT OR REPLACE INTO users (id, phone, business_id, email) VALUES (?, '919876543297', ?, 'QA.Tester@Example.com')").bind(qaUser, qaBiz),
+      ]);
+      qaToken = await signJWT({ sub: qaUser, phone: '919876543297', business_id: qaBiz, type: 'access' }, secret, 3600);
+    });
+
+    it('enforces the cap of 5 for accounts not on the list', async () => {
+      const others = { VOICE_UNLIMITED_EMAILS: 'someone@else.com' };
+      for (let i = 0; i < 5; i++) expect((await call('/voice/test-session', qaToken, others)).status).toBe(200);
+      expect((await call('/voice/test-session', qaToken, others)).status).toBe(429);
+    });
+
+    it('lets a listed email (case-insensitive) past the cap', async () => {
+      const listed = { VOICE_UNLIMITED_EMAILS: 'a@b.com, qa.tester@example.com' };
+      for (let i = 0; i < 3; i++) expect((await call('/voice/test-session', qaToken, listed)).status).toBe(200);
+    });
   });
 });
