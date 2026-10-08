@@ -46,12 +46,39 @@ export const CLAIMABLE_STATUSES = ['pending', 'queued', 'rescheduled', 'retry_pe
 export const UNFINISHED_LEAD_STATUSES = ['pending', 'queued', 'calling', 'retry_pending', 'rescheduled'] as const;
 
 /**
- * Same webhook config shape for manual and campaign dials. `baseUrl` is the worker's public origin;
+ * Sarvam does not sign webhooks, so each dial carries a per-call token in its webhook URL:
+ * HMAC-SHA256(SARVAM_WEBHOOK_SECRET, call_id). A leaked token only authorises that one call's result.
+ */
+export async function sarvamWebhookToken(secret: string, callId: string): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(callId));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Same webhook config for manual and campaign dials. `baseUrl` is the worker's public origin;
  * PUBLIC_API_BASE_URL (if set) wins for queue/cron contexts that have no request.
  */
-export function sarvamWebhookConfig(baseUrl?: string | null): { webhook_url: string } | undefined {
+export async function sarvamWebhookConfig(
+  baseUrl: string | null | undefined, secret: string | undefined, callId: string
+): Promise<{ url: string; metadata: { call_id: string } } | undefined> {
   const base = (baseUrl || '').trim().replace(/\/+$/, '');
-  return base ? { webhook_url: `${base}/webhooks/sarvam` } : undefined;
+  if (!base || !secret) return undefined;
+  const token = await sarvamWebhookToken(secret, callId);
+  return { url: `${base}/webhooks/sarvam?call_id=${encodeURIComponent(callId)}&token=${token}`, metadata: { call_id: callId } };
+}
+
+/** Caller IDs from SARVAM_AGENT_PHONE_NUMBERS (comma separated), spread across dials. */
+export function pickAgentPhoneNumber(env: Pick<Env, 'SARVAM_AGENT_PHONE_NUMBERS'>): string | null {
+  const numbers = (env.SARVAM_AGENT_PHONE_NUMBERS || '').split(',').map((n) => n.trim()).filter(Boolean);
+  if (numbers.length === 0) return null;
+  return numbers[Math.floor(Math.random() * numbers.length)];
+}
+
+/** Sarvam wants E.164; leads are stored as bare digits with country code (e.g. 919876543210). */
+export function toE164(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  return `+${digits}`;
 }
 
 /**
@@ -81,12 +108,33 @@ export type DialResult =
   | { ok: true; interactionId: string | null }
   | { ok: false; retryable: boolean; error: string };
 
-export async function dialSarvam(env: Env, body: unknown): Promise<DialResult> {
+export interface DialRequest {
+  callId: string;
+  phone: string;
+  agentVariables: Record<string, unknown>;
+  webhookBaseUrl?: string | null;
+}
+
+/** Instant outbound call: POST /api/outbounds/v1/orgs/{org}/workspaces/{ws}/outbounds. */
+export async function dialSarvam(env: Env, req: DialRequest): Promise<DialResult> {
   const orgId = env.SARVAM_ORG_ID;
   const workspaceId = env.SARVAM_WORKSPACE_ID;
-  if (!env.SARVAM_API_KEY || !orgId || !workspaceId) {
+  const appVersion = Number(env.SARVAM_APP_VERSION);
+  const agentPhone = pickAgentPhoneNumber(env);
+  if (!env.SARVAM_API_KEY || !orgId || !workspaceId || !env.SARVAM_ADMISSIONS_APP_ID
+      || !Number.isInteger(appVersion) || !env.SARVAM_CONNECTION_ID || !agentPhone) {
     return { ok: false, retryable: false, error: 'sarvam_not_configured' };
   }
+  const body = {
+    app_config: {
+      app_id: env.SARVAM_ADMISSIONS_APP_ID,
+      app_version: appVersion,
+      connection_config: { connection_id: env.SARVAM_CONNECTION_ID, agent_phone_number: agentPhone },
+      agent_variables: req.agentVariables,
+    },
+    user_config: { user_phone_number: toE164(req.phone) },
+    webhook_config: await sarvamWebhookConfig(req.webhookBaseUrl, env.SARVAM_WEBHOOK_SECRET, req.callId),
+  };
   try {
     const res = await fetch(
       `https://apps.sarvam.ai/api/outbounds/v1/orgs/${orgId}/workspaces/${workspaceId}/outbounds`,
@@ -103,7 +151,7 @@ export async function dialSarvam(env: Env, body: unknown): Promise<DialResult> {
       const retryable = res.status === 429 || res.status >= 500;
       return { ok: false, retryable, error: `sarvam_http_${res.status}` };
     }
-    const interactionId = data?.interaction_id ?? data?.id ?? data?.attempt_id ?? null;
+    const interactionId = data?.attempt_id ?? data?.interaction_id ?? data?.id ?? null;
     return { ok: true, interactionId };
   } catch (err: any) {
     // Network error / timeout: transient
@@ -205,9 +253,9 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
   const agent = await env.DB.prepare('SELECT name, role FROM agents WHERE business_id = ?').bind(business_id).first<any>();
 
   const dial = await dialSarvam(env, {
-    app_config: { app_id: env.SARVAM_ADMISSIONS_APP_ID },
-    user_config: { phone_number: lead.phone },
-    agent_variables: {
+    callId,
+    phone: lead.phone,
+    agentVariables: {
       call_id: callId,
       campaign_id,
       lead_id: lead.id,
@@ -217,7 +265,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
       agent_role: agent?.role ?? 'Assistant',
       interest: lead.interest ?? '',
     },
-    webhook_config: sarvamWebhookConfig(env.PUBLIC_API_BASE_URL || job.webhook_base_url),
+    webhookBaseUrl: env.PUBLIC_API_BASE_URL || job.webhook_base_url,
   });
 
   if (dial.ok) {

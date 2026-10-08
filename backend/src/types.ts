@@ -8,6 +8,12 @@ export interface Env {
   SARVAM_WORKSPACE_ID?: string;
   SARVAM_ADMISSIONS_APP_ID?: string;
   SARVAM_WEBHOOK_SECRET?: string;
+  /** Committed version of the Sarvam agent to dial with. */
+  SARVAM_APP_VERSION?: string;
+  /** Sarvam telephony connection that owns the caller IDs. */
+  SARVAM_CONNECTION_ID?: string;
+  /** Comma-separated caller IDs (E.164, as onboarded in Sarvam); one is picked per dial. */
+  SARVAM_AGENT_PHONE_NUMBERS?: string;
   SARVAM_PROXY_BASE?: string;
   TELEPHONY_PROVIDER?: string;
   FCM_SERVICE_ACCOUNT_JSON?: string;

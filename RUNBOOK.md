@@ -12,11 +12,14 @@ This runbook provides actionable procedures for deploying, managing, operating, 
    `backend/wrangler.toml` with the real UUIDs from `npx wrangler d1 list`.
 2. Set Worker secrets (`npx wrangler secret put <NAME> [--env staging]`):
    `JWT_SIGNING_KEY`, `OTP_PEPPER`, `ENCRYPTION_KEY`, `SARVAM_API_KEY`,
-   `SARVAM_WEBHOOK_SECRET`, `SARVAM_ORG_ID`, `SARVAM_WORKSPACE_ID`,
-   `SARVAM_ADMISSIONS_APP_ID`, `FCM_SERVICE_ACCOUNT_JSON`, one SMS provider
+   `SARVAM_WEBHOOK_SECRET` (any random 32+ chars; Sarvam does not sign webhooks,
+   so each dial's webhook URL carries `HMAC(secret, call_id)`), `FCM_SERVICE_ACCOUNT_JSON`, one SMS provider
    (`MSG91_AUTH_KEY` / `GUPSHUP_API_KEY` / `EXOTEL_SID`+`EXOTEL_TOKEN`) and
    `HEALTH_CHECK_SECRET`. Production refuses to send OTPs without an SMS
    provider.
+   The Sarvam agent, org, workspace, connection and caller IDs are plain `[vars]`
+   in `wrangler.toml`. After committing a new agent version in Sarvam, bump
+   `SARVAM_APP_VERSION` and redeploy.
 3. Add `PUBLIC_API_BASE_URL = "https://<your api domain>"` to `[vars]` (and
    `[env.staging.vars]`). Campaign retries started by the cron sweeper need it
    to give Sarvam a webhook URL.

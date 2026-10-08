@@ -12,6 +12,7 @@ import {
   maybeCompleteCampaign,
   processCampaignJob,
   sarvamWebhookConfig,
+  sarvamWebhookToken,
   MAX_CONCURRENT_CALLS_PER_BUSINESS,
 } from '../src/services/campaign_queue';
 import { runMaintenance } from '../src/services/maintenance';
@@ -431,8 +432,12 @@ describe('Production readiness fixes', () => {
   // ---------------------------------------------------------------- 9. Campaign webhook_config
   describe('9. Campaign dials include webhook_config', () => {
     it('passes the same webhook config shape as the manual dial', async () => {
-      expect(sarvamWebhookConfig('https://api.x.test/')).toEqual({ webhook_url: 'https://api.x.test/webhooks/sarvam' });
-      expect(sarvamWebhookConfig(undefined)).toBeUndefined();
+      const token = await sarvamWebhookToken('s3cret', 'call_1');
+      expect(await sarvamWebhookConfig('https://api.x.test/', 's3cret', 'call_1')).toEqual({
+        url: `https://api.x.test/webhooks/sarvam?call_id=call_1&token=${token}`, metadata: { call_id: 'call_1' },
+      });
+      expect(await sarvamWebhookConfig(undefined, 's3cret', 'call_1')).toBeUndefined();
+      expect(await sarvamWebhookConfig('https://api.x.test', undefined, 'call_1')).toBeUndefined();
 
       const { campId, leadIds } = await seedCampaign({ leads: 1, leadStatus: 'queued' });
       let dialBody: any = null;
@@ -446,7 +451,13 @@ describe('Production readiness fixes', () => {
         webhook_base_url: 'https://worker.example.test',
       });
       expect(r.success).toBe(true);
-      expect(dialBody.webhook_config).toEqual({ webhook_url: 'https://worker.example.test/webhooks/sarvam' });
+      const callId = dialBody.app_config.agent_variables.call_id;
+      expect(dialBody.webhook_config).toEqual({
+        url: `https://worker.example.test/webhooks/sarvam?call_id=${callId}&token=${await sarvamWebhookToken(env.SARVAM_WEBHOOK_SECRET, callId)}`,
+        metadata: { call_id: callId },
+      });
+      expect(dialBody.app_config).toMatchObject({ app_id: 'a', app_version: 1, connection_config: { connection_id: 'conn_test', agent_phone_number: '+910000000001' } });
+      expect(dialBody.user_config.user_phone_number).toMatch(/^\+\d+$/);
       await env.DB.prepare("UPDATE calls SET status = 'completed' WHERE campaign_id = ?").bind(campId).run();
     });
   });
