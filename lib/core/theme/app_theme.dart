@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../motion/motion.dart';
 import 'app_colors.dart';
 
 class AppRadius {
@@ -22,13 +22,30 @@ class AppSpace {
 }
 
 class AppShadows {
+  /// Soft, wide, low-opacity: lifts cards without a visible "slab".
   static const card = [
-    BoxShadow(color: Color(0x0F1B1530), blurRadius: 24, offset: Offset(0, 8)),
-    BoxShadow(color: Color(0x0A1B1530), blurRadius: 3, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x0A1B1530), blurRadius: 14, offset: Offset(0, 3)),
+    BoxShadow(color: Color(0x08000000), blurRadius: 2, offset: Offset(0, 1)),
+  ];
+
+  /// Raised state (pressed / floating CTA).
+  static const raised = [
+    BoxShadow(color: Color(0x1A1B1530), blurRadius: 28, offset: Offset(0, 12)),
+    BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 2)),
+  ];
+
+  static List<BoxShadow> glow(Color c) => [
+    BoxShadow(
+      color: c.withValues(alpha: 0.32),
+      blurRadius: 20,
+      offset: const Offset(0, 8),
+    ),
   ];
 }
 
 class AppTheme {
+  static const fontFamily = 'PlusJakartaSans';
+
   static ThemeData light() {
     final base = ThemeData(
       useMaterial3: true,
@@ -40,81 +57,96 @@ class AppTheme {
         error: AppColors.hot,
       ),
       scaffoldBackgroundColor: AppColors.background,
+      fontFamily: fontFamily,
     );
 
-    final text = GoogleFonts.plusJakartaSansTextTheme(base.textTheme).copyWith(
-      displaySmall: GoogleFonts.plusJakartaSans(
-        fontSize: 34,
-        fontWeight: FontWeight.w800,
-        color: AppColors.ink,
-        height: 1.12,
-        letterSpacing: -0.8,
-      ),
-      headlineMedium: GoogleFonts.plusJakartaSans(
-        fontSize: 28,
-        fontWeight: FontWeight.w800,
-        color: AppColors.ink,
-        height: 1.15,
-        letterSpacing: -0.6,
-      ),
-      headlineSmall: GoogleFonts.plusJakartaSans(
-        fontSize: 24,
-        fontWeight: FontWeight.w800,
-        color: AppColors.ink,
-        height: 1.2,
-        letterSpacing: -0.4,
-      ),
-      titleLarge: GoogleFonts.plusJakartaSans(
-        fontSize: 20,
-        fontWeight: FontWeight.w700,
-        color: AppColors.ink,
-        letterSpacing: -0.2,
-      ),
-      titleMedium: GoogleFonts.plusJakartaSans(
-        fontSize: 17,
-        fontWeight: FontWeight.w700,
-        color: AppColors.ink,
-      ),
-      titleSmall: GoogleFonts.plusJakartaSans(
-        fontSize: 15,
-        fontWeight: FontWeight.w700,
-        color: AppColors.ink,
-      ),
-      bodyLarge: GoogleFonts.plusJakartaSans(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: AppColors.ink,
-        height: 1.5,
-      ),
-      bodyMedium: GoogleFonts.plusJakartaSans(
-        fontSize: 15,
-        fontWeight: FontWeight.w500,
-        color: AppColors.inkSoft,
-        height: 1.45,
-      ),
-      bodySmall: GoogleFonts.plusJakartaSans(
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-        color: AppColors.inkFaint,
-        height: 1.4,
-      ),
-      labelLarge: GoogleFonts.plusJakartaSans(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0,
-      ),
-      labelMedium: GoogleFonts.plusJakartaSans(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        color: AppColors.inkSoft,
-      ),
-      labelSmall: GoogleFonts.plusJakartaSans(
-        fontSize: 12,
-        fontWeight: FontWeight.w800,
-        color: AppColors.inkFaint,
-        letterSpacing: 1.1,
-      ),
-    );
+    final text = base.textTheme
+        .apply(fontFamily: AppTheme.fontFamily)
+        .copyWith(
+          displaySmall: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 34,
+            fontWeight: FontWeight.w800,
+            color: AppColors.ink,
+            height: 1.12,
+            letterSpacing: -0.8,
+          ),
+          headlineMedium: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            color: AppColors.ink,
+            height: 1.15,
+            letterSpacing: -0.6,
+          ),
+          headlineSmall: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: AppColors.ink,
+            height: 1.2,
+            letterSpacing: -0.4,
+          ),
+          titleLarge: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+            letterSpacing: -0.2,
+          ),
+          titleMedium: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
+          titleSmall: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
+          bodyLarge: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: AppColors.ink,
+            height: 1.5,
+          ),
+          bodyMedium: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: AppColors.inkSoft,
+            height: 1.45,
+          ),
+          bodySmall: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: AppColors.inkFaint,
+            height: 1.4,
+          ),
+          labelLarge: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0,
+          ),
+          labelMedium: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.inkSoft,
+          ),
+          labelSmall: TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: AppColors.inkFaint,
+            letterSpacing: 1.1,
+          ),
+        );
 
     final buttonShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppRadius.button),
@@ -122,6 +154,13 @@ class AppTheme {
 
     return base.copyWith(
       textTheme: text,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: SoftPageTransitionsBuilder(),
+          TargetPlatform.iOS: SoftPageTransitionsBuilder(),
+          TargetPlatform.macOS: SoftPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.background,
         surfaceTintColor: Colors.transparent,
@@ -209,7 +248,8 @@ class AppTheme {
         indicatorColor: AppColors.brandSoft,
         height: 72,
         labelTextStyle: WidgetStateProperty.resolveWith(
-          (s) => GoogleFonts.plusJakartaSans(
+          (s) => TextStyle(
+            fontFamily: AppTheme.fontFamily,
             fontSize: 12,
             fontWeight: s.contains(WidgetState.selected)
                 ? FontWeight.w800

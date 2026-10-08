@@ -20,8 +20,8 @@ class _SkeletonState extends State<Skeleton>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1100),
-  )..repeat(reverse: true);
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
   @override
   void dispose() {
     _c.dispose();
@@ -29,17 +29,39 @@ class _SkeletonState extends State<Skeleton>
   }
 
   @override
-  Widget build(BuildContext context) => FadeTransition(
-    opacity: Tween(begin: 0.45, end: 1.0).animate(_c),
-    child: Container(
+  Widget build(BuildContext context) {
+    final box = Container(
       height: widget.height,
       width: widget.width,
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(widget.radius),
       ),
-    ),
-  );
+    );
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return box;
+    // A soft highlight sweeps left → right across the placeholder.
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, child) => ShaderMask(
+        blendMode: BlendMode.srcATop,
+        shaderCallback: (r) {
+          final x = -1.0 + 3.0 * _c.value;
+          return LinearGradient(
+            begin: Alignment(x - 1, 0),
+            end: Alignment(x, 0),
+            colors: const [
+              AppColors.surfaceMuted,
+              Color(0xFFFBF9F5),
+              AppColors.surfaceMuted,
+            ],
+            stops: const [0.0, 0.5, 1.0],
+          ).createShader(r);
+        },
+        child: child,
+      ),
+      child: box,
+    );
+  }
 }
 
 class SkeletonCard extends StatelessWidget {

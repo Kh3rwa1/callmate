@@ -155,7 +155,11 @@ class WhatsAppButton extends StatelessWidget {
           backgroundColor: AppColors.whatsapp,
           minimumSize: const Size(0, 44),
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+          textStyle: const TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+          ),
         ),
         onPressed: onPressed,
         icon: const Icon(Icons.chat_rounded, size: 18),

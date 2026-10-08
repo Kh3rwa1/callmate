@@ -1,62 +1,190 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
+import '../../core/theme/app_colors.dart';
 
-/// Bottom navigation: exactly Home · Leads · Calls · Follow-ups · AI Employee.
+/// Bottom navigation: exactly Home · Leads · Calls · Follow-ups · Agent.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
   final StatefulNavigationShell shell;
+
+  static const _tabs = [
+    (Icons.home_outlined, Icons.home_rounded, 'Home'),
+    (Icons.people_outline_rounded, Icons.people_rounded, 'Leads'),
+    (Icons.call_outlined, Icons.call_rounded, 'Calls'),
+    (
+      Icons.chat_bubble_outline_rounded,
+      Icons.chat_bubble_rounded,
+      'Follow-ups',
+    ),
+    (Icons.support_agent_outlined, Icons.support_agent_rounded, 'Agent'),
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pending = ref.watch(dashboardProvider).value?.followUpsReady ?? 0;
     return Scaffold(
       body: shell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: shell.currentIndex,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        onDestinationSelected: (i) {
-          HapticFeedback.selectionClick();
+      bottomNavigationBar: AppNavBar(
+        index: shell.currentIndex,
+        badges: {3: pending},
+        onSelect: (i) {
+          Haptics.tap();
           shell.goBranch(i, initialLocation: i == shell.currentIndex);
         },
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Home',
+      ),
+    );
+  }
+}
+
+class AppNavBar extends StatelessWidget {
+  const AppNavBar({
+    super.key,
+    required this.index,
+    required this.onSelect,
+    this.badges = const {},
+  });
+  final int index;
+  final ValueChanged<int> onSelect;
+  final Map<int, int> badges;
+
+  @override
+  Widget build(BuildContext context) {
+    final tabs = AppShell._tabs;
+    final dur = AppMotion.of(context, const Duration(milliseconds: 420));
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.hairline)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 68,
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final w = c.maxWidth / tabs.length;
+              return Stack(
+                children: [
+                  // Sliding pill behind the active icon.
+                  AnimatedPositioned(
+                    duration: dur,
+                    curve: AppMotion.pop,
+                    left: w * index + (w - 56) / 2,
+                    top: 8,
+                    width: 56,
+                    height: 30,
+                    child: const DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: AppColors.brandSoft,
+                        borderRadius: BorderRadius.all(Radius.circular(99)),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      for (var i = 0; i < tabs.length; i++)
+                        Expanded(
+                          child: _NavItem(
+                            icon: tabs[i].$1,
+                            selectedIcon: tabs[i].$2,
+                            label: tabs[i].$3,
+                            selected: i == index,
+                            badge: badges[i],
+                            onTap: () => onSelect(i),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.people_outline_rounded),
-            selectedIcon: Icon(Icons.people_rounded),
-            label: 'Leads',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.call_outlined),
-            selectedIcon: Icon(Icons.call_rounded),
-            label: 'Calls',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: pending > 0,
-              label: Text('$pending'),
-              child: const Icon(Icons.chat_bubble_outline_rounded),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.selected,
+    required this.badge,
+    required this.onTap,
+  });
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool selected;
+
+  /// null: this tab never shows a badge.
+  final int? badge;
+  final VoidCallback onTap;
+
+  Widget _icon() => SwapFade(
+    duration: AppMotion.fast,
+    child: Icon(
+      selected ? selectedIcon : icon,
+      key: ValueKey(selected),
+      size: 24,
+      color: selected ? AppColors.brand : AppColors.inkFaint,
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final dur = AppMotion.of(context, AppMotion.base);
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: (badge ?? 0) > 0 ? '$label, $badge pending' : label,
+      excludeSemantics: true,
+      child: Pressable(
+        onTap: onTap,
+        haptic: false,
+        scale: 0.9,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              height: 30,
+              child: Center(
+                child: AnimatedScale(
+                  scale: selected ? 1.08 : 1,
+                  duration: dur,
+                  curve: AppMotion.pop,
+                  child: badge == null
+                      ? _icon()
+                      : Badge(
+                          isLabelVisible: badge! > 0,
+                          backgroundColor: AppColors.hot,
+                          label: Text('$badge'),
+                          child: _icon(),
+                        ),
+                ),
+              ),
             ),
-            selectedIcon: Badge(
-              isLabelVisible: pending > 0,
-              label: Text('$pending'),
-              child: const Icon(Icons.chat_bubble_rounded),
+            const SizedBox(height: 3),
+            AnimatedDefaultTextStyle(
+              duration: dur,
+              curve: AppMotion.standard,
+              style: (t.labelSmall ?? const TextStyle()).copyWith(
+                fontSize: 11.5,
+                letterSpacing: 0,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? AppColors.ink : AppColors.inkFaint,
+              ),
+              child: Text(label, maxLines: 1, overflow: TextOverflow.fade),
             ),
-            label: 'Follow-ups',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.support_agent_outlined),
-            selectedIcon: Icon(Icons.support_agent_rounded),
-            label: 'AI Employee',
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

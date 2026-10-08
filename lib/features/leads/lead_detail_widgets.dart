@@ -53,7 +53,7 @@ class LeadSignalChip extends StatelessWidget {
         Icon(
           positive ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
           size: 21,
-          color: positive ? AppColors.success : AppColors.warm,
+          color: positive ? AppColors.success : AppColors.warmInk,
           semanticLabel: positive ? 'Positive' : 'Concern',
         ),
         const SizedBox(width: 10),

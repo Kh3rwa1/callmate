@@ -23,13 +23,13 @@ MascotState mascotForVoiceState(VoiceConnectionState state) => switch (state) {
   VoiceConnectionState state, {
   bool muted = false,
 }) => switch (state) {
-  VoiceConnectionState.connecting => ('Connecting…', AppColors.warm),
+  VoiceConnectionState.connecting => ('Connecting…', AppColors.warmInk),
   VoiceConnectionState.listening => (
     muted ? 'Muted' : 'Listening',
     AppColors.success,
   ),
   VoiceConnectionState.speaking => ('Speaking', AppColors.brand),
-  VoiceConnectionState.thinking => ('Thinking…', AppColors.warm),
+  VoiceConnectionState.thinking => ('Thinking…', AppColors.warmInk),
   VoiceConnectionState.disconnected => ('Disconnected', AppColors.cold),
   VoiceConnectionState.error => ('Couldn\'t connect', AppColors.hot),
   VoiceConnectionState.idle => ('Ready', AppColors.cold),

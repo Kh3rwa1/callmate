@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -149,14 +150,26 @@ class _Result extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          ScoreRing(score: score, size: 120),
+                          Stack(
+                            alignment: Alignment.center,
+                            clipBehavior: Clip.none,
+                            children: [
+                              ScoreRing(score: score, size: 120),
+                              if (hot)
+                                const Positioned(
+                                  left: -50,
+                                  top: -50,
+                                  child: ConfettiBurst(size: 220),
+                                ),
+                            ],
+                          ),
                           const SizedBox(width: 18),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '${TempStyle.of(score.temperature).emoji} ${score.value} / 100',
+                                  '${TempStyle.of(score.temperature).word} lead',
                                   style: t.headlineSmall,
                                 ),
                                 const SizedBox(height: 4),

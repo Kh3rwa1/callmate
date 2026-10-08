@@ -6,6 +6,7 @@ import 'package:callpilot/features/followups/followup_detail_screen.dart';
 import 'package:callpilot/features/home/home_screen.dart';
 import 'package:callpilot/features/leads/import_leads_screen.dart';
 import 'package:callpilot/features/notifications/notifications_screen.dart';
+import 'package:callpilot/features/shell/app_shell.dart';
 import 'package:callpilot/features/splash/splash_screen.dart';
 import 'package:callpilot/features/usage/usage_screen.dart';
 import 'package:flutter/material.dart';
@@ -32,7 +33,7 @@ Finder _hint(String hint) => find.byWidgetPredicate(
 );
 
 Finder _navItem(String label) =>
-    find.descendant(of: find.byType(NavigationBar), matching: find.text(label));
+    find.descendant(of: find.byType(AppNavBar), matching: find.text(label));
 
 void main() {
   group('ImportLeadsScreen', () {
@@ -211,7 +212,7 @@ void main() {
         ('Leads', '/leads'),
         ('Calls', '/calls'),
         ('Follow-ups', '/followups'),
-        ('AI Employee', '/agent'),
+        ('Agent', '/agent'),
         ('Home', '/home'),
       ]) {
         await h.tap(_navItem(label));
@@ -233,7 +234,7 @@ void main() {
           .length;
       expect(pending, greaterThan(0));
       final badge = find.descendant(
-        of: find.byType(NavigationBar),
+        of: find.byType(AppNavBar),
         matching: find.byType(Badge),
       );
       expect(badge, findsOneWidget);

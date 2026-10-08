@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
+import '../motion/motion.dart';
 import '../theme/app_theme.dart';
 
 class AppCard extends StatelessWidget {
@@ -29,35 +29,24 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final br = BorderRadius.circular(radius);
-    Widget content = Padding(padding: padding, child: child);
-    if (onTap != null) {
-      content = InkWell(
+    Widget card = DecoratedBox(
+      decoration: BoxDecoration(
+        color: color,
         borderRadius: br,
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap!();
-        },
-        child: content,
-      );
-    }
-    return Semantics(
-      button: onTap != null,
-      label: semanticLabel,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: br,
-          border: border,
-          boxShadow: shadow ? AppShadows.card : null,
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          borderRadius: br,
-          clipBehavior: Clip.antiAlias,
-          child: content,
-        ),
+        border: border ?? Border.all(color: AppColors.hairline, width: 0.8),
+        boxShadow: shadow ? AppShadows.card : null,
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: br,
+        clipBehavior: Clip.antiAlias,
+        child: Padding(padding: padding, child: child),
       ),
     );
+    if (onTap != null) {
+      card = Pressable(onTap: onTap, scale: 0.975, child: card);
+    }
+    return Semantics(button: onTap != null, label: semanticLabel, child: card);
   }
 }
 
@@ -222,7 +211,7 @@ class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
   );
 }
 
-/// Big CTA button with optional leading emoji/icon and loading state.
+/// Big CTA button: press squish, label ⇄ spinner crossfade, soft colour glow.
 class PrimaryButton extends StatelessWidget {
   const PrimaryButton({
     super.key,
@@ -242,44 +231,63 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton(
-      style: color == null
-          ? null
-          : FilledButton.styleFrom(backgroundColor: color),
-      onPressed: loading || onPressed == null
-          ? null
-          : () {
-              HapticFeedback.mediumImpact();
-              onPressed!();
-            },
-      child: loading
-          ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.4,
-                color: Colors.white,
-              ),
-            )
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: 21),
-                  const SizedBox(width: 8),
-                ],
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(label, maxLines: 1),
+    final enabled = !loading && onPressed != null;
+    final bg = color ?? AppColors.ink;
+    return Pressable(
+      enabled: enabled,
+      scale: 0.965,
+      child: AnimatedContainer(
+        duration: AppMotion.of(context, AppMotion.base),
+        curve: AppMotion.standard,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.button),
+          boxShadow: enabled && color != null ? AppShadows.glow(bg) : const [],
+        ),
+        child: FilledButton(
+          style: color == null
+              ? null
+              : FilledButton.styleFrom(backgroundColor: color),
+          onPressed: enabled
+              ? () {
+                  Haptics.press();
+                  onPressed!();
+                }
+              : null,
+          child: SwapFade(
+            duration: AppMotion.fast,
+            child: loading
+                ? const SizedBox(
+                    key: ValueKey('loading'),
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: Colors.white,
+                    ),
+                  )
+                : Row(
+                    key: const ValueKey('label'),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (icon != null) ...[
+                        Icon(icon, size: 21),
+                        const SizedBox(width: 8),
+                      ],
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(label, maxLines: 1),
+                        ),
+                      ),
+                      if (trailingArrow) ...[
+                        const SizedBox(width: 8),
+                        const Icon(Icons.arrow_forward_rounded, size: 20),
+                      ],
+                    ],
                   ),
-                ),
-                if (trailingArrow) ...[
-                  const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward_rounded, size: 20),
-                ],
-              ],
-            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -296,24 +304,28 @@ class SecondaryButton extends StatelessWidget {
   final IconData? icon;
 
   @override
-  Widget build(BuildContext context) => OutlinedButton(
-    onPressed: onPressed == null
-        ? null
-        : () {
-            HapticFeedback.selectionClick();
-            onPressed!();
-          },
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (icon != null) ...[Icon(icon, size: 20), const SizedBox(width: 8)],
-        Flexible(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(label, maxLines: 1),
+  Widget build(BuildContext context) => Pressable(
+    enabled: onPressed != null,
+    scale: 0.97,
+    child: OutlinedButton(
+      onPressed: onPressed == null
+          ? null
+          : () {
+              Haptics.tap();
+              onPressed!();
+            },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[Icon(icon, size: 20), const SizedBox(width: 8)],
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(label, maxLines: 1),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }
@@ -351,4 +363,73 @@ class Emoji extends StatelessWidget {
   Widget build(BuildContext context) => ExcludeSemantics(
     child: Text(e, style: TextStyle(fontSize: size, height: 1.1)),
   );
+}
+
+/// Filter pill: fills with ink when selected; colours crossfade, never snap.
+class AppFilterChip extends StatelessWidget {
+  const AppFilterChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+    this.icon,
+    this.iconColor,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onSelected;
+  final IconData? icon;
+  final Color? iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final dur = AppMotion.of(context, AppMotion.base);
+    final fg = selected ? Colors.white : AppColors.inkSoft;
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: Pressable(
+        onTap: selected ? () {} : onSelected,
+        scale: 0.93,
+        child: AnimatedContainer(
+          duration: dur,
+          curve: AppMotion.standard,
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.ink : Colors.white,
+            borderRadius: BorderRadius.circular(99),
+            border: Border.all(
+              color: selected ? AppColors.ink : AppColors.border,
+              width: 1.2,
+            ),
+            boxShadow: selected ? AppShadows.card : const [],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 16,
+                  color: selected ? Colors.white : (iconColor ?? fg),
+                ),
+                const SizedBox(width: 5),
+              ],
+              AnimatedDefaultTextStyle(
+                duration: dur,
+                style:
+                    (Theme.of(context).textTheme.labelMedium ??
+                            const TextStyle())
+                        .copyWith(color: fg, fontSize: 14),
+                child: Text(label),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

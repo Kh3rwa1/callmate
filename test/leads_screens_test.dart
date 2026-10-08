@@ -1,4 +1,5 @@
 import 'package:callpilot/core/providers.dart';
+import 'package:callpilot/core/widgets/app_card.dart';
 import 'package:callpilot/core/utils/phone.dart';
 import 'package:callpilot/data/datasources/mock/mock_backend.dart';
 import 'package:callpilot/data/datasources/mock/mock_repositories.dart';
@@ -33,8 +34,8 @@ List<Lead> _visibleLeads(WidgetTester tester) => tester
     .toList();
 
 bool _chipSelected(String label) =>
-    (find.widgetWithText(ChoiceChip, label).evaluate().single.widget
-            as ChoiceChip)
+    (find.widgetWithText(AppFilterChip, label).evaluate().single.widget
+            as AppFilterChip)
         .selected;
 
 Lead _byName(MockBackend b, String name) =>
@@ -50,8 +51,8 @@ void main() {
     }, location: '/leads');
 
     appTest('filter chips narrow the list', (h) async {
-      await h.tapText('🔥 Hot');
-      expect(_chipSelected('🔥 Hot'), isTrue);
+      await h.tapText('Hot');
+      expect(_chipSelected('Hot'), isTrue);
       final hot = _visibleLeads(h.tester);
       expect(hot, isNotEmpty);
       expect(hot.every((l) => l.isHot), isTrue);
@@ -148,7 +149,7 @@ void main() {
       expect(find.byType(LeadDetailScreen), findsOneWidget);
 
       await h.go('/leads');
-      await h.tap(find.widgetWithText(TextButton, 'Details').first);
+      await h.tap(find.byType(LeadCard).first);
       expect(h.location, startsWith('/leads/'));
     }, location: '/leads');
 
@@ -158,7 +159,7 @@ void main() {
       final lead = _visibleLeads(h.tester).first;
       final fu = h.backend.followUpForLead(lead.id)!;
       expect(fu.isPending, isTrue);
-      await h.tap(find.widgetWithText(TextButton, 'WhatsApp').first);
+      await h.tap(find.text('WhatsApp').first);
       expect(h.location, '/followups/${fu.id}');
     }, location: '/leads');
   });
@@ -173,7 +174,7 @@ void main() {
         await h.tapText('New');
         final lead = _visibleLeads(h.tester).first;
         expect(h.backend.followUpForLead(lead.id), isNull);
-        await h.tap(find.widgetWithText(TextButton, 'WhatsApp').first);
+        await h.tap(find.text('WhatsApp').first);
         expect(wa.opened, hasLength(1));
         expect(wa.opened.single.phone, lead.phone);
         expect(wa.opened.single.message, startsWith('Hi ${lead.firstName} 👋'));

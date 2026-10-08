@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -76,19 +77,27 @@ class OnboardingScaffold extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Semantics(
-                      header: true,
-                      child: Text(title, style: t.headlineMedium),
+                    Reveal(
+                      child: Semantics(
+                        header: true,
+                        child: Text(title, style: t.headlineMedium),
+                      ),
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 10),
-                      Text(
-                        subtitle!,
-                        style: t.bodyLarge?.copyWith(color: AppColors.inkSoft),
+                      Reveal(
+                        index: 1,
+                        child: Text(
+                          subtitle!,
+                          style: t.bodyLarge?.copyWith(
+                            color: AppColors.inkSoft,
+                          ),
+                        ),
                       ),
                     ],
                     const SizedBox(height: 28),
-                    ...children,
+                    for (var i = 0; i < children.length; i++)
+                      Reveal(index: 2 + i, child: children[i]),
                   ],
                 ),
               ),
@@ -102,7 +111,7 @@ class OnboardingScaffold extends StatelessWidget {
               ),
               decoration: const BoxDecoration(
                 color: AppColors.background,
-                border: Border(top: BorderSide(color: AppColors.border)),
+                border: Border(top: BorderSide(color: AppColors.hairline)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
