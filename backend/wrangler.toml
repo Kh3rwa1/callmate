@@ -77,6 +77,7 @@ SARVAM_APP_VERSION = "2"
 SARVAM_CONNECTION_ID = "0da745db-ed-2dd19091-839b"
 SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
+ALLOWED_ORIGINS = "http://localhost:8080,http://127.0.0.1:8080"
 
 # Migrations: `npm run db:migrate:staging`.
 [[env.staging.d1_databases]]

@@ -510,6 +510,9 @@ class MockVoiceSessionRepository implements VoiceSessionRepository {
   );
 
   @override
+  Future<void> endTestSession(String sessionId) async {}
+
+  @override
   Future<VoiceChatReply> sendChatMessage(
     String message, {
     String? conversationId,

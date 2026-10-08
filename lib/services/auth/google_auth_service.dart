@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../core/bootstrap/firebase_bootstrap.dart';
@@ -20,13 +21,33 @@ class GoogleAuthService {
     if (!await FirebaseBootstrap.ensureInitialized()) {
       throw StateError('Google sign-in is not available on this build.');
     }
-    // serverClientId comes from google-services.json (default_web_client_id).
-    await GoogleSignIn.instance.initialize();
+    if (!kIsWeb) {
+      // serverClientId comes from google-services.json (default_web_client_id).
+      await GoogleSignIn.instance.initialize();
+    }
   }();
 
   /// Shows the Google account picker and returns a fresh Firebase ID token.
   Future<String> signIn() async {
     await _ensureInit();
+    if (kIsWeb) {
+      try {
+        final googleProvider = GoogleAuthProvider();
+        final cred = await FirebaseAuth.instance.signInWithPopup(
+          googleProvider,
+        );
+        final token = await cred.user?.getIdToken();
+        if (token == null) throw StateError('Firebase sign-in failed.');
+        return token;
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'popup-closed-by-user' ||
+            e.code == 'cancelled-popup-request') {
+          throw const GoogleSignInCancelled();
+        }
+        rethrow;
+      }
+    }
+
     final GoogleSignInAccount account;
     try {
       account = await GoogleSignIn.instance.authenticate();
@@ -60,7 +81,9 @@ class GoogleAuthService {
       if (Firebase.apps.isEmpty) return;
       await _ensureInit();
       await FirebaseAuth.instance.signOut();
-      await GoogleSignIn.instance.signOut();
+      if (!kIsWeb) {
+        await GoogleSignIn.instance.signOut();
+      }
     } catch (_) {
       // Local app logout must succeed even if Google is unreachable.
     }

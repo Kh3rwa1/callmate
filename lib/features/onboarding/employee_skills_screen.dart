@@ -63,7 +63,8 @@ class EmployeeSkillsScreen extends ConsumerWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'We\'ll set up a ${suggested.role} for you.',
+                    'We\'ll set up ${'AEIOU'.contains(suggested.role[0]) ? 'an' : 'a'} '
+                    '${suggested.role} for you.',
                     style: t.titleSmall,
                   ),
                 ),

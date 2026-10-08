@@ -3,10 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/network/api_client.dart';
+import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/mascot.dart';
+import '../../core/widgets/state_views.dart';
 import '../../data/templates/templates.dart';
 import 'onboarding_controller.dart';
 
@@ -89,6 +92,9 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
         );
     try {
       await ref.read(onboardingProvider.notifier).activateEmployee();
+      // The business and agent now exist server-side; a relaunch from the
+      // optional first-call step should land on home, not redo onboarding.
+      await ref.read(localPrefsProvider).setOnboarded(true);
       if (mounted) context.push('/onboarding/test');
     } catch (e) {
       if (mounted) {
@@ -107,6 +113,11 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
     final d = ref.watch(onboardingProvider);
     final at = d.suggestedAgent;
     if (_error != null) {
+      final isAuth =
+          _error is ApiException && (_error as ApiException).isAuth ||
+          _error.toString().toLowerCase().contains('unauthorized') ||
+          _error.toString().toLowerCase().contains('missing token') ||
+          _error.toString().toLowerCase().contains('401');
       return Scaffold(
         body: SafeArea(
           child: Center(
@@ -118,14 +129,31 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                   const Mascot(state: MascotState.error, size: 170),
                   const SizedBox(height: 16),
                   Text(
-                    'We couldn\'t set up your AI employee',
+                    isAuth
+                        ? 'Sign In Required'
+                        : 'We couldn\'t set up your AI employee',
                     style: t.titleLarge,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  Text('Something went wrong. Try again.', style: t.bodyMedium),
+                  Text(
+                    isAuth
+                        ? 'Please sign in or create an account to connect your live AI employee.'
+                        : friendlyError(_error!),
+                    style: t.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 24),
-                  PrimaryButton(label: 'Try again', onPressed: _run),
+                  if (isAuth) ...[
+                    PrimaryButton(
+                      label: 'Sign in / Create Account',
+                      onPressed: () => context.go('/login'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(onPressed: _run, child: const Text('Try again')),
+                  ] else ...[
+                    PrimaryButton(label: 'Try again', onPressed: _run),
+                  ],
                 ],
               ),
             ),

@@ -14,12 +14,16 @@ class _Sessions implements VoiceSessionRepository {
   _Sessions(this._create);
   final Future<VoiceTestSession> Function() _create;
   int created = 0;
+  final ended = <String>[];
 
   @override
   Future<VoiceTestSession> createTestSession() {
     created++;
     return _create();
   }
+
+  @override
+  Future<void> endTestSession(String sessionId) async => ended.add(sessionId);
 
   @override
   Future<VoiceChatReply> sendChatMessage(

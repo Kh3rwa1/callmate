@@ -117,6 +117,9 @@ abstract class DashboardRepository {
 abstract class VoiceSessionRepository {
   /// POST /voice/test-session – backend returns ids + short-lived proxy token.
   Future<VoiceTestSession> createTestSession();
+
+  /// POST /voice/test-session/:id/end – releases the session slot.
+  Future<void> endTestSession(String sessionId);
   Future<VoiceChatReply> sendChatMessage(
     String message, {
     String? conversationId,

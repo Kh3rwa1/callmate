@@ -65,7 +65,10 @@ class AppEnv {
     return 'http://127.0.0.1:8787';
   }
 
-  static bool get showDemoTools => demoTools && flavor != AppFlavor.prod;
+  /// The demo panel drives the mock backend, so it is useless (a dead-end
+  /// screen) against a real API.
+  static bool get showDemoTools =>
+      demoTools && useMock && flavor != AppFlavor.prod;
 
   /// Validates the backend configuration for a build.
   ///

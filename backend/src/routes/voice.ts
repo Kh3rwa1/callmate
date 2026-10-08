@@ -92,7 +92,19 @@ voiceApp.post('/test-session', async (c) => {
       mode: 'owner_test',
     },
     user_identifier: user.id,
+    session_id: sessionId,
   });
+});
+
+// POST /voice/test-session/:id/end (Requires auth)
+// Frees the session's slot in the concurrent-session cap when the call ends.
+voiceApp.post('/test-session/:id/end', async (c) => {
+  const user = c.get('user');
+  await c.env.DB.prepare(
+    `UPDATE voice_sessions SET status = 'ended', ended_at = datetime('now')
+     WHERE id = ? AND business_id = ? AND status = 'active'`
+  ).bind(c.req.param('id'), user.business_id).run();
+  return c.json({ ok: true });
 });
 
 // POST /voice/chat (Requires auth)

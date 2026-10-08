@@ -234,7 +234,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           : 'Sign in or create your account with Google';
     }
     if (_otpSent) {
-      return 'Enter the 6-digit code sent to ${PhoneUtils.display(_phoneController.text)}';
+      final hint = AppEnv.flavor != AppFlavor.prod
+          ? ' (Use 123456 on staging)'
+          : '';
+      return 'Enter the 6-digit code sent to ${PhoneUtils.display(_phoneController.text)}$hint';
     }
     return _isRegister
         ? 'Start hiring AI employees for your business'

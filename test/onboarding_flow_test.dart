@@ -61,7 +61,11 @@ void main() {
           contains(EmployeeSkill.sales),
         );
         final role = h.container.read(onboardingProvider).suggestedAgent.role;
-        expect(find.text('We\'ll set up a $role for you.'), findsOneWidget);
+        final article = 'AEIOU'.contains(role[0]) ? 'an' : 'a';
+        expect(
+          find.text('We\'ll set up $article $role for you.'),
+          findsOneWidget,
+        );
         await h.tapText('Continue');
         expect(h.location, '/onboarding/details');
 
