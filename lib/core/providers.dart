@@ -9,6 +9,7 @@ import '../data/models/models.dart';
 import '../data/repositories/repositories.dart';
 import '../data/templates/templates.dart';
 import '../services/analytics/analytics_service.dart';
+import '../services/crash/crash_reporting_service.dart';
 import '../services/notifications/notification_service.dart';
 import '../services/notifications/push_service.dart';
 import '../services/voice/sarvam_voice_agent_service.dart';
@@ -18,6 +19,7 @@ import 'config/app_env.dart';
 import 'config/brand.dart';
 import 'network/api_client.dart';
 import 'routing/app_router.dart';
+import 'routing/deep_link.dart';
 import 'storage/local_prefs.dart';
 import 'storage/secure_store.dart';
 
@@ -84,6 +86,9 @@ class SessionNotifier extends AsyncNotifier<bool> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       await ref.read(authRepoProvider).login(phone: phone, otp: otp);
+      // Logging into an existing account: its business is already set up
+      // (registration goes through onboarding instead).
+      await _prefs?.setOnboarded(true);
       ref.read(dataVersionProvider.notifier).bump();
       return true;
     });
@@ -112,37 +117,52 @@ class SessionNotifier extends AsyncNotifier<bool> {
   Future<void> logout() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      try {
-        final push = ref.read(pushServiceProvider);
-        final token = push.currentToken;
-        if (token != null) {
-          await ref.read(deviceRepoProvider).unregisterDevice(token);
-        }
-        await PushService.deleteToken();
-      } catch (_) {}
-
+      await _unregisterPush();
       await ref.read(authRepoProvider).logout();
-      ref.read(dataVersionProvider.notifier).bump();
+      await _clearLocalUserState();
       return false;
     });
   }
 
+  /// Deletes the account on the server. On failure the session is kept and
+  /// the error is rethrown so the UI can say so instead of pretending.
   Future<void> deleteAccount() async {
+    final previous = state;
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      try {
-        final push = ref.read(pushServiceProvider);
-        final token = push.currentToken;
-        if (token != null) {
-          await ref.read(deviceRepoProvider).unregisterDevice(token);
-        }
-        await PushService.deleteToken();
-      } catch (_) {}
-
+    try {
+      await _unregisterPush();
       await ref.read(authRepoProvider).deleteAccount();
-      ref.read(dataVersionProvider.notifier).bump();
-      return false;
-    });
+    } catch (_) {
+      state = previous;
+      rethrow;
+    }
+    await _clearLocalUserState();
+    state = const AsyncValue.data(false);
+  }
+
+  LocalPrefs? get _prefs {
+    try {
+      return ref.read(localPrefsProvider);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _unregisterPush() async {
+    try {
+      final token = ref.read(pushServiceProvider).currentToken;
+      if (token != null) {
+        await ref.read(deviceRepoProvider).unregisterDevice(token);
+      }
+      await PushService.deleteToken();
+    } catch (_) {}
+  }
+
+  /// Nothing from the previous account may leak into the next login.
+  Future<void> _clearLocalUserState() async {
+    await _prefs?.reset();
+    ref.invalidate(activeCampaignProvider);
+    ref.read(dataVersionProvider.notifier).bump();
   }
 }
 
@@ -190,12 +210,17 @@ final deviceRepoProvider = Provider<DeviceRepository>(
 
 final backendEventsProvider = Provider<BackendEvents>((ref) {
   if (ref.watch(useMockProvider)) return ref.watch(mockBackendProvider);
-  return PushBackendEvents();
+  final events = PushBackendEvents();
+  ref.onDispose(events.dispose);
+  return events;
 });
 
 /// Services
 final whatsappServiceProvider = Provider<WhatsAppService>(
   (_) => const WhatsAppDeepLinkService(),
+);
+final crashReportingProvider = Provider<CrashReportingService>(
+  (_) => SafeCrashReportingService(),
 );
 final analyticsProvider = Provider<AnalyticsService>(
   (_) => DebugAnalyticsService(),
@@ -207,10 +232,18 @@ final notificationServiceProvider = Provider<NotificationService>(
 final pushServiceProvider = Provider<PushService>((ref) {
   final deviceRepo = ref.watch(deviceRepoProvider);
   final router = ref.watch(routerProvider);
+  final events = ref.watch(backendEventsProvider);
   final service = PushService(
     registerToken: (token, platform) =>
         deviceRepo.registerDevice(token: token, platform: platform),
-    onRoute: (route) => router.go(route),
+    onRoute: (route) => openDeepLink(router, route),
+    onData: (data) {
+      // Every push means server state changed: refresh open screens.
+      if (events is PushBackendEvents) {
+        events.add(DataChangedEvent(data['type'] as String? ?? 'unknown'));
+      }
+    },
+    crash: ref.watch(crashReportingProvider),
   );
   ref.onDispose(service.dispose);
   return service;
@@ -326,19 +359,23 @@ class ActiveCampaign extends Notifier<Campaign?> {
   Campaign? build() {
     final sub = ref.watch(backendEventsProvider).stream.listen((e) {
       if (e is CampaignProgressEvent) state = e.campaign;
+      // Remote pushes carry no campaign body: re-read it.
+      if (e is DataChangedEvent && e.scope == 'campaign') _load();
     });
     ref.onDispose(sub.cancel);
-    unawaited(
-      ref
-          .read(campaignRepoProvider)
-          .active()
-          .then((c) {
-            if (c != null) state = c;
-          })
-          .catchError((_) {}),
-    );
+    _load();
     return null;
   }
+
+  void _load() => unawaited(
+    ref
+        .read(campaignRepoProvider)
+        .active()
+        .then((c) {
+          if (c != null) state = c;
+        })
+        .catchError((_) {}),
+  );
 
   void set(Campaign c) => state = c;
 }

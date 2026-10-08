@@ -1,6 +1,9 @@
 import { Env } from './types';
 import { maskPhone, logInfo } from './utils/logger';
 
+/** Upper bound for any SMS provider call so a hung provider cannot hold the request open. */
+export const SMS_TIMEOUT_MS = 8000;
+
 export interface SmsProvider {
   sendOtp(phone: string, otp: string): Promise<boolean>;
 }
@@ -36,6 +39,7 @@ export class Msg91SmsProvider implements SmsProvider {
         mobile: digitsOnly,
         otp: otp,
       }),
+      signal: AbortSignal.timeout(SMS_TIMEOUT_MS),
     });
     return res.ok;
   }
@@ -57,6 +61,7 @@ export class GupshupSmsProvider implements SmsProvider {
         destination: phone,
         message: `Your CallPilot verification code is: ${otp}`,
       }).toString(),
+      signal: AbortSignal.timeout(SMS_TIMEOUT_MS),
     });
     return res.ok;
   }
@@ -78,6 +83,7 @@ export class ExotelSmsProvider implements SmsProvider {
         To: phone,
         Body: `Your CallPilot verification code is: ${otp}`,
       }).toString(),
+      signal: AbortSignal.timeout(SMS_TIMEOUT_MS),
     });
     return res.ok;
   }

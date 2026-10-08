@@ -4,7 +4,8 @@ import { safeJsonParse } from '../utils/json';
 import { decryptAtRest, maskPhone } from '../utils/crypto_data';
 import { requireSecret, isMockSarvam } from '../utils/secrets';
 import { checkCallCompliance } from '../services/compliance';
-import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS } from '../services/campaign_queue';
+import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS, sarvamWebhookConfig } from '../services/campaign_queue';
+import { parseLimit } from '../utils/pagination';
 
 const callsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -64,7 +65,7 @@ callsApp.get('/calls', async (c) => {
   const filter = c.req.query('filter') || 'all';
   const leadId = c.req.query('lead_id');
   const rawCursor = c.req.query('cursor');
-  const limit = Math.min(Math.max(1, parseInt(c.req.query('limit') || '20', 10)), 100);
+  const limit = parseLimit(c.req.query('limit'), 20, 100);
   const secret = requireSecret(c.env, 'ENCRYPTION_KEY');
 
   let sql = 'SELECT * FROM calls WHERE business_id = ?';
@@ -216,7 +217,7 @@ callsApp.post('/leads/:id/call', async (c) => {
         agent_role: agent?.role ?? 'Assistant',
         interest: lead.interest ?? lead.course_interest ?? '',
       },
-      webhook_config: { webhook_url: `${new URL(c.req.url).origin}/webhooks/sarvam` },
+      webhook_config: sarvamWebhookConfig(c.env.PUBLIC_API_BASE_URL || new URL(c.req.url).origin),
     });
 
     if (dial.ok) {

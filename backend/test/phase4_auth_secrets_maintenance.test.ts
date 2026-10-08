@@ -203,7 +203,8 @@ describe('Phase 4: Auth, Secrets Hardening, Rate Limits, Maintenance Cron', () =
       // 1. Seed old rate limits and expired otp
       await env.DB.batch([
         env.DB.prepare("INSERT INTO rate_limits (id, bucket, created_at) VALUES ('rl_old', 'test', datetime('now', '-3 days'))"),
-        env.DB.prepare("INSERT INTO webhook_events (event_key, source, received_at) VALUES ('ev_old', 'sarvam', datetime('now', '-31 days'))"),
+        env.DB.prepare("INSERT INTO webhook_events (event_key, source, received_at) VALUES ('ev_old', 'sarvam', datetime('now', '-91 days'))"),
+        env.DB.prepare("INSERT INTO webhook_events (event_key, source, received_at) VALUES ('ev_recent', 'sarvam', datetime('now', '-31 days'))"),
         env.DB.prepare("INSERT OR REPLACE INTO otp_codes (phone, otp_hash, attempts, expires_at) VALUES ('919999999999', 'hash', 0, datetime('now', '-10 minutes'))"),
         env.DB.prepare("INSERT INTO voice_sessions (id, business_id, user_id, status, started_at) VALUES ('vs_stale', ?, ?, 'active', datetime('now', '-2 hours'))").bind(bizId, userId),
       ]);
@@ -236,6 +237,9 @@ describe('Phase 4: Auth, Secrets Hardening, Rate Limits, Maintenance Cron', () =
 
       const oldEv = await env.DB.prepare("SELECT * FROM webhook_events WHERE event_key = 'ev_old'").first();
       expect(oldEv).toBeNull();
+      // Replay guard: idempotency keys younger than 90 days are kept
+      const recentEv = await env.DB.prepare("SELECT * FROM webhook_events WHERE event_key = 'ev_recent'").first();
+      expect(recentEv).not.toBeNull();
 
       const expiredOtp = await env.DB.prepare("SELECT * FROM otp_codes WHERE phone = '919999999999'").first();
       expect(expiredOtp).toBeNull();

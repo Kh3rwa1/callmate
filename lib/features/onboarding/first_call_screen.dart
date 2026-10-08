@@ -24,8 +24,12 @@ class FirstCallScreen extends ConsumerWidget {
     final t = Theme.of(context).textTheme;
     final name = ref.watch(employeeNameProvider);
     final wf = ref.watch(workflowProvider);
-    final parts = wf.sampleLeadName.split(' ');
-    final initials = parts.map((p) => p[0]).take(2).join();
+    final initials = wf.sampleLeadName
+        .split(' ')
+        .where((p) => p.isNotEmpty)
+        .map((p) => p[0])
+        .take(2)
+        .join();
     return OnboardingScaffold(
       step: 6,
       title: 'Make your first AI call',
@@ -34,8 +38,11 @@ class FirstCallScreen extends ConsumerWidget {
         label: 'Talk to $name',
         icon: Icons.mic_rounded,
         onPressed: () async {
+          // Read before navigating: `ref` is unusable once this screen is
+          // disposed (e.g. the voice test finishes onboarding with go()).
+          final prefs = ref.read(localPrefsProvider);
           await context.push('/voice-test?from=onboarding');
-          await ref.read(localPrefsProvider).setAgentTested(true);
+          await prefs.setAgentTested(true);
         },
       ),
       secondary: TextButton(

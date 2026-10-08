@@ -2,15 +2,24 @@ name = "callpilot-backend"
 main = "src/index.ts"
 compatibility_date = "2025-02-24"
 compatibility_flags = ["nodejs_compat"]
+# Production is served only on its custom route/domain, never on *.workers.dev.
+workers_dev = false
+
+[observability]
+enabled = true
 
 [vars]
 ENVIRONMENT = "production"
 SARVAM_PROXY_BASE = "https://apps.sarvam.ai/api/app-runtime"
 
+# IMPORTANT: database_id below is a PLACEHOLDER. Replace it with the real UUID from
+# `wrangler d1 list` before deploying. Migrations: `npm run db:migrate:prod` (wrangler d1 migrations apply).
+# Demo seed data lives in ./seeds and is NEVER applied by migrations.
 [[d1_databases]]
 binding = "DB"
 database_name = "callpilot-db"
 database_id = "local-d1-callpilot-db"
+migrations_dir = "migrations"
 
 [[r2_buckets]]
 binding = "KNOWLEDGE_BUCKET"
@@ -27,19 +36,33 @@ max_batch_timeout = 5
 max_retries = 100
 dead_letter_queue = "callpilot-campaign-dlq"
 
+# Dead-letter consumer: marks campaign leads whose dispatch exhausted retries as failed.
+[[queues.consumers]]
+queue = "callpilot-campaign-dlq"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+
 [triggers]
 crons = ["*/10 * * * *"]
 
 [env.staging]
 name = "callpilot-backend-staging"
+
+[env.staging.observability]
+enabled = true
+
 [env.staging.vars]
 ENVIRONMENT = "staging"
 SARVAM_PROXY_BASE = "https://apps.sarvam.ai/api/app-runtime"
 
+# IMPORTANT: database_id below is a PLACEHOLDER. Replace it with the real UUID from
+# `wrangler d1 list` before deploying. Migrations: `npm run db:migrate:staging`.
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "callpilot-db-staging"
 database_id = "staging-d1-callpilot-db"
+migrations_dir = "migrations"
 
 [[env.staging.r2_buckets]]
 binding = "KNOWLEDGE_BUCKET"
@@ -56,6 +79,11 @@ max_batch_timeout = 5
 max_retries = 100
 dead_letter_queue = "callpilot-campaign-dlq-staging"
 
+[[env.staging.queues.consumers]]
+queue = "callpilot-campaign-dlq-staging"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+
 [env.staging.triggers]
 crons = ["*/10 * * * *"]
-

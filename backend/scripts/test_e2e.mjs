@@ -298,9 +298,9 @@ async function run() {
   // 13. Verify old token is now invalid / user deleted
   console.log('13. Verify access revoked after account deletion...');
   const bizAfterDel = await req('/business', { headers: authHeader });
-  assert.strictEqual(bizAfterDel.status, 200);
-  assert.strictEqual(bizAfterDel.data, null);
-  console.log('   ✓ Business data verified as deleted (null returned)');
+  assert.strictEqual(bizAfterDel.status, 401, `Deleted account token still works: ${bizAfterDel.status}`);
+  assert.strictEqual(bizAfterDel.data.code, 'account_not_found');
+  console.log('   ✓ Access token rejected after account deletion (401)');
 
   console.log('\n🎉 ALL CLOUDFLARE BACKEND TESTS PASSED SUCCESSFULLY! 🎉\n');
 }

@@ -28,8 +28,14 @@ class ApiClient {
     this.onAuthFailure,
   }) : dio = Dio(
          BaseOptions(
-           baseUrl: baseUrl ?? prefs?.serverUrl ?? AppEnv.effectiveApiBaseUrl,
+           baseUrl:
+               baseUrl ??
+               // A stored override is a dev-only convenience; staging/prod
+               // always use the compiled-in backend.
+               (AppEnv.flavor == AppFlavor.dev ? prefs?.serverUrl : null) ??
+               AppEnv.effectiveApiBaseUrl,
            connectTimeout: const Duration(seconds: 12),
+           sendTimeout: const Duration(seconds: 60),
            receiveTimeout: const Duration(seconds: 20),
            headers: {'Accept': 'application/json'},
          ),
@@ -43,8 +49,24 @@ class ApiClient {
           handler.next(options);
         },
         onError: (e, handler) async {
+          final req = e.requestOptions;
+          // Idempotent reads get one quick retry on flaky mobile networks.
+          if (req.method == 'GET' &&
+              _isTransient(e) &&
+              req.extra['netRetried'] != true) {
+            req.extra['netRetried'] = true;
+            await Future<void>.delayed(retryDelay);
+            try {
+              return handler.resolve(await dio.fetch(req));
+            } on DioException catch (retryError) {
+              return handler.next(retryError);
+            }
+          }
+          // A 401 from /auth/* means bad OTP/credentials, not an expired
+          // session, so never try to refresh there.
           if (e.response?.statusCode == 401 &&
-              e.requestOptions.extra['retried'] != true) {
+              !req.path.startsWith('/auth/') &&
+              req.extra['retried'] != true) {
             final ok = await _refresh();
             if (ok) {
               final token = await _store.accessToken();
@@ -86,6 +108,15 @@ class ApiClient {
   final Dio dio;
   final VoidCallback? onAuthFailure;
 
+  /// Pause before retrying a GET that failed on the network.
+  @visibleForTesting
+  static Duration retryDelay = const Duration(milliseconds: 600);
+
+  static bool _isTransient(DioException e) =>
+      e.type == DioExceptionType.connectionError ||
+      e.type == DioExceptionType.connectionTimeout ||
+      e.type == DioExceptionType.receiveTimeout;
+
   Future<bool>? _refreshFlight;
 
   Future<bool> _refresh() {
@@ -121,7 +152,17 @@ class ApiClient {
         refresh: data['refresh_token'] as String?,
       );
       return true;
+    } on DioException catch (e) {
+      // Only a definitive rejection ends the session. Offline, timeouts and
+      // 5xx keep the tokens so the user isn't forced back through OTP.
+      final status = e.response?.statusCode;
+      if (status == 400 || status == 401 || status == 403) {
+        await _store.clear();
+        onAuthFailure?.call();
+      }
+      return false;
     } catch (_) {
+      // Malformed refresh response: the stored refresh token is unusable.
       await _store.clear();
       onAuthFailure?.call();
       return false;
@@ -141,13 +182,29 @@ class ApiClient {
   }
 
   ApiException _toApi(DioException e) {
-    if (e.type == DioExceptionType.connectionError ||
-        e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.receiveTimeout) {
-      return const ApiException(
-        'No connection. Check your internet and try again.',
-        code: 'network',
-      );
+    switch (e.type) {
+      case DioExceptionType.connectionError ||
+          DioExceptionType.connectionTimeout ||
+          DioExceptionType.receiveTimeout ||
+          DioExceptionType.transformTimeout:
+        return const ApiException(
+          'No connection. Check your internet and try again.',
+          code: 'network',
+        );
+      case DioExceptionType.sendTimeout:
+        return const ApiException(
+          'Upload took too long. Check your internet and try again.',
+          code: 'network',
+        );
+      case DioExceptionType.badCertificate:
+        return const ApiException(
+          "Couldn't establish a secure connection. Try another network.",
+          code: 'network',
+        );
+      case DioExceptionType.cancel:
+        return const ApiException('Request cancelled.', code: 'cancelled');
+      case DioExceptionType.badResponse || DioExceptionType.unknown:
+        break;
     }
     final status = e.response?.statusCode;
     final body = e.response?.data;

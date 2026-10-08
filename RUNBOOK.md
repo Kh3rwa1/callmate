@@ -6,40 +6,76 @@ This runbook provides actionable procedures for deploying, managing, operating, 
 
 ## 1. Deploying CallPilot
 
+### 1.0 One-time setup (before the first deploy)
+1. Create the D1 databases, R2 buckets and queues (including both DLQs) in
+   Cloudflare, then replace the placeholder `database_id` values in
+   `backend/wrangler.toml` with the real UUIDs from `npx wrangler d1 list`.
+2. Set Worker secrets (`npx wrangler secret put <NAME> [--env staging]`):
+   `JWT_SIGNING_KEY`, `OTP_PEPPER`, `ENCRYPTION_KEY`, `SARVAM_API_KEY`,
+   `SARVAM_WEBHOOK_SECRET`, `SARVAM_ORG_ID`, `SARVAM_WORKSPACE_ID`,
+   `SARVAM_ADMISSIONS_APP_ID`, `FCM_SERVICE_ACCOUNT_JSON`, one SMS provider
+   (`MSG91_AUTH_KEY` / `GUPSHUP_API_KEY` / `EXOTEL_SID`+`EXOTEL_TOKEN`) and
+   `HEALTH_CHECK_SECRET`. Production refuses to send OTPs without an SMS
+   provider.
+3. Add `PUBLIC_API_BASE_URL = "https://<your api domain>"` to `[vars]` (and
+   `[env.staging.vars]`). Campaign retries started by the cron sweeper need it
+   to give Sarvam a webhook URL.
+4. **Existing databases only** (created before migrations were tracked): tell
+   wrangler which files are already applied, or it will try to re-run them:
+   ```bash
+   npx wrangler d1 execute callpilot-db --remote --command="
+     CREATE TABLE IF NOT EXISTS d1_migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+     INSERT OR IGNORE INTO d1_migrations (name) VALUES ('0001_initial.sql'), ('0003_otp_and_security.sql'), ('0004_compliance_and_billing.sql');"
+   ```
+   List only the files that were really applied, then `npm run db:migrate:prod`
+   applies the rest.
+5. GitHub: create `staging` and `production` environments (add required
+   reviewers to `production`), the secrets `CLOUDFLARE_API_TOKEN` and
+   `CLOUDFLARE_ACCOUNT_ID`, and the variable `PROD_HEALTH_URL`.
+
 ### 1.1 Staging Deployment
-Automated via `.github/workflows/deploy-staging.yml` on push to `main`, or manually via:
+Automatic: `.github/workflows/deploy-staging.yml` runs after the **CI**
+workflow succeeds on `main`. It applies pending migrations, then deploys the
+exact commit CI tested. Manually:
 ```bash
 cd backend
-
-# 1. Apply D1 migrations to staging database first
-npx wrangler d1 execute callpilot-db-staging --env staging --file=./migrations/0001_initial.sql --remote
-npx wrangler d1 execute callpilot-db-staging --env staging --file=./migrations/0003_otp_and_security.sql --remote
-npx wrangler d1 execute callpilot-db-staging --env staging --file=./migrations/0004_compliance_and_billing.sql --remote
-
-# 2. Deploy Worker to staging
+npm run db:migrate:staging
 npm run deploy:staging
 ```
 
 ### 1.2 Production Deployment
+Run **Deploy Production** (`.github/workflows/deploy-production.yml`) from the
+Actions tab with the commit SHA. It refuses commits without a green CI run,
+waits for `production` environment approval, applies pending migrations,
+deploys and smoke-tests `PROD_HEALTH_URL`. Manual equivalent:
 ```bash
 cd backend
-
-# 1. Pre-flight verification
-npm run typecheck
-npm run test:coverage
-npm audit --audit-level=high --omit=dev
-
-# 2. Apply remote D1 migrations (idempotent / additive)
-npx wrangler d1 execute callpilot-db --remote --file=./migrations/0001_initial.sql
-npx wrangler d1 execute callpilot-db --remote --file=./migrations/0003_otp_and_security.sql
-npx wrangler d1 execute callpilot-db --remote --file=./migrations/0004_compliance_and_billing.sql
-
-# 3. Deploy Worker
+npx wrangler d1 export callpilot-db --remote --output=./backup_$(date +%Y%m%d_%H%M%S).sql
+npm run db:migrate:prod
 npm run deploy
-
-# 4. Post-deploy health check
-curl -f https://api.callpilot.app/health
+curl -f https://<your api domain>/health
 ```
+
+### 1.3 Android Release (Play Store)
+The **CI** workflow's `android-release` job builds a signed, obfuscated App
+Bundle (`--build-number` = CI run number) and uploads it with its Dart symbols
+when these repository secrets exist:
+
+| Secret | Content |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | `base64 -i upload.jks` |
+| `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | upload key credentials |
+| `GOOGLE_SERVICES_JSON` | `google-services.json` for package `com.callpilot.app` |
+| `PROD_ENV_JSON` | contents of `env/prod.json` with the real `API_BASE_URL` |
+
+Without them, the job still builds a throwaway-signed bundle to prove the
+release pipeline works, but uploads nothing. Upload the `.aab` to Play Console;
+keep the `symbols/` folder to de-obfuscate Crashlytics stack traces
+(`firebase crashlytics:symbols:upload --app=<APP_ID> symbols/`).
+
+Local release builds need `android/key.properties`, `android/app/google-services.json`
+and a real `env/prod.json`; the Gradle build fails closed if signing or
+Firebase config is missing.
 
 ---
 
@@ -76,7 +112,7 @@ npx wrangler d1 execute callpilot-db --remote --file=./backup_previous_stable.sq
 ## 3. Secret Rotation Procedures
 
 ### 3.1 Rotating JWT Signing Key (`JWT_SIGNING_KEY`)
-The JWT key signs user access tokens (1 hr expiry) and voice session tokens (30 min expiry).
+The JWT key signs user access tokens (24 h expiry) and voice session tokens (30 min expiry).
 1. Generate a new cryptographically secure 32+ character key:
 ```bash
 NEW_KEY=$(openssl rand -hex 32)
@@ -149,11 +185,15 @@ npx wrangler d1 execute callpilot-db --remote --command="
 "
 ```
 
-### 4.4 Inspect & Drain the Dead-Letter Queue (DLQ)
-Messages that failed 3 consecutive delivery attempts are routed to `callpilot-campaign-dlq`:
-1. Check Cloudflare Queue metrics in Cloudflare Dashboard → Queues → `callpilot-campaign-dlq`.
-2. Inspect log errors filtered by `[Sarvam Queue Outbound Error]`.
-3. If failures were due to transient Sarvam outages or rate limits, re-trigger campaign start once connectivity is restored.
+### 4.4 Dead-Letter Queue (DLQ)
+Jobs that exhaust their retries land in `callpilot-campaign-dlq`. The Worker
+consumes the DLQ itself: each lead still waiting is marked `failed` and the
+campaign is completed once nothing is outstanding, so campaigns no longer stay
+"running" forever. Waiting for a free call slot (5 concurrent calls per
+business) re-sends a delayed message and does **not** use up retries.
+1. Check Cloudflare Dashboard → Queues → `callpilot-campaign-dlq` for volume.
+2. Inspect logs for `[Sarvam Queue Outbound Error]`.
+3. After a Sarvam outage, start a new campaign for the failed leads.
 
 ---
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 /// Privacy-respecting crash reporting service.
@@ -11,14 +13,30 @@ abstract class CrashReportingService {
     StackTrace? stack, {
     String? reason,
     Map<String, Object>? context,
+    bool fatal = false,
   });
   void log(String message);
 }
 
+/// Destination for already-scrubbed crash data (e.g. Firebase Crashlytics).
+abstract class CrashSink {
+  Future<void> recordError(
+    Object error,
+    StackTrace? stack, {
+    String? reason,
+    bool fatal = false,
+    Map<String, Object> context = const {},
+  });
+  Future<void> log(String message);
+}
+
 class SafeCrashReportingService implements CrashReportingService {
-  SafeCrashReportingService({this.enabled = true});
+  SafeCrashReportingService({this.enabled = true, this.sink});
 
   final bool enabled;
+
+  /// Where scrubbed reports go. `null` → debug console only.
+  final CrashSink? sink;
 
   static final _phonePattern = RegExp(r'(?:\+?91[\s-]?)?[6-9]\d{9}');
   static final _bearerPattern = RegExp(
@@ -73,6 +91,7 @@ class SafeCrashReportingService implements CrashReportingService {
     StackTrace? stack, {
     String? reason,
     Map<String, Object>? context,
+    bool fatal = false,
   }) {
     if (!enabled) return;
     final scrubbedError = scrubPii(error.toString());
@@ -84,6 +103,18 @@ class SafeCrashReportingService implements CrashReportingService {
         '[CrashReporter] Error: $scrubbedError | reason: $scrubbedReason | ctx: $cleanContext',
       );
     }
+    // The raw error object is never forwarded: only its scrubbed text.
+    unawaited(
+      sink
+          ?.recordError(
+            ScrubbedError(error.runtimeType.toString(), scrubbedError),
+            stack,
+            reason: scrubbedReason,
+            fatal: fatal,
+            context: cleanContext,
+          )
+          .catchError((Object _) {}),
+    );
   }
 
   @override
@@ -93,5 +124,16 @@ class SafeCrashReportingService implements CrashReportingService {
     if (kDebugMode) {
       debugPrint('[CrashReporter] $scrubbed');
     }
+    unawaited(sink?.log(scrubbed).catchError((Object _) {}));
   }
+}
+
+/// PII-free stand-in for the original error sent to the [CrashSink].
+class ScrubbedError {
+  const ScrubbedError(this.type, this.message);
+  final String type;
+  final String message;
+
+  @override
+  String toString() => '$type: $message';
 }

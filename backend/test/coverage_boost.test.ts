@@ -25,6 +25,8 @@ describe('Comprehensive Coverage Boost Test Suite (Target ≥80% Lines)', () => 
       // Create leads for calls
       env.DB.prepare(`INSERT OR REPLACE INTO leads (id, business_id, name, phone, created_at, updated_at) VALUES ('l1', ?, 'Lead 1', '919800000011', datetime('now'), datetime('now'))`).bind(bizA),
       env.DB.prepare(`INSERT OR REPLACE INTO leads (id, business_id, name, phone, created_at, updated_at) VALUES ('l2', ?, 'Lead 2', '919800000012', datetime('now'), datetime('now'))`).bind(bizA),
+      env.DB.prepare(`INSERT OR REPLACE INTO users (id, phone, business_id) VALUES ('user_a', '919800000001', ?)`).bind(bizA),
+      env.DB.prepare(`INSERT OR REPLACE INTO users (id, phone, business_id) VALUES ('user_b', '919800000002', ?)`).bind(bizB),
     ]);
 
     tokenA = await signJWT({ sub: 'user_a', phone: '919800000001', business_id: bizA, type: 'access' }, secret, 3600);
@@ -495,6 +497,7 @@ describe('Comprehensive Coverage Boost Test Suite (Target ≥80% Lines)', () => 
     it('GET /usage initializes default usage if row missing', async () => {
       const bizNoUsage = 'biz_no_usage';
       await env.DB.prepare(`INSERT INTO businesses (id, name, created_at, updated_at) VALUES (?, 'No Usage Biz', datetime('now'), datetime('now'))`).bind(bizNoUsage).run();
+      await env.DB.prepare(`INSERT OR REPLACE INTO users (id, phone, business_id) VALUES ('user_nu', '919800000088', ?)`).bind(bizNoUsage).run();
       const tokenNoUsage = await signJWT({ sub: 'user_nu', phone: '919800000088', business_id: bizNoUsage, type: 'access' }, secret, 3600);
 
       const res = await fetchWithAuth('/usage', {}, tokenNoUsage);

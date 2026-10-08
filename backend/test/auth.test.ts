@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { signJWT, verifyJWT, getJwtSecret, authMiddleware } from '../src/auth';
 
+const dbStub = (row: any) => ({
+  prepare: () => ({ bind: () => ({ first: async () => row }) }),
+});
+
 describe('Auth Unit Tests (100% Coverage Target)', () => {
   const secret = 'test-jwt-signing-secret-key-32chars-min-length';
 
@@ -99,13 +103,29 @@ describe('Auth Unit Tests (100% Coverage Target)', () => {
     let nextCalled = false;
     const cValid: any = {
       req: { header: () => `Bearer ${token}` },
-      env: { JWT_SIGNING_KEY: secret },
+      env: { JWT_SIGNING_KEY: secret, DB: dbStub({ ok: 1 }) },
       set: (k: string, v: any) => { store[k] = v; },
     };
     await authMiddleware(cValid, async () => { nextCalled = true; });
 
     expect(nextCalled).toBe(true);
     expect(store.user).toEqual({ id: 'usr_1', phone: '919830012345', business_id: 'biz_1' });
+  });
+
+  it('authMiddleware rejects a valid token whose user account was deleted', async () => {
+    const token = await signJWT({ sub: 'usr_gone', phone: '919830012345', business_id: 'biz_1', type: 'access' }, secret, 3600);
+    let status = 0;
+    let jsonBody: any = null;
+    let nextCalled = false;
+    const cGone: any = {
+      req: { header: () => `Bearer ${token}` },
+      env: { JWT_SIGNING_KEY: secret, DB: dbStub(null) },
+      json: (data: any, s: number) => { jsonBody = data; status = s; return data; },
+    };
+    await authMiddleware(cGone, async () => { nextCalled = true; });
+    expect(nextCalled).toBe(false);
+    expect(status).toBe(401);
+    expect(jsonBody.code).toBe('account_not_found');
   });
 
   it('rejects signed token when iss or aud is invalid', async () => {

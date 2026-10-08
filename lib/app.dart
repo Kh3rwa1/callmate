@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/config/brand.dart';
 import 'core/providers.dart';
 import 'core/routing/app_router.dart';
+import 'core/routing/deep_link.dart';
 import 'core/theme/app_theme.dart';
 import 'data/models/misc.dart';
 import 'data/repositories/repositories.dart' show NotificationEvent;
@@ -59,27 +60,9 @@ class _CallPilotAppState extends ConsumerState<CallPilotApp> {
   }
 
   void _open(String route) {
+    if (!mounted) return;
     setState(() => _banner = null);
-    final router = ref.read(routerProvider);
-    if (route.isEmpty || route.endsWith('/')) {
-      router.go('/home');
-      return;
-    }
-    // Keep a sensible back stack: tab first, then the detail.
-    if (route.startsWith('/followups/')) {
-      router.go('/followups');
-    } else if (route.startsWith('/leads/')) {
-      router.go('/leads');
-    } else if (route.startsWith('/calls/')) {
-      router.go('/calls');
-    }
-    if (route.split('/').length > 2 ||
-        route.contains('/campaigns/') ||
-        route == '/callbacks') {
-      router.push(route);
-    } else {
-      router.go(route);
-    }
+    openDeepLink(ref.read(routerProvider), route);
   }
 
   @override

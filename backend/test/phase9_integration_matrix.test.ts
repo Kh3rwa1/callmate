@@ -202,8 +202,15 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
       expect(cl.attempts).toBe(3);
 
       // 4th job: lead is terminal 'failed', no-op
+      // The only lead is terminal, so the campaign completed
+      const camp = await env.DB.prepare('SELECT status FROM campaigns WHERE id = ?').bind(campId).first<any>();
+      expect(camp.status).toBe('completed');
+
+      // 4th job: lead is terminal 'failed' and the campaign is finished -> no-op ack
       const r4 = await processCampaignJob(testEnv, job);
-      expect(r4.reason).toContain('not_claimable');
+      expect(r4.success).toBe(true);
+      expect(r4.retry).toBeFalsy();
+      expect(r4.reason).toBe('campaign_not_running');
     });
 
     it('Q4: Double delivery: run processCampaignJob twice concurrently -> exactly ONE calls row, attempts=1', async () => {
@@ -495,6 +502,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
     it('S1: /voice/chat 21 times in a minute -> 21st returns 429', async () => {
       const chatBizId = `biz_chat_limit_${Date.now()}`;
       const chatUserId = `usr_chat_limit_${Date.now()}`;
+      await env.DB.prepare('INSERT INTO users (id, phone, business_id) VALUES (?, ?, ?)').bind(chatUserId, '919899990001', chatBizId).run();
       const chatToken = await signJWT({ sub: chatUserId, phone: '919899990001', business_id: chatBizId, type: 'access' }, secret, 3600);
 
       const makeChat = () => app.fetch(

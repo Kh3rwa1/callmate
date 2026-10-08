@@ -16,14 +16,6 @@
 -keep class okhttp3.** { *; }
 -keep class okio.** { *; }
 
-# Sarvam SDK & Audio
--keep class com.sarvam.** { *; }
--dontwarn com.sarvam.**
--keep class com.sarvam_ai.** { *; }
--dontwarn com.sarvam_ai.**
--keep class ai.sarvam.** { *; }
--dontwarn ai.sarvam.**
-
 # Play Core deferred components optional references
 -dontwarn com.google.android.play.core.**
 
@@ -32,3 +24,7 @@
 -keepattributes Signature
 -keepattributes InnerClasses
 -keepattributes EnclosingMethod
+
+# Readable Crashlytics stack traces for native (Java/Kotlin) crashes
+-keepattributes SourceFile,LineNumberTable
+-keep public class * extends java.lang.Exception

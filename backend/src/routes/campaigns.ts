@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { safeJsonParse } from '../utils/json';
 import { parseJsonBody, createCampaignSchema } from '../schemas/validation';
-import { enqueueCampaignJobs } from '../services/campaign_queue';
+import { enqueueCampaignJobs, maybeCompleteCampaign } from '../services/campaign_queue';
+import { parseLimit, MAX_LIST_LIMIT } from '../utils/pagination';
 
 const campaignsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -43,7 +44,8 @@ campaignsApp.get('/campaigns', async (c) => {
     params.push(status);
   }
 
-  sql += ' ORDER BY created_at DESC';
+  sql += ' ORDER BY created_at DESC LIMIT ?';
+  params.push(parseLimit(c.req.query('limit'), MAX_LIST_LIMIT, MAX_LIST_LIMIT));
   const { results } = await c.env.DB.prepare(sql).bind(...params).all<any>();
   return c.json(results.map(formatCampaign));
 });
@@ -185,7 +187,11 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
     }
   }
   for (let i = 0; i < skipStmts.length; i += 80) await c.env.DB.batch(skipStmts.slice(i, i + 80));
-  if (toQueue.length) await enqueueCampaignJobs(c.env, id, user.business_id, toQueue);
+  const queued = toQueue.length
+    ? await enqueueCampaignJobs(c.env, id, user.business_id, toQueue, new URL(c.req.url).origin)
+    : 0;
+  // Every lead skipped (DNC / no consent / already done): nothing will ever finish it otherwise.
+  if (queued === 0) await maybeCompleteCampaign(c.env.DB, id);
 
   const updated = await c.env.DB.prepare('SELECT * FROM campaigns WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatCampaign(updated));

@@ -1,13 +1,15 @@
 import { Env } from '../types';
-import { MAX_DIAL_ATTEMPTS, requeueLead } from './campaign_queue';
+import { MAX_DIAL_ATTEMPTS, requeueLead, maybeCompleteCampaign } from './campaign_queue';
 
 export async function runMaintenance(env: Env): Promise<void> {
   // 1. Prune rate-limit + idempotency tables
   await env.DB.batch([
     env.DB.prepare(`DELETE FROM otp_rate_limits WHERE created_at < datetime('now', '-1 day')`),
     env.DB.prepare(`DELETE FROM voice_proxy_rate_limits WHERE created_at < datetime('now', '-1 day')`),
+    env.DB.prepare(`DELETE FROM push_rate_limits WHERE created_at < datetime('now', '-1 day')`),
     env.DB.prepare(`DELETE FROM rate_limits WHERE created_at < datetime('now', '-2 days')`),
-    env.DB.prepare(`DELETE FROM webhook_events WHERE received_at < datetime('now', '-30 days')`),
+    // Webhook idempotency keys are the replay guard: keep them well beyond any plausible redelivery window.
+    env.DB.prepare(`DELETE FROM webhook_events WHERE received_at < datetime('now', '-90 days')`),
     // julianday() parses both ISO-8601 (with Z) and SQLite datetime formats
     env.DB.prepare(`DELETE FROM otp_codes WHERE julianday(expires_at) < julianday('now')`),
     env.DB.prepare(`DELETE FROM refresh_tokens_v2 WHERE julianday(expires_at) < julianday('now', '-1 day')`),
@@ -31,5 +33,6 @@ export async function runMaintenance(env: Env): Promise<void> {
         .bind(retry ? 'retry_pending' : 'failed', s.id)] : []),
     ]);
     if (retry) await requeueLead(env, s.campaign_id, s.business_id, s.lead_id, 30 * 60);
+    else if (s.campaign_id) await maybeCompleteCampaign(env.DB, s.campaign_id);
   }
 }

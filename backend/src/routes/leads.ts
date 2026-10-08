@@ -2,6 +2,16 @@ import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { safeJsonParse } from '../utils/json';
 import { parseJsonBody, createLeadSchema, importLeadsSchema, patchLeadSchema } from '../schemas/validation';
+import { parseLimit } from '../utils/pagination';
+
+function isUniqueViolation(err: any): boolean {
+  return /UNIQUE constraint failed/i.test(String(err?.message ?? err));
+}
+
+const DUPLICATE_PHONE_BODY = {
+  message: 'A lead with this phone number already exists for your business.',
+  code: 'lead_phone_exists',
+};
 
 const leadsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -54,7 +64,7 @@ leadsApp.get('/leads', async (c) => {
   const q = c.req.query('q')?.toLowerCase()?.trim();
   const rawCursor = c.req.query('cursor');
   // Cap limit strictly at 100
-  const limit = Math.min(Math.max(1, parseInt(c.req.query('limit') || '20', 10)), 100);
+  const limit = parseLimit(c.req.query('limit'), 20, 100);
   const fields = c.req.query('fields');
 
   let sql = 'SELECT * FROM leads WHERE business_id = ?';
@@ -166,10 +176,16 @@ leadsApp.post('/leads', async (c) => {
   const consent = body.consent || 'unknown';
   const timezone = body.timezone || 'Asia/Kolkata';
 
-  await c.env.DB.prepare(
-    `INSERT INTO leads (id, business_id, name, phone, interest, source, status, attributes, do_not_call, consent, timezone, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?, datetime('now'), datetime('now'))`
-  ).bind(id, user.business_id, body.name.trim(), phone, interest, source, attributes, doNotCall, consent, timezone).run();
+  try {
+    await c.env.DB.prepare(
+      `INSERT INTO leads (id, business_id, name, phone, interest, source, status, attributes, do_not_call, consent, timezone, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    ).bind(id, user.business_id, body.name.trim(), phone, interest, source, attributes, doNotCall, consent, timezone).run();
+  } catch (err) {
+    // Lost a race with a concurrent create of the same phone (idx_leads_business_phone)
+    if (isUniqueViolation(err)) return c.json(DUPLICATE_PHONE_BODY, 409);
+    throw err;
+  }
 
   const created = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatLead(created));
@@ -223,22 +239,27 @@ leadsApp.post('/leads/import', async (c) => {
 
     statements.push(
       c.env.DB.prepare(
-        `INSERT INTO leads (id, business_id, name, phone, interest, source, status, attributes, do_not_call, consent, timezone, created_at, updated_at)
+        // OR IGNORE: a concurrent import/create of the same phone is skipped as a duplicate instead of
+        // aborting the whole chunk (idx_leads_business_phone).
+        `INSERT OR IGNORE INTO leads (id, business_id, name, phone, interest, source, status, attributes, do_not_call, consent, timezone, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, 'Asia/Kolkata', datetime('now'), datetime('now'))`
       ).bind(id, user.business_id, name, phone, interest, source, attributes, doNotCall, consent)
     );
   }
 
   // Batch insert into D1
+  let imported = 0;
   if (statements.length > 0) {
     const chunkSize = 80;
     for (let i = 0; i < statements.length; i += chunkSize) {
-      await c.env.DB.batch(statements.slice(i, i + chunkSize));
+      const results = await c.env.DB.batch(statements.slice(i, i + chunkSize));
+      for (const r of results) imported += r.meta?.changes ?? 0;
     }
   }
+  skipped += statements.length - imported;
 
   return c.json({
-    imported: statements.length,
+    imported,
     skipped,
     duplicates: skipped,
     errors,
@@ -281,19 +302,25 @@ leadsApp.patch('/leads/:id', async (c) => {
   const consent = body.consent !== undefined ? body.consent : existing.consent;
   const timezone = body.timezone !== undefined ? body.timezone : existing.timezone;
 
-  await c.env.DB.prepare(
-    `UPDATE leads SET
-      name = ?, phone = ?, interest = ?, status = ?,
-      temperature = ?, score = ?, summary = ?, next_action = ?,
-      callback_at = ?, attributes = ?, do_not_call = ?, consent = ?,
-      timezone = ?, updated_at = datetime('now')
-     WHERE id = ? AND business_id = ?`
-  ).bind(
-    name, phone, interest, status,
-    temperature, score, summary, nextAction,
-    callbackAt, attributes, doNotCall, consent,
-    timezone, id, user.business_id
-  ).run();
+  try {
+    await c.env.DB.prepare(
+      `UPDATE leads SET
+        name = ?, phone = ?, interest = ?, status = ?,
+        temperature = ?, score = ?, summary = ?, next_action = ?,
+        callback_at = ?, attributes = ?, do_not_call = ?, consent = ?,
+        timezone = ?, updated_at = datetime('now')
+       WHERE id = ? AND business_id = ?`
+    ).bind(
+      name, phone, interest, status,
+      temperature, score, summary, nextAction,
+      callbackAt, attributes, doNotCall, consent,
+      timezone, id, user.business_id
+    ).run();
+  } catch (err) {
+    // Phone changed to one another lead of this business already has
+    if (isUniqueViolation(err)) return c.json(DUPLICATE_PHONE_BODY, 409);
+    throw err;
+  }
 
   const updated = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatLead(updated));

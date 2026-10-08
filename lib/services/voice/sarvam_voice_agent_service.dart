@@ -85,7 +85,9 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     try {
       session = await _sessions.createTestSession();
     } catch (e) {
-      debugPrint('[SarvamVoiceAgent] Web test session error: $e');
+      if (kDebugMode) {
+        debugPrint('[SarvamVoiceAgent] Web test session error: $e');
+      }
     }
 
     final agentName =
@@ -153,10 +155,12 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     try {
       session = await _sessions.createTestSession();
     } catch (e) {
-      debugPrint('[SarvamVoiceAgent] Server session creation error: $e');
+      if (kDebugMode) {
+        debugPrint('[SarvamVoiceAgent] Server session creation error: $e');
+      }
       _set(VoiceConnectionState.error);
       throw VoiceAgentException(
-        "Your AI employee couldn't connect to backend. Please check connection ($e).",
+        "Your AI employee couldn't connect to the backend. ${friendlyError(e)}",
       );
     }
     if (session.sessionToken.isEmpty) {
@@ -221,7 +225,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
         }),
       );
     } catch (err) {
-      debugPrint('[SarvamVoiceAgent] Failed to connect: $err');
+      if (kDebugMode) debugPrint('[SarvamVoiceAgent] Failed to connect: $err');
       await _teardown(VoiceConnectionState.error);
       throw VoiceAgentException(
         "Sarvam voice connection error: ${friendlyError(err)}",
@@ -358,7 +362,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
           ),
         );
       } catch (err) {
-        debugPrint('[SarvamVoiceAgent] Web chat error: $err');
+        if (kDebugMode) debugPrint('[SarvamVoiceAgent] Web chat error: $err');
         _set(VoiceConnectionState.listening);
       }
       return;

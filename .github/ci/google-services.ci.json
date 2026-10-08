@@ -1,0 +1,20 @@
+{
+  "_comment": "Placeholder used ONLY by CI to verify the release build compiles. Not a real Firebase project; never ship an app built with it.",
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "callpilot-ci-placeholder",
+    "storage_bucket": "callpilot-ci-placeholder.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": { "package_name": "com.callpilot.app" }
+      },
+      "oauth_client": [],
+      "api_key": [{ "current_key": "ci-placeholder-not-a-real-key" }],
+      "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+    }
+  ],
+  "configuration_version": "1"
+}

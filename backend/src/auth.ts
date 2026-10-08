@@ -130,6 +130,12 @@ export async function authMiddleware(c: Context<{ Bindings: Env; Variables: { us
     return c.json({ message: 'Your session expired or token is invalid. Please log in again.', code: 'token_expired' }, 401);
   }
 
+  // A valid signature is not enough: deleted accounts must stop working immediately.
+  const exists = await c.env.DB.prepare('SELECT 1 AS ok FROM users WHERE id = ?').bind(payload.sub).first();
+  if (!exists) {
+    return c.json({ message: 'This account no longer exists. Please log in again.', code: 'account_not_found' }, 401);
+  }
+
   c.set('user', {
     id: payload.sub,
     phone: payload.phone,
