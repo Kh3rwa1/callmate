@@ -4,7 +4,7 @@ import { safeJsonParse } from '../utils/json';
 import { decryptAtRest, maskPhone } from '../utils/crypto_data';
 import { requireSecret, isMockSarvam } from '../utils/secrets';
 import { checkCallCompliance } from '../services/compliance';
-import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS, sarvamWebhookConfig } from '../services/campaign_queue';
+import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS } from '../services/campaign_queue';
 import { parseLimit } from '../utils/pagination';
 
 const callsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -206,9 +206,9 @@ callsApp.post('/leads/:id/call', async (c) => {
     await markLeadCalling.run();
   } else {
     const dial = await dialSarvam(c.env, {
-      app_config: { app_id: c.env.SARVAM_ADMISSIONS_APP_ID },
-      user_config: { phone_number: lead.phone },
-      agent_variables: {
+      callId,
+      phone: lead.phone,
+      agentVariables: {
         call_id: callId,
         lead_id: lead.id,
         lead_name: lead.name,
@@ -217,7 +217,7 @@ callsApp.post('/leads/:id/call', async (c) => {
         agent_role: agent?.role ?? 'Assistant',
         interest: lead.interest ?? lead.course_interest ?? '',
       },
-      webhook_config: sarvamWebhookConfig(c.env.PUBLIC_API_BASE_URL || new URL(c.req.url).origin),
+      webhookBaseUrl: c.env.PUBLIC_API_BASE_URL || new URL(c.req.url).origin,
     });
 
     if (dial.ok) {

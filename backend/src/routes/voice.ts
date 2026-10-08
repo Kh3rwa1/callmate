@@ -6,7 +6,7 @@ import { encryptAtRest } from '../utils/crypto_data';
 import { isOptOutRequest } from '../services/compliance';
 import { sendBusinessPushNotification } from '../services/fcm';
 import { billableMinutes, claimWebhookEvent, releaseWebhookEvent, recordCallUsage } from '../services/billing';
-import { MAX_DIAL_ATTEMPTS, requeueLead, maybeCompleteCampaign } from '../services/campaign_queue';
+import { MAX_DIAL_ATTEMPTS, requeueLead, maybeCompleteCampaign, sarvamWebhookToken } from '../services/campaign_queue';
 import { isAllowedSarvamPath } from '../services/sarvam_proxy_guard';
 import { hitRateLimit } from '../utils/rate_limit';
 import { retrieveKnowledge } from '../services/knowledge';
@@ -378,6 +378,28 @@ async function generateAIReply(
 }
 
 // Helper: JSON Schema Validator for call_output.schema.json
+/**
+ * Sarvam agent variables arrive as strings ("87", "true") and empty strings for unset values;
+ * coerce them to the types the call output schema expects.
+ */
+function normalizeAgentOutput(output: any): any {
+  if (!output || typeof output !== 'object') return output;
+  const out: any = { ...output };
+  for (const k of Object.keys(out)) if (out[k] === '') out[k] = null;
+  if (typeof out.lead_score === 'string' && /^\d+$/.test(out.lead_score.trim())) out.lead_score = parseInt(out.lead_score, 10);
+  if (typeof out.lead_score === 'number' && !Number.isInteger(out.lead_score)) out.lead_score = Math.round(out.lead_score);
+  if (typeof out.whatsapp_followup_required === 'string') {
+    const v = out.whatsapp_followup_required.trim().toLowerCase();
+    if (v === 'true' || v === 'false') out.whatsapp_followup_required = v === 'true';
+  }
+  for (const k of ['objections', 'positive_signals']) {
+    if (typeof out[k] === 'string') {
+      try { const v = JSON.parse(out[k]); if (Array.isArray(v)) out[k] = v; } catch { out[k] = out[k].split(/[;\n]/).map((x: string) => x.trim()).filter(Boolean); }
+    }
+  }
+  return out;
+}
+
 function validateCallOutput(output: any): { valid: boolean; normalized: any } {
   if (!output || typeof output !== 'object') {
     return {
@@ -521,44 +543,40 @@ voiceApp.all('/voice/sarvam-proxy/*', handleSarvamProxy);
 // Webhook handler for Sarvam call completions
 async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user: AuthUser } }>) {
   const secret = c.env.SARVAM_WEBHOOK_SECRET;
-  const signature = c.req.header('X-Sarvam-Signature') || c.req.header('X-Signature');
-
-  // Signature verification is MANDATORY. Reject with 401 if header or secret is missing.
-  if (!secret || !signature) {
+  if (!secret) {
     return c.json({ message: 'Unauthorized webhook call. Missing signature or secret.', code: 'unauthorized' }, 401);
   }
-
-  // Reject stale timestamps (> 5 min)
-  const timestampHeader = c.req.header('X-Sarvam-Timestamp') || c.req.header('X-Timestamp');
-  if (timestampHeader) {
-    const ts = parseInt(timestampHeader, 10);
-    const now = Math.floor(Date.now() / 1000);
-    if (isNaN(ts) || Math.abs(now - ts) > 300) {
-      return c.json({ message: 'Webhook timestamp is stale or invalid.', code: 'stale_timestamp' }, 401);
-    }
-  }
-
   const rawBody = await c.req.text();
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
 
-  const sigBuf = await crypto.subtle.sign('HMAC', key, enc.encode(rawBody));
-  const hexSig = Array.from(new Uint8Array(sigBuf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  // Sarvam does not sign webhooks: each dial's webhook URL carries call_id + HMAC(secret, call_id).
+  // A signed body (X-Sarvam-Signature) is still accepted for senders that do sign.
+  const urlCallId = c.req.query('call_id');
+  const urlToken = c.req.query('token');
+  const signature = c.req.header('X-Sarvam-Signature') || c.req.header('X-Signature');
+  let isValid = false;
 
-  // Constant-time compare
-  const cleanSig = signature.replace(/^sha256=/, '').trim();
-  let isValid = timingSafeEqual(cleanSig, hexSig);
-
-  if (!isValid && timestampHeader) {
-    const altBuf = await crypto.subtle.sign('HMAC', key, enc.encode(`${timestampHeader}.${rawBody}`));
-    const altHex = Array.from(new Uint8Array(altBuf)).map((b) => b.toString(16).padStart(2, '0')).join('');
-    isValid = timingSafeEqual(cleanSig, altHex);
+  if (urlCallId && urlToken) {
+    isValid = timingSafeEqual(urlToken, await sarvamWebhookToken(secret, urlCallId));
+  } else if (signature) {
+    // Reject stale timestamps (> 5 min)
+    const timestampHeader = c.req.header('X-Sarvam-Timestamp') || c.req.header('X-Timestamp');
+    if (timestampHeader) {
+      const ts = parseInt(timestampHeader, 10);
+      const now = Math.floor(Date.now() / 1000);
+      if (isNaN(ts) || Math.abs(now - ts) > 300) {
+        return c.json({ message: 'Webhook timestamp is stale or invalid.', code: 'stale_timestamp' }, 401);
+      }
+    }
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const toHex = (buf: ArrayBuffer) => Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    const cleanSig = signature.replace(/^sha256=/, '').trim();
+    isValid = timingSafeEqual(cleanSig, toHex(await crypto.subtle.sign('HMAC', key, enc.encode(rawBody))));
+    if (!isValid && timestampHeader) {
+      isValid = timingSafeEqual(cleanSig, toHex(await crypto.subtle.sign('HMAC', key, enc.encode(`${timestampHeader}.${rawBody}`))));
+    }
+  } else {
+    return c.json({ message: 'Unauthorized webhook call. Missing signature or secret.', code: 'unauthorized' }, 401);
   }
 
   if (!isValid) {
@@ -572,7 +590,9 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     return c.json({ message: 'Malformed JSON payload.', code: 'malformed_json' }, 400);
   }
 
-  const rawId = data.interaction_id || data.call_id || data.agent_variables?.call_id;
+  // A URL token authorises exactly one call, so it also decides which call this is.
+  const rawId = urlCallId || data.webhook_config?.metadata?.call_id || data.call_id
+    || data.agent_variables?.call_id || data.attempt_id || data.interaction_id;
   if (!rawId) {
     return c.json({ message: 'Missing call or interaction identifier.', code: 'missing_identifier' }, 400);
   }
@@ -610,7 +630,8 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
 
   try {
     // Validate payload against schema: if invalid: score 0, temperature cold, flag for review, return 200
-    const rawOutput = data.output_variables || data.extracted_variables || data.extracted_data || data;
+    const rawOutput = normalizeAgentOutput(data.output_variables || data.output_agent_variables || data.final_agent_variables
+      || data.extracted_variables || data.extracted_data || data);
     const validation = validateCallOutput(rawOutput);
     const norm = validation.normalized;
 
@@ -627,10 +648,11 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     let callStatus = bill.flagged ? 'flagged_for_review' : finalStatus;
     const durationSeconds = bill.seconds;
 
-    const objections = JSON.stringify(data.output_variables?.objections || []);
-    const positiveSignals = JSON.stringify(data.output_variables?.positive_signals || []);
-    const transcript = JSON.stringify(data.transcript || []);
-    const callbackAt = data.output_variables?.callback_at || null;
+    const outputVars = rawOutput && typeof rawOutput === 'object' ? rawOutput : {};
+    const objections = JSON.stringify(outputVars.objections || []);
+    const positiveSignals = JSON.stringify(outputVars.positive_signals || []);
+    const transcript = JSON.stringify(data.transcript || data.interaction_transcript || []);
+    const callbackAt = outputVars.callback_at || null;
 
     let followUpId: string | null = null;
     const statements: D1PreparedStatement[] = [];
@@ -651,9 +673,9 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
 
     // 4. Only create FollowUp when finalStatus is a connected status
     const isConnected = ['completed', 'connected', 'answered', 'ended'].includes(finalStatus);
-    if (isConnected && (norm.whatsapp_followup_required || data.output_variables?.whatsapp_message)) {
+    if (isConnected && (norm.whatsapp_followup_required || outputVars.whatsapp_message)) {
       followUpId = `fu_${crypto.randomUUID().slice(0, 12)}`;
-      const msg = data.output_variables?.whatsapp_message || `Hi ${leadName.split(' ')[0]} 👋 Thanks for speaking with us!`;
+      const msg = outputVars.whatsapp_message || `Hi ${leadName.split(' ')[0]} 👋 Thanks for speaking with us!`;
       statements.push(
         c.env.DB.prepare(
           `INSERT INTO followups (id, business_id, lead_id, call_id, message, status, created_at)
