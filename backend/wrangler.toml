@@ -11,6 +11,7 @@ enabled = true
 
 [vars]
 ENVIRONMENT = "production"
+PUBLIC_API_BASE_URL = "https://callpilot-backend.dulalkisku0.workers.dev"
 SARVAM_PROXY_BASE = "https://apps.sarvam.ai/api/app-runtime"
 
 # Migrations: `npm run db:migrate:prod` (wrangler d1 migrations apply).
@@ -58,6 +59,7 @@ enabled = true
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
+PUBLIC_API_BASE_URL = "https://callpilot-backend-staging.dulalkisku0.workers.dev"
 SARVAM_PROXY_BASE = "https://apps.sarvam.ai/api/app-runtime"
 
 # Migrations: `npm run db:migrate:staging`.
