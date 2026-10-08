@@ -33,6 +33,13 @@ class AppEnv {
     defaultValue: false,
   );
 
+  /// Offers phone + SMS OTP login next to Google. Off unless the backend has
+  /// an SMS provider configured.
+  static const bool phoneOtpLogin = bool.fromEnvironment(
+    'PHONE_OTP_LOGIN',
+    defaultValue: false,
+  );
+
   /// Shows the demo control panel.
   static const bool demoTools = bool.fromEnvironment(
     'DEMO_TOOLS',

@@ -9,6 +9,7 @@ import '../data/models/models.dart';
 import '../data/repositories/repositories.dart';
 import '../data/templates/templates.dart';
 import '../services/analytics/analytics_service.dart';
+import '../services/auth/google_auth_service.dart';
 import '../services/crash/crash_reporting_service.dart';
 import '../services/notifications/notification_service.dart';
 import '../services/notifications/push_service.dart';
@@ -68,6 +69,10 @@ final authRepoProvider = Provider<AuthRepository>(
         ),
 );
 
+final googleAuthProvider = Provider<GoogleAuthService>(
+  (ref) => GoogleAuthService(),
+);
+
 final sessionProvider = AsyncNotifierProvider<SessionNotifier, bool>(
   SessionNotifier.new,
 );
@@ -76,6 +81,46 @@ class SessionNotifier extends AsyncNotifier<bool> {
   @override
   Future<bool> build() async {
     return ref.watch(authRepoProvider).hasSession();
+  }
+
+  /// Google account picker → backend session. Returns
+  /// [GoogleSignInOutcome.registrationRequired] for a new Google account; call
+  /// [completeGoogleRegistration] with the business details next.
+  Future<GoogleSignInOutcome> signInWithGoogle() async {
+    final idToken = ref.read(useMockProvider)
+        ? 'mock-id-token'
+        : await ref.read(googleAuthProvider).signIn();
+    final outcome = await ref
+        .read(authRepoProvider)
+        .signInWithGoogle(idToken: idToken);
+    if (outcome == GoogleSignInOutcome.signedIn) {
+      // Existing account: its business is already set up.
+      await _prefs?.setOnboarded(true);
+      ref.read(dataVersionProvider.notifier).bump();
+      state = const AsyncValue.data(true);
+    }
+    return outcome;
+  }
+
+  /// Creates the account for the Google user from [signInWithGoogle].
+  /// New accounts then go through onboarding.
+  Future<void> completeGoogleRegistration({
+    required String businessName,
+    required String phone,
+  }) async {
+    final google = ref.read(googleAuthProvider);
+    final idToken = ref.read(useMockProvider)
+        ? 'mock-id-token'
+        : (await google.currentIdToken() ?? await google.signIn());
+    await ref
+        .read(authRepoProvider)
+        .signInWithGoogle(
+          idToken: idToken,
+          businessName: businessName,
+          phone: phone,
+        );
+    ref.read(dataVersionProvider.notifier).bump();
+    state = const AsyncValue.data(true);
   }
 
   Future<void> requestOtp({required String phone}) async {
@@ -119,6 +164,7 @@ class SessionNotifier extends AsyncNotifier<bool> {
     state = await AsyncValue.guard(() async {
       await _unregisterPush();
       await ref.read(authRepoProvider).logout();
+      await ref.read(googleAuthProvider).signOut();
       await _clearLocalUserState();
       return false;
     });
@@ -132,6 +178,7 @@ class SessionNotifier extends AsyncNotifier<bool> {
     try {
       await _unregisterPush();
       await ref.read(authRepoProvider).deleteAccount();
+      await ref.read(googleAuthProvider).signOut();
     } catch (_) {
       state = previous;
       rethrow;

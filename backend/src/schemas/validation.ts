@@ -18,6 +18,12 @@ export const loginSchema = z.object({
   otp: z.string().length(6, 'OTP must be exactly 6 digits'),
 });
 
+export const googleSignInSchema = z.object({
+  id_token: z.string().min(100, 'Invalid sign-in token').max(4096),
+  business_name: z.string().max(120).optional(),
+  phone: z.string().max(16).optional(),
+});
+
 export const refreshSchema = z.object({
   refresh_token: z.string().min(20, 'Invalid refresh token format'),
 });

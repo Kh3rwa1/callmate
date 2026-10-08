@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { signJWT, verifyJWT, getJwtSecret, authMiddleware } from '../auth';
 import { getSmsProvider } from '../sms';
-import { parseJsonBody, otpRequestSchema, registerSchema, loginSchema, refreshSchema } from '../schemas/validation';
+import { parseJsonBody, otpRequestSchema, registerSchema, loginSchema, refreshSchema, googleSignInSchema } from '../schemas/validation';
+import { verifyFirebaseIdToken } from '../services/firebase_auth';
 import { requireSecret, isDevEnv } from '../utils/secrets';
 import { deleteR2Prefix } from '../utils/r2';
 import { hitRateLimit } from '../utils/rate_limit';
@@ -162,6 +163,94 @@ authApp.post('/otp/request', async (c) => {
   });
 });
 
+/** Creates business, default agent, user and usage rows for a new account. Returns the user id. */
+async function provisionAccount(
+  env: Env, phone: string, businessName: string, identity?: { firebaseUid: string; email: string | null }
+): Promise<{ userId: string; businessId: string }> {
+  const userId = `usr_${crypto.randomUUID().slice(0, 12)}`;
+  const businessId = `biz_${crypto.randomUUID().slice(0, 12)}`;
+  const agentId = `agent_${crypto.randomUUID().slice(0, 12)}`;
+  const usageId = `usage_${crypto.randomUUID().slice(0, 12)}`;
+
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO businesses (id, name, category, created_at, updated_at) VALUES (?, ?, 'other', datetime('now'), datetime('now'))`
+    ).bind(businessId, businessName),
+    env.DB.prepare(
+      `INSERT INTO agents (id, business_id, name, role, status, template_id, role_kind, skills, capabilities, calling_hours_start, calling_hours_end, voice, created_at, updated_at)
+       VALUES (?, ?, 'Maya', 'Sales Assistant', 'active', 'generic_sales_v1', 'sales', '["sales", "bookAppointments"]', '["Calling", "Lead Qualification", "Follow-up", "Customer Questions"]', 10, 19, 'Friendly Female (Hindi/English)', datetime('now'), datetime('now'))`
+    ).bind(agentId, businessId),
+    env.DB.prepare(
+      `INSERT INTO users (id, phone, business_id, firebase_uid, email, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))`
+    ).bind(userId, phone, businessId, identity?.firebaseUid ?? null, identity?.email ?? null),
+    env.DB.prepare(
+      `INSERT INTO usage (id, business_id, plan_name, included_minutes, renews_at, price_inr, minutes_used, calls_made, rate_per_minute_inr)
+       VALUES (?, ?, 'Founding Plan', 1000, datetime('now', '+30 days'), 4999, 0, 0, 6)`
+    ).bind(usageId, businessId),
+  ]);
+  return { userId, businessId };
+}
+
+/** Issues an access token and a new refresh-token family. */
+async function issueSession(c: any, userId: string, phone: string, businessId: string) {
+  const secret = getJwtSecret(c);
+  const familyId = `fam_${crypto.randomUUID().slice(0, 12)}`;
+  const accessToken = await signJWT({ sub: userId, phone, business_id: businessId, type: 'access' }, secret, 3600 * 24);
+  const refreshToken = await signJWT({ sub: userId, phone, business_id: businessId, type: 'refresh' }, secret, 3600 * 24 * 30);
+  const refreshHash = await sha256(refreshToken);
+  const expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+  await c.env.DB.prepare(
+    `INSERT INTO refresh_tokens_v2 (token_hash, user_id, family_id, is_revoked, expires_at, created_at)
+     VALUES (?, ?, ?, 0, ?, datetime('now'))`
+  ).bind(refreshHash, userId, familyId, expiresAt).run();
+  return { access_token: accessToken, refresh_token: refreshToken };
+}
+
+// POST /auth/google
+// Firebase (Google) sign-in. Existing account: tokens. New account: needs business_name + phone
+// (the business contact number; not OTP-verified, so it can never claim an existing phone account).
+authApp.post('/google', async (c) => {
+  const parsed = await parseJsonBody(c, googleSignInSchema);
+  if (!parsed.success) {
+    return parsed.response;
+  }
+  const limited = await verifyIpLimited(c);
+  if (limited) return limited;
+  const body = parsed.data;
+
+  let identity;
+  try {
+    identity = await verifyFirebaseIdToken(body.id_token.trim(), c.env.FIREBASE_PROJECT_ID || '');
+  } catch (err: any) {
+    console.error(JSON.stringify({ msg: 'firebase_jwks_unavailable', error: String(err?.message ?? err) }));
+    return c.json({ message: 'Sign-in is temporarily unavailable. Please try again.', code: 'auth_unavailable' }, 503);
+  }
+  if (!identity) {
+    return c.json({ message: 'Google sign-in could not be verified. Please try again.', code: 'invalid_token' }, 401);
+  }
+
+  const existing = await c.env.DB.prepare('SELECT id, phone, business_id FROM users WHERE firebase_uid = ?')
+    .bind(identity.uid).first<{ id: string; phone: string; business_id: string }>();
+  if (existing) {
+    return c.json(await issueSession(c, existing.id, existing.phone, existing.business_id));
+  }
+
+  if (!body.business_name?.trim() || !body.phone?.trim()) {
+    return c.json({ message: 'Tell us your business name and phone number to finish signing up.', code: 'registration_required' }, 404);
+  }
+  const phone = normalizePhone(body.phone.trim());
+  if (phone.length < 10 || phone.length > 15) {
+    return c.json({ message: 'Please enter a valid phone number.', code: 'invalid_phone' }, 400);
+  }
+  const phoneTaken = await c.env.DB.prepare('SELECT id FROM users WHERE phone = ?').bind(phone).first();
+  if (phoneTaken) {
+    return c.json({ message: 'This phone number is already used by another account.', code: 'phone_in_use' }, 409);
+  }
+
+  const { userId, businessId } = await provisionAccount(c.env, phone, body.business_name.trim(), { firebaseUid: identity.uid, email: identity.email });
+  return c.json(await issueSession(c, userId, phone, businessId));
+});
+
 // POST /auth/register
 // NEVER returns tokens for an existing phone. Requires verified OTP.
 authApp.post('/register', async (c) => {
@@ -188,42 +277,8 @@ authApp.post('/register', async (c) => {
   const otpError = await verifyOtp(c, phone, otp);
   if (otpError) return otpError;
 
-  const secret = getJwtSecret(c);
-  const userId = `usr_${crypto.randomUUID().slice(0, 12)}`;
-  const businessId = `biz_${crypto.randomUUID().slice(0, 12)}`;
-  const agentId = `agent_${crypto.randomUUID().slice(0, 12)}`;
-  const usageId = `usage_${crypto.randomUUID().slice(0, 12)}`;
-  const familyId = `fam_${crypto.randomUUID().slice(0, 12)}`;
-
-  // Provision Business, Agent, User, and default Usage
-  await c.env.DB.batch([
-    c.env.DB.prepare(
-      `INSERT INTO businesses (id, name, category, created_at, updated_at) VALUES (?, ?, 'other', datetime('now'), datetime('now'))`
-    ).bind(businessId, businessName),
-    c.env.DB.prepare(
-      `INSERT INTO agents (id, business_id, name, role, status, template_id, role_kind, skills, capabilities, calling_hours_start, calling_hours_end, voice, created_at, updated_at)
-       VALUES (?, ?, 'Maya', 'Sales Assistant', 'active', 'generic_sales_v1', 'sales', '["sales", "bookAppointments"]', '["Calling", "Lead Qualification", "Follow-up", "Customer Questions"]', 10, 19, 'Friendly Female (Hindi/English)', datetime('now'), datetime('now'))`
-    ).bind(agentId, businessId),
-    c.env.DB.prepare(
-      `INSERT INTO users (id, phone, business_id, created_at) VALUES (?, ?, ?, datetime('now'))`
-    ).bind(userId, phone, businessId),
-    c.env.DB.prepare(
-      `INSERT INTO usage (id, business_id, plan_name, included_minutes, renews_at, price_inr, minutes_used, calls_made, rate_per_minute_inr)
-       VALUES (?, ?, 'Founding Plan', 1000, datetime('now', '+30 days'), 4999, 0, 0, 6)`
-    ).bind(usageId, businessId),
-  ]);
-
-  const accessToken = await signJWT({ sub: userId, phone, business_id: businessId, type: 'access' }, secret, 3600 * 24);
-  const refreshToken = await signJWT({ sub: userId, phone, business_id: businessId, type: 'refresh' }, secret, 3600 * 24 * 30);
-  const refreshHash = await sha256(refreshToken);
-  const expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
-
-  await c.env.DB.prepare(
-    `INSERT INTO refresh_tokens_v2 (token_hash, user_id, family_id, is_revoked, expires_at, created_at)
-     VALUES (?, ?, ?, 0, ?, datetime('now'))`
-  ).bind(refreshHash, userId, familyId, expiresAt).run();
-
-  return c.json({ access_token: accessToken, refresh_token: refreshToken });
+  const { userId, businessId } = await provisionAccount(c.env, phone, businessName);
+  return c.json(await issueSession(c, userId, phone, businessId));
 });
 
 // POST /auth/login
@@ -250,20 +305,7 @@ authApp.post('/login', async (c) => {
     return c.json({ message: 'Account not found. Please register first.', code: 'user_not_found' }, 404);
   }
 
-  const secret = getJwtSecret(c);
-  const familyId = `fam_${crypto.randomUUID().slice(0, 12)}`;
-
-  const accessToken = await signJWT({ sub: user.id, phone, business_id: user.business_id, type: 'access' }, secret, 3600 * 24);
-  const refreshToken = await signJWT({ sub: user.id, phone, business_id: user.business_id, type: 'refresh' }, secret, 3600 * 24 * 30);
-  const refreshHash = await sha256(refreshToken);
-  const expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
-
-  await c.env.DB.prepare(
-    `INSERT INTO refresh_tokens_v2 (token_hash, user_id, family_id, is_revoked, expires_at, created_at)
-     VALUES (?, ?, ?, 0, ?, datetime('now'))`
-  ).bind(refreshHash, user.id, familyId, expiresAt).run();
-
-  return c.json({ access_token: accessToken, refresh_token: refreshToken });
+  return c.json(await issueSession(c, user.id, phone, user.business_id));
 });
 
 // POST /auth/refresh

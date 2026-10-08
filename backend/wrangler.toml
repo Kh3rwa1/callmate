@@ -20,6 +20,7 @@ SARVAM_ADMISSIONS_APP_ID = "CallPilot---cb13b1d8-b8da"
 SARVAM_APP_VERSION = "2"
 SARVAM_CONNECTION_ID = "0da745db-ed-2dd19091-839b"
 SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
+FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
 
 # Migrations: `npm run db:migrate:prod` (wrangler d1 migrations apply).
 # Demo seed data lives in ./seeds and is NEVER applied by migrations.
@@ -75,6 +76,7 @@ SARVAM_ADMISSIONS_APP_ID = "CallPilot---cb13b1d8-b8da"
 SARVAM_APP_VERSION = "2"
 SARVAM_CONNECTION_ID = "0da745db-ed-2dd19091-839b"
 SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
+FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
 
 # Migrations: `npm run db:migrate:staging`.
 [[env.staging.d1_databases]]

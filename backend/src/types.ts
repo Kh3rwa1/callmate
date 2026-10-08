@@ -25,6 +25,8 @@ export interface Env {
   OTP_PEPPER?: string;
   ALLOWED_ORIGINS?: string;
   HEALTH_CHECK_SECRET?: string;
+  /** Firebase project whose Auth ID tokens /auth/google accepts. */
+  FIREBASE_PROJECT_ID?: string;
   /** Public origin of this worker (e.g. https://api.example.com), used for Sarvam webhook_config on queued dials. */
   PUBLIC_API_BASE_URL?: string;
 }

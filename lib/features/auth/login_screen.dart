@@ -15,8 +15,11 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/brand_widgets.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
+import '../../data/repositories/repositories.dart';
+import '../../services/auth/google_auth_service.dart';
 
-/// Authentication Screen: Phone number entry & OTP verification.
+/// Authentication Screen: Google sign-in (default), with phone + OTP behind
+/// `PHONE_OTP_LOGIN`.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -29,6 +32,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _otpController = TextEditingController();
   final _businessController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
+  /// Phone + OTP flow instead of Google.
+  bool _usePhone = false;
+
+  /// Google account is new: collect business name + contact number.
+  bool _googleRegistering = false;
 
   bool _isRegister = false;
   bool _otpSent = false;
@@ -58,6 +67,174 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (mounted) setState(() => _resendCountdown--);
       }
     });
+  }
+
+  Future<void> _continueWithGoogle() async {
+    setState(() {
+      _submitting = true;
+      _errorMessage = null;
+    });
+    try {
+      final outcome = await ref
+          .read(sessionProvider.notifier)
+          .signInWithGoogle();
+      if (!mounted) return;
+      if (outcome == GoogleSignInOutcome.registrationRequired) {
+        setState(() {
+          _googleRegistering = true;
+          _submitting = false;
+        });
+        return;
+      }
+      HapticFeedback.heavyImpact();
+      context.go('/home');
+    } on GoogleSignInCancelled {
+      if (mounted) setState(() => _submitting = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _errorMessage = friendlyError(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _finishGoogleRegistration() async {
+    final businessName = _businessController.text.trim();
+    final phone = PhoneUtils.normalize(_phoneController.text.trim());
+    if (businessName.isEmpty) {
+      setState(
+        () => _errorMessage = 'Please enter your business or company name.',
+      );
+      return;
+    }
+    if (phone == null) {
+      setState(
+        () => _errorMessage = 'Please enter a valid 10-digit mobile number.',
+      );
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _errorMessage = null;
+    });
+    try {
+      await ref
+          .read(sessionProvider.notifier)
+          .completeGoogleRegistration(businessName: businessName, phone: phone);
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      context.go('/onboarding');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _errorMessage = friendlyError(e);
+        });
+      }
+    }
+  }
+
+  String get _title {
+    if (!_usePhone) {
+      return _googleRegistering ? 'Set Up Your Business' : 'Welcome';
+    }
+    if (_otpSent) return _isRegister ? 'Verify Registration' : 'Verify OTP';
+    return _isRegister ? 'Create Your Account' : 'Sign In to Your Workspace';
+  }
+
+  String get _subtitle {
+    if (!_usePhone) {
+      return _googleRegistering
+          ? 'One last step: tell us about your business'
+          : 'Sign in or create your account with Google';
+    }
+    if (_otpSent) {
+      return 'Enter the 6-digit code sent to ${PhoneUtils.display(_phoneController.text)}';
+    }
+    return _isRegister
+        ? 'Start hiring AI employees for your business'
+        : 'Enter your phone number to receive a one-time login code';
+  }
+
+  List<Widget> _googleSection(TextTheme t) {
+    if (_googleRegistering) {
+      return [
+        TextField(
+          controller: _businessController,
+          textCapitalization: TextCapitalization.words,
+          autofillHints: const [AutofillHints.organizationName],
+          decoration: const InputDecoration(
+            labelText: 'Business name',
+            hintText: 'e.g. Apex Coaching / Sharma Realty',
+            prefixIcon: Icon(Icons.business_outlined),
+          ),
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          autofillHints: const [AutofillHints.telephoneNumber],
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9+ -]')),
+          ],
+          decoration: const InputDecoration(
+            labelText: 'Business mobile number',
+            hintText: '98300 12345',
+            helperText: 'Customers see this number on WhatsApp follow-ups',
+            prefixIcon: Icon(Icons.phone_outlined),
+            prefixText: '+91 ',
+          ),
+        ),
+        const SizedBox(height: 20),
+        PrimaryButton(
+          label: 'Create Account',
+          loading: _submitting,
+          color: AppColors.success,
+          onPressed: _finishGoogleRegistration,
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: TextButton(
+            onPressed: _submitting
+                ? null
+                : () async {
+                    await ref.read(googleAuthProvider).signOut();
+                    if (mounted) {
+                      setState(() {
+                        _googleRegistering = false;
+                        _errorMessage = null;
+                      });
+                    }
+                  },
+            child: const Text('Use a different Google account'),
+          ),
+        ),
+      ];
+    }
+    return [
+      PrimaryButton(
+        label: 'Continue with Google',
+        loading: _submitting,
+        color: AppColors.brand,
+        onPressed: _continueWithGoogle,
+      ),
+      if (AppEnv.phoneOtpLogin) ...[
+        const SizedBox(height: 12),
+        Center(
+          child: TextButton(
+            onPressed: _submitting
+                ? null
+                : () => setState(() {
+                    _usePhone = true;
+                    _errorMessage = null;
+                  }),
+            child: const Text('Use phone number instead'),
+          ),
+        ),
+      ],
+    ];
   }
 
   Future<void> _sendOtp() async {
@@ -205,25 +382,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              _otpSent
-                                  ? (_isRegister
-                                        ? 'Verify Registration'
-                                        : 'Verify OTP')
-                                  : (_isRegister
-                                        ? 'Create Your Account'
-                                        : 'Sign In to Your Workspace'),
-                              style: t.titleLarge,
-                            ),
+                            Text(_title, style: t.titleLarge),
                             const SizedBox(height: 6),
-                            Text(
-                              _otpSent
-                                  ? 'Enter the 6-digit code sent to ${PhoneUtils.display(_phoneController.text)}'
-                                  : (_isRegister
-                                        ? 'Start hiring AI employees for your business'
-                                        : 'Enter your phone number to receive a one-time login code'),
-                              style: t.bodySmall,
-                            ),
+                            Text(_subtitle, style: t.bodySmall),
                             const SizedBox(height: 20),
 
                             if (_errorMessage != null) ...[
@@ -256,7 +417,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               const SizedBox(height: 16),
                             ],
 
-                            if (!_otpSent) ...[
+                            if (!_usePhone)
+                              ..._googleSection(t)
+                            else if (!_otpSent) ...[
                               if (_isRegister) ...[
                                 TextField(
                                   controller: _businessController,
