@@ -28,6 +28,7 @@ class VoiceRoundControl extends StatelessWidget {
     button: true,
     label: label,
     enabled: onTap != null,
+    onTap: onTap,
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [

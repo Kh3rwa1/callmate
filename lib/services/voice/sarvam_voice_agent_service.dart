@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
 import 'package:sarvamconv_ai_sdk/sarvamconv_ai_sdk.dart';
 
 import '../../core/config/app_env.dart';
@@ -33,6 +36,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
   bool _muted = false;
   int _seq = 0;
   String? _conversationId;
+  String? _serverSessionId;
   final List<Timer> _webTimers = [];
   Timer? _webLevelTimer;
   final Random _rnd = Random();
@@ -163,6 +167,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
         "Your AI employee couldn't connect to the backend. ${friendlyError(e)}",
       );
     }
+    _serverSessionId = session.sessionId;
     if (session.sessionToken.isEmpty) {
       _set(VoiceConnectionState.error);
       throw const VoiceAgentException(
@@ -194,7 +199,9 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     final headers = {'Authorization': 'Bearer ${session.sessionToken}'};
 
     _audio = _MutableAudioInterface(
-      DefaultAudioInterface(inputSampleRate: 16000),
+      !kIsWeb && Platform.isAndroid
+          ? _AndroidEchoCancelledAudio()
+          : DefaultAudioInterface(inputSampleRate: 16000),
       onOutput: _onAgentAudio,
     );
     _agent = SamvaadAgent(
@@ -385,6 +392,12 @@ class SarvamVoiceAgentService implements VoiceAgentService {
 
   Future<void> _teardown(VoiceConnectionState end) async {
     _conversationId = null;
+    final sid = _serverSessionId;
+    _serverSessionId = null;
+    if (sid != null) {
+      // Best effort: the server also expires stale sessions after an hour.
+      unawaited(_sessions.endTestSession(sid).catchError((Object _) {}));
+    }
     _stopWebTimers();
     stopAgentSpeech();
     final a = _agent;
@@ -394,7 +407,7 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       await a?.stop();
     } catch (_) {}
     try {
-      await _audio?.inner.dispose();
+      await _audio?.dispose();
     } catch (_) {}
     _audio = null;
     _set(end);
@@ -448,7 +461,7 @@ String resolveSarvamProxyBaseUrl(
 /// without depending on SDK internals.
 class _MutableAudioInterface implements AudioInterface {
   _MutableAudioInterface(this.inner, {required this.onOutput});
-  final DefaultAudioInterface inner;
+  final AudioInterface inner;
   final void Function(Uint8List) onOutput;
   bool muted = false;
 
@@ -470,4 +483,88 @@ class _MutableAudioInterface implements AudioInterface {
 
   @override
   void interrupt() => inner.interrupt();
+
+  Future<void> dispose() async {
+    final a = inner;
+    if (a is DefaultAudioInterface) return a.dispose();
+    if (a is _AndroidEchoCancelledAudio) return a.dispose();
+    return a.stop();
+  }
+}
+
+/// Android replacement for the SDK's DefaultAudioInterface, which records the
+/// raw mic with no echo cancellation: on speakerphone the agent then hears
+/// its own voice and keeps answering itself. This records through the
+/// voice-communication source (platform AEC/NS/AGC) and plays through the
+/// same native `com.sarvam.audio/playback` channel (MainActivity), which uses
+/// the voice-call stream so the AEC has the agent's audio as its reference.
+class _AndroidEchoCancelledAudio implements AudioInterface {
+  static const _player = MethodChannel('com.sarvam.audio/playback');
+  static const _inputRate = 16000;
+
+  final _recorder = AudioRecorder();
+  StreamSubscription<Uint8List>? _sub;
+  int _outputRate = 16000;
+  int _frames = 0;
+  bool _stopped = false;
+
+  @override
+  Future<void> start(AudioInputCallback inputCallback) async {
+    _stopped = false;
+    _frames = 0;
+    await _player.invokeMethod('init', {'sampleRate': _outputRate});
+    final stream = await _recorder.startStream(
+      const RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: _inputRate,
+        numChannels: 1,
+        echoCancel: true,
+        noiseSuppress: true,
+        autoGain: true,
+        androidConfig: AndroidRecordConfig(
+          audioSource: AndroidAudioSource.voiceCommunication,
+          audioManagerMode: AudioManagerMode.modeInCommunication,
+          speakerphone: true,
+        ),
+      ),
+    );
+    _sub = stream.listen((data) {
+      if (_stopped) return;
+      inputCallback(data, ++_frames).catchError((Object e) {
+        if (kDebugMode) debugPrint('[voice] input callback error: $e');
+      });
+    });
+  }
+
+  @override
+  Future<void> output(Uint8List audio, {int? sampleRate}) async {
+    if (_stopped || audio.isEmpty) return;
+    final rate = sampleRate ?? _outputRate;
+    if (rate != _outputRate) {
+      _outputRate = rate;
+      await _player.invokeMethod('init', {'sampleRate': rate});
+    }
+    await _player.invokeMethod('play', {'audioData': audio});
+  }
+
+  @override
+  void interrupt() => _player.invokeMethod('stop');
+
+  @override
+  Future<void> stop() async {
+    _stopped = true;
+    await _sub?.cancel();
+    _sub = null;
+    try {
+      if (await _recorder.isRecording()) await _recorder.stop();
+    } catch (_) {}
+    try {
+      await _player.invokeMethod('dispose');
+    } catch (_) {}
+  }
+
+  Future<void> dispose() async {
+    await stop();
+    await _recorder.dispose();
+  }
 }

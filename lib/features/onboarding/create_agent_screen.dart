@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_card.dart';
@@ -91,6 +92,9 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
         );
     try {
       await ref.read(onboardingProvider.notifier).activateEmployee();
+      // The business and agent now exist server-side; a relaunch from the
+      // optional first-call step should land on home, not redo onboarding.
+      await ref.read(localPrefsProvider).setOnboarded(true);
       if (mounted) context.push('/onboarding/test');
     } catch (e) {
       if (mounted) {

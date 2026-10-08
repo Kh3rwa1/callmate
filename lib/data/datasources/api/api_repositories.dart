@@ -443,6 +443,11 @@ class ApiVoiceSessionRepository implements VoiceSessionRepository {
   Future<VoiceTestSession> createTestSession() =>
       api.post('/voice/test-session', (d) => VoiceTestSession.fromJson(_j(d)));
   @override
+  Future<void> endTestSession(String sessionId) => api.post(
+    '/voice/test-session/${Uri.encodeComponent(sessionId)}/end',
+    (_) {},
+  );
+  @override
   Future<VoiceChatReply> sendChatMessage(
     String message, {
     String? conversationId,

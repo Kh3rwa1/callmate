@@ -157,6 +157,7 @@ class VoiceTestSession {
     this.userIdentifier = 'owner',
     this.greetingText,
     this.greetingAudioBase64,
+    this.sessionId,
   });
 
   /// Short-lived token for OUR proxy (not a Sarvam key).
@@ -171,6 +172,10 @@ class VoiceTestSession {
   final String? greetingText;
   final String? greetingAudioBase64;
 
+  /// Server-side session row; ended via [VoiceSessionRepository.endTestSession]
+  /// so it stops counting against the business's concurrent-session cap.
+  final String? sessionId;
+
   factory VoiceTestSession.fromJson(Json j) => VoiceTestSession(
     sessionToken: jStr(j, 'session_token'),
     orgId: jStr(j, 'org_id'),
@@ -182,6 +187,7 @@ class VoiceTestSession {
     userIdentifier: jStr(j, 'user_identifier', 'owner'),
     greetingText: jStrN(j, 'greeting_text'),
     greetingAudioBase64: jStrN(j, 'greeting_audio_base64'),
+    sessionId: jStrN(j, 'session_id'),
   );
 }
 
