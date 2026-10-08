@@ -54,17 +54,13 @@ void main() {
       expect(shown.every((c) => c.isHot), isTrue);
     }, location: '/calls');
 
-    appTest(
-      'initial filter comes from the query string',
-      (h) async {
-        expect(_chipSelected('No Answer'), isTrue);
-        expect(
-          _visibleCalls(h.tester).every((c) => !c.status.isConnected),
-          isTrue,
-        );
-      },
-      location: '/calls?filter=no_answer',
-    );
+    appTest('initial filter comes from the query string', (h) async {
+      expect(_chipSelected('No Answer'), isTrue);
+      expect(
+        _visibleCalls(h.tester).every((c) => !c.status.isConnected),
+        isTrue,
+      );
+    }, location: '/calls?filter=no_answer');
 
     appTest('connected call opens the result screen', (h) async {
       await h.tapText('Connected');

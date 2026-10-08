@@ -152,17 +152,15 @@ void main() {
       expect(h.location, startsWith('/leads/'));
     }, location: '/leads');
 
-    appTest(
-      'WhatsApp on a lead with a pending draft opens the draft',
-      (h) async {
-        final lead = _visibleLeads(h.tester).first;
-        final fu = h.backend.followUpForLead(lead.id)!;
-        expect(fu.isPending, isTrue);
-        await h.tap(find.widgetWithText(TextButton, 'WhatsApp').first);
-        expect(h.location, '/followups/${fu.id}');
-      },
-      location: '/leads',
-    );
+    appTest('WhatsApp on a lead with a pending draft opens the draft', (
+      h,
+    ) async {
+      final lead = _visibleLeads(h.tester).first;
+      final fu = h.backend.followUpForLead(lead.id)!;
+      expect(fu.isPending, isTrue);
+      await h.tap(find.widgetWithText(TextButton, 'WhatsApp').first);
+      expect(h.location, '/followups/${fu.id}');
+    }, location: '/leads');
   });
 
   group('LeadsScreen WhatsApp without a draft', () {
