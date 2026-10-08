@@ -46,9 +46,15 @@ Future<void> _loadFonts() async {
   await jakarta.load();
   final flutterRoot = Platform.environment['FLUTTER_ROOT']!;
   final icons = FontLoader('MaterialIcons')
-    ..addFont(Future.value(ByteData.sublistView(File(
-      '$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
-    ).readAsBytesSync())));
+    ..addFont(
+      Future.value(
+        ByteData.sublistView(
+          File(
+            '$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+          ).readAsBytesSync(),
+        ),
+      ),
+    );
   await icons.load();
 }
 
@@ -82,9 +88,20 @@ void main() {
   }
 
   for (final (name, route) in [
-    ('call_result', (AppHarness h) => '/calls/${h.backend.calls.firstWhere((c) => c.leadScore != null).id}/result'),
-    ('lead_detail', (AppHarness h) => '/leads/${h.backend.leads.values.firstWhere((l) => l.score != null).id}'),
-    ('followup_detail', (AppHarness h) => '/followups/${h.backend.followUps.values.first.id}'),
+    (
+      'call_result',
+      (AppHarness h) =>
+          '/calls/${h.backend.calls.firstWhere((c) => c.leadScore != null).id}/result',
+    ),
+    (
+      'lead_detail',
+      (AppHarness h) =>
+          '/leads/${h.backend.leads.values.firstWhere((l) => l.score != null).id}',
+    ),
+    (
+      'followup_detail',
+      (AppHarness h) => '/followups/${h.backend.followUps.values.first.id}',
+    ),
   ]) {
     appTest('screenshot $name', (h) async {
       final t = h.tester;
@@ -92,23 +109,42 @@ void main() {
       t.view.devicePixelRatio = 2.75;
       await h.push(route(h));
       await h.settle(14);
-      await expectLater(find.byType(MaterialApp), matchesGoldenFile('out/$name.png'));
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('out/$name.png'),
+      );
     });
   }
 
-  appTest('screenshot login', (h) async {
-    final t = h.tester;
-    t.view.physicalSize = const Size(1080, 2340);
-    t.view.devicePixelRatio = 2.75;
-    await h.settle(14);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('out/login.png'));
-  }, location: '/login', overrides: () => [authRepoProvider.overrideWithValue(_SignedOut())]);
+  appTest(
+    'screenshot login',
+    (h) async {
+      final t = h.tester;
+      t.view.physicalSize = const Size(1080, 2340);
+      t.view.devicePixelRatio = 2.75;
+      await h.settle(14);
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('out/login.png'),
+      );
+    },
+    location: '/login',
+    overrides: () => [authRepoProvider.overrideWithValue(_SignedOut())],
+  );
 
-  appTest('screenshot onboarding', (h) async {
-    final t = h.tester;
-    t.view.physicalSize = const Size(1080, 2340);
-    t.view.devicePixelRatio = 2.75;
-    await h.settle(14);
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('out/onboarding.png'));
-  }, location: '/onboarding', onboarded: false);
+  appTest(
+    'screenshot onboarding',
+    (h) async {
+      final t = h.tester;
+      t.view.physicalSize = const Size(1080, 2340);
+      t.view.devicePixelRatio = 2.75;
+      await h.settle(14);
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('out/onboarding.png'),
+      );
+    },
+    location: '/onboarding',
+    onboarded: false,
+  );
 }
