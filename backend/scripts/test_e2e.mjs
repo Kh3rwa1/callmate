@@ -46,6 +46,8 @@ async function ensureServer() {
   console.log('Starting local wrangler dev server on port 8787...');
   childProc = spawn('npx', [
     'wrangler', 'dev',
+    // No remote bindings (e.g. Workers AI): E2E must run without Cloudflare credentials.
+    '--local',
     '--port', '8787',
     '--ip', '127.0.0.1',
     '--var', 'ENVIRONMENT:development',
