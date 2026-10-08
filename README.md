@@ -31,6 +31,10 @@ flutter run --dart-define-from-file=env/dev.json
 flutter run --dart-define-from-file=env/staging.json
 ```
 
+### Real calls (Sarvam)
+See [`docs/SARVAM_SETUP.md`](docs/SARVAM_SETUP.md) for where the Sarvam agent,
+caller IDs and API key are configured.
+
 ### 3. Production Release Build (Play Store App Bundle)
 Needs `android/key.properties` (upload key), `android/app/google-services.json`
 (Firebase: push + Crashlytics) and the real `API_BASE_URL` in `env/prod.json`.
