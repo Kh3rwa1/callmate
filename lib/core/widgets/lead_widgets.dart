@@ -4,11 +4,15 @@ import '../../data/models/models.dart';
 import '../theme/app_colors.dart';
 
 class TempStyle {
-  const TempStyle(this.fg, this.bg, this.emoji, this.label);
+  const TempStyle(this.fg, this.bg, this.emoji, this.label, this.icon);
   final Color fg;
   final Color bg;
   final String emoji;
   final String label;
+  final IconData icon;
+
+  /// "Hot" rather than "HOT" for display.
+  String get word => label[0] + label.substring(1).toLowerCase();
 
   static TempStyle of(LeadTemperature t) => switch (t) {
     LeadTemperature.hot => const TempStyle(
@@ -16,29 +20,33 @@ class TempStyle {
       AppColors.hotSoft,
       '🔥',
       'HOT',
+      Icons.local_fire_department_rounded,
     ),
     LeadTemperature.warm => const TempStyle(
-      Color(0xFFB45309),
+      AppColors.warmInk,
       AppColors.warmSoft,
       '☀️',
       'WARM',
+      Icons.wb_sunny_rounded,
     ),
     LeadTemperature.cold => const TempStyle(
       AppColors.cold,
       AppColors.coldSoft,
       '❄️',
       'COLD',
+      Icons.ac_unit_rounded,
     ),
     LeadTemperature.unknown => const TempStyle(
       AppColors.inkFaint,
       AppColors.surfaceMuted,
       '•',
       'NEW',
+      Icons.fiber_new_rounded,
     ),
   };
 }
 
-/// "🔥 87 — HOT" badge (emoji + number + word: never colour alone).
+/// "🔥 87 · Hot" badge (icon + number + word: never colour alone).
 class ScoreBadge extends StatelessWidget {
   const ScoreBadge({super.key, required this.score, this.large = false});
   final LeadScore? score;
@@ -50,7 +58,7 @@ class ScoreBadge extends StatelessWidget {
     final s = TempStyle.of(t);
     final text = score == null
         ? 'Not called yet'
-        : '${score!.value} — ${s.label}';
+        : '${score!.value} · ${s.word}';
     return Semantics(
       label: score == null
           ? 'Not scored yet'
@@ -69,15 +77,15 @@ class ScoreBadge extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (score != null)
-                Text(s.emoji, style: TextStyle(fontSize: large ? 16 : 13)),
-              if (score != null) const SizedBox(width: 5),
+                Icon(s.icon, size: large ? 17 : 14, color: s.fg),
+              if (score != null) const SizedBox(width: 4),
               Text(
                 text,
                 style: TextStyle(
                   color: s.fg,
                   fontWeight: FontWeight.w800,
                   fontSize: large ? 15 : 12.5,
-                  letterSpacing: 0.2,
+                  letterSpacing: 0.1,
                 ),
               ),
             ],
@@ -121,7 +129,7 @@ class ScoreRing extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(s.emoji, style: const TextStyle(fontSize: 20)),
+                  Icon(s.icon, size: 22, color: s.fg),
                   Text(
                     '${(v * 100).round()}',
                     style: Theme.of(

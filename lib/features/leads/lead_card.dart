@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/phone.dart';
@@ -84,27 +85,36 @@ class LeadCard extends ConsumerWidget {
             ],
             if (l.nextAction != NextAction.none) ...[
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Text(
-                    'Next: ',
-                    style: t.bodySmall?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  Expanded(
-                    child: Text(
-                      l.nextAction.label,
-                      style: t.bodySmall?.copyWith(
-                        color: AppColors.brand,
-                        fontWeight: FontWeight.w800,
+              Container(
+                padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
+                decoration: BoxDecoration(
+                  color: AppColors.brandSoft,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.subdirectory_arrow_right_rounded,
+                      size: 15,
+                      color: AppColors.brandDeep,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        'Next: ${l.nextAction.label}',
+                        overflow: TextOverflow.ellipsis,
+                        style: t.labelMedium?.copyWith(
+                          color: AppColors.brandDeep,
+                          fontSize: 12.5,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
-            const SizedBox(height: 8),
-            const Divider(),
-            const SizedBox(height: 4),
+            const SizedBox(height: 14),
             Row(
               children: [
                 Expanded(
@@ -112,21 +122,18 @@ class LeadCard extends ConsumerWidget {
                     icon: Icons.chat_rounded,
                     label: 'WhatsApp',
                     color: AppColors.whatsapp,
+                    tint: AppColors.whatsappSoft,
                     onTap: () => _whatsapp(context, ref),
                   ),
                 ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: _LeadAction(
                     icon: Icons.call_rounded,
                     label: 'Call',
+                    color: AppColors.ink,
+                    tint: AppColors.surfaceMuted,
                     onTap: () => _call(context),
-                  ),
-                ),
-                Expanded(
-                  child: _LeadAction(
-                    icon: Icons.chevron_right_rounded,
-                    label: 'Details',
-                    onTap: () => context.push('/leads/${l.id}'),
                   ),
                 ),
               ],
@@ -181,26 +188,43 @@ class _LeadAction extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.color = AppColors.ink,
+    required this.color,
+    required this.tint,
   });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final Color color;
+  final Color tint;
+
   @override
-  Widget build(BuildContext context) => TextButton.icon(
-    style: TextButton.styleFrom(
-      foregroundColor: color,
-      minimumSize: const Size(0, 44),
-    ),
-    onPressed: onTap,
-    icon: Icon(icon, size: 19),
-    label: FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Text(
-        label,
-        maxLines: 1,
-        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: label,
+    excludeSemantics: true,
+    child: Pressable(
+      onTap: onTap,
+      scale: 0.95,
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: tint,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              maxLines: 1,
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(color: color, fontSize: 14.5),
+            ),
+          ],
+        ),
       ),
     ),
   );

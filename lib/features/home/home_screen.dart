@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_env.dart';
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -97,9 +98,12 @@ class HomeScreen extends ConsumerWidget {
                   0,
                 ),
                 sliver: SliverToBoxAdapter(
-                  child: HomeAgentCard(
-                    agent: agent,
-                    callsToday: dash.value?.callsToday,
+                  child: Reveal(
+                    index: 1,
+                    child: HomeAgentCard(
+                      agent: agent,
+                      callsToday: dash.value?.callsToday,
+                    ),
                   ),
                 ),
               ),
@@ -158,7 +162,7 @@ class _HomeBody extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+      children: _stagger([
         const SectionLabel("Today's results"),
         GridView.count(
           crossAxisCount: 2,
@@ -166,32 +170,37 @@ class _HomeBody extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.55,
+          childAspectRatio: 1.32,
           children: [
             HomeMetric(
               value: d.callsToday,
               label: 'Calls',
-              emoji: '📞',
+              icon: Icons.call_rounded,
+              tint: AppColors.brandSoft,
+              color: AppColors.brand,
               onTap: () => context.go('/calls'),
             ),
             HomeMetric(
               value: d.connected,
               label: 'Connected',
-              emoji: '✅',
+              icon: Icons.check_circle_rounded,
+              tint: AppColors.successSoft,
               color: AppColors.success,
               onTap: () => context.go('/calls?filter=connected'),
             ),
             HomeMetric(
               value: d.interested,
               label: 'Interested',
-              emoji: '☀️',
-              color: const Color(0xFFB45309),
+              icon: Icons.wb_sunny_rounded,
+              tint: AppColors.warmSoft,
+              color: AppColors.warmInk,
               onTap: () => context.go('/leads?filter=warm'),
             ),
             HomeMetric(
               value: d.hot,
               label: 'Hot Leads',
-              emoji: '🔥',
+              icon: Icons.local_fire_department_rounded,
+              tint: AppColors.hotSoft,
               color: AppColors.hot,
               onTap: () => context.go('/leads?filter=hot'),
             ),
@@ -200,7 +209,7 @@ class _HomeBody extends StatelessWidget {
         const SectionLabel('Needs your attention'),
         if (d.hot > 0)
           HomeActionCard(
-            emoji: '🔥',
+            icon: Icons.local_fire_department_rounded,
             tint: AppColors.hotSoft,
             title: '${d.hot} hot leads',
             body: 'These leads are ready for follow-up.',
@@ -210,8 +219,9 @@ class _HomeBody extends StatelessWidget {
           )
         else
           HomeActionCard(
-            emoji: '✨',
-            tint: AppColors.surfaceMuted,
+            icon: Icons.auto_awesome_rounded,
+            tint: AppColors.brandSoft,
+            ctaColor: AppColors.brand,
             title: 'No hot leads yet',
             body: '$agentName will flag anyone ready to join.',
             cta: 'Call new leads',
@@ -220,7 +230,7 @@ class _HomeBody extends StatelessWidget {
         if (d.callbacksToday > 0) ...[
           const SizedBox(height: 12),
           HomeActionCard(
-            emoji: '📅',
+            icon: Icons.event_rounded,
             tint: AppColors.infoSoft,
             title: '${d.callbacksToday} callbacks scheduled',
             body:
@@ -232,7 +242,7 @@ class _HomeBody extends StatelessWidget {
         ],
         const SectionLabel('Follow-ups'),
         HomeActionCard(
-          emoji: '💬',
+          icon: Icons.chat_rounded,
           tint: AppColors.whatsappSoft,
           title: d.followUpsReady == 0
               ? 'All caught up 🎉'
@@ -288,7 +298,13 @@ class _HomeBody extends StatelessWidget {
                   ],
                 ),
         ),
-      ],
+      ], from: 2),
     );
   }
 }
+
+/// Wraps page sections in a staggered fade-and-lift entrance.
+List<Widget> _stagger(List<Widget> children, {int from = 0}) => [
+  for (var i = 0; i < children.length; i++)
+    Reveal(index: from + i, child: children[i]),
+];

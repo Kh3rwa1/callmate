@@ -53,7 +53,7 @@ void main() {
 
         expect(find.byType(TextField), findsOneWidget); // Search bar
         expect(find.text('All'), findsOneWidget);
-        expect(find.text('🔥 Hot'), findsOneWidget);
+        expect(find.text('Hot'), findsOneWidget);
       });
 
       testWidgets('3. CampaignSetupScreen renders in mock mode', (

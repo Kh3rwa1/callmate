@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -183,21 +183,19 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                     (CallFilter.all, 'All'),
                     (CallFilter.connected, 'Connected'),
                     (CallFilter.noAnswer, 'No Answer'),
-                    (CallFilter.hot, '🔥 Hot'),
+                    (CallFilter.hot, 'Hot'),
                   ])
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(label),
+                      child: AppFilterChip(
+                        label: label,
                         selected: f == v,
-                        labelStyle: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: f == v ? Colors.white : AppColors.inkSoft,
-                        ),
-                        onSelected: (_) {
-                          HapticFeedback.selectionClick();
-                          ref.read(callFilterProvider.notifier).set(v);
-                        },
+                        icon: v == CallFilter.hot
+                            ? Icons.local_fire_department_rounded
+                            : null,
+                        iconColor: AppColors.hot,
+                        onSelected: () =>
+                            ref.read(callFilterProvider.notifier).set(v),
                       ),
                     ),
                 ],
@@ -273,7 +271,10 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
           }
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: CallCard(call: r as Call),
+            child: Reveal(
+              index: i < 12 ? i : 0,
+              child: CallCard(call: r as Call),
+            ),
           );
         },
       ),

@@ -3,6 +3,7 @@ import 'package:callpilot/data/models/models.dart';
 import 'package:callpilot/data/repositories/repositories.dart';
 import 'package:callpilot/features/campaign/campaign_screens.dart';
 import 'package:callpilot/features/home/home_widgets.dart';
+import 'package:callpilot/core/widgets/app_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -29,8 +30,8 @@ class _FlakyDashboard implements DashboardRepository {
 }
 
 bool _chipSelected(String label) =>
-    (find.widgetWithText(ChoiceChip, label).evaluate().single.widget
-            as ChoiceChip)
+    (find.widgetWithText(AppFilterChip, label).evaluate().single.widget
+            as AppFilterChip)
         .selected;
 
 void main() {
@@ -60,7 +61,7 @@ void main() {
     appTest('hot leads action opens leads filtered to hot', (h) async {
       await h.tapText('View hot leads');
       expect(h.location, '/leads');
-      expect(_chipSelected('🔥 Hot'), isTrue);
+      expect(_chipSelected('Hot'), isTrue);
     });
 
     appTest('metric tiles deep link into filtered lists', (h) async {
@@ -79,7 +80,7 @@ void main() {
       expect(h.location, '/notifications');
 
       await h.go('/home');
-      await h.tapText('View Agent →');
+      await h.tap(find.byType(HomeAgentCard));
       expect(h.location, '/agent');
 
       await h.go('/home');

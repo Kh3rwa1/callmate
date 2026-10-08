@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
+import '../../core/widgets/app_card.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -33,7 +34,7 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
     (LeadFilter.all, 'All'),
     (LeadFilter.newLeads, 'New'),
     (LeadFilter.called, 'Called'),
-    (LeadFilter.hot, '🔥 Hot'),
+    (LeadFilter.hot, 'Hot'),
     (LeadFilter.warm, 'Warm'),
     (LeadFilter.callback, 'Callback'),
   ];
@@ -160,19 +161,15 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                   for (final (f, label) in _filters)
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(label),
+                      child: AppFilterChip(
+                        label: label,
                         selected: q.filter == f,
-                        labelStyle: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: q.filter == f
-                              ? Colors.white
-                              : AppColors.inkSoft,
-                        ),
-                        onSelected: (_) {
-                          HapticFeedback.selectionClick();
-                          ref.read(leadQueryProvider.notifier).setFilter(f);
-                        },
+                        icon: f == LeadFilter.hot
+                            ? Icons.local_fire_department_rounded
+                            : null,
+                        iconColor: AppColors.hot,
+                        onSelected: () =>
+                            ref.read(leadQueryProvider.notifier).setFilter(f),
                       ),
                     ),
                 ],
@@ -252,7 +249,10 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
           }
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: LeadCard(lead: s.items[idx]),
+            child: Reveal(
+              index: idx < 10 ? idx : 0,
+              child: LeadCard(lead: s.items[idx]),
+            ),
           );
         },
       ),

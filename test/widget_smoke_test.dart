@@ -23,7 +23,7 @@ void main() {
         ),
       ),
     );
-    expect(find.text('87 — HOT'), findsOneWidget);
-    expect(find.text('🔥'), findsOneWidget);
+    expect(find.text('87 · Hot'), findsOneWidget);
+    expect(find.byIcon(Icons.local_fire_department_rounded), findsOneWidget);
   });
 }

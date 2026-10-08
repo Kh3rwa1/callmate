@@ -280,7 +280,7 @@ class _SourceTile extends StatelessWidget {
         'Uploading ${(s.progress * 100).round()}%',
         AppColors.info,
       ),
-      KnowledgeStatus.processing => ('Learning…', AppColors.warm),
+      KnowledgeStatus.processing => ('Learning…', AppColors.warmInk),
       KnowledgeStatus.ready => ('Learned', AppColors.success),
       KnowledgeStatus.failed => (
         'Couldn\'t read this – try again',

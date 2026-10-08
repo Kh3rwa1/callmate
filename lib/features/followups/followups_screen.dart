@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -84,7 +85,10 @@ class FollowUpsScreen extends ConsumerWidget {
                       sliver: SliverList.separated(
                         itemCount: pending.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 12),
-                        itemBuilder: (_, i) => _FollowUpCard(fu: pending[i]),
+                        itemBuilder: (_, i) => Reveal(
+                          index: i < 8 ? i : 0,
+                          child: _FollowUpCard(fu: pending[i]),
+                        ),
                       ),
                     ),
                   ],

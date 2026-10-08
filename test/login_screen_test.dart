@@ -89,6 +89,13 @@ class FakeGoogleAuth extends GoogleAuthService {
   Future<void> signOut() async => signOuts++;
 }
 
+/// The login hero has a looping float animation, so never pumpAndSettle.
+Future<void> settle(WidgetTester tester) async {
+  for (var i = 0; i < 10; i++) {
+    await tester.pump(const Duration(milliseconds: 150));
+  }
+}
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -122,10 +129,10 @@ void main() {
 
     await tester.ensureVisible(find.text('Continue with Google'));
 
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     await tester.tap(find.text('Continue with Google'));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     expect(repo.googleCalls.single['token'], 'firebase-id-token');
     expect(repo.session, isTrue);
@@ -138,27 +145,27 @@ void main() {
 
     await tester.ensureVisible(find.text('Continue with Google'));
 
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     await tester.tap(find.text('Continue with Google'));
-    await tester.pumpAndSettle();
+    await settle(tester);
     expect(find.text('Set Up Your Business'), findsOneWidget);
     expect(repo.session, isFalse);
 
     await tester.ensureVisible(find.text('Create Account'));
 
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     await tester.tap(find.text('Create Account'));
-    await tester.pumpAndSettle();
+    await settle(tester);
     expect(find.textContaining('business or company name'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).at(0), 'Apex Coaching');
     await tester.enterText(find.byType(TextField).at(1), '9830012345');
     await tester.ensureVisible(find.text('Create Account'));
-    await tester.pumpAndSettle();
+    await settle(tester);
     await tester.tap(find.text('Create Account'));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     expect(repo.googleCalls.last, {
       'token': 'firebase-id-token',
@@ -174,10 +181,10 @@ void main() {
 
     await tester.ensureVisible(find.text('Continue with Google'));
 
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     await tester.tap(find.text('Continue with Google'));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     expect(repo.googleCalls, isEmpty);
     expect(find.byIcon(Icons.error_outline_rounded), findsNothing);
@@ -189,16 +196,16 @@ void main() {
   ) async {
     final (_, google) = await pumpLogin(tester);
     await tester.ensureVisible(find.text('Continue with Google'));
-    await tester.pumpAndSettle();
+    await settle(tester);
     await tester.tap(find.text('Continue with Google'));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     await tester.ensureVisible(find.text('Use a different Google account'));
 
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     await tester.tap(find.text('Use a different Google account'));
-    await tester.pumpAndSettle();
+    await settle(tester);
 
     expect(google.signOuts, 1);
     expect(find.text('Continue with Google'), findsOneWidget);

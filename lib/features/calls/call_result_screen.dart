@@ -156,7 +156,7 @@ class _Result extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '${TempStyle.of(score.temperature).emoji} ${score.value} / 100',
+                                  '${score.value} / 100 · ${TempStyle.of(score.temperature).word}',
                                   style: t.headlineSmall,
                                 ),
                                 const SizedBox(height: 4),

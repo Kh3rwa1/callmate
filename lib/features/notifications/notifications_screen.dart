@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -41,66 +42,70 @@ class NotificationsScreen extends ConsumerWidget {
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (_, i) {
                   final x = items[i];
-                  return AppCard(
-                    padding: const EdgeInsets.all(16),
-                    border: x.read
-                        ? null
-                        : Border.all(
-                            color: AppColors.brand.withValues(alpha: 0.35),
-                            width: 1.5,
+                  return Reveal(
+                    index: i < 10 ? i : 0,
+                    child: AppCard(
+                      padding: const EdgeInsets.all(16),
+                      border: x.read
+                          ? null
+                          : Border.all(
+                              color: AppColors.brand.withValues(alpha: 0.35),
+                              width: 1.5,
+                            ),
+                      onTap: () async {
+                        await ref.read(notificationRepoProvider).markRead(x.id);
+                        ref.invalidate(notificationsProvider);
+                        if (context.mounted) context.push(x.route);
+                      },
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          IconBubble(
+                            color: switch (x.type) {
+                              NotificationType.hotLead => AppColors.hotSoft,
+                              NotificationType.followUpReady =>
+                                AppColors.whatsappSoft,
+                              NotificationType.callback => AppColors.infoSoft,
+                              NotificationType.campaign =>
+                                AppColors.successSoft,
+                            },
+                            size: 44,
+                            child: Emoji(x.title.characters.first, size: 20),
                           ),
-                    onTap: () async {
-                      await ref.read(notificationRepoProvider).markRead(x.id);
-                      ref.invalidate(notificationsProvider);
-                      if (context.mounted) context.push(x.route);
-                    },
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        IconBubble(
-                          color: switch (x.type) {
-                            NotificationType.hotLead => AppColors.hotSoft,
-                            NotificationType.followUpReady =>
-                              AppColors.whatsappSoft,
-                            NotificationType.callback => AppColors.infoSoft,
-                            NotificationType.campaign => AppColors.successSoft,
-                          },
-                          size: 44,
-                          child: Emoji(x.title.characters.first, size: 20),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      x.title.characters.skip(2).toString(),
-                                      style: t.titleSmall,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        x.title.characters.skip(2).toString(),
+                                        style: t.titleSmall,
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    Fmt.relative(x.createdAt),
-                                    style: t.bodySmall,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 3),
-                              Text(x.body, style: t.bodyMedium),
-                              const SizedBox(height: 8),
-                              Text(
-                                '${x.actionLabel} →',
-                                style: t.labelMedium?.copyWith(
-                                  color: AppColors.brand,
-                                  fontSize: 14,
+                                    Text(
+                                      Fmt.relative(x.createdAt),
+                                      style: t.bodySmall,
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 3),
+                                Text(x.body, style: t.bodyMedium),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${x.actionLabel} →',
+                                  style: t.labelMedium?.copyWith(
+                                    color: AppColors.brand,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -179,6 +184,8 @@ class InAppNotificationBanner extends StatelessWidget {
                   minimumSize: const Size(0, 40),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   textStyle: const TextStyle(
+                    fontFamily: AppTheme.fontFamily,
+
                     fontWeight: FontWeight.w800,
                     fontSize: 13,
                   ),

@@ -5,6 +5,7 @@ import 'package:callpilot/features/calls/calls_screen.dart';
 import 'package:callpilot/features/calls/transcript_view.dart';
 import 'package:callpilot/features/followups/followup_detail_screen.dart';
 import 'package:callpilot/features/leads/lead_detail_screen.dart';
+import 'package:callpilot/core/widgets/app_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -16,8 +17,8 @@ List<Call> _visibleCalls(WidgetTester tester) => tester
     .toList();
 
 bool _chipSelected(String label) =>
-    (find.widgetWithText(ChoiceChip, label).evaluate().single.widget
-            as ChoiceChip)
+    (find.widgetWithText(AppFilterChip, label).evaluate().single.widget
+            as AppFilterChip)
         .selected;
 
 void main() {
@@ -48,7 +49,7 @@ void main() {
         isTrue,
       );
 
-      await h.tapText('🔥 Hot');
+      await h.tapText('Hot');
       shown = _visibleCalls(h.tester);
       expect(shown, isNotEmpty);
       expect(shown.every((c) => c.isHot), isTrue);
