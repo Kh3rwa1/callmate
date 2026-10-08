@@ -24,7 +24,7 @@ class AppSpace {
 class AppShadows {
   /// Soft, wide, low-opacity: lifts cards without a visible "slab".
   static const card = [
-    BoxShadow(color: Color(0x0D1B1530), blurRadius: 18, offset: Offset(0, 6)),
+    BoxShadow(color: Color(0x0A1B1530), blurRadius: 14, offset: Offset(0, 3)),
     BoxShadow(color: Color(0x08000000), blurRadius: 2, offset: Offset(0, 1)),
   ];
 

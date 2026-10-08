@@ -60,7 +60,14 @@ class _Body extends ConsumerWidget {
       children: [
         Row(
           children: [
-            LeadAvatar(name: l.name, temperature: l.temperature, size: 64),
+            Hero(
+              tag: 'lead-avatar-${l.id}',
+              child: LeadAvatar(
+                name: l.name,
+                temperature: l.temperature,
+                size: 64,
+              ),
+            ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(

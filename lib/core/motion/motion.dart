@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -301,4 +302,130 @@ class Haptics {
   static void press() => HapticFeedback.lightImpact();
   static void success() => HapticFeedback.mediumImpact();
   static void warn() => HapticFeedback.heavyImpact();
+}
+
+/// One-shot confetti burst from the centre of its box. Decorative only;
+/// skipped entirely under reduced motion.
+class ConfettiBurst extends StatefulWidget {
+  const ConfettiBurst({
+    super.key,
+    this.size = 220,
+    this.count = 28,
+    this.colors = const [
+      Color(0xFFD92D35),
+      Color(0xFFF59E0B),
+      Color(0xFF4F46E5),
+      Color(0xFF15803D),
+      Color(0xFF0369A1),
+    ],
+  });
+  final double size;
+  final int count;
+  final List<Color> colors;
+
+  @override
+  State<ConfettiBurst> createState() => _ConfettiBurstState();
+}
+
+class _ConfettiBurstState extends State<ConfettiBurst>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  );
+  late final List<_Bit> _bits = List.generate(widget.count, (i) {
+    final angle = (i / widget.count) * 6.283 + (i.isEven ? 0.15 : -0.1);
+    final speed = 0.55 + (i * 37 % 45) / 100;
+    return _Bit(
+      angle: angle,
+      speed: speed,
+      color: widget.colors[i % widget.colors.length],
+      spin: (i % 5 - 2) * 2.5,
+      wide: i % 3 == 0,
+    );
+  });
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_c.status == AnimationStatus.dismissed && !AppMotion.reduced(context)) {
+      _c.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: widget.size,
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (_, _) => _c.isAnimating
+              ? CustomPaint(painter: _ConfettiPainter(_bits, _c.value))
+              : const SizedBox.shrink(),
+        ),
+      ),
+    ),
+  );
+}
+
+class _Bit {
+  const _Bit({
+    required this.angle,
+    required this.speed,
+    required this.color,
+    required this.spin,
+    required this.wide,
+  });
+  final double angle;
+  final double speed;
+  final Color color;
+  final double spin;
+  final bool wide;
+}
+
+class _ConfettiPainter extends CustomPainter {
+  _ConfettiPainter(this.bits, this.t);
+  final List<_Bit> bits;
+  final double t;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final out = Curves.easeOutCubic.transform(t);
+    final r = size.width / 2;
+    for (final b in bits) {
+      final dist = r * b.speed * out;
+      final gravity = 60 * t * t;
+      final p =
+          c +
+          Offset(dist * math.cos(b.angle), dist * math.sin(b.angle) + gravity);
+      final paint = Paint()
+        ..color = b.color.withValues(alpha: (1 - t).clamp(0.0, 1.0));
+      canvas.save();
+      canvas.translate(p.dx, p.dy);
+      canvas.rotate(b.spin * t);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: b.wide ? 9 : 5,
+            height: b.wide ? 5 : 9,
+          ),
+          const Radius.circular(1.5),
+        ),
+        paint,
+      );
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ConfettiPainter old) => old.t != t;
 }

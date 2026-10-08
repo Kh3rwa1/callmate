@@ -81,6 +81,21 @@ void main() {
     }, location: e.value);
   }
 
+  for (final (name, route) in [
+    ('call_result', (AppHarness h) => '/calls/${h.backend.calls.firstWhere((c) => c.leadScore != null).id}/result'),
+    ('lead_detail', (AppHarness h) => '/leads/${h.backend.leads.values.firstWhere((l) => l.score != null).id}'),
+    ('followup_detail', (AppHarness h) => '/followups/${h.backend.followUps.values.first.id}'),
+  ]) {
+    appTest('screenshot $name', (h) async {
+      final t = h.tester;
+      t.view.physicalSize = const Size(1080, 2340);
+      t.view.devicePixelRatio = 2.75;
+      await h.push(route(h));
+      await h.settle(14);
+      await expectLater(find.byType(MaterialApp), matchesGoldenFile('out/$name.png'));
+    });
+  }
+
   appTest('screenshot login', (h) async {
     final t = h.tester;
     t.view.physicalSize = const Size(1080, 2340);

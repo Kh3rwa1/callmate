@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/config/brand.dart';
+import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_card.dart';
@@ -101,11 +102,11 @@ class _LoopStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const steps = [
-      ('📞', 'Calls'),
-      ('🧠', 'Analyses'),
-      ('🔥', 'Scores'),
-      ('💬', 'Drafts'),
-      ('🤝', 'You close'),
+      (Icons.call_rounded, 'Calls', AppColors.brand),
+      (Icons.psychology_rounded, 'Analyses', AppColors.info),
+      (Icons.local_fire_department_rounded, 'Scores', AppColors.hot),
+      (Icons.chat_rounded, 'Drafts', AppColors.whatsapp),
+      (Icons.handshake_rounded, 'You close', AppColors.warmInk),
     ];
     return Semantics(
       label: 'Calls, analyses, scores, drafts a follow-up, you close',
@@ -116,18 +117,19 @@ class _LoopStrip extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: AppShadows.card,
-                      ),
-                      child: Text(
-                        steps[i].$1,
-                        style: const TextStyle(fontSize: 19),
+                    Reveal(
+                      index: 4 + i,
+                      offset: 8,
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: AppShadows.card,
+                        ),
+                        child: Icon(steps[i].$1, size: 21, color: steps[i].$3),
                       ),
                     ),
                     const SizedBox(height: 6),

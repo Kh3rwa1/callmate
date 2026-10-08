@@ -33,7 +33,10 @@ class LeadCard extends ConsumerWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                LeadAvatar(name: l.name, temperature: l.temperature),
+                Hero(
+                  tag: 'lead-avatar-${l.id}',
+                  child: LeadAvatar(name: l.name, temperature: l.temperature),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
