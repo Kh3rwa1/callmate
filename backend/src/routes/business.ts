@@ -62,9 +62,13 @@ businessApp.patch('/business', async (c) => {
   }
   const body = parsed.data;
 
-  const existing = await c.env.DB.prepare('SELECT * FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
+  let existing = await c.env.DB.prepare('SELECT * FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
   if (!existing) {
-    return c.json({ message: 'Business not found.', code: 'not_found' }, 404);
+    await c.env.DB.prepare(
+      `INSERT INTO businesses (id, name, category, created_at, updated_at)
+       VALUES (?, ?, ?, datetime('now'), datetime('now'))`
+    ).bind(user.business_id, body.name || 'My Business', body.category || 'other').run();
+    existing = await c.env.DB.prepare('SELECT * FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
   }
 
   const name = body.name !== undefined ? body.name : existing.name;

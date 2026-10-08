@@ -15,9 +15,23 @@ class FirebaseBootstrap {
   static Future<bool> ensureInitialized() => _flight ??= _init();
 
   static Future<bool> _init() async {
-    if (kIsWeb) return false;
     try {
-      if (Firebase.apps.isEmpty) await Firebase.initializeApp();
+      if (Firebase.apps.isEmpty) {
+        if (kIsWeb) {
+          await Firebase.initializeApp(
+            options: const FirebaseOptions(
+              apiKey: 'AIzaSyBTghmSF4_hxwzCyZzdmDqGG7oacjWuQI0',
+              appId: '1:218247729126:web:cc9287b2ff7f6c92c81027',
+              messagingSenderId: '218247729126',
+              projectId: 'callpilot-app-c9b053',
+              authDomain: 'callpilot-app-c9b053.firebaseapp.com',
+              storageBucket: 'callpilot-app-c9b053.firebasestorage.app',
+            ),
+          );
+        } else {
+          await Firebase.initializeApp();
+        }
+      }
       return true;
     } catch (e) {
       if (kDebugMode) debugPrint('[firebase] not configured: $e');
