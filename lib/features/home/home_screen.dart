@@ -223,7 +223,7 @@ class _HomeBody extends StatelessWidget {
             tint: AppColors.brandSoft,
             ctaColor: AppColors.brand,
             title: 'No hot leads yet',
-            body: '$agentName will flag anyone ready to join.',
+            body: '$agentName will flag anyone ready to buy or book.',
             cta: 'Call new leads',
             onTap: () => context.push('/campaign/new'),
           ),

@@ -195,6 +195,8 @@ class ApiKnowledgeRepository implements KnowledgeRepository {
           );
           c.add(src);
         }
+        // Posted through dio directly (upload progress), so notify here.
+        api.onMutation?.call('/knowledge');
       } on DioException catch (_) {
         c.addError(const ApiException('Upload failed. Try again.'));
       } catch (e) {
@@ -266,7 +268,8 @@ class ApiLeadRepository implements LeadRepository {
   Future<List<Lead>> newLeads() => api.get(
     '/leads',
     (d) => _l(d).map(Lead.fromJson).toList(),
-    query: {'filter': 'new', 'limit': 1000, 'fields': 'id,name,phone'},
+    // A campaign takes at most 500 leads (backend MAX_CAMPAIGN_LEADS).
+    query: {'filter': 'new', 'limit': 500, 'fields': 'id,name,phone'},
   );
 }
 
@@ -377,7 +380,7 @@ class ApiCallbackRepository implements CallbackRepository {
   }) => api.post(
     '/callbacks',
     (d) => Callback.fromJson(_j(d)),
-    data: {'lead_id': leadId, 'scheduled_at': dateOut(at), 'note': note},
+    data: {'lead_id': leadId, 'scheduled_at': dateOut(at), 'note': ?note},
   );
   @override
   Future<Callback> markDone(String id) => api.patch(

@@ -48,9 +48,18 @@ bool jBool(Json j, String k, [bool fallback = false]) {
   return fallback;
 }
 
+/// `YYYY-MM-DD HH:MM[:SS[.fff]]` with no zone: SQLite `datetime('now')`,
+/// which is UTC.
+final _naiveDateTime = RegExp(
+  r'^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$',
+);
+
 DateTime? jDate(Json j, String k) {
   final v = j[k];
-  if (v is String) return DateTime.tryParse(v)?.toLocal();
+  if (v is String) {
+    final utc = _naiveDateTime.hasMatch(v) ? '${v.replaceFirst(' ', 'T')}Z' : v;
+    return DateTime.tryParse(utc)?.toLocal();
+  }
   if (v is int) return DateTime.fromMillisecondsSinceEpoch(v);
   return null;
 }

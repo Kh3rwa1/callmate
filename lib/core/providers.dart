@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -46,8 +47,29 @@ final apiClientProvider = Provider<ApiClient>((ref) {
     onAuthFailure: () {
       ref.read(sessionProvider.notifier).forceLogout();
     },
+    onMutation: (path) {
+      final scope = mutationScope(path);
+      final events = ref.read(backendEventsProvider);
+      if (scope != null && events is PushBackendEvents) {
+        events.add(DataChangedEvent(scope));
+      }
+    },
   );
 });
+
+/// [DataChangedEvent] scope for a successful write to [path], or null when
+/// the write changes no data a screen shows (auth, devices, voice sessions).
+@visibleForTesting
+String? mutationScope(String path) {
+  final first = path
+      .split('/')
+      .firstWhere((s) => s.isNotEmpty, orElse: () => '');
+  return switch (first) {
+    'auth' || 'devices' || 'voice' || '' => null,
+    'campaigns' => 'campaign',
+    _ => first,
+  };
+}
 
 final mockBackendProvider = Provider<MockBackend>((ref) {
   final b = MockBackend();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/providers.dart';
 import '../../core/widgets/app_card.dart';
 import 'onboarding_controller.dart';
 import 'onboarding_scaffold.dart';
@@ -22,6 +23,20 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
     text: ref.read(onboardingProvider).address,
   );
   final _form = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Phone sign-up already asked for the business name: start from it.
+    if (_name.text.isEmpty) {
+      ref
+          .read(businessProvider.future)
+          .then((b) {
+            if (mounted && _name.text.isEmpty && b != null) _name.text = b.name;
+          })
+          .catchError((_) {});
+    }
+  }
 
   @override
   void dispose() {

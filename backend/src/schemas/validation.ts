@@ -42,8 +42,8 @@ export const consentEnum = z.enum([
 export const createLeadSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   phone: z.string().min(8, 'Phone number must be at least 8 digits').max(20),
-  interest: z.string().optional(),
-  course_interest: z.string().optional(),
+  interest: z.string().nullable().optional(),
+  course_interest: z.string().nullable().optional(),
   source: z.string().optional(),
   attributes: z.record(z.string(), z.any()).optional(),
   do_not_call: z.boolean().optional(),
@@ -54,8 +54,8 @@ export const createLeadSchema = z.object({
 export const leadItemSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   phone: z.string().min(8, 'Phone must be at least 8 digits').max(20),
-  interest: z.string().optional(),
-  course_interest: z.string().optional(),
+  interest: z.string().nullable().optional(),
+  course_interest: z.string().nullable().optional(),
   source: z.string().optional(),
   attributes: z.record(z.string(), z.any()).optional(),
   do_not_call: z.boolean().optional(),
@@ -160,12 +160,12 @@ export const patchFollowupSchema = z.object({
 export const createCallbackSchema = z.object({
   lead_id: z.string().min(1, 'Lead ID is required'),
   scheduled_at: z.string().min(1, 'Scheduled time is required'),
-  note: z.string().optional(),
+  note: z.string().nullable().optional(),
 });
 
 export const patchCallbackSchema = z.object({
   status: z.enum(['scheduled', 'done']).optional(),
-  note: z.string().optional(),
+  note: z.string().nullable().optional(),
 });
 
 export const deviceTokenSchema = z.object({

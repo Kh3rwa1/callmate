@@ -77,6 +77,28 @@ ResponseBody _json(Object body, int status) => ResponseBody.fromString(
 }
 
 void main() {
+  group('ApiClient onMutation', () {
+    test('fires after successful writes only', () async {
+      final paths = <String>[];
+      final client = ApiClient(
+        _Store(),
+        baseUrl: 'https://api.callpilot.test',
+        onMutation: paths.add,
+      );
+      client.dio.httpClientAdapter = _Adapter(
+        (o) async => o.path.endsWith('/bad')
+            ? _json({'message': 'no'}, 400)
+            : _json({}, 200),
+      );
+      await client.get('/leads', (d) => d);
+      await client.post('/leads', (d) => d);
+      await client.patch('/followups/1', (d) => d);
+      await client.delete('/knowledge/1');
+      await expectLater(client.post('/bad', (d) => d), throwsA(anything));
+      expect(paths, ['/leads', '/followups/1', '/knowledge/1']);
+    });
+  });
+
   group('ApiClient auth headers', () {
     test('sends bearer token and flavor header', () async {
       final t = _make((o) async => _json({'ok': true}, 200));

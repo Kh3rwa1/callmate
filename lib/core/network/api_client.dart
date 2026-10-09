@@ -26,6 +26,7 @@ class ApiClient {
     String? baseUrl,
     LocalPrefs? prefs,
     this.onAuthFailure,
+    this.onMutation,
   }) : dio = Dio(
          BaseOptions(
            baseUrl:
@@ -107,6 +108,10 @@ class ApiClient {
   final SecureStore _store;
   final Dio dio;
   final VoidCallback? onAuthFailure;
+
+  /// Called with the request path after every successful POST/PATCH/DELETE,
+  /// so open screens can refresh.
+  final void Function(String path)? onMutation;
 
   /// Pause before retrying a GET that failed on the network.
   @visibleForTesting
@@ -233,10 +238,17 @@ class ApiClient {
   }) => _wrap(() => dio.get(path, queryParameters: query), map);
 
   Future<T> post<T>(String path, T Function(dynamic) map, {Object? data}) =>
-      _wrap(() => dio.post(path, data: data), map);
+      _mutate(path, () => _wrap(() => dio.post(path, data: data), map));
 
   Future<T> patch<T>(String path, T Function(dynamic) map, {Object? data}) =>
-      _wrap(() => dio.patch(path, data: data), map);
+      _mutate(path, () => _wrap(() => dio.patch(path, data: data), map));
 
-  Future<void> delete(String path) => _wrap(() => dio.delete(path), (_) {});
+  Future<void> delete(String path) =>
+      _mutate(path, () => _wrap(() => dio.delete(path), (_) {}));
+
+  Future<T> _mutate<T>(String path, Future<T> Function() send) async {
+    final result = await send();
+    onMutation?.call(path);
+    return result;
+  }
 }

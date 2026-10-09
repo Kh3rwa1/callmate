@@ -95,6 +95,7 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
             setState(() => _inFlight[key] = s);
             if (s.status == KnowledgeStatus.ready) {
               setState(() => _inFlight.remove(key));
+              ref.invalidate(knowledgeProvider);
               _snack(
                 '${ref.read(employeeNameProvider)} learned “${s.title}” ✓',
               );
