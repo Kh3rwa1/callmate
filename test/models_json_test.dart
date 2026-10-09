@@ -65,6 +65,17 @@ void main() {
   });
 
   group('fromJson edge cases', () {
+    test('jDate reads zoneless SQLite timestamps as UTC', () {
+      final want = DateTime.utc(2026, 10, 9, 1, 29, 20);
+      for (final v in [
+        '2026-10-09 01:29:20',
+        '2026-10-09T01:29:20Z',
+        '2026-10-09T06:59:20+05:30',
+      ]) {
+        expect(jDate({'t': v}, 't')!.isAtSameMomentAs(want), isTrue, reason: v);
+      }
+    });
+
     test('LeadScore derives temperature from value when absent', () {
       expect(
         LeadScore.fromJson({'value': 90}).temperature,

@@ -235,7 +235,7 @@ class NewLeadInput {
   Json toJson() => {
     'name': name,
     'phone': phone,
-    'interest': interest,
+    if (interest != null) 'interest': interest,
     'source': source,
     'attributes': attributes,
     'consent': consent,

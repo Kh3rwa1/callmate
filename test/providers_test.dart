@@ -4,6 +4,15 @@ import 'package:callpilot/core/providers.dart';
 import 'package:callpilot/data/models/models.dart';
 
 void main() {
+  test('mutationScope maps write paths to refresh scopes', () {
+    expect(mutationScope('/leads'), 'leads');
+    expect(mutationScope('/leads/l1/call'), 'leads');
+    expect(mutationScope('/campaigns/c1/start'), 'campaign');
+    expect(mutationScope('/auth/refresh'), isNull);
+    expect(mutationScope('/devices'), isNull);
+    expect(mutationScope('/voice/test-session'), isNull);
+  });
+
   group('Riverpod Providers Unit Tests (Mock Environment)', () {
     late ProviderContainer container;
 

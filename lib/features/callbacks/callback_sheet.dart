@@ -37,6 +37,7 @@ class _CallbackSheet extends ConsumerStatefulWidget {
 class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
   late DateTime _at;
   bool _busy = false;
+  String? _error;
   late final List<(String, DateTime)> _presets;
 
   @override
@@ -71,7 +72,10 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
   }
 
   Future<void> _save() async {
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
       final cb = await ref
           .read(callbackRepoProvider)
@@ -86,10 +90,11 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
       );
     } catch (e) {
       if (!mounted) return;
-      setState(() => _busy = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
+      // A snackbar would sit behind this sheet; show the error in it.
+      setState(() {
+        _busy = false;
+        _error = friendlyError(e);
+      });
     }
   }
 
@@ -131,6 +136,15 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
               icon: Icons.edit_calendar_rounded,
             ),
             const SizedBox(height: 18),
+            if (_error != null) ...[
+              Text(
+                _error!,
+                style: t.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             PrimaryButton(
               label: 'Schedule Callback',
               icon: Icons.event_available_rounded,

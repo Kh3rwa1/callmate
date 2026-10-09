@@ -300,7 +300,13 @@ class _Body extends ConsumerWidget {
                       .requestPermission();
                   // Once denied, Android only lets the user re-enable it
                   // from system settings.
-                  if (!granted) await openAppSettings();
+                  if (!granted) {
+                    await openAppSettings();
+                  } else if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Alerts are on ✓')),
+                    );
+                  }
                 },
               ),
               const Divider(indent: 56),

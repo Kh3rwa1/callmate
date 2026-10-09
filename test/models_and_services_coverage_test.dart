@@ -122,6 +122,10 @@ void main() {
         interest: 'Physics',
       );
       expect(input.toJson()['name'], 'Lead 2');
+      expect(
+        const NewLeadInput(name: 'A', phone: '9').toJson(),
+        isNot(contains('interest')),
+      );
 
       final impRes = LeadImportResult.fromJson(const {
         'imported': 5,

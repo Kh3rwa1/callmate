@@ -210,6 +210,13 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
           mascot: MascotState.thinking,
         );
       }
+      if (q.filter != LeadFilter.all) {
+        return const EmptyState(
+          title: 'No leads here',
+          message: 'No leads match this filter yet.',
+          mascot: MascotState.thinking,
+        );
+      }
       return EmptyState(
         title: 'No leads here',
         message:

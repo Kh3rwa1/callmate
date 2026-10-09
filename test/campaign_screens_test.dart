@@ -45,6 +45,8 @@ Future<void> _dismissBanner(AppHarness h) async {
 /// Opens the confirmation sheet from the setup screen and confirms it.
 Future<void> _startCampaign(AppHarness h) async {
   await h.tapText('🚀  Start Campaign');
+  final attest = find.text('I confirm these contacts asked to be contacted');
+  if (attest.evaluate().isNotEmpty) await h.tap(attest);
   expect(find.textContaining('Start calling'), findsOneWidget);
   await h.tapText('🚀  Yes, start calling');
   // create (280 ms) + start (500 ms) of mock latency.
@@ -100,6 +102,23 @@ void main() {
       );
       await h.settle(2);
       expect(hours(), isNot(before));
+    }, location: '/campaign/new');
+
+    appTest('without consent the sheet counts only callable leads', (h) async {
+      await h.tapText('🚀  Start Campaign');
+      final attest = find.text(
+        'I confirm these contacts asked to be contacted',
+      );
+      if (attest.evaluate().isEmpty) return; // seed has consented leads only
+      final unknown = h.backend.leads.values
+          .where(
+            (l) => l.status == LeadStatus.newLead && l.consent == 'unknown',
+          )
+          .length;
+      expect(find.textContaining('will be skipped'), findsOneWidget);
+      expect(find.textContaining('Start calling $unknown leads'), findsNothing);
+      await h.tap(attest);
+      expect(find.textContaining('will be skipped'), findsNothing);
     }, location: '/campaign/new');
 
     appTest('"Not now" cancels without creating a campaign', (h) async {

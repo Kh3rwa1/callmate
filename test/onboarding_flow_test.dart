@@ -69,7 +69,12 @@ void main() {
         await h.tapText('Continue');
         expect(h.location, '/onboarding/details');
 
-        // ---- Business details: name is required.
+        // ---- Business details: prefilled from sign-up; name is required.
+        expect(
+          h.tester.widget<TextFormField>(field(0)).controller!.text,
+          isNotEmpty,
+        );
+        await h.tester.enterText(field(0), '');
         await h.tapText('Continue');
         expect(find.text('Please enter your business name'), findsOneWidget);
         expect(h.location, '/onboarding/details');

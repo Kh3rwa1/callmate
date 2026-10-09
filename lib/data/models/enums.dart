@@ -184,6 +184,7 @@ enum NotificationType {
 enum AgentStatus {
   active('active', 'Active'),
   paused('paused', 'Paused'),
+  inactive('inactive', 'Inactive'),
   training('training', 'Learning');
 
   const AgentStatus(this.wire, this.label);

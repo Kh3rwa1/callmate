@@ -28,9 +28,17 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
 
   Future<void> _start(List<Lead> leads, Agent agent) async {
     final repo = ref.read(campaignRepoProvider);
-    final cost = repo.estimateCostInr(leads.length);
-    final skippedNoConsent = leads.where((l) => !l.hasConsent).length;
+    // The backend never calls DNC / opted-out leads, and skips leads with
+    // unknown consent unless the owner attests to it.
+    final blocked = leads
+        .where((l) => l.doNotCall || l.consent == 'opt_out')
+        .length;
+    final skippedNoConsent = leads
+        .where((l) => !l.doNotCall && l.consent == 'unknown')
+        .length;
     var consentAttestation = false;
+    int callable() =>
+        leads.length - blocked - (consentAttestation ? 0 : skippedNoConsent);
 
     final ok = await showModalBottomSheet<bool>(
       context: context,
@@ -54,7 +62,9 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                     const Mascot(state: MascotState.calling, size: 120),
                     const SizedBox(height: 12),
                     Text(
-                      'Start calling ${leads.length} leads?',
+                      callable() == 0
+                          ? 'No leads to call yet'
+                          : 'Start calling ${callable()} leads?',
                       style: t.headlineSmall,
                       textAlign: TextAlign.center,
                     ),
@@ -78,7 +88,9 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '$skippedNoConsent leads skipped (no consent recorded)',
+                              consentAttestation
+                                  ? '$skippedNoConsent leads have no consent recorded'
+                                  : '$skippedNoConsent leads will be skipped (no consent recorded)',
                               style: t.bodyMedium?.copyWith(
                                 color: AppColors.inkSoft,
                                 fontWeight: FontWeight.w600,
@@ -126,7 +138,10 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                         children: [
                           Text('Estimated usage', style: t.bodyMedium),
                           const Spacer(),
-                          Text('≈ ${Fmt.inr(cost)}', style: t.titleMedium),
+                          Text(
+                            '≈ ${Fmt.inr(repo.estimateCostInr(callable()))}',
+                            style: t.titleMedium,
+                          ),
                         ],
                       ),
                     ),
@@ -134,7 +149,9 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                     PrimaryButton(
                       label: '🚀  Yes, start calling',
                       color: AppColors.brand,
-                      onPressed: () => Navigator.pop(ctx, true),
+                      onPressed: callable() == 0
+                          ? null
+                          : () => Navigator.pop(ctx, true),
                     ),
                     const SizedBox(height: 4),
                     TextButton(
