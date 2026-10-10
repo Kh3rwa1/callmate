@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/app_env.dart';
 import '../../core/motion/motion.dart';
@@ -14,13 +16,19 @@ import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/brand_widgets.dart';
 import '../../core/widgets/mascot.dart';
+import '../../core/widgets/settings_sheets.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/repositories/repositories.dart';
+import '../../l10n/l10n.dart';
 import '../../services/auth/google_auth_service.dart';
 import 'google_button.dart';
 
 /// Authentication Screen: Google sign-in (default), with phone + OTP behind
 /// `PHONE_OTP_LOGIN`.
+///
+/// Motion: the mascot pops in and floats, the pitch rises in line by line,
+/// and moving between Google / registration / phone / code crossfades the
+/// form in place. A rejected entry shakes the error banner.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -28,11 +36,17 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
+enum _Mode { google, googleRegister, phone, code }
+
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   final _businessController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  late final _termsTap = TapGestureRecognizer()
+    ..onTap = () => _open(AppEnv.termsUrl);
+  late final _privacyTap = TapGestureRecognizer()
+    ..onTap = () => _open(AppEnv.privacyUrl);
 
   /// Phone + OTP flow instead of Google.
   bool _usePhone = false;
@@ -44,6 +58,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _otpSent = false;
   bool _submitting = false;
   String? _errorMessage;
+  int _shakes = 0;
 
   int _resendCountdown = 30;
   Timer? _countdownTimer;
@@ -53,8 +68,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _phoneController.dispose();
     _otpController.dispose();
     _businessController.dispose();
+    _termsTap.dispose();
+    _privacyTap.dispose();
     _countdownTimer?.cancel();
     super.dispose();
+  }
+
+  _Mode get _mode {
+    if (!_usePhone) {
+      return _googleRegistering ? _Mode.googleRegister : _Mode.google;
+    }
+    return _otpSent ? _Mode.code : _Mode.phone;
+  }
+
+  Future<void> _open(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  /// Shows [message] in the banner, with a shake and a buzz.
+  void _fail(String message) {
+    Haptics.warn();
+    setState(() {
+      _submitting = false;
+      _errorMessage = message;
+      _shakes++;
+    });
   }
 
   void _startCountdown() {
@@ -71,6 +111,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _continueWithGoogle() async {
+    final s = context.s;
     setState(() {
       _submitting = true;
       _errorMessage = null;
@@ -92,28 +133,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } on GoogleSignInCancelled {
       if (mounted) setState(() => _submitting = false);
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _submitting = false;
-          _errorMessage = friendlyError(e);
-        });
-      }
+      if (mounted) _fail(friendlyError(e, s));
     }
   }
 
   Future<void> _finishGoogleRegistration() async {
+    final s = context.s;
     final businessName = _businessController.text.trim();
     final phone = PhoneUtils.normalize(_phoneController.text.trim());
     if (businessName.isEmpty) {
-      setState(
-        () => _errorMessage = 'Please enter your business or company name.',
-      );
+      _fail(s.errBusinessName);
       return;
     }
     if (phone == null) {
-      setState(
-        () => _errorMessage = 'Please enter a valid 10-digit mobile number.',
-      );
+      _fail(s.errPhone10);
       return;
     }
     setState(() {
@@ -128,163 +161,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       HapticFeedback.heavyImpact();
       context.go('/onboarding');
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _submitting = false;
-          _errorMessage = friendlyError(e);
-        });
-      }
+      if (mounted) _fail(friendlyError(e, s));
     }
-  }
-
-  /// Signed-out landing: no form yet, just the pitch and the Google button.
-  bool get _heroMode => !_usePhone && !_googleRegistering;
-
-  List<Widget> _hero(TextTheme t) => [
-    const SizedBox(height: 4),
-    const Reveal(child: Center(child: BrandWordmark(size: 20))),
-    const SizedBox(height: 28),
-    const Reveal(index: 1, child: Center(child: _FloatingMascot())),
-    const SizedBox(height: 28),
-    Reveal(
-      index: 2,
-      child: Semantics(
-        header: true,
-        child: Text(
-          'Your AI employee\ncalls every lead',
-          textAlign: TextAlign.center,
-          style: t.displaySmall?.copyWith(
-            fontSize: 31,
-            height: 1.12,
-            letterSpacing: -0.8,
-          ),
-        ),
-      ),
-    ),
-    const SizedBox(height: 10),
-    Reveal(
-      index: 3,
-      child: Text(
-        'Hindi · English · Bengali',
-        textAlign: TextAlign.center,
-        style: t.bodyMedium?.copyWith(color: AppColors.inkFaint),
-      ),
-    ),
-    const SizedBox(height: 40),
-    if (_errorMessage != null) ...[
-      _ErrorBanner(message: _errorMessage!),
-      const SizedBox(height: 14),
-    ],
-    Reveal(
-      index: 4,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: _googleSection(t),
-      ),
-    ),
-  ];
-
-  String get _title {
-    if (!_usePhone) {
-      return _googleRegistering ? 'Set up your business' : 'Welcome';
-    }
-    if (_otpSent) return 'Enter code';
-    return _isRegister ? 'Create account' : 'Sign in';
-  }
-
-  /// Only shown where it prevents a mistake: which number the code went to.
-  String? get _subtitle {
-    if (!_usePhone || !_otpSent) return null;
-    final hint = AppEnv.flavor != AppFlavor.prod ? ' · use 123456' : '';
-    return 'Sent to ${PhoneUtils.display(_phoneController.text)}$hint';
-  }
-
-  List<Widget> _googleSection(TextTheme t) {
-    if (_googleRegistering) {
-      return [
-        TextField(
-          controller: _businessController,
-          textCapitalization: TextCapitalization.words,
-          autofillHints: const [AutofillHints.organizationName],
-          decoration: const InputDecoration(
-            labelText: 'Business name',
-            hintText: 'e.g. Apex Coaching',
-            prefixIcon: Icon(Icons.business_outlined),
-          ),
-        ),
-        const SizedBox(height: 14),
-        TextField(
-          controller: _phoneController,
-          keyboardType: TextInputType.phone,
-          autofillHints: const [AutofillHints.telephoneNumber],
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9+ -]')),
-          ],
-          decoration: const InputDecoration(
-            labelText: 'Business mobile number',
-            hintText: '98300 12345',
-            helperText: 'Shown on your WhatsApp follow-ups',
-            prefixIcon: Icon(Icons.phone_outlined),
-            prefixText: '+91 ',
-          ),
-        ),
-        const SizedBox(height: 20),
-        PrimaryButton(
-          label: 'Create Account',
-          loading: _submitting,
-          onPressed: _finishGoogleRegistration,
-        ),
-        const SizedBox(height: 12),
-        Center(
-          child: TextButton(
-            onPressed: _submitting
-                ? null
-                : () async {
-                    await ref.read(googleAuthProvider).signOut();
-                    if (mounted) {
-                      setState(() {
-                        _googleRegistering = false;
-                        _errorMessage = null;
-                      });
-                    }
-                  },
-            child: const Text('Use a different Google account'),
-          ),
-        ),
-      ];
-    }
-    return [
-      GoogleSignInButton(loading: _submitting, onPressed: _continueWithGoogle),
-      if (AppEnv.phoneOtpLogin) ...[
-        const SizedBox(height: 12),
-        Center(
-          child: TextButton(
-            onPressed: _submitting
-                ? null
-                : () => setState(() {
-                    _usePhone = true;
-                    _errorMessage = null;
-                  }),
-            child: const Text('Use phone number instead'),
-          ),
-        ),
-      ],
-    ];
   }
 
   Future<void> _sendOtp() async {
+    final s = context.s;
     _errorMessage = null;
     final phone = PhoneUtils.normalize(_phoneController.text.trim());
     if (phone == null) {
-      setState(
-        () => _errorMessage = 'Please enter a valid 10-digit mobile number.',
-      );
+      _fail(s.errPhone10);
       return;
     }
     if (_isRegister && _businessController.text.trim().isEmpty) {
-      setState(
-        () => _errorMessage = 'Please enter your business or company name.',
-      );
+      _fail(s.errBusinessName);
       return;
     }
 
@@ -304,27 +194,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       });
       _startCountdown();
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _submitting = false;
-          _errorMessage = friendlyError(e);
-        });
-      }
+      if (mounted) _fail(friendlyError(e, s));
     }
   }
 
   Future<void> _verifyOtp() async {
+    final s = context.s;
     final otp = _otpController.text.trim();
     if (otp.length != 6) {
-      setState(
-        () => _errorMessage = 'Please enter the 6-digit verification code.',
-      );
+      _fail(s.errOtp6);
       return;
     }
 
     final phone = PhoneUtils.normalize(_phoneController.text.trim());
     if (phone == null) {
-      setState(() => _errorMessage = 'Invalid phone number.');
+      _fail(s.errInvalidPhone);
       return;
     }
 
@@ -350,36 +234,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final prefs = ref.read(localPrefsProvider);
       context.go(prefs.onboarded ? '/home' : '/onboarding');
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _submitting = false;
-          _errorMessage = friendlyError(e);
-        });
-      }
+      if (mounted) _fail(friendlyError(e, s));
     }
   }
 
+  // ------------------------------------------------------------ Layout
+
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
+    final mode = _mode;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           if (AppEnv.showDemoTools)
             TextButton.icon(
               onPressed: () => context.push('/demo'),
               icon: const Icon(Icons.science_outlined, size: 18),
-              label: const Text('Demo mode'),
+              label: Text(s.demoMode),
             ),
+          const Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: LanguageChip(),
+          ),
         ],
       ),
       body: SafeArea(
+        top: false,
         child: Center(
           child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpace.page,
               vertical: 12,
@@ -393,190 +283,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (_heroMode)
-                        ..._hero(t)
-                      else ...[
-                        Center(
-                          child: Column(
-                            children: [
-                              const Mascot(
-                                state: MascotState.welcome,
-                                size: 96,
-                              ),
-                              const SizedBox(height: 12),
-                              const BrandWordmark(size: 22),
-                            ],
+                      AnimatedSwitcher(
+                        duration: AppMotion.of(context, AppMotion.slow),
+                        switchInCurve: AppMotion.emphasized,
+                        switchOutCurve: AppMotion.exit,
+                        layoutBuilder: (current, previous) => Stack(
+                          alignment: Alignment.topCenter,
+                          children: [...previous, ?current],
+                        ),
+                        transitionBuilder: (child, a) => FadeTransition(
+                          opacity: a,
+                          child: SlideTransition(
+                            position: Tween(
+                              begin: const Offset(0, 0.03),
+                              end: Offset.zero,
+                            ).animate(a),
+                            child: child,
                           ),
                         ),
-                        const SizedBox(height: 28),
-
-                        AppCard(
-                          padding: const EdgeInsets.all(22),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(_title, style: t.titleLarge),
-                              if (_subtitle != null) ...[
-                                const SizedBox(height: 6),
-                                Text(
-                                  _subtitle!,
-                                  style: t.bodySmall?.copyWith(
-                                    color: AppColors.inkSoft,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 20),
-
-                              if (_errorMessage != null) ...[
-                                _ErrorBanner(message: _errorMessage!),
-                                const SizedBox(height: 16),
-                              ],
-
-                              if (!_usePhone)
-                                ..._googleSection(t)
-                              else if (!_otpSent) ...[
-                                if (_isRegister) ...[
-                                  TextField(
-                                    controller: _businessController,
-                                    textCapitalization:
-                                        TextCapitalization.words,
-                                    autofillHints: const [
-                                      AutofillHints.organizationName,
-                                    ],
-                                    decoration: const InputDecoration(
-                                      labelText: 'Business name',
-                                      hintText: 'e.g. Apex Coaching',
-                                      prefixIcon: Icon(Icons.business_outlined),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                ],
-                                TextField(
-                                  controller: _phoneController,
-                                  keyboardType: TextInputType.phone,
-                                  autofillHints: const [
-                                    AutofillHints.telephoneNumber,
-                                  ],
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                      RegExp(r'[0-9+ -]'),
-                                    ),
-                                  ],
-                                  decoration: const InputDecoration(
-                                    labelText: 'Mobile number',
-                                    hintText: '98300 12345',
-                                    prefixIcon: Icon(Icons.phone_outlined),
-                                    prefixText: '+91 ',
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                PrimaryButton(
-                                  label: _isRegister
-                                      ? 'Get Verification Code'
-                                      : 'Send OTP',
-                                  loading: _submitting,
-                                  onPressed: _sendOtp,
-                                ),
-                                const SizedBox(height: 12),
-                                Center(
-                                  child: TextButton(
-                                    onPressed: _submitting
-                                        ? null
-                                        : () {
-                                            setState(() {
-                                              _isRegister = !_isRegister;
-                                              _errorMessage = null;
-                                            });
-                                          },
-                                    child: Text(
-                                      _isRegister
-                                          ? 'Already have an account? Sign in'
-                                          : 'New here? Create an account',
-                                    ),
-                                  ),
-                                ),
-                              ] else ...[
-                                TextField(
-                                  controller: _otpController,
-                                  keyboardType: TextInputType.number,
-                                  autofocus: true,
-                                  autofillHints: const [
-                                    AutofillHints.oneTimeCode,
-                                  ],
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(6),
-                                  ],
-                                  textAlign: TextAlign.center,
-                                  style: t.headlineSmall?.copyWith(
-                                    letterSpacing: 8,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    labelText: '6-digit OTP',
-                                    hintText: '••••••',
-                                    prefixIcon: Icon(
-                                      Icons.lock_outline_rounded,
-                                    ),
-                                  ),
-                                  onSubmitted: (_) => _verifyOtp(),
-                                ),
-                                const SizedBox(height: 20),
-                                PrimaryButton(
-                                  label: _isRegister
-                                      ? 'Verify & Create Account'
-                                      : 'Verify & Enter',
-                                  loading: _submitting,
-                                  onPressed: _verifyOtp,
-                                ),
-                                const SizedBox(height: 14),
-                                Wrap(
-                                  alignment: WrapAlignment.spaceBetween,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  runSpacing: 4,
-                                  children: [
-                                    TextButton(
-                                      onPressed: _submitting
-                                          ? null
-                                          : () {
-                                              setState(() {
-                                                _otpSent = false;
-                                                _otpController.clear();
-                                                _errorMessage = null;
-                                              });
-                                            },
-                                      child: const Text('Change number'),
-                                    ),
-                                    TextButton(
-                                      onPressed:
-                                          (_resendCountdown > 0 || _submitting)
-                                          ? null
-                                          : () {
-                                              _sendOtp();
-                                              _startCountdown();
-                                            },
-                                      child: Text(
-                                        _resendCountdown > 0
-                                            ? 'Resend in ${_resendCountdown}s'
-                                            : 'Resend code',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-
+                        child: mode == _Mode.google
+                            ? _hero(context, key: const ValueKey('hero'))
+                            : _formCard(context, mode),
+                      ),
                       const SizedBox(height: 20),
-                      Center(
-                        child: Text(
-                          'By continuing, you agree to our Terms & Privacy Policy.',
-                          style: t.bodySmall?.copyWith(
-                            fontSize: 11,
-                            color: AppColors.inkFaint,
-                          ),
-                          textAlign: TextAlign.center,
+                      _Terms(
+                        termsTap: AppEnv.termsUrl.isEmpty ? null : _termsTap,
+                        privacyTap: AppEnv.privacyUrl.isEmpty
+                            ? null
+                            : _privacyTap,
+                        style: t.bodySmall?.copyWith(
+                          fontSize: 11,
+                          color: AppColors.inkFaint,
                         ),
                       ),
                     ],
@@ -589,71 +326,461 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
-}
 
-/// The welcome mascot, gently floating.
-class _FloatingMascot extends StatefulWidget {
-  const _FloatingMascot();
-  @override
-  State<_FloatingMascot> createState() => _FloatingMascotState();
-}
-
-class _FloatingMascotState extends State<_FloatingMascot>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 3200),
-  );
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!AppMotion.reduced(context) && !_c.isAnimating) {
-      _c.repeat(reverse: true);
-    }
+  /// Signed-out landing: the pitch and the Google button.
+  Widget _hero(BuildContext context, {Key? key}) {
+    final s = context.s;
+    final t = Theme.of(context).textTheme;
+    final points = [
+      (Icons.call_rounded, s.loginPointCalls),
+      (Icons.local_fire_department_rounded, s.loginPointScores),
+      (Icons.verified_user_outlined, s.loginPointSend),
+    ];
+    return Column(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Reveal(child: Center(child: BrandWordmark(size: 20))),
+        const SizedBox(height: 20),
+        const Center(
+          child: PopIn(
+            delay: Duration(milliseconds: 80),
+            duration: Duration(milliseconds: 680),
+            child: FloatIdle(
+              amplitude: 8,
+              child: Mascot(state: MascotState.welcome, size: 150),
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
+        Reveal(
+          index: 3,
+          child: Semantics(
+            header: true,
+            child: Text(
+              s.loginHeadline,
+              textAlign: TextAlign.center,
+              style: t.displaySmall?.copyWith(
+                fontSize: 31,
+                height: 1.12,
+                letterSpacing: -0.8,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Reveal(
+          index: 4,
+          child: Text(
+            s.loginLanguages,
+            textAlign: TextAlign.center,
+            style: t.bodyMedium?.copyWith(color: AppColors.inkFaint),
+          ),
+        ),
+        const SizedBox(height: 24),
+        for (final (i, (icon, text)) in points.indexed)
+          Reveal(
+            index: 5 + i,
+            offset: 10,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  IconBubble(
+                    size: 32,
+                    color: AppColors.brandSoft,
+                    child: Icon(icon, size: 17, color: AppColors.brand),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      text,
+                      style: t.bodyMedium?.copyWith(
+                        color: AppColors.inkSoft,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        const SizedBox(height: 18),
+        _errorArea(),
+        Reveal(
+          index: 8,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GoogleSignInButton(
+                loading: _submitting,
+                onPressed: _continueWithGoogle,
+              ),
+              if (AppEnv.phoneOtpLogin) ...[
+                const SizedBox(height: 12),
+                Center(
+                  child: TextButton(
+                    onPressed: _submitting
+                        ? null
+                        : () => setState(() {
+                            _usePhone = true;
+                            _errorMessage = null;
+                          }),
+                    child: Text(s.usePhoneInstead),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
+  /// Registration and phone sign-in: a card whose contents crossfade
+  /// between steps while the card resizes smoothly.
+  Widget _formCard(BuildContext context, _Mode mode) {
+    final s = context.s;
+    final t = Theme.of(context).textTheme;
+    final title = switch (mode) {
+      _Mode.googleRegister => s.setUpYourBusiness,
+      _Mode.code => s.enterCode,
+      _Mode.phone => _isRegister ? s.createAccount : s.signIn,
+      _Mode.google => s.welcome,
+    };
+    final subtitle = mode == _Mode.code
+        ? '${s.sentTo(PhoneUtils.display(_phoneController.text))}'
+              '${AppEnv.flavor != AppFlavor.prod ? s.useTestCode : ''}'
+        : null;
+    return Column(
+      key: const ValueKey('form'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Center(
+          child: PopIn(child: Mascot(state: MascotState.welcome, size: 96)),
+        ),
+        const SizedBox(height: 12),
+        const Center(child: BrandWordmark(size: 22)),
+        const SizedBox(height: 28),
+        AppCard(
+          padding: const EdgeInsets.all(22),
+          child: AnimatedSize(
+            duration: AppMotion.of(context, AppMotion.base),
+            curve: AppMotion.emphasized,
+            alignment: Alignment.topCenter,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SwapFade(
+                  child: Align(
+                    key: ValueKey(title),
+                    alignment: Alignment.centerLeft,
+                    child: Text(title, style: t.titleLarge),
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: t.bodySmall?.copyWith(color: AppColors.inkSoft),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                _errorArea(),
+                SwapFade(
+                  child: KeyedSubtree(
+                    key: ValueKey(mode),
+                    child: switch (mode) {
+                      _Mode.googleRegister => _googleRegisterFields(s),
+                      _Mode.phone => _phoneFields(s),
+                      _Mode.code => _codeFields(s, t),
+                      _Mode.google => const SizedBox.shrink(),
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _c,
-    builder: (_, child) => Transform.translate(
-      offset: Offset(0, -8 * Curves.easeInOut.transform(_c.value)),
-      child: child,
+  /// The banner opens smoothly and shakes on every rejected attempt.
+  Widget _errorArea() => Shake(
+    trigger: _shakes,
+    child: AnimatedSize(
+      duration: AppMotion.of(context, AppMotion.base),
+      curve: AppMotion.emphasized,
+      alignment: Alignment.topCenter,
+      child: _errorMessage == null
+          ? const SizedBox(width: double.infinity)
+          : Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _ErrorBanner(message: _errorMessage!),
+            ),
     ),
-    child: const Mascot(state: MascotState.welcome, size: 150),
   );
+
+  Widget _googleRegisterFields(S s) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      TextField(
+        controller: _businessController,
+        textCapitalization: TextCapitalization.words,
+        autofillHints: const [AutofillHints.organizationName],
+        decoration: InputDecoration(
+          labelText: s.businessName,
+          hintText: s.businessNameHint,
+          prefixIcon: const Icon(Icons.business_outlined),
+        ),
+      ),
+      const SizedBox(height: 14),
+      TextField(
+        controller: _phoneController,
+        keyboardType: TextInputType.phone,
+        autofillHints: const [AutofillHints.telephoneNumber],
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9+ -]')),
+        ],
+        decoration: InputDecoration(
+          labelText: s.businessMobile,
+          hintText: '98300 12345',
+          helperText: s.shownOnFollowUps,
+          prefixIcon: const Icon(Icons.phone_outlined),
+          prefixText: '+91 ',
+        ),
+      ),
+      const SizedBox(height: 20),
+      PrimaryButton(
+        label: s.createAccountCta,
+        loading: _submitting,
+        onPressed: _finishGoogleRegistration,
+      ),
+      const SizedBox(height: 12),
+      Center(
+        child: TextButton(
+          onPressed: _submitting
+              ? null
+              : () async {
+                  await ref.read(googleAuthProvider).signOut();
+                  if (mounted) {
+                    setState(() {
+                      _googleRegistering = false;
+                      _errorMessage = null;
+                    });
+                  }
+                },
+          child: Text(s.useDifferentGoogle),
+        ),
+      ),
+    ],
+  );
+
+  Widget _phoneFields(S s) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      AnimatedSize(
+        duration: AppMotion.of(context, AppMotion.base),
+        curve: AppMotion.emphasized,
+        alignment: Alignment.topCenter,
+        child: _isRegister
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: TextField(
+                  controller: _businessController,
+                  textCapitalization: TextCapitalization.words,
+                  autofillHints: const [AutofillHints.organizationName],
+                  decoration: InputDecoration(
+                    labelText: s.businessName,
+                    hintText: s.businessNameHint,
+                    prefixIcon: const Icon(Icons.business_outlined),
+                  ),
+                ),
+              )
+            : const SizedBox(width: double.infinity),
+      ),
+      TextField(
+        controller: _phoneController,
+        keyboardType: TextInputType.phone,
+        autofillHints: const [AutofillHints.telephoneNumber],
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9+ -]')),
+        ],
+        decoration: InputDecoration(
+          labelText: s.mobileNumber,
+          hintText: '98300 12345',
+          prefixIcon: const Icon(Icons.phone_outlined),
+          prefixText: '+91 ',
+        ),
+      ),
+      const SizedBox(height: 20),
+      PrimaryButton(
+        label: _isRegister ? s.getCode : s.sendOtp,
+        loading: _submitting,
+        onPressed: _sendOtp,
+      ),
+      const SizedBox(height: 12),
+      Center(
+        child: TextButton(
+          onPressed: _submitting
+              ? null
+              : () => setState(() {
+                  _isRegister = !_isRegister;
+                  _errorMessage = null;
+                }),
+          child: SwapFade(
+            child: Text(
+              _isRegister ? s.haveAccount : s.newHere,
+              key: ValueKey(_isRegister),
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+
+  Widget _codeFields(S s, TextTheme t) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      TextField(
+        controller: _otpController,
+        keyboardType: TextInputType.number,
+        autofocus: true,
+        autofillHints: const [AutofillHints.oneTimeCode],
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(6),
+        ],
+        textAlign: TextAlign.center,
+        style: t.headlineSmall?.copyWith(letterSpacing: 8),
+        decoration: InputDecoration(
+          labelText: s.otpLabel,
+          hintText: '••••••',
+          prefixIcon: const Icon(Icons.lock_outline_rounded),
+        ),
+        onSubmitted: (_) => _verifyOtp(),
+      ),
+      const SizedBox(height: 20),
+      PrimaryButton(
+        label: _isRegister ? s.verifyCreate : s.verifyEnter,
+        loading: _submitting,
+        onPressed: _verifyOtp,
+      ),
+      const SizedBox(height: 14),
+      Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 4,
+        children: [
+          TextButton(
+            onPressed: _submitting
+                ? null
+                : () => setState(() {
+                    _otpSent = false;
+                    _otpController.clear();
+                    _errorMessage = null;
+                  }),
+            child: Text(s.changeNumber),
+          ),
+          TextButton(
+            onPressed: (_resendCountdown > 0 || _submitting)
+                ? null
+                : () {
+                    _sendOtp();
+                    _startCountdown();
+                  },
+            child: Text(
+              _resendCountdown > 0
+                  ? s.resendIn(_resendCountdown)
+                  : s.resendCode,
+              style: const TextStyle(
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+/// "By continuing, you agree to our Terms & Privacy Policy." The two names
+/// are links once their URLs are configured.
+class _Terms extends StatelessWidget {
+  const _Terms({
+    required this.termsTap,
+    required this.privacyTap,
+    required this.style,
+  });
+  final GestureRecognizer? termsTap;
+  final GestureRecognizer? privacyTap;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    TextStyle? link(GestureRecognizer? tap) => tap == null
+        ? null
+        : TextStyle(
+            color: AppColors.inkSoft,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.underline,
+            decorationColor: AppColors.inkFaint,
+          );
+    return Center(
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: s.termsPrefix),
+            TextSpan(
+              text: s.terms,
+              recognizer: termsTap,
+              style: link(termsTap),
+            ),
+            TextSpan(text: s.and),
+            TextSpan(
+              text: s.privacyPolicy,
+              recognizer: privacyTap,
+              style: link(privacyTap),
+            ),
+            TextSpan(text: s.termsSuffix),
+          ],
+        ),
+        style: style,
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
 }
 
 class _ErrorBanner extends StatelessWidget {
   const _ErrorBanner({required this.message});
   final String message;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: AppColors.hotSoft,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      children: [
-        const Icon(Icons.error_outline_rounded, color: AppColors.hot, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            message,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppColors.hot,
-              fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.hotSoft,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline_rounded, color: AppColors.hot, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.hot,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }

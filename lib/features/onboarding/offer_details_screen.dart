@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/motion/motion.dart';
 import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
+import '../../l10n/l10n.dart';
 import 'onboarding_controller.dart';
 import 'onboarding_scaffold.dart';
 
@@ -26,6 +27,7 @@ class _OfferDetailsScreenState extends ConsumerState<OfferDetailsScreen> {
   );
   late final _wa = TextEditingController(text: d.whatsapp);
   late final _cn = TextEditingController(text: d.humanNumber);
+  int _shakes = 0;
 
   @override
   void dispose() {
@@ -35,13 +37,17 @@ class _OfferDetailsScreenState extends ConsumerState<OfferDetailsScreen> {
     super.dispose();
   }
 
-  String? _phone(String? v, {bool required = false}) {
-    if ((v ?? '').trim().isEmpty) return required ? 'Required' : null;
-    return PhoneUtils.isValid(v) ? null : 'Enter a valid mobile number';
+  String? _phone(S s, String? v, {bool required = false}) {
+    if ((v ?? '').trim().isEmpty) return required ? s.obRequired : null;
+    return PhoneUtils.isValid(v) ? null : s.validPhoneShort;
   }
 
   void _next() {
-    if (!_form.currentState!.validate()) return;
+    if (!_form.currentState!.validate()) {
+      Haptics.warn();
+      setState(() => _shakes++);
+      return;
+    }
     ref
         .read(onboardingProvider.notifier)
         .update(
@@ -59,7 +65,9 @@ class _OfferDetailsScreenState extends ConsumerState<OfferDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final wf = ref.watch(onboardingProvider).template.workflow;
+    var cascade = 2;
     Widget field(
       String label,
       TextEditingController c,
@@ -68,91 +76,87 @@ class _OfferDetailsScreenState extends ConsumerState<OfferDetailsScreen> {
       TextInputType? type,
       String? Function(String?)? validator,
       int lines = 1,
-      IconData? icon,
-    }) => Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          FieldLabel(label, optional: optional),
-          TextFormField(
-            controller: c,
-            keyboardType: type,
-            maxLines: lines,
-            minLines: 1,
-            validator: validator,
-            textInputAction: lines > 1
-                ? TextInputAction.newline
-                : TextInputAction.next,
-            decoration: InputDecoration(
-              hintText: hint,
-              prefixIcon: icon == null
-                  ? null
-                  : Icon(icon, color: AppColors.inkFaint),
-            ),
-          ),
-        ],
+      required IconData icon,
+    }) => OnboardingField(
+      index: cascade++,
+      label: label,
+      optional: optional,
+      child: TextFormField(
+        controller: c,
+        keyboardType: type,
+        maxLines: lines,
+        minLines: 1,
+        validator: validator,
+        textInputAction: lines > 1
+            ? TextInputAction.newline
+            : TextInputAction.next,
+        decoration: InputDecoration(hintText: hint, prefixIcon: Icon(icon)),
       ),
     );
 
     return OnboardingScaffold(
       step: 4,
-      title: 'What you offer',
-      cta: PrimaryButton(label: 'Continue', onPressed: _next),
+      title: s.obOfferTitle,
+      subtitle: s.obOfferSub,
+      revealChildren: false,
+      cta: PrimaryButton(label: s.continueLabel, onPressed: _next),
       children: [
-        Form(
-          key: _form,
-          child: Column(
-            children: [
-              field(
-                wf.offeringsLabel,
-                _offer,
-                wf.offeringsHint,
-                lines: 2,
-                icon: Icons.storefront_outlined,
-                validator: (v) => (v ?? '').trim().isEmpty
-                    ? 'Add at least one ${wf.interestLabel.toLowerCase()}'
-                    : null,
-              ),
-              field(
-                'Pricing',
-                _fees,
-                'e.g. From ₹999',
-                icon: Icons.currency_rupee_rounded,
-                optional: true,
-              ),
-              field(
-                'Opening hours',
-                _hours,
-                'e.g. Mon–Sat, 9–8',
-                icon: Icons.schedule_rounded,
-                optional: true,
-              ),
-              field(
-                'Location',
-                _loc,
-                'e.g. Park Street, Kolkata',
-                icon: Icons.place_outlined,
-                optional: true,
-              ),
-              field(
-                'WhatsApp',
-                _wa,
-                '98300 12345',
-                type: TextInputType.phone,
-                icon: Icons.chat_outlined,
-                validator: (v) => _phone(v),
-              ),
-              field(
-                '${wf.humanLabel} number',
-                _cn,
-                'Who closes hot leads',
-                type: TextInputType.phone,
-                icon: Icons.support_agent_rounded,
-                validator: (v) => _phone(v),
-                optional: true,
-              ),
-            ],
+        Shake(
+          trigger: _shakes,
+          child: Form(
+            key: _form,
+            child: Column(
+              children: [
+                field(
+                  s.data(wf.offeringsLabel),
+                  _offer,
+                  s.data(wf.offeringsHint),
+                  lines: 2,
+                  icon: Icons.storefront_outlined,
+                  validator: (v) => (v ?? '').trim().isEmpty
+                      ? s.obAddAtLeastOne(s.data(wf.interestLabel))
+                      : null,
+                ),
+                field(
+                  s.obPricing,
+                  _fees,
+                  s.obPricingHint,
+                  icon: Icons.currency_rupee_rounded,
+                  optional: true,
+                ),
+                field(
+                  s.obHours,
+                  _hours,
+                  s.obHoursHint,
+                  icon: Icons.schedule_rounded,
+                  optional: true,
+                ),
+                field(
+                  s.obLocation,
+                  _loc,
+                  s.obLocationHint,
+                  icon: Icons.place_outlined,
+                  optional: true,
+                ),
+                field(
+                  s.whatsapp,
+                  _wa,
+                  '98300 12345',
+                  type: TextInputType.phone,
+                  icon: Icons.chat_outlined,
+                  validator: (v) => _phone(s, v),
+                ),
+                field(
+                  s.obHumanNumber(s.data(wf.humanLabel)),
+                  _cn,
+                  s.obHumanNumberHint,
+                  type: TextInputType.phone,
+                  icon: Icons.support_agent_rounded,
+                  validator: (v) => _phone(s, v),
+                  optional: true,
+                ),
+              ],
+            ),
           ),
         ),
       ],

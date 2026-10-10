@@ -3,12 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/config/brand.dart';
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/brand_widgets.dart';
+import '../../l10n/l10n.dart';
 
 /// Branded launch screen: "CallPilot · Your AI Calling Employee".
-/// Continues the native splash (same background + mark) for a seamless start.
+/// Continues the native splash (same background + mark): the mark pops,
+/// the name rises in, then the tagline.
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
   @override
@@ -36,46 +39,46 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Center(
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 650),
-          curve: Curves.easeOutCubic,
-          builder: (_, v, child) => Opacity(
-            opacity: v,
-            child: Transform.translate(
-              offset: Offset(0, 12 * (1 - v)),
-              child: child,
-            ),
-          ),
-          child: Semantics(
-            label: '${Brand.appName}. ${Brand.tagline}',
-            child: ExcludeSemantics(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const BrandMark(size: 96),
-                  const SizedBox(height: 22),
-                  Text(
+        child: Semantics(
+          label: '${Brand.appName}. ${s.tagline}',
+          child: ExcludeSemantics(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const PopIn(
+                  duration: Duration(milliseconds: 620),
+                  child: BrandMark(size: 96),
+                ),
+                const SizedBox(height: 22),
+                Reveal(
+                  index: 4,
+                  stagger: const Duration(milliseconds: 60),
+                  child: Text(
                     Brand.appName,
                     style: t.displaySmall?.copyWith(
                       fontSize: 38,
                       letterSpacing: -1,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    Brand.tagline,
+                ),
+                const SizedBox(height: 6),
+                Reveal(
+                  index: 6,
+                  stagger: const Duration(milliseconds: 60),
+                  child: Text(
+                    s.tagline,
                     style: t.titleMedium?.copyWith(
                       color: AppColors.inkSoft,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

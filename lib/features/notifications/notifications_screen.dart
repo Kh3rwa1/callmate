@@ -5,12 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_icons.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
 
 /// Splits a backend title like "🔥 Hot lead detected" into its leading
 /// emoji (rendered as a line icon) and the plain words.
@@ -26,21 +27,27 @@ import '../../data/models/models.dart';
 /// The notification title without its emoji prefix.
 String plainNotificationTitle(String title) => splitNotificationTitle(title).$2;
 
+/// Title shown for [n]: the backend's words in English, a translation by
+/// type otherwise.
+String notificationTitleFor(S s, AppNotification n) =>
+    s.isEn ? plainNotificationTitle(n.title) : s.notificationTitle(n.type);
+
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
     final n = ref.watch(notificationsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
+      appBar: AppBar(title: Text(s.notifications)),
       body: AsyncView<List<AppNotification>>(
         value: n,
         onRetry: () => ref.invalidate(notificationsProvider),
         data: (items) => items.isEmpty
-            ? const EmptyState(
-                title: 'All caught up',
-                message: 'Nothing needs you right now.',
+            ? EmptyState(
+                title: s.allCaughtUp,
+                message: s.nothingNeedsYou,
                 mascot: MascotState.success,
               )
             : ListView(
@@ -63,16 +70,21 @@ class NotificationsScreen extends ConsumerWidget {
                                 indent: 70,
                                 endIndent: 16,
                               ),
-                            _NotificationRow(
-                              n: items[i],
-                              onTap: () async {
-                                final x = items[i];
-                                await ref
-                                    .read(notificationRepoProvider)
-                                    .markRead(x.id);
-                                ref.invalidate(notificationsProvider);
-                                if (context.mounted) context.push(x.route);
-                              },
+                            Reveal(
+                              id: 'notif-${items[i].id}',
+                              index: i < 8 ? i : 0,
+                              offset: 8,
+                              child: _NotificationRow(
+                                n: items[i],
+                                onTap: () async {
+                                  final x = items[i];
+                                  await ref
+                                      .read(notificationRepoProvider)
+                                      .markRead(x.id);
+                                  ref.invalidate(notificationsProvider);
+                                  if (context.mounted) context.push(x.route);
+                                },
+                              ),
                             ),
                           ],
                         ],
@@ -93,8 +105,9 @@ class _NotificationRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
-    final (emoji, title) = splitNotificationTitle(n.title);
+    final title = notificationTitleFor(s, n);
     final (color, tint) = switch (n.type) {
       NotificationType.hotLead => (AppColors.hot, AppColors.hotSoft),
       NotificationType.followUpReady => (
@@ -106,7 +119,7 @@ class _NotificationRow extends StatelessWidget {
     };
     return Semantics(
       button: true,
-      label: '${n.read ? '' : 'Unread. '}$title. ${n.body}. ${n.actionLabel}',
+      label: '${n.read ? '' : '${s.unread}. '}$title. ${n.body}',
       excludeSemantics: true,
       child: InkWell(
         onTap: onTap,
@@ -117,9 +130,11 @@ class _NotificationRow extends StatelessWidget {
               IconBubble(
                 color: tint,
                 size: 40,
-                child: emoji.isEmpty
-                    ? Icon(Icons.notifications_none_rounded, color: color)
-                    : Emoji(emoji, size: 19, color: color),
+                child: Icon(
+                  AppIcons.notification(n.type),
+                  size: 19,
+                  color: color,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -142,7 +157,7 @@ class _NotificationRow extends StatelessWidget {
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          Fmt.relative(n.createdAt),
+                          s.relative(n.createdAt),
                           style: t.bodySmall?.copyWith(
                             color: AppColors.inkFaint,
                           ),
@@ -155,7 +170,7 @@ class _NotificationRow extends StatelessWidget {
                     Text(
                       n.body,
                       style: t.bodySmall?.copyWith(color: AppColors.inkSoft),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -164,16 +179,19 @@ class _NotificationRow extends StatelessWidget {
               const SizedBox(width: 8),
               SizedBox(
                 width: 8,
-                child: n.read
-                    ? null
-                    : Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.brand,
-                          shape: BoxShape.circle,
+                child: PopSwitcher(
+                  child: n.read
+                      ? const SizedBox(key: ValueKey('read'))
+                      : Container(
+                          key: const ValueKey('unread'),
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: AppColors.brand,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                      ),
+                ),
               ),
             ],
           ),
@@ -197,76 +215,128 @@ class InAppNotificationBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
+    final (color, _) = _tone(n.type);
     return Material(
       color: Colors.transparent,
       child: Dismissible(
         key: ValueKey(n.id),
         direction: DismissDirection.up,
         onDismissed: (_) => onClose(),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12),
-          padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
-          decoration: BoxDecoration(
-            color: AppColors.ink,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x33000000),
-                blurRadius: 24,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              const MascotAvatar(size: 42, state: MascotState.hotLead),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+        child: Pressable(
+          onTap: onOpen,
+          scale: 0.97,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+            decoration: BoxDecoration(
+              color: AppColors.strong,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x40000000),
+                  blurRadius: 28,
+                  offset: Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Text(
-                      plainNotificationTitle(n.title),
-                      style: t.titleSmall?.copyWith(color: Colors.white),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    MascotAvatar(
+                      size: 42,
+                      state: n.type == NotificationType.hotLead
+                          ? MascotState.hotLead
+                          : MascotState.success,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      n.body,
-                      style: t.bodySmall?.copyWith(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w600,
+                    Positioned(
+                      right: -4,
+                      bottom: -4,
+                      child: PopIn(
+                        delay: const Duration(milliseconds: 220),
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.strong,
+                              width: 2,
+                            ),
+                          ),
+                          child: Icon(
+                            AppIcons.notification(n.type),
+                            size: 11,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 6),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.ink,
-                  minimumSize: const Size(0, 40),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  textStyle: const TextStyle(
-                    fontFamily: AppTheme.fontFamily,
-
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        notificationTitleFor(s, n),
+                        style: t.titleSmall?.copyWith(color: Colors.white),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        n.body,
+                        style: t.bodySmall?.copyWith(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
-                onPressed: onOpen,
-                child: Text(n.actionLabel),
-              ),
-            ],
+                const SizedBox(width: 6),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF0F0F14),
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    textStyle: const TextStyle(
+                      fontFamily: AppTheme.fontFamily,
+                      fontFamilyFallback: AppTheme.fontFallback,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                  onPressed: onOpen,
+                  child: Text(s.isEn ? n.actionLabel : s.open),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+
+/// (accent, tint) per notification type, readable in both themes.
+(Color, Color) _tone(NotificationType t) => switch (t) {
+  NotificationType.hotLead => (AppColors.hotFill, AppColors.hotSoft),
+  NotificationType.followUpReady => (
+    AppColors.whatsappFill,
+    AppColors.whatsappSoft,
+  ),
+  NotificationType.callback => (AppColors.info, AppColors.infoSoft),
+  NotificationType.campaign => (AppColors.success, AppColors.successSoft),
+};

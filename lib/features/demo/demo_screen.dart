@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_card.dart';
 import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
 
 /// Development / demo controls – lets the full loop be demoed without
 /// live telephony. Hidden in prod flavor.
@@ -15,20 +16,21 @@ class DemoScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final mock = ref.watch(useMockProvider);
     if (!mock) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Demo controls')),
-        body: const Center(child: Text('Mock mode only')),
+        appBar: AppBar(title: Text(s.demoControls)),
+        body: Center(child: Text(s.mockOnly)),
       );
     }
     final b = ref.read(mockBackendProvider);
     final notif = ref.read(notificationServiceProvider);
 
-    void snack(String s) => ScaffoldMessenger.of(context)
+    void snack(String m) => ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(s)));
+      ..showSnackBar(SnackBar(content: Text(m)));
 
     Widget row(IconData icon, String title, VoidCallback onTap) => InkWell(
       onTap: onTap,
@@ -46,11 +48,7 @@ class DemoScreen extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Icon(
-              Icons.play_arrow_rounded,
-              size: 20,
-              color: AppColors.inkFaint,
-            ),
+            Icon(Icons.play_arrow_rounded, size: 20, color: AppColors.inkFaint),
           ],
         ),
       ),
@@ -69,14 +67,14 @@ class DemoScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Demo controls')),
+      appBar: AppBar(title: Text(s.demoControls)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 32),
         children: [
-          const Align(
+          Align(
             alignment: Alignment.centerLeft,
             child: Pill(
-              label: 'Mock backend',
+              label: s.mockBackend,
               color: AppColors.warmInk,
               background: AppColors.warmSoft,
               icon: Icon(
@@ -86,7 +84,7 @@ class DemoScreen extends ConsumerWidget {
               ),
             ),
           ),
-          const SectionLabel('Simulate'),
+          SectionLabel(s.simulate),
           group([
             row(Icons.local_fire_department_outlined, 'Simulate hot lead', () {
               final c = b.simulateCall(LeadTemperature.hot);
@@ -113,7 +111,7 @@ class DemoScreen extends ConsumerWidget {
               () => context.push('/campaign/new'),
             ),
           ]),
-          const SectionLabel('Notifications'),
+          SectionLabel(s.notifications),
           group([
             row(
               Icons.local_fire_department_outlined,
@@ -137,9 +135,9 @@ class DemoScreen extends ConsumerWidget {
               ),
             ),
           ]),
-          const SectionLabel('Reset'),
+          SectionLabel(s.resetLabel),
           group([
-            row(Icons.replay_rounded, 'Replay onboarding', () async {
+            row(Icons.replay_rounded, s.replayOnboarding, () async {
               await ref.read(localPrefsProvider).reset();
               if (context.mounted) context.go('/onboarding');
             }),

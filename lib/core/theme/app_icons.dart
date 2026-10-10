@@ -1,10 +1,64 @@
 import 'package:flutter/material.dart';
 
-/// Line icons that stand in for the emoji the data layer still carries
-/// (business categories, skills, lead attributes). Emoji look like a
-/// template; one consistent icon family reads as designed.
+import '../../data/models/models.dart';
+import '../../data/templates/templates.dart';
+
+/// One line-icon family for everything the UI draws.
+///
+/// Typed lookups ([category], [skill], [role], [knowledge],
+/// [notification]) are what screens use. [forEmoji] only remains for emoji
+/// arriving in backend text (e.g. notification titles).
 class AppIcons {
   const AppIcons._();
+
+  static IconData category(BusinessCategory c) => switch (c) {
+    BusinessCategory.coaching => Icons.school_outlined,
+    BusinessCategory.realEstate => Icons.home_work_outlined,
+    BusinessCategory.clinic => Icons.medical_services_outlined,
+    BusinessCategory.diagnostic => Icons.science_outlined,
+    BusinessCategory.automobile => Icons.directions_car_outlined,
+    BusinessCategory.salon => Icons.content_cut_rounded,
+    BusinessCategory.restaurant => Icons.restaurant_outlined,
+    BusinessCategory.retail => Icons.shopping_bag_outlined,
+    BusinessCategory.localServices => Icons.handyman_outlined,
+    BusinessCategory.other => Icons.auto_awesome_outlined,
+  };
+
+  static IconData skill(EmployeeSkill s) => switch (s) {
+    EmployeeSkill.makeCalls => Icons.call_outlined,
+    EmployeeSkill.qualifyLeads => Icons.track_changes_rounded,
+    EmployeeSkill.followUp => Icons.chat_bubble_outline_rounded,
+    EmployeeSkill.bookAppointments => Icons.event_outlined,
+    EmployeeSkill.sales => Icons.work_outline_rounded,
+    EmployeeSkill.customerSupport => Icons.headset_mic_outlined,
+    EmployeeSkill.admissions => Icons.school_outlined,
+    EmployeeSkill.enquiryHandling => Icons.help_outline_rounded,
+  };
+
+  /// The accessory on the mascot's badge for each kind of employee.
+  static IconData role(EmployeeRoleKind r) => switch (r) {
+    EmployeeRoleKind.sales => Icons.work_rounded,
+    EmployeeRoleKind.appointments => Icons.event_rounded,
+    EmployeeRoleKind.support => Icons.chat_bubble_rounded,
+    EmployeeRoleKind.admissions => Icons.menu_book_rounded,
+    EmployeeRoleKind.reception => Icons.room_service_rounded,
+    EmployeeRoleKind.general => Icons.call_rounded,
+  };
+
+  static IconData knowledge(KnowledgeType t) => switch (t) {
+    KnowledgeType.pdf => Icons.description_outlined,
+    KnowledgeType.website => Icons.language_rounded,
+    KnowledgeType.faq => Icons.help_outline_rounded,
+    KnowledgeType.businessInfo => Icons.place_outlined,
+    KnowledgeType.text => Icons.edit_note_rounded,
+  };
+
+  static IconData notification(NotificationType t) => switch (t) {
+    NotificationType.hotLead => Icons.local_fire_department_rounded,
+    NotificationType.followUpReady => Icons.chat_bubble_rounded,
+    NotificationType.callback => Icons.event_rounded,
+    NotificationType.campaign => Icons.campaign_rounded,
+  };
 
   static const _byEmoji = <String, IconData>{
     '🎓': Icons.school_outlined,

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/widgets/app_card.dart';
+import '../../l10n/l10n.dart';
 import 'onboarding_controller.dart';
 import 'onboarding_scaffold.dart';
 
@@ -23,6 +25,7 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
     text: ref.read(onboardingProvider).address,
   );
   final _form = GlobalKey<FormState>();
+  int _shakes = 0;
 
   @override
   void initState() {
@@ -46,7 +49,11 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
   }
 
   void _next() {
-    if (!_form.currentState!.validate()) return;
+    if (!_form.currentState!.validate()) {
+      Haptics.warn();
+      setState(() => _shakes++);
+      return;
+    }
     ref
         .read(onboardingProvider.notifier)
         .update(
@@ -60,41 +67,55 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     return OnboardingScaffold(
       step: 3,
-      title: 'Your business',
-      cta: PrimaryButton(label: 'Continue', onPressed: _next),
+      title: s.obDetailsTitle,
+      subtitle: s.obDetailsSub,
+      revealChildren: false,
+      cta: PrimaryButton(label: s.continueLabel, onPressed: _next),
       children: [
-        Form(
-          key: _form,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const FieldLabel('Name'),
-              TextFormField(
-                controller: _name,
-                autofocus: true,
-                textCapitalization: TextCapitalization.words,
-                style: Theme.of(context).textTheme.titleMedium,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. Smile Dental',
+        Shake(
+          trigger: _shakes,
+          child: Form(
+            key: _form,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                OnboardingField(
+                  index: 2,
+                  label: s.nameLabel,
+                  child: TextFormField(
+                    controller: _name,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.words,
+                    style: Theme.of(context).textTheme.titleMedium,
+                    decoration: InputDecoration(
+                      hintText: s.obBizNameHint,
+                      prefixIcon: const Icon(Icons.storefront_outlined),
+                    ),
+                    validator: (v) => (v ?? '').trim().length < 2
+                        ? s.obBizNameRequired
+                        : null,
+                    textInputAction: TextInputAction.next,
+                  ),
                 ),
-                validator: (v) => (v ?? '').trim().length < 2
-                    ? 'Please enter your business name'
-                    : null,
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 20),
-              const FieldLabel('Address', optional: true),
-              TextFormField(
-                controller: _address,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. 12 Park Street, Kolkata',
+                OnboardingField(
+                  index: 3,
+                  label: s.obAddress,
+                  optional: true,
+                  child: TextFormField(
+                    controller: _address,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: s.obAddressHint,
+                      prefixIcon: const Icon(Icons.place_outlined),
+                    ),
+                    onFieldSubmitted: (_) => _next(),
+                  ),
                 ),
-                onFieldSubmitted: (_) => _next(),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],

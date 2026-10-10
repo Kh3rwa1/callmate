@@ -2,19 +2,20 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/brand_widgets.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
-import '../../core/config/brand.dart';
-import '../../core/widgets/brand_widgets.dart';
+import '../../l10n/l10n.dart';
 
 /// Hero card: the AI employee, live. Deep indigo surface, mascot on the
-/// right, one big number.
+/// right, one big number that counts up the first time it appears.
 class HomeAgentCard extends StatelessWidget {
   const HomeAgentCard({
     super.key,
@@ -26,16 +27,24 @@ class HomeAgentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final active = agent?.status == AgentStatus.active;
-    final name = agent?.name ?? Brand.employeeFallbackName;
+    final name = s.employeeName(agent?.name);
     const onBrand = Colors.white;
-    final faint = onBrand.withValues(alpha: 0.72);
+    final faint = onBrand.withValues(alpha: 0.78);
+    final status = active
+        ? s.active
+        : s.agentStatus(agent?.status ?? AgentStatus.paused);
     return Semantics(
       button: true,
-      label:
-          '$name, ${agent?.role ?? ''}, ${active ? 'active' : 'paused'}'
-          '${callsToday == null ? '' : ', $callsToday calls today'}',
+      label: s.heroSemantics(
+        name,
+        s.data(agent?.role ?? ''),
+        status,
+        callsToday,
+      ),
+      excludeSemantics: true,
       child: Pressable(
         onTap: () => context.go('/agent'),
         scale: 0.975,
@@ -45,105 +54,102 @@ class HomeAgentCard extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF5B52F0), Color(0xFF4338CA), Color(0xFF2B1F86)],
+              colors: AppColors.heroGradient,
               stops: [0, 0.55, 1],
             ),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
-                color: Color(0x332B1F86),
+                color: const Color(
+                  0xFF2B1F86,
+                ).withValues(alpha: AppColors.isDark ? 0.45 : 0.2),
                 blurRadius: 32,
-                offset: Offset(0, 14),
+                offset: const Offset(0, 14),
               ),
             ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.card + 6),
-            child: ExcludeSemantics(
-              child: Stack(
-                children: [
-                  // Soft light for depth.
-                  const Positioned(
-                    right: -30,
-                    top: -60,
-                    child: _Glow(size: 220, alpha: 0.20),
+            child: Stack(
+              children: [
+                // Soft light for depth.
+                const Positioned(
+                  right: -30,
+                  top: -60,
+                  child: _Glow(size: 220, alpha: 0.20),
+                ),
+                const Positioned(
+                  left: -60,
+                  bottom: -90,
+                  child: _Glow(size: 200, alpha: 0.08),
+                ),
+                Positioned(
+                  right: 4,
+                  bottom: 0,
+                  child: EmployeeMascot(
+                    state: active ? MascotState.calling : MascotState.welcome,
+                    size: 128,
+                    animate: active,
+                    agent: agent,
                   ),
-                  const Positioned(
-                    left: -60,
-                    bottom: -90,
-                    child: _Glow(size: 200, alpha: 0.08),
-                  ),
-                  Positioned(
-                    right: 4,
-                    bottom: 0,
-                    child: EmployeeMascot(
-                      state: active ? MascotState.calling : MascotState.welcome,
-                      size: 128,
-                      animate: active,
-                      agent: agent,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(22, 20, 140, 22),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            _LiveChip(
-                              label: active
-                                  ? 'Active'
-                                  : (agent?.status.label ?? 'Paused'),
-                              live: active,
-                            ),
-                            const SizedBox(width: 10),
-                            if (active) const VoiceWave(height: 14),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          name,
-                          style: t.titleLarge?.copyWith(
-                            color: onBrand,
-                            letterSpacing: -0.3,
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 20, 140, 22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: _LiveChip(label: status, live: active),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 10),
+                          if (active) const VoiceWave(height: 14),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        name,
+                        style: t.titleLarge?.copyWith(
+                          color: onBrand,
+                          letterSpacing: -0.3,
                         ),
-                        const SizedBox(height: 18),
-                        if (callsToday != null)
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: AnimatedCount(
-                              value: callsToday!,
-                              format: Fmt.number,
-                              style: t.displaySmall?.copyWith(
-                                color: onBrand,
-                                fontSize: 46,
-                                height: 1,
-                                letterSpacing: -1.5,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 18),
+                      SwapFade(
+                        child: callsToday == null
+                            ? Text(
+                                '–',
+                                key: const ValueKey('none'),
+                                style: t.displaySmall?.copyWith(
+                                  color: onBrand,
+                                  fontSize: 46,
+                                  height: 1,
+                                ),
+                              )
+                            : AnimatedCount(
+                                key: const ValueKey('count'),
+                                value: callsToday!,
+                                countUp: true,
+                                format: Fmt.number,
+                                style: t.displaySmall?.copyWith(
+                                  color: onBrand,
+                                  fontSize: 46,
+                                  height: 1,
+                                  letterSpacing: -1.5,
+                                ),
                               ),
-                            ),
-                          )
-                        else
-                          Text(
-                            '–',
-                            style: t.displaySmall?.copyWith(
-                              color: onBrand,
-                              fontSize: 46,
-                              height: 1,
-                            ),
-                          ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'calls today',
-                          style: t.labelMedium?.copyWith(color: faint),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        s.callsToday,
+                        style: t.labelMedium?.copyWith(color: faint),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -172,6 +178,8 @@ class _Glow extends StatelessWidget {
   );
 }
 
+/// Status pill on the hero card: white text (always readable on indigo),
+/// a green pulsing dot while live.
 class _LiveChip extends StatelessWidget {
   const _LiveChip({required this.label, required this.live});
   final String label;
@@ -186,13 +194,14 @@ class _LiveChip extends StatelessWidget {
     ),
     child: StatusDot(
       label: label,
-      color: live ? const Color(0xFF86EFAC) : Colors.white70,
+      color: live ? AppColors.liveDot : Colors.white70,
+      textColor: Colors.white,
       pulse: live,
     ),
   );
 }
 
-/// Five bars that bob like a voice meter. Pure decoration.
+/// Five bars that bob like a voice meter while the employee is live.
 class VoiceWave extends StatefulWidget {
   const VoiceWave({super.key, this.color = Colors.white, this.height = 16});
   final Color color;
@@ -262,13 +271,17 @@ class _VoiceWaveState extends State<VoiceWave>
 
 /// One value in [HomeStatStrip].
 class HomeStat {
-  const HomeStat(this.value, this.label, this.onTap);
+  const HomeStat(this.value, this.label, this.onTap, {this.accent});
   final int value;
   final String label;
   final VoidCallback onTap;
+
+  /// Colour for the number (e.g. hot); defaults to ink.
+  final Color? accent;
 }
 
-/// Today's numbers: one card, big figures, tiny labels, hairline dividers.
+/// Today's numbers: one card, big figures that count up, quiet labels,
+/// hairline dividers.
 class HomeStatStrip extends StatelessWidget {
   const HomeStatStrip({super.key, required this.stats});
   final List<HomeStat> stats;
@@ -278,56 +291,63 @@ class HomeStatStrip extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     return AppCard(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      child: Row(
-        children: [
-          for (var i = 0; i < stats.length; i++) ...[
-            if (i > 0) Container(width: 1, height: 34, color: AppColors.border),
-            Expanded(
-              child: Semantics(
-                button: true,
-                label: '${stats[i].value} ${stats[i].label}',
-                excludeSemantics: true,
-                child: InkWell(
-                  onTap: stats[i].onTap,
-                  borderRadius: BorderRadius.circular(AppRadius.cardSm),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(6, 14, 6, 14),
-                    child: Column(
-                      children: [
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: AnimatedCount(
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            for (var i = 0; i < stats.length; i++) ...[
+              if (i > 0)
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  indent: 14,
+                  endIndent: 14,
+                  color: AppColors.border,
+                ),
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  label: '${stats[i].value} ${stats[i].label}',
+                  excludeSemantics: true,
+                  child: InkWell(
+                    onTap: stats[i].onTap,
+                    borderRadius: BorderRadius.circular(AppRadius.cardSm),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 14, 4, 14),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          AnimatedCount(
                             value: stats[i].value,
+                            countUp: true,
                             format: Fmt.number,
                             style: t.headlineMedium?.copyWith(
-                              color: AppColors.ink,
+                              color: stats[i].accent ?? AppColors.ink,
                               fontSize: 27,
                               height: 1.1,
                               letterSpacing: -0.8,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
+                          const SizedBox(height: 4),
+                          Text(
                             stats[i].label,
+                            textAlign: TextAlign.center,
                             style: t.labelSmall?.copyWith(
                               color: AppColors.inkFaint,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0,
                             ),
-                            maxLines: 1,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -341,18 +361,24 @@ class HomeActionGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AppCard(
     padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Column(
-      children: [
-        for (var i = 0; i < rows.length; i++) ...[
-          if (i > 0) const Divider(height: 1, indent: 66, endIndent: 16),
-          rows[i],
+    child: AnimatedSize(
+      duration: AppMotion.of(context, AppMotion.base),
+      curve: AppMotion.standard,
+      alignment: Alignment.topCenter,
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) const Divider(height: 1, indent: 66, endIndent: 16),
+            rows[i],
+          ],
         ],
-      ],
+      ),
     ),
   );
 }
 
-/// "[icon]  12 hot leads  ›" – count bold, label soft, no sentences.
+/// "[icon]  12 hot leads  ›" – count bold, label soft, no sentences. An
+/// optional [detail] line sits underneath (e.g. the next callback).
 class HomeActionRow extends StatelessWidget {
   const HomeActionRow({
     super.key,
@@ -363,6 +389,7 @@ class HomeActionRow extends StatelessWidget {
     required this.onTap,
     this.count,
     this.trailing,
+    this.detail,
   });
   final IconData icon;
   final Color color;
@@ -370,6 +397,7 @@ class HomeActionRow extends StatelessWidget {
   final int? count;
   final String label;
   final String? trailing;
+  final String? detail;
   final VoidCallback onTap;
 
   @override
@@ -380,7 +408,10 @@ class HomeActionRow extends StatelessWidget {
       fontWeight: FontWeight.w800,
     );
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        Haptics.tap();
+        onTap();
+      },
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 60),
         child: Padding(
@@ -398,24 +429,39 @@ class HomeActionRow extends StatelessWidget {
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      if (count != null)
-                        TextSpan(text: '${Fmt.number(count!)} ', style: strong),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text.rich(
                       TextSpan(
-                        text: label,
-                        style: count == null
-                            ? strong
-                            : t.titleMedium?.copyWith(
-                                color: AppColors.inkSoft,
-                                fontWeight: FontWeight.w600,
-                              ),
+                        children: [
+                          if (count != null)
+                            TextSpan(
+                              text: '${Fmt.number(count!)} ',
+                              style: strong,
+                            ),
+                          TextSpan(
+                            text: label,
+                            style: count == null
+                                ? strong
+                                : t.titleMedium?.copyWith(
+                                    color: AppColors.inkSoft,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (detail != null)
+                      Text(
+                        detail!,
+                        style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
                 ),
               ),
               if (trailing != null)
@@ -423,11 +469,11 @@ class HomeActionRow extends StatelessWidget {
                   padding: const EdgeInsets.only(left: 8),
                   child: Text(
                     trailing!,
-                    style: t.labelMedium?.copyWith(color: AppColors.inkFaint),
+                    style: t.labelMedium?.copyWith(color: AppColors.brand),
                   ),
                 ),
               const SizedBox(width: 2),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
                 size: 22,
                 color: AppColors.inkFaint,
@@ -452,6 +498,7 @@ class HomeActivityList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     if (items.isEmpty) {
       return AppCard(
@@ -485,7 +532,7 @@ class HomeActivityList extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      Fmt.relative(a.at),
+                      s.relative(a.at),
                       style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
                       maxLines: 1,
                       softWrap: false,
@@ -504,7 +551,7 @@ class HomeSkeleton extends StatelessWidget {
   const HomeSkeleton({super.key});
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'Loading',
+    label: context.s.loading,
     child: const Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

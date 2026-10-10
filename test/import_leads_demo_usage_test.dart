@@ -234,12 +234,14 @@ void main() {
           .where((f) => f.isPending)
           .length;
       expect(pending, greaterThan(0));
+      // The badge is the only number drawn in the nav bar.
       final badge = find.descendant(
         of: find.byType(AppNavBar),
-        matching: find.byType(Badge),
+        matching: find.byWidgetPredicate(
+          (w) => w is Text && RegExp(r'^\d+\+?$').hasMatch(w.data ?? ''),
+        ),
       );
       expect(badge, findsOneWidget);
-      expect(h.tester.widget<Badge>(badge).isLabelVisible, isTrue);
     });
   });
 }

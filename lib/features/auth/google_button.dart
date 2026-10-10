@@ -5,28 +5,37 @@ import 'package:flutter/material.dart';
 import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
+import '../../l10n/l10n.dart';
 
-/// "Continue with Google" per Google's sign-in branding: white surface,
-/// neutral border, the four-colour G on the left.
+/// "Continue with Google" per Google's sign-in branding: light or dark
+/// neutral surface, neutral border, the four-colour G on the left.
 class GoogleSignInButton extends StatelessWidget {
   const GoogleSignInButton({
     super.key,
     required this.onPressed,
     this.loading = false,
-    this.label = 'Continue with Google',
+    this.label,
   });
 
   final VoidCallback? onPressed;
   final bool loading;
-  final String label;
+
+  /// Defaults to "Continue with Google" in the app language.
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
+    final text = label ?? context.s.continueWithGoogle;
     final enabled = onPressed != null && !loading;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    // Google's published button colours for each theme.
+    final fill = dark ? const Color(0xFF131314) : Colors.white;
+    final stroke = dark ? const Color(0xFF8E918F) : const Color(0xFF747775);
+    final ink = dark ? const Color(0xFFE3E3E3) : const Color(0xFF1F1F1F);
     return Semantics(
       button: true,
       enabled: enabled,
-      label: label,
+      label: text,
       excludeSemantics: true,
       child: Pressable(
         onTap: enabled
@@ -41,36 +50,47 @@ class GoogleSignInButton extends StatelessWidget {
           duration: AppMotion.of(context, AppMotion.base),
           height: 56,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: fill,
             borderRadius: BorderRadius.circular(AppRadius.button),
-            border: Border.all(color: const Color(0xFFDADCE0), width: 1.2),
-            boxShadow: enabled ? AppShadows.card : const [],
+            border: Border.all(color: stroke, width: 1),
+            boxShadow: enabled && !dark ? AppShadows.card : const [],
           ),
           child: SwapFade(
             duration: AppMotion.fast,
             child: loading
-                ? const Center(
-                    key: ValueKey('loading'),
+                ? Center(
+                    key: const ValueKey('loading'),
                     child: SizedBox(
                       width: 22,
                       height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        color: ink,
+                      ),
                     ),
                   )
-                : Row(
+                : Padding(
                     key: const ValueKey('label'),
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const GoogleG(size: 20),
-                      const SizedBox(width: 12),
-                      Text(
-                        label,
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: const Color(0xFF1F1F1F),
-                          fontWeight: FontWeight.w700,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const GoogleG(size: 20),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            text,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: ink,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
           ),
         ),
@@ -125,17 +145,22 @@ class _GPainter extends CustomPainter {
 
 /// Thin divider with a centered label ("or").
 class OrDivider extends StatelessWidget {
-  const OrDivider({super.key, this.label = 'or'});
-  final String label;
+  const OrDivider({super.key, this.label});
+
+  /// Defaults to "or" in the app language.
+  final String? label;
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      const Expanded(child: Divider(color: AppColors.border)),
+      Expanded(child: Divider(color: AppColors.border)),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+        child: Text(
+          label ?? context.s.orLabel,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ),
-      const Expanded(child: Divider(color: AppColors.border)),
+      Expanded(child: Divider(color: AppColors.border)),
     ],
   );
 }

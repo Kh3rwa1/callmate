@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -13,6 +13,7 @@ import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../data/templates/templates.dart';
+import '../../l10n/l10n.dart';
 
 /// Human-friendly agent settings. No prompts, no model knobs.
 class EditAgentScreen extends ConsumerStatefulWidget {
@@ -34,6 +35,7 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
     'Confident · Male',
   ];
   bool _saving = false;
+  String? _nameError;
   static const _allLanguages = [
     'Bengali',
     'Hindi',
@@ -58,13 +60,19 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
   }
 
   Future<void> _save() async {
+    final s = context.s;
     final a = _a!;
-    if (_name.text.trim().isEmpty) return;
+    if (_name.text.trim().isEmpty) {
+      Haptics.warn();
+      setState(() => _nameError = s.nameRequired);
+      return;
+    }
     if (_transfer.text.trim().isNotEmpty &&
         !PhoneUtils.isValid(_transfer.text)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Check the transfer number')),
-      );
+      Haptics.warn();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(s.checkTransferNumber)));
       return;
     }
     setState(() => _saving = true);
@@ -82,23 +90,24 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
               transferNumber: _transfer.text.trim(),
             ),
           );
-      HapticFeedback.mediumImpact();
+      Haptics.success();
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('${_name.text.trim()} updated ✓')));
+      ).showSnackBar(SnackBar(content: Text(s.nameUpdated(_name.text.trim()))));
       context.pop();
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
+      ).showSnackBar(SnackBar(content: Text(friendlyError(e, s))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final async = ref.watch(agentProvider);
     if (_a == null && async.value != null) {
@@ -110,7 +119,7 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
     }
     final a = _a;
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit AI Employee')),
+      appBar: AppBar(title: Text(s.editAiEmployee)),
       body: a == null
           ? const SkeletonList(count: 3)
           : ListView(
@@ -122,26 +131,36 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
               ),
               children: [
                 Center(
-                  child: Mascot(
-                    size: 96,
-                    role: EmployeeRoleKind.fromRole(_role.text),
+                  child: PopIn(
+                    child: Mascot(
+                      size: 96,
+                      role: EmployeeRoleKind.fromRole(_role.text),
+                    ),
                   ),
                 ),
-                const SectionLabel('Identity'),
+                SectionLabel(s.identity),
                 AppCard(
                   child: Column(
                     children: [
                       TextField(
                         controller: _name,
                         textCapitalization: TextCapitalization.words,
-                        decoration: const InputDecoration(labelText: 'Name'),
+                        onChanged: (_) {
+                          if (_nameError != null) {
+                            setState(() => _nameError = null);
+                          }
+                        },
+                        decoration: InputDecoration(
+                          labelText: s.nameLabel,
+                          errorText: _nameError,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: _role,
                         textCapitalization: TextCapitalization.words,
                         onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(labelText: 'Role'),
+                        decoration: InputDecoration(labelText: s.roleLabel),
                       ),
                       const SizedBox(height: 12),
                       TextField(
@@ -149,32 +168,33 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                         maxLines: 2,
                         minLines: 1,
                         textCapitalization: TextCapitalization.sentences,
-                        decoration: const InputDecoration(labelText: 'Goal'),
+                        decoration: InputDecoration(labelText: s.goal),
                       ),
                     ],
                   ),
                 ),
-                const SectionLabel('Voice & language'),
+                SectionLabel(s.voiceAndLanguage),
                 AppCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _FieldLabel('Languages'),
+                      _FieldLabel(s.languagesLabel),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: [
                           for (final l in _allLanguages)
                             FilterChip(
-                              label: Text(l),
+                              label: Text(s.data(l)),
                               selected: a.languages.contains(l),
                               labelStyle: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 color: a.languages.contains(l)
-                                    ? Colors.white
+                                    ? AppColors.onInverse
                                     : AppColors.inkSoft,
                               ),
                               onSelected: (on) {
+                                Haptics.tap();
                                 final next = on
                                     ? [...a.languages, l]
                                     : a.languages.where((x) => x != l).toList();
@@ -187,55 +207,60 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                         ],
                       ),
                       const _GroupDivider(),
-                      const _FieldLabel('Voice'),
+                      _FieldLabel(s.voice),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: [
                           for (final v in _voices)
                             ChoiceChip(
-                              label: Text(v),
+                              label: Text(s.data(v)),
                               selected: a.voice == v,
                               labelStyle: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 color: a.voice == v
-                                    ? Colors.white
+                                    ? AppColors.onInverse
                                     : AppColors.inkSoft,
                               ),
-                              onSelected: (_) =>
-                                  setState(() => _a = a.copyWith(voice: v)),
+                              onSelected: (_) {
+                                Haptics.tap();
+                                setState(() => _a = a.copyWith(voice: v));
+                              },
                             ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                const SectionLabel('Behaviour'),
+                SectionLabel(s.behaviour),
                 AppCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _FieldLabel('Personality', value: a.personalityLabel),
+                      _FieldLabel(
+                        s.personality,
+                        value: s.data(a.personalityLabel),
+                      ),
                       Slider(
                         value: a.formality,
                         divisions: 10,
                         semanticFormatterCallback: (v) =>
-                            v < 0.5 ? 'More friendly' : 'More formal',
+                            v < 0.5 ? s.moreFriendly : s.moreFormal,
                         onChanged: (v) =>
                             setState(() => _a = a.copyWith(formality: v)),
                       ),
                       ExcludeSemantics(
                         child: Row(
                           children: [
-                            Text('Friendly', style: t.bodySmall),
+                            Text(s.friendly, style: t.bodySmall),
                             const Spacer(),
-                            Text('Formal', style: t.bodySmall),
+                            Text(s.formal, style: t.bodySmall),
                           ],
                         ),
                       ),
                       const _GroupDivider(),
                       _FieldLabel(
-                        'Calling hours',
+                        s.callingHours,
                         value:
                             '${Fmt.hour(a.callingHoursStart)} – ${Fmt.hour(a.callingHoursEnd)}',
                       ),
@@ -260,7 +285,7 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                     ],
                   ),
                 ),
-                const SectionLabel('Calls'),
+                SectionLabel(s.callsSection),
                 AppCard(
                   padding: const EdgeInsets.fromLTRB(20, 20, 8, 8),
                   child: Column(
@@ -271,9 +296,10 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                           controller: _transfer,
                           keyboardType: TextInputType.phone,
                           decoration: InputDecoration(
-                            labelText: 'Transfer hot leads to',
-                            hintText:
-                                '${ref.watch(workflowProvider).humanLabel} number',
+                            labelText: s.transferHotLeadsTo,
+                            hintText: s.humanNumberHint(
+                              s.data(ref.watch(workflowProvider).humanLabel),
+                            ),
                             prefixIcon: const Icon(Icons.support_agent_rounded),
                           ),
                         ),
@@ -282,11 +308,14 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                       SwitchListTile(
                         contentPadding: const EdgeInsets.only(right: 4),
                         value: a.status == AgentStatus.active,
-                        title: Text(
-                          a.status == AgentStatus.active
-                              ? '${a.name} is active'
-                              : '${a.name} is paused',
-                          style: t.titleSmall,
+                        title: SwapFade(
+                          child: Text(
+                            a.status == AgentStatus.active
+                                ? s.isActiveNamed(a.name)
+                                : s.isPausedNamed(a.name),
+                            key: ValueKey(a.status),
+                            style: t.titleSmall,
+                          ),
                         ),
                         onChanged: (v) => setState(
                           () => _a = a.copyWith(
@@ -308,10 +337,8 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                     children: [
                       const Icon(Icons.menu_book_outlined, size: 22),
                       const SizedBox(width: 14),
-                      Expanded(
-                        child: Text('Teach Your AI', style: t.titleSmall),
-                      ),
-                      const Icon(
+                      Expanded(child: Text(s.teachYourAi, style: t.titleSmall)),
+                      Icon(
                         Icons.chevron_right_rounded,
                         color: AppColors.inkFaint,
                       ),
@@ -331,7 +358,7 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                   12,
                 ),
                 child: PrimaryButton(
-                  label: 'Save changes',
+                  label: s.saveChanges,
                   loading: _saving,
                   onPressed: _save,
                 ),
@@ -379,6 +406,6 @@ class _GroupDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.symmetric(vertical: 16),
-    child: Divider(height: 1, thickness: 1, color: AppColors.border),
+    child: Divider(height: 1, thickness: 1),
   );
 }

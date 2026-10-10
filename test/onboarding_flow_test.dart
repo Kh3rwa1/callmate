@@ -146,13 +146,11 @@ void main() {
         expect(find.text('Parking info'), findsNothing);
         expect(h.container.read(onboardingProvider).knowledge, hasLength(2));
 
-        await h.tapText('Import CSV leads later');
+        // Importing leads is explained, not faked as an option.
         expect(
-          find.text('You\'ll be able to import leads right after setup.'),
+          find.textContaining('import your leads from a CSV'),
           findsOneWidget,
         );
-        // Let the snack bar (which covers the CTA) time out.
-        await h.settle(35);
 
         await h.tapText('Continue');
         expect(h.location, '/onboarding/create');

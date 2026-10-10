@@ -13,8 +13,8 @@ import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/repositories.dart';
+import '../../l10n/l10n.dart';
 import '../leads/leads_controller.dart';
-import '../../core/config/brand.dart';
 
 final callFilterProvider = NotifierProvider<CallFilterController, CallFilter>(
   CallFilterController.new,
@@ -131,10 +131,17 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final f = ref.watch(callFilterProvider);
-    final s = ref.watch(callsListProvider);
+    final st = ref.watch(callsListProvider);
     final agent = ref.watch(agentProvider).value;
+    final filters = [
+      (CallFilter.all, s.filterAll, null),
+      (CallFilter.connected, s.filterConnected, null),
+      (CallFilter.noAnswer, s.filterNoAnswer, null),
+      (CallFilter.hot, s.filterHot, Icons.local_fire_department_rounded),
+    ];
 
     return Scaffold(
       body: SafeArea(
@@ -154,46 +161,33 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                   Expanded(
                     child: Semantics(
                       header: true,
-                      child: Text('AI Calls', style: t.headlineMedium),
+                      child: Text(s.aiCallsTitle, style: t.headlineMedium),
                     ),
                   ),
                   const MascotAvatar(size: 40, state: MascotState.calling),
                 ],
               ),
             ),
-            SizedBox(
-              height: 62,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpace.page,
-                  vertical: 12,
-                ),
-                children: [
-                  for (final (v, label) in const [
-                    (CallFilter.all, 'All'),
-                    (CallFilter.connected, 'Connected'),
-                    (CallFilter.noAnswer, 'No Answer'),
-                    (CallFilter.hot, 'Hot'),
-                  ])
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: AppFilterChip(
-                        label: label,
-                        selected: f == v,
-                        icon: v == CallFilter.hot
-                            ? Icons.local_fire_department_rounded
-                            : null,
-                        iconColor: AppColors.hot,
-                        onSelected: () =>
-                            ref.read(callFilterProvider.notifier).set(v),
-                      ),
-                    ),
-                ],
-              ),
+            const SizedBox(height: 6),
+            FilterChipRow(
+              children: [
+                for (final (v, label, icon) in filters)
+                  AppFilterChip(
+                    label: label,
+                    selected: f == v,
+                    icon: icon,
+                    iconColor: AppColors.hot,
+                    onSelected: () =>
+                        ref.read(callFilterProvider.notifier).set(v),
+                  ),
+              ],
             ),
             Expanded(
-              child: _list(s, agent?.name ?? Brand.employeeFallbackName),
+              child: AnimatedSwitcher(
+                duration: AppMotion.of(context, AppMotion.base),
+                switchInCurve: AppMotion.standard,
+                child: _list(context, st, f, s.employeeName(agent?.name)),
+              ),
             ),
           ],
         ),
@@ -201,34 +195,41 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
     );
   }
 
-  Widget _list(PagedState<Call> s, String agentName) {
-    if (s.loading && s.items.isEmpty) {
+  Widget _list(
+    BuildContext context,
+    PagedState<Call> st,
+    CallFilter f,
+    String agentName,
+  ) {
+    final s = context.s;
+    if (st.loading && st.items.isEmpty) {
       return const SkeletonList(
+        key: ValueKey('loading'),
         padding: EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 20),
       );
     }
-    if (s.error != null && s.items.isEmpty) {
+    if (st.error != null && st.items.isEmpty) {
       return ErrorState(
-        message: friendlyError(s.error!),
+        key: const ValueKey('error'),
+        message: friendlyError(st.error!, s),
         onRetry: () => ref.read(callsListProvider.notifier).refresh(),
       );
     }
-    if (s.items.isEmpty) {
+    if (st.items.isEmpty) {
       return EmptyState(
-        title: '$agentName hasn\'t made any calls yet.',
-        message: 'Start a campaign to see calls here.',
+        key: ValueKey('empty-$f'),
+        title: s.noCallsYetBy(agentName),
+        message: s.startCampaignToSeeCalls,
         mascot: MascotState.calling,
-        actionLabel: 'Call New Leads',
+        actionLabel: s.callNewLeadsCount(0),
         onAction: () => context.push('/campaign/new'),
       );
     }
     // Group by day: a heading, then one grouped card of slim rows.
     final rows = <Object>[];
-    String? lastDay;
-    for (final c in s.items) {
-      final d = Fmt.friendlyFuture(
-        c.startedAt,
-      ).split(',').first.split('·').first.trim();
+    DateTime? lastDay;
+    for (final c in st.items) {
+      final d = DateTime(c.startedAt.year, c.startedAt.month, c.startedAt.day);
       if (d != lastDay) {
         rows.add(d);
         lastDay = d;
@@ -236,6 +237,9 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
       rows.add(c);
     }
     return RefreshIndicator(
+      key: const ValueKey('list'),
+      color: AppColors.brand,
+      backgroundColor: AppColors.surface,
       onRefresh: () =>
           ref.read(callsListProvider.notifier).refresh(silent: true),
       child: ListView.builder(
@@ -244,7 +248,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
         itemCount: rows.length + 1,
         itemBuilder: (context, i) {
           if (i == rows.length) {
-            return s.hasMore
+            return st.hasMore
                 ? const Padding(
                     padding: EdgeInsets.all(20),
                     child: Center(
@@ -254,17 +258,20 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                 : const SizedBox(height: 8);
           }
           final r = rows[i];
-          if (r is String) {
+          if (r is DateTime) {
             return SectionLabel(
-              r,
+              s.dayLabel(r),
               padding: EdgeInsets.fromLTRB(2, i == 0 ? 8 : 28, 2, 10),
             );
           }
-          final first = rows[i - 1] is String;
-          final last = i + 1 >= rows.length || rows[i + 1] is String;
+          final call = r as Call;
+          final first = rows[i - 1] is DateTime;
+          final last = i + 1 >= rows.length || rows[i + 1] is DateTime;
           return Reveal(
+            key: ValueKey(call.id),
+            id: 'call-${f.name}-${call.id}',
             index: i < 12 ? i : 0,
-            child: CallCard(call: r as Call, first: first, last: last),
+            child: CallCard(call: call, first: first, last: last),
           );
         },
       ),
@@ -288,6 +295,7 @@ class CallCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final c = call;
     final connected = c.status.isConnected;
@@ -297,12 +305,13 @@ class CallCard extends StatelessWidget {
       bottom: last ? r : Radius.zero,
     );
     final meta = connected
-        ? 'Connected · ${_shortDuration(c.duration)}'
-        : c.status.label;
+        ? s.connectedFor(_shortDuration(c.duration))
+        : s.callStatus(c.status);
     return RepaintBoundary(
       child: Semantics(
         button: true,
-        label: '${Fmt.time(c.startedAt)}, ${c.leadName}, ${c.status.label}',
+        label:
+            '${Fmt.time(c.startedAt)}, ${c.leadName}, ${s.callStatus(c.status)}',
         child: Material(
           color: AppColors.surface,
           borderRadius: radius,
@@ -330,11 +339,11 @@ class CallCard extends StatelessWidget {
                             : Container(
                                 width: 40,
                                 height: 40,
-                                decoration: const BoxDecoration(
+                                decoration: BoxDecoration(
                                   color: AppColors.surfaceMuted,
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.phone_missed_outlined,
                                   size: 19,
                                   color: AppColors.inkFaint,

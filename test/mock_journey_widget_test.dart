@@ -40,10 +40,7 @@ void main() {
         await tester.pumpWidget(wrap(const WelcomeScreen()));
         await tester.pump(const Duration(milliseconds: 800));
 
-        expect(
-          find.text('Your AI employee that calls every lead.'),
-          findsOneWidget,
-        );
+        expect(find.text('Let\'s set up your AI employee'), findsOneWidget);
         expect(find.text('Create My AI Employee'), findsOneWidget);
       });
 

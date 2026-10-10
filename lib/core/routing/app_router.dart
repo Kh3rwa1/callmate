@@ -23,25 +23,29 @@ import '../../features/shell/app_shell.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/usage/usage_screen.dart';
 import '../../features/voice_test/voice_test_screen.dart';
+import '../motion/motion.dart';
 import '../providers.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
-CustomTransitionPage<void> _fade(GoRouterState s, Widget child) =>
+/// Pushed screens: shared-axis ("forward") transition.
+CustomTransitionPage<void> _page(GoRouterState s, Widget child) =>
     CustomTransitionPage(
       key: s.pageKey,
       child: child,
-      transitionDuration: const Duration(milliseconds: 280),
-      transitionsBuilder: (_, a, _, c) => FadeTransition(
-        opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
-        child: SlideTransition(
-          position: Tween(
-            begin: const Offset(0.04, 0),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
-          child: c,
-        ),
-      ),
+      transitionDuration: AppMotion.page,
+      reverseTransitionDuration: const Duration(milliseconds: 280),
+      transitionsBuilder: sharedAxisTransition,
+    );
+
+/// Places you arrive at rather than go "forward" to (sign-in, the app).
+CustomTransitionPage<void> _arrive(GoRouterState s, Widget child) =>
+    CustomTransitionPage(
+      key: s.pageKey,
+      child: child,
+      transitionDuration: const Duration(milliseconds: 420),
+      reverseTransitionDuration: const Duration(milliseconds: 240),
+      transitionsBuilder: fadeThroughTransition,
     );
 
 /// The router is created once. Session changes re-run [GoRouter.redirect] via
@@ -88,48 +92,50 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
       GoRoute(
         path: '/login',
-        pageBuilder: (_, s) => _fade(s, const LoginScreen()),
+        pageBuilder: (_, s) => _arrive(s, const LoginScreen()),
       ),
 
       // ---------------- Onboarding
       GoRoute(
         path: '/onboarding',
-        pageBuilder: (_, s) => _fade(s, const WelcomeScreen()),
+        pageBuilder: (_, s) => _arrive(s, const WelcomeScreen()),
         routes: [
           GoRoute(
             path: 'business-type',
-            pageBuilder: (_, s) => _fade(s, const BusinessTypeScreen()),
+            pageBuilder: (_, s) => _page(s, const BusinessTypeScreen()),
           ),
           GoRoute(
             path: 'skills',
-            pageBuilder: (_, s) => _fade(s, const EmployeeSkillsScreen()),
+            pageBuilder: (_, s) => _page(s, const EmployeeSkillsScreen()),
           ),
           GoRoute(
             path: 'details',
-            pageBuilder: (_, s) => _fade(s, const BusinessDetailsScreen()),
+            pageBuilder: (_, s) => _page(s, const BusinessDetailsScreen()),
           ),
           GoRoute(
             path: 'offer',
-            pageBuilder: (_, s) => _fade(s, const OfferDetailsScreen()),
+            pageBuilder: (_, s) => _page(s, const OfferDetailsScreen()),
           ),
           GoRoute(
             path: 'teach',
-            pageBuilder: (_, s) => _fade(s, const TeachAiOnboardingScreen()),
+            pageBuilder: (_, s) => _page(s, const TeachAiOnboardingScreen()),
           ),
           GoRoute(
             path: 'create',
-            pageBuilder: (_, s) => _fade(s, const CreateAgentScreen()),
+            pageBuilder: (_, s) => _page(s, const CreateAgentScreen()),
           ),
           GoRoute(
             path: 'test',
-            pageBuilder: (_, s) => _fade(s, const FirstCallScreen()),
+            pageBuilder: (_, s) => _page(s, const FirstCallScreen()),
           ),
         ],
       ),
 
       // ---------------- Main app: exactly 5 tabs
-      StatefulShellRoute.indexedStack(
-        builder: (_, _, shell) => AppShell(shell: shell),
+      StatefulShellRoute(
+        pageBuilder: (_, s, shell) => _arrive(s, AppShell(shell: shell)),
+        navigatorContainerBuilder: (_, shell, children) =>
+            FadeThroughBranches(index: shell.currentIndex, children: children),
         branches: [
           StatefulShellBranch(
             routes: [
@@ -174,18 +180,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/leads/import',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, const ImportLeadsScreen()),
+        pageBuilder: (_, s) => _page(s, const ImportLeadsScreen()),
       ),
       GoRoute(
         path: '/leads/:id',
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (_, s) =>
-            _fade(s, LeadDetailScreen(leadId: s.pathParameters['id']!)),
+            _page(s, LeadDetailScreen(leadId: s.pathParameters['id']!)),
       ),
       GoRoute(
         path: '/calls/:id',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(
+        pageBuilder: (_, s) => _page(
           s,
           CallResultScreen(callId: s.pathParameters['id']!, detailOnly: true),
         ),
@@ -194,7 +200,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'result',
             parentNavigatorKey: rootNavigatorKey,
             pageBuilder: (_, s) =>
-                _fade(s, CallResultScreen(callId: s.pathParameters['id']!)),
+                _page(s, CallResultScreen(callId: s.pathParameters['id']!)),
           ),
         ],
       ),
@@ -202,17 +208,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/followups/:id',
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (_, s) =>
-            _fade(s, FollowUpDetailScreen(followUpId: s.pathParameters['id']!)),
+            _page(s, FollowUpDetailScreen(followUpId: s.pathParameters['id']!)),
       ),
       GoRoute(
         path: '/campaign/new',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, const CampaignSetupScreen()),
+        pageBuilder: (_, s) => _page(s, const CampaignSetupScreen()),
       ),
       GoRoute(
         path: '/campaigns/:id',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(
+        pageBuilder: (_, s) => _page(
           s,
           CampaignProgressScreen(campaignId: s.pathParameters['id']!),
         ),
@@ -220,17 +226,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/agent/edit',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, const EditAgentScreen()),
+        pageBuilder: (_, s) => _page(s, const EditAgentScreen()),
       ),
       GoRoute(
         path: '/agent/teach',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, const TeachAiScreen()),
+        pageBuilder: (_, s) => _page(s, const TeachAiScreen()),
       ),
       GoRoute(
         path: '/voice-test',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(
+        pageBuilder: (_, s) => _page(
           s,
           VoiceTestScreen(
             fromOnboarding: s.uri.queryParameters['from'] == 'onboarding',
@@ -240,22 +246,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/callbacks',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, const CallbacksScreen()),
+        pageBuilder: (_, s) => _page(s, const CallbacksScreen()),
       ),
       GoRoute(
         path: '/notifications',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, const NotificationsScreen()),
+        pageBuilder: (_, s) => _page(s, const NotificationsScreen()),
       ),
       GoRoute(
         path: '/usage',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, const UsageScreen()),
+        pageBuilder: (_, s) => _page(s, const UsageScreen()),
       ),
       GoRoute(
         path: '/demo',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _fade(s, const DemoScreen()),
+        pageBuilder: (_, s) => _page(s, const DemoScreen()),
       ),
     ],
   );

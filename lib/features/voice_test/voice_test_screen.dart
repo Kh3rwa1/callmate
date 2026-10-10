@@ -1,15 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/mascot.dart';
+import '../../l10n/l10n.dart';
 import '../../services/voice/voice_agent_service.dart';
 import '../calls/transcript_view.dart';
 import 'voice_test_composer.dart';
@@ -48,9 +49,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
       _voice.getConnectionState().listen((s) {
         if (!mounted) return;
         setState(() => _state = s);
-        if (s == VoiceConnectionState.disconnected) {
-          HapticFeedback.lightImpact();
-        }
+        if (s == VoiceConnectionState.disconnected) Haptics.press();
       }),
     );
     _subs.add(
@@ -73,6 +72,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
   }
 
   Future<void> _start() async {
+    final strings = context.s;
     setState(() {
       _error = null;
       _permissionDenied = false;
@@ -102,8 +102,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error =
-              "${ref.read(employeeNameProvider)} couldn't connect. ($e). Check your connection and try again.";
+          _error = strings.couldntConnectName(ref.read(employeeNameProvider));
           _state = VoiceConnectionState.error;
         });
       }
@@ -123,7 +122,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
   }
 
   Future<void> _end() async {
-    HapticFeedback.mediumImpact();
+    Haptics.success();
     await _voice.stopSession();
   }
 
@@ -144,12 +143,12 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
     final text = (overrideText ?? _inputController.text).trim();
     if (text.isEmpty) return;
     _inputController.clear();
-    HapticFeedback.lightImpact();
+    Haptics.press();
     _voice.sendText(text);
   }
 
   void _toggleMute() {
-    HapticFeedback.selectionClick();
+    Haptics.tap();
     setState(() => _muted = !_muted);
     _voice.setMuted(_muted);
   }
@@ -174,25 +173,47 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final name = ref.watch(employeeNameProvider);
-    final (label, color) = voiceStatusFor(_state, muted: _muted);
+    final (label, color) = voiceStatusFor(_state, muted: _muted, s: s);
     final ended = _state == VoiceConnectionState.disconnected;
+    // With the keyboard up there is no room for the big mascot: it folds
+    // away so the transcript and composer never overflow.
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final mascotSize = MediaQuery.sizeOf(context).height < 700 ? 96.0 : 124.0;
 
     return PopScope(
       onPopInvokedWithResult: (_, _) => _voice.stopSession(),
       child: Scaffold(
-        appBar: AppBar(title: Text('Talk to $name')),
+        appBar: AppBar(title: Text(s.talkTo(name))),
         body: SafeArea(
           child: Column(
             children: [
-              Mascot(
-                state: mascotForVoiceState(_state),
-                size: MediaQuery.sizeOf(context).height < 700 ? 96 : 124,
+              AnimatedSize(
+                duration: AppMotion.of(context, AppMotion.base),
+                curve: AppMotion.standard,
+                child: keyboard
+                    ? const SizedBox(width: double.infinity)
+                    : Column(
+                        children: [
+                          Mascot(
+                            state: mascotForVoiceState(_state),
+                            size: mascotSize,
+                          ),
+                          const SizedBox(height: 6),
+                        ],
+                      ),
               ),
-              const SizedBox(height: 6),
               Semantics(
                 liveRegion: true,
-                child: StatusDot(label: label, color: color, pulse: _live),
+                child: SwapFade(
+                  child: StatusDot(
+                    key: ValueKey(label),
+                    label: label,
+                    color: color,
+                    pulse: _live,
+                  ),
+                ),
               ),
               const SizedBox(height: 4),
               SizedBox(
@@ -228,7 +249,14 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
                   AppSpace.page,
                   12,
                 ),
-                child: ended ? _buildEndedActions() : _buildLiveControls(name),
+                child: SwapFade(
+                  child: KeyedSubtree(
+                    key: ValueKey(ended),
+                    child: ended
+                        ? _buildEndedActions()
+                        : _buildLiveControls(name),
+                  ),
+                ),
               ),
             ],
           ),
@@ -247,45 +275,76 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
         onContinue: _finish,
       );
     }
+    final s = context.s;
     if (_lines.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(
-            _state == VoiceConnectionState.connecting
-                ? 'Connecting to $name…'
-                : 'Say “Hello”',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.inkFaint),
-            textAlign: TextAlign.center,
+          child: SwapFade(
+            child: Text(
+              _state == VoiceConnectionState.connecting
+                  ? s.connectingTo(name)
+                  : s.sayHello,
+              key: ValueKey(_state == VoiceConnectionState.connecting),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.inkFaint),
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       );
     }
+    final thinking = _state == VoiceConnectionState.thinking;
     return ListView(
       controller: _scroll,
       padding: const EdgeInsets.all(14),
       children: [
-        for (final l in _lines)
+        for (final (i, l) in _lines.indexed)
           TranscriptBubble(
+            key: ValueKey('line-$i-${l.isAgent}'),
             isAgent: l.isAgent,
             text: l.text,
-            who: l.isAgent ? name : 'You',
+            who: l.isAgent ? name : s.you,
             pending: !l.isFinal,
+            animate: true,
           ),
+        AnimatedSize(
+          duration: AppMotion.of(context, AppMotion.base),
+          alignment: Alignment.topLeft,
+          child: thinking
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(34, 6, 0, 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.brandSoft,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: TypingDots(color: AppColors.brand, size: 6),
+                    ),
+                  ),
+                )
+              : const SizedBox(width: double.infinity),
+        ),
       ],
     );
   }
 
   Widget _buildEndedActions() {
+    final s = context.s;
     return Column(
       children: [
         Row(
           children: [
             Expanded(
               child: SecondaryButton(
-                label: 'Talk again',
+                label: s.talkAgain,
                 icon: Icons.replay_rounded,
                 onPressed: _start,
               ),
@@ -293,7 +352,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
             const SizedBox(width: 10),
             Expanded(
               child: PrimaryButton(
-                label: widget.fromOnboarding ? 'Continue' : 'Done',
+                label: widget.fromOnboarding ? s.continueLabel : s.done,
                 onPressed: () => _finish(requestNotifications: true),
               ),
             ),
@@ -304,37 +363,46 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
   }
 
   Widget _buildLiveControls(String name) {
+    final s = context.s;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (_live) ...[
-          VoiceTestComposer(
-            controller: _inputController,
-            employeeName: name,
-            onSend: _sendUserInput,
-          ),
-          const SizedBox(height: 16),
-        ],
+        AnimatedSize(
+          duration: AppMotion.of(context, AppMotion.base),
+          curve: AppMotion.standard,
+          child: _live
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: VoiceTestComposer(
+                    controller: _inputController,
+                    employeeName: name,
+                    onSend: _sendUserInput,
+                  ),
+                )
+              : const SizedBox(width: double.infinity),
+        ),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             VoiceRoundControl(
               icon: _muted ? Icons.mic_off_rounded : Icons.mic_rounded,
-              label: _muted ? 'Unmute' : 'Mute',
-              background: _muted ? AppColors.ink : Colors.white,
-              foreground: _muted ? Colors.white : AppColors.ink,
+              label: _muted ? s.unmute : s.mute,
+              background: _muted ? AppColors.inverse : AppColors.surface,
+              foreground: _muted ? AppColors.onInverse : AppColors.ink,
+              bordered: !_muted,
               onTap: _live ? _toggleMute : null,
             ),
             const SizedBox(width: 36),
             VoiceRoundControl(
               icon: Icons.call_end_rounded,
-              label: 'End',
-              background: AppColors.hot,
+              label: s.end,
+              background: AppColors.hotFill,
               foreground: Colors.white,
               size: 76,
-              onTap: _live
-                  ? _end
-                  : (_error != null ? () => context.pop() : null),
+              // Always available: ends a live call, or leaves when there is
+              // nothing to end (failed or not started yet).
+              onTap: _live ? _end : () => context.pop(),
             ),
           ],
         ),

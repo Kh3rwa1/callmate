@@ -247,14 +247,12 @@ void main() {
 
       await h.tap(find.byTooltip('AI Call'));
       expect(find.text('Call Rahul Kumar'), findsOneWidget);
-      await h.tapText('AI Call with ${h.backend.agent.name} (Sarvam AI)');
+      await h.tapText('AI call by ${h.backend.agent.name}');
 
       expect(h.backend.calls.length, before + 1);
       expect(h.backend.calls.last.leadId, rahul.id);
-      expect(find.text('Calling Rahul Kumar…'), findsOneWidget);
-      // The confirmation is queued behind the first snackbar.
-      await h.tester.pump(const Duration(seconds: 5));
-      await h.settle();
+      // "Calling…" is replaced by the confirmation once the call is placed.
+      expect(find.text('Calling Rahul Kumar…'), findsNothing);
       expect(
         find.text('${h.backend.agent.name} is calling Rahul Kumar'),
         findsOneWidget,

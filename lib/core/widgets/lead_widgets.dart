@@ -1,46 +1,36 @@
 import 'package:flutter/material.dart';
 
 import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
+import '../motion/motion.dart';
 import '../theme/app_colors.dart';
 
+/// Colours and icon for a lead temperature (labels come from [SCommon]).
 class TempStyle {
-  const TempStyle(this.fg, this.bg, this.emoji, this.label, this.icon);
+  const TempStyle(this.fg, this.bg, this.icon);
   final Color fg;
   final Color bg;
-  final String emoji;
-  final String label;
   final IconData icon;
 
-  /// "Hot" rather than "HOT" for display.
-  String get word => label[0] + label.substring(1).toLowerCase();
-
   static TempStyle of(LeadTemperature t) => switch (t) {
-    LeadTemperature.hot => const TempStyle(
+    LeadTemperature.hot => TempStyle(
       AppColors.hot,
       AppColors.hotSoft,
-      '🔥',
-      'HOT',
       Icons.local_fire_department_rounded,
     ),
-    LeadTemperature.warm => const TempStyle(
+    LeadTemperature.warm => TempStyle(
       AppColors.warmInk,
       AppColors.warmSoft,
-      '☀️',
-      'WARM',
       Icons.wb_sunny_rounded,
     ),
-    LeadTemperature.cold => const TempStyle(
+    LeadTemperature.cold => TempStyle(
       AppColors.cold,
       AppColors.coldSoft,
-      '❄️',
-      'COLD',
       Icons.ac_unit_rounded,
     ),
-    LeadTemperature.unknown => const TempStyle(
+    LeadTemperature.unknown => TempStyle(
       AppColors.inkFaint,
       AppColors.surfaceMuted,
-      '•',
-      'NEW',
       Icons.fiber_new_rounded,
     ),
   };
@@ -54,38 +44,46 @@ class ScoreBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = score?.temperature ?? LeadTemperature.unknown;
-    final s = TempStyle.of(t);
+    final style = TempStyle.of(t);
     final text = score == null
-        ? 'Not called yet'
-        : '${score!.value} · ${s.word}';
+        ? s.notScoredYet
+        : '${score!.value} · ${s.temperature(t)}';
     return Semantics(
       label: score == null
-          ? 'Not scored yet'
-          : 'Lead score ${score!.value}, ${s.label.toLowerCase()}',
+          ? s.notScoredYet
+          : s.pick(
+              'Lead score ${score!.value}, ${s.temperature(t).toLowerCase()}',
+              'लीड स्कोर ${score!.value}, ${s.temperature(t)}',
+              'লিড স্কোর ${score!.value}, ${s.temperature(t)}',
+            ),
       child: ExcludeSemantics(
-        child: Container(
+        child: AnimatedContainer(
+          duration: AppMotion.of(context, AppMotion.base),
           padding: EdgeInsets.symmetric(
             horizontal: large ? 14 : 10,
             vertical: large ? 8 : 5,
           ),
           decoration: BoxDecoration(
-            color: s.bg,
+            color: style.bg,
             borderRadius: BorderRadius.circular(99),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (score != null)
-                Icon(s.icon, size: large ? 17 : 14, color: s.fg),
-              if (score != null) const SizedBox(width: 4),
+              if (score != null) ...[
+                Icon(style.icon, size: large ? 17 : 14, color: style.fg),
+                const SizedBox(width: 4),
+              ],
               Text(
                 text,
                 style: TextStyle(
-                  color: s.fg,
+                  color: style.fg,
                   fontWeight: FontWeight.w800,
                   fontSize: large ? 15 : 12.5,
                   letterSpacing: 0.1,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ],
@@ -96,7 +94,8 @@ class ScoreBadge extends StatelessWidget {
   }
 }
 
-/// Animated circular score gauge for the post-call screen.
+/// Animated circular score gauge for the post-call screen: the arc sweeps
+/// while the number counts up, then the ring gives a small settle pulse.
 class ScoreRing extends StatelessWidget {
   const ScoreRing({super.key, required this.score, this.size = 132});
   final LeadScore score;
@@ -104,43 +103,66 @@ class ScoreRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = TempStyle.of(score.temperature);
+    final style = TempStyle.of(score.temperature);
+    final s = context.s;
     return Semantics(
-      label: 'Lead score ${score.value} out of 100',
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: score.value / 100),
-        duration: const Duration(milliseconds: 1100),
-        curve: Curves.easeOutCubic,
-        builder: (context, v, _) => SizedBox(
-          width: size,
-          height: size,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox.expand(
-                child: CircularProgressIndicator(
-                  value: v,
-                  strokeWidth: 11,
-                  strokeCap: StrokeCap.round,
-                  backgroundColor: s.bg,
-                  color: s.fg,
-                ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
+      label: s.pick(
+        'Lead score ${score.value} out of 100',
+        'लीड स्कोर 100 में से ${score.value}',
+        'লিড স্কোর 100-এর মধ্যে ${score.value}',
+      ),
+      child: ExcludeSemantics(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: score.value / 100),
+          duration: AppMotion.of(context, const Duration(milliseconds: 1200)),
+          curve: Curves.easeOutCubic,
+          builder: (context, v, _) {
+            final done = v >= score.value / 100 - 0.001;
+            return SizedBox(
+              width: size,
+              height: size,
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  Icon(s.icon, size: 22, color: s.fg),
-                  Text(
-                    '${(v * 100).round()}',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.displaySmall?.copyWith(fontSize: 36, height: 1),
+                  SizedBox.expand(
+                    child: CircularProgressIndicator(
+                      value: v,
+                      strokeWidth: 11,
+                      strokeCap: StrokeCap.round,
+                      backgroundColor: style.bg,
+                      color: style.fg,
+                    ),
                   ),
-                  Text('/ 100', style: Theme.of(context).textTheme.bodySmall),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedScale(
+                        scale: done ? 1 : 0.8,
+                        duration: AppMotion.of(context, AppMotion.slow),
+                        curve: AppMotion.pop,
+                        child: Icon(style.icon, size: 22, color: style.fg),
+                      ),
+                      Text(
+                        '${(v * 100).round()}',
+                        style: Theme.of(context).textTheme.displaySmall
+                            ?.copyWith(
+                              fontSize: 36,
+                              height: 1,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                      ),
+                      Text(
+                        '/ 100',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -162,21 +184,26 @@ class LeadAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final parts = name.trim().split(RegExp(r'\s+'));
+    final first = parts.first.characters;
+    final last = parts.length > 1 ? parts.last.characters : null;
     final initials =
-        (parts.first.isNotEmpty ? parts.first[0] : '?') +
-        (parts.length > 1 && parts.last.isNotEmpty ? parts.last[0] : '');
-    final s = TempStyle.of(temperature);
+        (first.isNotEmpty ? first.first : '?') +
+        (last != null && last.isNotEmpty ? last.first : '');
+    final style = TempStyle.of(temperature);
     return ExcludeSemantics(
-      child: Container(
+      child: AnimatedContainer(
+        duration: AppMotion.of(context, AppMotion.base),
         width: size,
         height: size,
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: s.bg, shape: BoxShape.circle),
+        decoration: BoxDecoration(color: style.bg, shape: BoxShape.circle),
         child: Text(
           initials.toUpperCase(),
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: s.fg == AppColors.inkFaint ? AppColors.inkSoft : s.fg,
+            color: temperature == LeadTemperature.unknown
+                ? AppColors.inkSoft
+                : style.fg,
             fontSize: size * 0.34,
           ),
         ),

@@ -1,8 +1,11 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -10,11 +13,25 @@ import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/lead_widgets.dart';
 import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
 import '../followups/whatsapp_handoff.dart';
 
-/// One lead row: avatar, name, one meta line, score, and two quiet quick
-/// actions. Rows stack into a single grouped list ([first] / [last] round the
-/// outer corners and [last] drops the divider).
+/// "NEET · Evening" / "3 BHK · Site visit": interest plus the first
+/// attribute, in the UI language where the value is a known option.
+String leadInterestLine(S s, Lead l) {
+  final first = l.attributes.entries
+      .where((e) => e.key != 'budget')
+      .map((e) => e.value)
+      .firstOrNull;
+  final parts = [
+    if (l.interest != null && l.interest!.isNotEmpty) s.data(l.interest!),
+    if (first != null && first.isNotEmpty) first,
+  ];
+  return parts.isEmpty ? s.interestUnknown : parts.join(' · ');
+}
+
+/// One lead row: avatar, name, one meta line, score, and two quick actions. Rows stack into a single grouped list ([first] / [last]
+/// round the outer corners and [last] drops the divider).
 class LeadCard extends ConsumerWidget {
   const LeadCard({
     super.key,
@@ -28,6 +45,7 @@ class LeadCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final l = lead;
     const r = Radius.circular(AppRadius.card);
@@ -35,12 +53,12 @@ class LeadCard extends ConsumerWidget {
       top: first ? r : Radius.zero,
       bottom: last ? r : Radius.zero,
     );
-    final meta = l.interestLine;
+    final meta = leadInterestLine(s, l);
     return RepaintBoundary(
       child: Semantics(
         button: true,
         label:
-            '${l.name}. ${l.score == null ? l.status.label : 'Score ${l.score!.value}, ${l.temperature.label}'}',
+            '${l.name}. ${l.score == null ? s.leadStatus(l.status) : '${l.score!.value}, ${s.temperature(l.temperature)}'}',
         child: Material(
           color: AppColors.surface,
           borderRadius: radius,
@@ -52,7 +70,7 @@ class LeadCard extends ConsumerWidget {
               decoration: BoxDecoration(
                 border: last
                     ? null
-                    : const Border(
+                    : Border(
                         bottom: BorderSide(color: AppColors.border, width: 0.8),
                       ),
               ),
@@ -77,17 +95,15 @@ class LeadCard extends ConsumerWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (meta.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            meta,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: t.bodySmall?.copyWith(
-                              color: AppColors.inkSoft,
-                            ),
+                        const SizedBox(height: 2),
+                        Text(
+                          meta,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall?.copyWith(
+                            color: AppColors.inkSoft,
                           ),
-                        ],
+                        ),
                       ],
                     ),
                   ),
@@ -95,20 +111,23 @@ class LeadCard extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      _Status(lead: l),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: _Status(lead: l),
+                      ),
                       const SizedBox(height: 2),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _QuickAction(
                             icon: Icons.chat_outlined,
-                            tooltip: 'WhatsApp',
+                            tooltip: s.whatsapp,
                             color: AppColors.whatsapp,
                             onTap: () => _whatsapp(context, ref),
                           ),
                           _QuickAction(
                             icon: Icons.call_outlined,
-                            tooltip: 'Call',
+                            tooltip: s.call,
                             color: AppColors.inkSoft,
                             onTap: () => _call(context),
                           ),
@@ -126,12 +145,17 @@ class LeadCard extends ConsumerWidget {
   }
 
   Future<void> _whatsapp(BuildContext context, WidgetRef ref) async {
-    final fu = (await ref.read(followUpRepoProvider).list())
-        .where((f) => f.leadId == lead.id)
-        .firstOrNull;
+    final s = context.s;
+    List<FollowUp> fus;
+    try {
+      fus = await ref.read(followUpsProvider.future);
+    } catch (_) {
+      fus = const [];
+    }
+    final fu = fus.where((f) => f.leadId == lead.id).firstOrNull;
     if (!context.mounted) return;
     if (fu != null && fu.isPending) {
-      context.push('/followups/${fu.id}');
+      unawaited(context.push('/followups/${fu.id}'));
       return;
     }
     // Wait for the business if it hasn't loaded yet (e.g. after a deep link
@@ -147,18 +171,20 @@ class LeadCard extends ConsumerWidget {
       context,
       ref,
       phone: lead.phone,
-      message: fu?.message ?? 'Hi ${lead.firstName} 👋\n\nThis is $biz. ',
+      message: fu?.message ?? s.waGreeting(lead.firstName, biz),
       followUp: fu,
     );
   }
 
   Future<void> _call(BuildContext context) async {
+    final s = context.s;
+    final messenger = ScaffoldMessenger.of(context);
     final digits = PhoneUtils.normalize(lead.phone);
     if (digits == null) return;
     final ok = await launchUrl(Uri.parse('tel:+$digits'));
-    if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Call ${PhoneUtils.display(lead.phone)}')),
+    if (!ok) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(s.callNumber(PhoneUtils.display(lead.phone)))),
       );
     }
   }
@@ -170,17 +196,45 @@ class _Status extends StatelessWidget {
   final Lead lead;
 
   @override
-  Widget build(BuildContext context) => switch (lead.status) {
-    LeadStatus.calling => const Pill(
-      label: 'On call',
-      color: AppColors.success,
-      dense: true,
-    ),
-    LeadStatus.queued => const Pill(label: 'Queued', dense: true),
-    LeadStatus.noAnswer => const Pill(label: 'No answer', dense: true),
-    _ when lead.score == null => Pill(label: lead.status.label, dense: true),
-    _ => ScoreBadge(score: lead.score),
-  };
+  Widget build(BuildContext context) {
+    final s = context.s;
+    final Widget child = switch (lead.status) {
+      LeadStatus.calling => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.8,
+              color: AppColors.success,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            s.onCall,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: AppColors.success,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+      LeadStatus.queued => Pill(label: s.queued, dense: true),
+      LeadStatus.noAnswer => Pill(label: s.noAnswer, dense: true),
+      _ when lead.score == null => Pill(
+        label: s.leadStatus(lead.status),
+        dense: true,
+      ),
+      _ => ScoreBadge(score: lead.score),
+    };
+    return SwapFade(
+      child: KeyedSubtree(
+        key: ValueKey('${lead.status}-${lead.score?.value}'),
+        child: child,
+      ),
+    );
+  }
 }
 
 class _QuickAction extends StatelessWidget {
@@ -198,10 +252,13 @@ class _QuickAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) => IconButton(
     tooltip: tooltip,
-    onPressed: onTap,
-    iconSize: 20,
+    onPressed: () {
+      Haptics.tap();
+      onTap();
+    },
+    iconSize: 21,
     color: color,
-    constraints: const BoxConstraints.tightFor(width: 40, height: 36),
+    constraints: const BoxConstraints.tightFor(width: 42, height: 40),
     padding: EdgeInsets.zero,
     icon: Icon(icon),
   );

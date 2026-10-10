@@ -199,7 +199,8 @@ void main() {
         await h.go('/voice-test?from=onboarding');
         await h.settle(4);
         expect(find.textContaining('couldn\'t connect'), findsOneWidget);
-        expect(find.textContaining('socket closed'), findsOneWidget);
+        // The raw transport error never reaches the owner.
+        expect(find.textContaining('socket closed'), findsNothing);
 
         await h.tapText('Continue to dashboard');
         expect(h.prefs.onboarded, isTrue);

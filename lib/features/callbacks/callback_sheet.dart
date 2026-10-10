@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
 
 /// Quick callback scheduler with smart presets (AI suggestion first).
 Future<Callback?> showCallbackSheet(
@@ -38,11 +38,22 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
   late DateTime _at;
   bool _busy = false;
   String? _error;
-  late final List<(String, DateTime)> _presets;
+  late final List<(String, DateTime, bool)> _presets;
+  bool _seeded = false;
 
   @override
   void initState() {
     super.initState();
+    final n = DateTime.now();
+    _at = widget.suggested != null && widget.suggested!.isAfter(n)
+        ? widget.suggested!
+        : DateTime(n.year, n.month, n.day + 1, 11);
+  }
+
+  /// Presets need the UI language, so they're built on first build.
+  void _seed(S s) {
+    if (_seeded) return;
+    _seeded = true;
     final n = DateTime.now();
     final tomorrow = DateTime(n.year, n.month, n.day + 1);
     final suggested = widget.suggested != null && widget.suggested!.isAfter(n)
@@ -50,12 +61,13 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
         : null;
     _presets = [
       if (suggested != null)
-        ('Suggested by ${ref.read(employeeNameProvider)}', suggested),
+        (s.suggestedBy(ref.read(employeeNameProvider)), suggested, true),
       // Fixed slots, minus the one that equals the suggestion.
       for (final p in [
-        if (n.hour < 17) ('Today, 6 PM', DateTime(n.year, n.month, n.day, 18)),
-        ('Tomorrow, 11 AM', tomorrow.add(const Duration(hours: 11))),
-        ('Tomorrow, 6 PM', tomorrow.add(const Duration(hours: 18))),
+        if (n.hour < 17)
+          (s.todaySixPm, DateTime(n.year, n.month, n.day, 18), false),
+        (s.tomorrowElevenAm, tomorrow.add(const Duration(hours: 11)), false),
+        (s.tomorrowSixPm, tomorrow.add(const Duration(hours: 18)), false),
       ])
         if (p.$2 != suggested) p,
     ];
@@ -79,6 +91,7 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
   }
 
   Future<void> _save() async {
+    final s = context.s;
     setState(() {
       _busy = true;
       _error = null;
@@ -87,25 +100,29 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
       final cb = await ref
           .read(callbackRepoProvider)
           .schedule(leadId: widget.lead.id, at: _at);
-      HapticFeedback.mediumImpact();
+      Haptics.success();
       if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context, cb);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Callback set for ${Fmt.friendlyFuture(_at)}')),
+      messenger.showSnackBar(
+        SnackBar(content: Text(s.callbackSetFor(s.friendlyFuture(_at)))),
       );
     } catch (e) {
       if (!mounted) return;
       // A snackbar would sit behind this sheet; show the error in it.
       setState(() {
         _busy = false;
-        _error = friendlyError(e);
+        _error = friendlyError(e, s);
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
+    _seed(s);
     final t = Theme.of(context).textTheme;
+    final custom = !_presets.any((p) => p.$2 == _at);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 16),
@@ -113,44 +130,55 @@ class _CallbackSheetState extends ConsumerState<_CallbackSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Schedule callback', style: t.headlineSmall),
+            Text(s.scheduleCallbackTitle, style: t.headlineSmall),
             const SizedBox(height: 2),
             Text(widget.lead.name, style: t.bodyMedium),
             const SizedBox(height: 18),
-            for (final (label, at) in _presets)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _Option(
-                  label: label,
-                  sub: label.startsWith('Suggested')
-                      ? Fmt.friendlyFuture(at)
-                      : null,
-                  selected: _at == at,
-                  highlight: label.startsWith('Suggested'),
-                  onTap: () => setState(() => _at = at),
+            for (final (i, (label, at, highlight)) in _presets.indexed)
+              Reveal(
+                index: i,
+                offset: 8,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _Option(
+                    label: label,
+                    sub: highlight ? s.friendlyFuture(at) : null,
+                    selected: _at == at,
+                    highlight: highlight,
+                    onTap: () {
+                      Haptics.tap();
+                      setState(() => _at = at);
+                    },
+                  ),
                 ),
               ),
-            _Option(
-              label: 'Pick date & time',
-              sub: _presets.any((p) => p.$2 == _at)
-                  ? 'Choose any slot'
-                  : Fmt.friendlyFuture(_at),
-              selected: !_presets.any((p) => p.$2 == _at),
-              onTap: _custom,
-              icon: Icons.edit_calendar_outlined,
+            Reveal(
+              index: _presets.length,
+              offset: 8,
+              child: _Option(
+                label: s.pickDateTime,
+                sub: custom ? s.friendlyFuture(_at) : s.chooseAnySlot,
+                selected: custom,
+                onTap: _custom,
+                icon: Icons.edit_calendar_outlined,
+              ),
             ),
             const SizedBox(height: 18),
-            if (_error != null) ...[
-              Text(
-                _error!,
-                style: t.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
+            AnimatedSize(
+              duration: AppMotion.of(context, AppMotion.base),
+              alignment: Alignment.topCenter,
+              child: _error == null
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        _error!,
+                        style: t.bodyMedium?.copyWith(color: AppColors.hot),
+                      ),
+                    ),
+            ),
             PrimaryButton(
-              label: 'Schedule Callback',
+              label: s.scheduleCallback,
               icon: Icons.event_available_rounded,
               loading: _busy,
               onPressed: _save,
@@ -188,10 +216,10 @@ class _Option extends StatelessWidget {
         shadow: false,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: Border.all(
-          color: selected ? AppColors.ink : AppColors.border,
+          color: selected ? AppColors.brand : AppColors.border,
           width: selected ? 1.6 : 1.2,
         ),
-        color: Colors.white,
+        color: selected ? AppColors.brandSoft : AppColors.surface,
         child: Row(
           children: [
             Icon(
@@ -200,7 +228,9 @@ class _Option extends StatelessWidget {
                       ? Icons.auto_awesome_rounded
                       : Icons.schedule_outlined),
               size: 21,
-              color: selected ? AppColors.ink : AppColors.inkFaint,
+              color: selected
+                  ? AppColors.brand
+                  : (highlight ? AppColors.brand : AppColors.inkFaint),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -212,8 +242,16 @@ class _Option extends StatelessWidget {
                 ],
               ),
             ),
-            if (selected)
-              const Icon(Icons.check_rounded, color: AppColors.ink, size: 20),
+            PopSwitcher(
+              child: selected
+                  ? Icon(
+                      Icons.check_circle_rounded,
+                      key: const ValueKey('on'),
+                      color: AppColors.brand,
+                      size: 22,
+                    )
+                  : const SizedBox(key: ValueKey('off'), width: 22),
+            ),
           ],
         ),
       ),

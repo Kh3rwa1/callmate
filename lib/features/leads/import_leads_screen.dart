@@ -1,19 +1,20 @@
 import 'dart:convert';
 
-import '../../core/utils/file_pick.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/csv.dart';
+import '../../core/utils/file_pick.dart';
 import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
 
 class ImportLeadsScreen extends ConsumerStatefulWidget {
   const ImportLeadsScreen({super.key});
@@ -41,7 +42,15 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
     ..clearSnackBars()
     ..showSnackBar(SnackBar(content: Text(m)));
 
+  /// CSV parser messages are English; show them in the UI language.
+  String _csvError(S s, String e) {
+    if (e == 'The file is empty.') return s.csvEmpty;
+    final m = RegExp(r'^Row (\d+): invalid phone number$').firstMatch(e);
+    return m == null ? e : s.csvRowInvalid(m.group(1)!);
+  }
+
   Future<void> _addOne() async {
+    final s = context.s;
     if (!_form.currentState!.validate()) return;
     setState(() => _busy = true);
     try {
@@ -56,15 +65,19 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
           );
       _name.clear();
       _phone.clear();
-      _snack('Lead added ✓');
+      Haptics.success();
+      if (!mounted) return;
+      setState(() => _interest = null);
+      _snack(s.leadAdded);
     } catch (e) {
-      _snack(friendlyError(e));
+      if (mounted) _snack(friendlyError(e, s));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _pickCsv() async {
+    final s = context.s;
     try {
       final f = await pickSingleFile(
         extensions: ['csv', 'txt'],
@@ -77,9 +90,9 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
         _fileName = f.name;
       });
     } on FileTooLargeException {
-      _snack('That file is over 2 MB. Split it and try again.');
+      _snack(s.csvTooLarge);
     } catch (_) {
-      _snack('Couldn\'t read that file. Make sure it\'s a CSV.');
+      _snack(s.csvUnreadable);
     }
   }
 
@@ -92,6 +105,7 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
         'Faizan Ali,8013344556,Pricing,Instagram\n'
         'Broken Row,12345,Pricing,Website form\n'
         'Tania Roy,7003322110,Product enquiry,Google Ads\n';
+    Haptics.tap();
     setState(() {
       _preview = CsvLeadParser.toLeads(sample);
       _fileName = 'sample_leads.csv';
@@ -99,6 +113,7 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
   }
 
   Future<void> _import() async {
+    final s = context.s;
     final p = _preview;
     if (p == null || p.leads.isEmpty) return;
     setState(() => _busy = true);
@@ -114,6 +129,7 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
         useSafeArea: true,
         builder: (ctx) {
           final t = Theme.of(ctx).textTheme;
+          final skipped = r.skipped + p.skipped;
           return SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -125,20 +141,25 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Mascot(state: MascotState.success, size: 96),
-                  const SizedBox(height: 10),
-                  Text('${r.imported} leads imported', style: t.headlineSmall),
-                  if (r.skipped + p.skipped > 0)
+                  const SizedBox(height: 4),
+                  SuccessCheck(size: 76, color: AppColors.success),
+                  const SizedBox(height: 16),
+                  Reveal(
+                    index: 3,
+                    child: Text(
+                      s.nImported(r.imported),
+                      style: t.headlineSmall,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  if (skipped > 0)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        '${r.skipped + p.skipped} skipped',
-                        style: t.bodyMedium,
-                      ),
+                      child: Text(s.nSkipped(skipped), style: t.bodyMedium),
                     ),
                   const SizedBox(height: 20),
                   PrimaryButton(
-                    label: 'Call them now',
+                    label: s.callThemNow,
                     icon: Icons.phone_forwarded_rounded,
                     onPressed: () {
                       Navigator.pop(ctx);
@@ -151,7 +172,7 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                       Navigator.pop(ctx);
                       context.pop();
                     },
-                    child: const Text('Later'),
+                    child: Text(s.later),
                   ),
                 ],
               ),
@@ -162,218 +183,271 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        _snack(friendlyError(e));
+        _snack(friendlyError(e, s));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final p = _preview;
+    final wf = ref.watch(workflowProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Add leads')),
+      appBar: AppBar(title: Text(s.addLeadsTitle)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 32),
         children: [
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const IconBubble(
-                      size: 44,
-                      color: AppColors.surfaceMuted,
-                      child: Icon(
-                        Icons.upload_file_outlined,
-                        color: AppColors.ink,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Import CSV', style: t.titleMedium),
-                          Text(
-                            'Name, Phone, Interest, Source',
-                            style: t.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                if (p == null)
-                  PrimaryButton(
-                    label: 'Choose file',
-                    onPressed: _busy ? null : _pickCsv,
-                  )
-                else
-                  SecondaryButton(
-                    label: 'Choose another file',
-                    onPressed: _busy ? null : _pickCsv,
-                  ),
-                // Sample rows are real-format numbers: against a live backend
-                // they could be dialled, so offer them only in mock mode.
-                if (ref.watch(useMockProvider)) ...[
-                  const SizedBox(height: 4),
-                  Center(
-                    child: TextButton(
-                      onPressed: _useSample,
-                      child: const Text('Try with sample leads'),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (p != null) ...[
-            SectionLabel(
-              'Preview',
-              trailing: _fileName == null
-                  ? null
-                  : Flexible(
-                      child: Text(
-                        _fileName!,
-                        style: t.bodySmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-            ),
-            AppCard(
+          Reveal(
+            child: AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Pill(
-                        label: '${p.leads.length} ready',
-                        color: AppColors.success,
+                      IconBubble(
+                        size: 44,
+                        color: AppColors.surfaceMuted,
+                        child: Icon(
+                          Icons.upload_file_outlined,
+                          color: AppColors.ink,
+                          size: 22,
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      if (p.skipped > 0) Pill(label: '${p.skipped} skipped'),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(s.importCsv, style: t.titleMedium),
+                            Text(s.csvColumns, style: t.bodySmall),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  for (final l in p.leads.take(5))
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              l.name,
-                              style: t.titleSmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                  const SizedBox(height: 16),
+                  SwapFade(
+                    child: p == null
+                        ? PrimaryButton(
+                            key: const ValueKey('choose'),
+                            label: s.chooseFile,
+                            icon: Icons.attach_file_rounded,
+                            onPressed: _busy ? null : _pickCsv,
+                          )
+                        : SecondaryButton(
+                            key: const ValueKey('another'),
+                            label: s.chooseAnotherFile,
+                            onPressed: _busy ? null : _pickCsv,
                           ),
-                          const SizedBox(width: 12),
-                          Text(
-                            PhoneUtils.display(l.phone),
-                            style: t.bodySmall,
-                            maxLines: 1,
-                            softWrap: false,
-                          ),
-                        ],
+                  ),
+                  // Sample rows are real-format numbers: against a live
+                  // backend they could be dialled, so offer them only in
+                  // mock mode.
+                  if (ref.watch(useMockProvider)) ...[
+                    const SizedBox(height: 4),
+                    Center(
+                      child: TextButton(
+                        onPressed: _useSample,
+                        child: Text(s.trySample),
                       ),
                     ),
-                  if (p.leads.length > 5)
-                    Text('+ ${p.leads.length - 5} more', style: t.bodySmall),
-                  for (final e in p.errors)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 1),
-                            child: Icon(
-                              Icons.error_outline_rounded,
-                              size: 16,
-                              color: AppColors.hot,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              e,
-                              style: t.bodySmall?.copyWith(
-                                color: AppColors.hot,
+                  ],
+                ],
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: AppMotion.of(context, AppMotion.slow),
+            curve: AppMotion.emphasized,
+            alignment: Alignment.topCenter,
+            child: p == null
+                ? const SizedBox(width: double.infinity)
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SectionLabel(
+                        s.preview,
+                        trailing: _fileName == null
+                            ? null
+                            : Flexible(
+                                child: Text(
+                                  _fileName!,
+                                  style: t.bodySmall,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
+                      ),
+                      _Preview(
+                        preview: p,
+                        busy: _busy,
+                        csvError: (e) => _csvError(s, e),
+                        onImport: p.leads.isEmpty ? null : _import,
+                      ),
+                    ],
+                  ),
+          ),
+          Reveal(index: 1, child: SectionLabel(s.orAddOne)),
+          Reveal(
+            index: 2,
+            child: AppCard(
+              child: Form(
+                key: _form,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _name,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        hintText: s.customerNameHint,
+                        prefixIcon: const Icon(Icons.person_outline_rounded),
+                      ),
+                      validator: (v) =>
+                          (v ?? '').trim().length < 2 ? s.enterName : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _phone,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        hintText: s.mobileNumberHint,
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                      ),
+                      validator: (v) =>
+                          PhoneUtils.isValid(v) ? null : s.validPhone,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      key: ValueKey('interest-$_interest'),
+                      initialValue: _interest,
+                      decoration: InputDecoration(
+                        hintText: s.optionalField(s.data(wf.interestLabel)),
+                        prefixIcon: const Icon(Icons.local_offer_outlined),
+                      ),
+                      dropdownColor: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.cardSm),
+                      items: [
+                        for (final c in wf.interestOptions)
+                          DropdownMenuItem(value: c, child: Text(s.data(c))),
+                      ],
+                      onChanged: (v) => setState(() => _interest = v),
+                    ),
+                    const SizedBox(height: 16),
+                    SecondaryButton(
+                      label: s.addLead,
+                      icon: Icons.add_rounded,
+                      onPressed: _busy ? null : _addOne,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Preview extends StatelessWidget {
+  const _Preview({
+    required this.preview,
+    required this.busy,
+    required this.csvError,
+    required this.onImport,
+  });
+  final CsvLeadParseResult preview;
+  final bool busy;
+  final String Function(String) csvError;
+  final VoidCallback? onImport;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    final t = Theme.of(context).textTheme;
+    final p = preview;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              PopIn(
+                child: Pill(
+                  label: s.nReady(p.leads.length),
+                  color: AppColors.success,
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (p.skipped > 0)
+                PopIn(
+                  delay: const Duration(milliseconds: 80),
+                  child: Pill(label: s.nSkipped(p.skipped)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (final (i, l) in p.leads.take(5).indexed)
+            Reveal(
+              index: i,
+              offset: 8,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l.name,
+                        style: t.titleSmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  const SizedBox(height: 16),
-                  PrimaryButton(
-                    label: 'Import ${p.leads.length} leads',
-                    loading: _busy,
-                    onPressed: p.leads.isEmpty ? null : _import,
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Text(
+                      PhoneUtils.display(l.phone),
+                      style: t.bodySmall,
+                      maxLines: 1,
+                      softWrap: false,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
-          const SectionLabel('Or add one lead'),
-          AppCard(
-            child: Form(
-              key: _form,
-              child: Column(
+          if (p.leads.length > 5)
+            Text(s.nMore(p.leads.length - 5), style: t.bodySmall),
+          for (final e in p.errors)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextFormField(
-                    controller: _name,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      hintText: 'Customer name',
-                      prefixIcon: Icon(Icons.person_outline_rounded),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 1),
+                    child: Icon(
+                      Icons.error_outline_rounded,
+                      size: 16,
+                      color: AppColors.hot,
                     ),
-                    validator: (v) =>
-                        (v ?? '').trim().length < 2 ? 'Enter a name' : null,
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _phone,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      hintText: 'Mobile number',
-                      prefixIcon: Icon(Icons.phone_outlined),
-                      prefixText: '',
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      csvError(e),
+                      style: t.bodySmall?.copyWith(color: AppColors.hot),
                     ),
-                    validator: (v) => PhoneUtils.isValid(v)
-                        ? null
-                        : 'Enter a valid 10-digit mobile number',
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _interest,
-                    decoration: InputDecoration(
-                      hintText:
-                          '${ref.watch(workflowProvider).interestLabel} (optional)',
-                      prefixIcon: const Icon(Icons.local_offer_outlined),
-                    ),
-                    items: [
-                      for (final c
-                          in ref.watch(workflowProvider).interestOptions)
-                        DropdownMenuItem(value: c, child: Text(c)),
-                    ],
-                    onChanged: (v) => setState(() => _interest = v),
-                  ),
-                  const SizedBox(height: 16),
-                  SecondaryButton(
-                    label: 'Add lead',
-                    icon: Icons.add_rounded,
-                    onPressed: _busy ? null : _addOne,
                   ),
                 ],
               ),
             ),
+          const SizedBox(height: 16),
+          PrimaryButton(
+            label: s.importN(p.leads.length),
+            loading: busy,
+            onPressed: onImport,
           ),
         ],
       ),

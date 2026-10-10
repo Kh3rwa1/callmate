@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/mascot.dart';
 import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
 import '../../services/whatsapp/whatsapp_service.dart';
 
 /// Single place that performs the human-in-the-loop WhatsApp handoff.
@@ -19,13 +20,14 @@ Future<bool> openWhatsAppHandoff(
   required String message,
   FollowUp? followUp,
 }) async {
+  final s = context.s;
   final wa = ref.read(whatsappServiceProvider);
   final result = await wa.openChat(phone: phone, message: message);
   if (!context.mounted) return false;
 
   switch (result) {
     case WhatsAppOpenResult.opened:
-      HapticFeedback.mediumImpact();
+      Haptics.success();
       ref.read(analyticsProvider).track('whatsapp_opened', {
         'has_followup': followUp != null,
       });
@@ -43,30 +45,20 @@ Future<bool> openWhatsAppHandoff(
       if (context.mounted) {
         ScaffoldMessenger.of(context)
           ..clearSnackBars()
-          ..showSnackBar(
-            const SnackBar(content: Text('WhatsApp opened – tap Send there ✓')),
-          );
+          ..showSnackBar(SnackBar(content: Text(s.waOpenedTapSend)));
       }
       return true;
     case WhatsAppOpenResult.invalidPhone:
+      Haptics.warn();
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text(
-              'This phone number doesn\'t look right. Edit the lead and try again.',
-            ),
-          ),
-        );
+        ..showSnackBar(SnackBar(content: Text(s.phoneLooksWrong)));
       return false;
     case WhatsAppOpenResult.emptyMessage:
+      Haptics.warn();
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('The message is empty. Add some text first.'),
-          ),
-        );
+        ..showSnackBar(SnackBar(content: Text(s.messageEmpty)));
       return false;
     case WhatsAppOpenResult.notInstalled:
       await _fallback(context, wa, message);
@@ -79,6 +71,7 @@ Future<void> _fallback(
   WhatsAppService wa,
   String message,
 ) {
+  final s = context.s;
   return showModalBottomSheet<void>(
     context: context,
     useSafeArea: true,
@@ -97,30 +90,31 @@ Future<void> _fallback(
             children: [
               const Mascot(state: MascotState.error, size: 88),
               const SizedBox(height: 14),
-              Text('WhatsApp isn\'t installed', style: t.titleLarge),
+              Text(s.waNotInstalled, style: t.titleLarge),
               const SizedBox(height: 6),
               Text(
-                'Copy or share the message instead.',
+                s.copyOrShareInstead,
                 style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               PrimaryButton(
-                label: 'Copy Message',
+                label: s.copyMessage,
                 icon: Icons.copy_rounded,
                 onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
                   await wa.copyMessage(message);
                   if (ctx.mounted) {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Message copied')),
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(s.messageCopied)),
                     );
                   }
                 },
               ),
               const SizedBox(height: 10),
               SecondaryButton(
-                label: 'Share…',
+                label: s.share,
                 icon: Icons.ios_share_rounded,
                 onPressed: () async {
                   Navigator.pop(ctx);
@@ -150,32 +144,39 @@ class WhatsAppButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (compact) {
-      return FilledButton.icon(
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.whatsapp,
-          minimumSize: const Size(0, 44),
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          textStyle: const TextStyle(
-            fontFamily: AppTheme.fontFamily,
-            fontWeight: FontWeight.w800,
-            fontSize: 14,
+      return Pressable(
+        scale: 0.96,
+        child: FilledButton.icon(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.whatsappFill,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(0, 48),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            textStyle: const TextStyle(
+              fontFamily: AppTheme.fontFamily,
+              fontFamilyFallback: AppTheme.fontFallback,
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+            ),
           ),
-        ),
-        onPressed: onPressed,
-        icon: const Icon(Icons.chat_rounded, size: 18),
-        label: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(label, maxLines: 1),
+          onPressed: onPressed == null
+              ? null
+              : () {
+                  Haptics.press();
+                  onPressed!();
+                },
+          icon: const Icon(Icons.chat_rounded, size: 18),
+          label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
       );
     }
     return Semantics(
       button: true,
-      label: 'Open WhatsApp with the message ready to send',
+      label: context.s.openWhatsappSemantics,
       child: PrimaryButton(
         label: '$label →',
         icon: Icons.chat_rounded,
-        color: AppColors.whatsapp,
+        color: AppColors.whatsappFill,
         onPressed: onPressed,
       ),
     );
