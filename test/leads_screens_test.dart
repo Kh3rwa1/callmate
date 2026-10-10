@@ -62,7 +62,7 @@ void main() {
       expect(fresh, isNotEmpty);
       expect(fresh.every((l) => l.status == LeadStatus.newLead), isTrue);
 
-      await h.tapText('Callback');
+      await h.tapText('Call back');
       expect(
         _visibleLeads(
           h.tester,
@@ -96,13 +96,13 @@ void main() {
       await h.tester.enterText(find.byType(TextField), 'zzzz-nobody');
       await h.settle();
       expect(find.text('No matches'), findsOneWidget);
-      expect(find.text('No leads match “zzzz-nobody”.'), findsOneWidget);
+      expect(find.text('No customers match “zzzz-nobody”.'), findsOneWidget);
     }, location: '/leads');
 
     appTest(
       'hot filter with no hot leads explains why',
       (h) async {
-        expect(find.text('No hot leads yet'), findsOneWidget);
+        expect(find.text('No one ready to buy yet'), findsOneWidget);
       },
       location: '/leads?filter=hot',
       backend: () => MockBackend()..leads.removeWhere((_, l) => l.isHot),
@@ -111,8 +111,8 @@ void main() {
     appTest(
       'empty list offers to add leads',
       (h) async {
-        expect(find.text('No leads here'), findsOneWidget);
-        await h.tapText('Add leads');
+        expect(find.text('No customers here'), findsOneWidget);
+        await h.tapText('Add customers');
         expect(h.location, '/leads/import');
       },
       location: '/leads',
@@ -137,7 +137,7 @@ void main() {
     );
 
     appTest('add button opens the import screen', (h) async {
-      await h.tap(find.byTooltip('Add or import leads'));
+      await h.tap(find.byTooltip('Add or import customers'));
       expect(h.location, '/leads/import');
       expect(find.byType(ImportLeadsScreen), findsOneWidget);
     }, location: '/leads');
@@ -292,10 +292,10 @@ void main() {
         findsOneWidget,
       );
 
-      await h.tap(find.byTooltip('Callback'));
-      expect(find.text('Schedule callback'), findsOneWidget);
+      await h.tap(find.byTooltip('Call back'));
+      expect(find.text('Schedule call back'), findsOneWidget);
       await h.tapText('Tomorrow, 11 AM');
-      await h.tap(find.widgetWithText(FilledButton, 'Schedule Callback'));
+      await h.tap(find.widgetWithText(FilledButton, 'Schedule Call Back'));
 
       final cb = h.backend.callbacks.values.singleWhere(
         (c) => c.leadId == lead.id && c.status == CallbackStatus.scheduled,
@@ -303,7 +303,7 @@ void main() {
       final now = DateTime.now();
       expect(cb.scheduledAt, DateTime(now.year, now.month, now.day + 1, 11));
       expect(h.backend.leads[lead.id]!.status, LeadStatus.callback);
-      expect(find.textContaining('Callback set for'), findsOneWidget);
+      expect(find.textContaining('Call back set for'), findsOneWidget);
     });
 
     appTest('unknown lead shows a friendly error', (h) async {

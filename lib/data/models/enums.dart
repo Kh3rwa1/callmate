@@ -91,7 +91,7 @@ enum CallStatus {
 enum NextAction {
   humanFollowUp('human_followup', 'Human follow-up'),
   sendWhatsapp('send_whatsapp', 'Send WhatsApp'),
-  whatsappAndCallback('whatsapp_and_callback', 'WhatsApp + callback'),
+  whatsappAndCallback('whatsapp_and_callback', 'WhatsApp + call back'),
   bookAppointment('book_appointment', 'Book appointment / visit'),
   retryCall('retry_call', 'Try calling again'),
   none('none', 'No action needed');

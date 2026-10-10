@@ -19,6 +19,7 @@ class OnboardingDraft {
     this.knowledge = const [],
     this.employeeName,
     this.employeeRole,
+    this.employeeVoice,
   });
 
   final BusinessCategory? category;
@@ -36,6 +37,9 @@ class OnboardingDraft {
   /// Owner overrides on the "Meet your AI employee" screen.
   final String? employeeName;
   final String? employeeRole;
+
+  /// The owner's pick of a man's or woman's voice; template default if null.
+  final String? employeeVoice;
 
   BusinessTemplate get template => templateFor(category);
 
@@ -56,6 +60,7 @@ class OnboardingDraft {
     List<KnowledgeInput>? knowledge,
     String? employeeName,
     String? employeeRole,
+    String? employeeVoice,
   }) => OnboardingDraft(
     category: category ?? this.category,
     skills: skills ?? this.skills,
@@ -70,6 +75,7 @@ class OnboardingDraft {
     knowledge: knowledge ?? this.knowledge,
     employeeName: employeeName ?? this.employeeName,
     employeeRole: employeeRole ?? this.employeeRole,
+    employeeVoice: employeeVoice ?? this.employeeVoice,
   );
 }
 
@@ -176,6 +182,7 @@ class OnboardingController extends Notifier<OnboardingDraft> {
       languages: at.languages,
       goal: at.goal,
       roleKind: EmployeeRoleKind.fromRole(role).name,
+      voice: d.employeeVoice ?? at.voice,
       skills: skills,
       capabilities: _capabilitiesFor(skills, at),
       callsToday: current == null ? 0 : null,

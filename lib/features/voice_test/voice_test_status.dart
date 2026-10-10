@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/employee_avatar.dart';
 import '../../core/widgets/mascot.dart';
 import '../../l10n/l10n.dart';
 import '../../services/voice/voice_agent_service.dart';
@@ -18,6 +19,16 @@ MascotState mascotForVoiceState(VoiceConnectionState state) => switch (state) {
   VoiceConnectionState.disconnected => MascotState.success,
   VoiceConnectionState.idle => MascotState.welcome,
 };
+
+/// What the employee's avatar shows for a given connection state.
+EmployeeActivity employeeActivityFor(VoiceConnectionState state) =>
+    switch (state) {
+      VoiceConnectionState.speaking => EmployeeActivity.speaking,
+      VoiceConnectionState.listening => EmployeeActivity.listening,
+      VoiceConnectionState.thinking => EmployeeActivity.thinking,
+      VoiceConnectionState.connecting => EmployeeActivity.calling,
+      _ => EmployeeActivity.idle,
+    };
 
 /// Status label and colour for a given connection state.
 (String, Color) voiceStatusFor(

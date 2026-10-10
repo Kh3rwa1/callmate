@@ -11,8 +11,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/brand_widgets.dart';
-import '../../core/widgets/mascot.dart';
+import '../../core/widgets/employee_avatar.dart';
 import '../../core/widgets/settings_sheets.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
@@ -303,11 +302,7 @@ class _Hero extends StatelessWidget {
         children: [
           Row(
             children: [
-              EmployeeMascot(
-                state: active ? MascotState.welcome : MascotState.thinking,
-                size: 88,
-                agent: a,
-              ),
+              AgentAvatar(agent: a, size: 80),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(

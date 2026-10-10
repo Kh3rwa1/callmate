@@ -1,3 +1,4 @@
+import '../../core/widgets/employee_avatar.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -8,8 +9,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/brand_widgets.dart';
-import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
@@ -60,7 +59,7 @@ class HomeAgentCard extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: const Color(
-                  0xFF2B1F86,
+                  0xFF0038C8,
                 ).withValues(alpha: AppColors.isDark ? 0.45 : 0.2),
                 blurRadius: 32,
                 offset: const Offset(0, 14),
@@ -83,13 +82,18 @@ class HomeAgentCard extends StatelessWidget {
                   child: _Glow(size: 200, alpha: 0.08),
                 ),
                 Positioned(
-                  right: 4,
+                  right: 26,
+                  top: 0,
                   bottom: 0,
-                  child: EmployeeMascot(
-                    state: active ? MascotState.calling : MascotState.welcome,
-                    size: 128,
-                    animate: active,
-                    agent: agent,
+                  child: Center(
+                    child: AgentAvatar(
+                      agent: agent,
+                      size: 84,
+                      onDark: true,
+                      activity: active
+                          ? EmployeeActivity.calling
+                          : EmployeeActivity.idle,
+                    ),
                   ),
                 ),
                 Padding(

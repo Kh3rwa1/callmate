@@ -64,8 +64,8 @@ void main() {
         await tester.pump(const Duration(milliseconds: 400));
         await tester.pump(const Duration(milliseconds: 400));
 
-        expect(find.text('Call New Leads'), findsOneWidget);
-        expect(find.textContaining('leads ready'), findsOneWidget);
+        expect(find.text('Call New Customers'), findsOneWidget);
+        expect(find.textContaining('customers ready'), findsOneWidget);
       });
 
       testWidgets('4. CallResultScreen renders call outcome and AI scoring', (
@@ -80,7 +80,7 @@ void main() {
 
         expect(find.textContaining(call.leadName), findsWidgets);
         expect(find.textContaining('understood'), findsOneWidget);
-        expect(find.text('Lead score'), findsOneWidget);
+        expect(find.text('Customer score'), findsOneWidget);
       });
 
       testWidgets(
@@ -90,7 +90,7 @@ void main() {
           await tester.pump(const Duration(milliseconds: 400));
           await tester.pump(const Duration(milliseconds: 400));
 
-          expect(find.text('Follow-ups'), findsOneWidget);
+          expect(find.text('Messages'), findsOneWidget);
           expect(find.byType(CustomScrollView), findsOneWidget);
         },
       );

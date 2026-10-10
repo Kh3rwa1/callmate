@@ -7,7 +7,7 @@ import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/mascot.dart';
+import '../../core/widgets/employee_avatar.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
@@ -100,11 +100,14 @@ class CampaignProgressScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
               child: Column(
                 children: [
-                  Mascot(
-                    state: done
-                        ? MascotState.success
-                        : (running ? MascotState.calling : MascotState.welcome),
-                    size: 110,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    child: AgentAvatar(
+                      size: 88,
+                      activity: running && !done
+                          ? EmployeeActivity.calling
+                          : EmployeeActivity.idle,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   SwapFade(

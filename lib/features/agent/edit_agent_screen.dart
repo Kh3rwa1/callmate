@@ -9,7 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/mascot.dart';
+import '../../core/widgets/employee_avatar.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../data/templates/templates.dart';
@@ -132,9 +132,13 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
               children: [
                 Center(
                   child: PopIn(
-                    child: Mascot(
-                      size: 96,
-                      role: EmployeeRoleKind.fromRole(_role.text),
+                    child: ListenableBuilder(
+                      listenable: Listenable.merge([_name, _role]),
+                      builder: (_, _) => EmployeeAvatar(
+                        name: _name.text,
+                        role: EmployeeRoleKind.fromRole(_role.text),
+                        size: 88,
+                      ),
                     ),
                   ),
                 ),

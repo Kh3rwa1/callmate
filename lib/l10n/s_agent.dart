@@ -28,7 +28,7 @@ extension SAgent on S {
   String nSources(int n) => pick('$n sources', '$n स्रोत', '$n টি সূত্র');
   String minLeft(String n) =>
       pick('$n min left', '$n मिनट बचे', '$n মিনিট বাকি');
-  String get callbacksTitle => pick('Callbacks', 'कॉलबैक', 'কলব্যাক');
+  String get callbacksTitle => pick('Call backs', 'कॉल बैक', 'কল ব্যাক');
   String get allowAlerts =>
       pick('Allow alerts', 'अलर्ट चालू करें', 'অ্যালার্ট চালু করুন');
   String get alertsOn =>
@@ -45,9 +45,9 @@ extension SAgent on S {
   String get deleteAccountQ =>
       pick('Delete account?', 'अकाउंट डिलीट करें?', 'অ্যাকাউন্ট মুছবেন?');
   String get deleteAccountBody => pick(
-    'This cannot be undone. All leads, calls, transcripts and AI settings will be permanently deleted.',
-    'इसे वापस नहीं लिया जा सकता। सारी लीड्स, कॉल्स, बातचीत और AI सेटिंग्स हमेशा के लिए मिट जाएँगी।',
-    'এটা আর ফেরানো যাবে না। সব লিড, কল, কথোপকথন আর AI সেটিংস চিরতরে মুছে যাবে।',
+    'This cannot be undone. All customers, calls, transcripts and AI settings will be permanently deleted.',
+    'इसे वापस नहीं लिया जा सकता। सारे ग्राहक, कॉल्स, बातचीत और AI सेटिंग्स हमेशा के लिए मिट जाएँगी।',
+    'এটা আর ফেরানো যাবে না। সব গ্রাহক, কল, কথোপকথন আর AI সেটিংস চিরতরে মুছে যাবে।',
   );
   String get deletePermanently =>
       pick('Delete permanently', 'हमेशा के लिए डिलीट करें', 'চিরতরে মুছুন');
@@ -92,9 +92,9 @@ extension SAgent on S {
       pick('More formal', 'ज़्यादा औपचारिक', 'আরও আনুষ্ঠানিক');
   String get callsSection => pick('Calls', 'कॉल्स', 'কল');
   String get transferHotLeadsTo => pick(
-    'Transfer hot leads to',
-    'हॉट लीड्स किसे ट्रांसफ़र करें',
-    'হট লিড কাকে ট্রান্সফার করবেন',
+    'Send ready-to-buy customers to',
+    'खरीदने को तैयार ग्राहक किसे ट्रांसफ़र करें',
+    'কিনতে তৈরি গ্রাহক কাকে ট্রান্সফার করবেন',
   );
   String humanNumberHint(String human) =>
       pick('$human number', '$human का नंबर', '$human-এর নম্বর');

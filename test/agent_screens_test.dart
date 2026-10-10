@@ -57,7 +57,7 @@ void main() {
     }, location: '/agent');
 
     appTest('"More" links open callbacks and notifications', (h) async {
-      await _tapListItem(h, find.text('Callbacks'));
+      await _tapListItem(h, find.text('Call backs'));
       expect(h.location, '/callbacks');
       await h.go('/agent');
       await _tapListItem(h, find.text('Notifications'));

@@ -16,6 +16,7 @@ class LocalPrefs {
   static const _serverUrl = 'config.server_url';
   static const _themeMode = 'ui.theme_mode';
   static const _language = 'ui.language';
+  static const _contactsConsent = 'privacy.contacts_disclosure_accepted';
 
   /// Older builds could store a Sarvam API key here in plain text. The app
   /// now only talks to Sarvam through the backend proxy, so it is purged.
@@ -23,6 +24,11 @@ class LocalPrefs {
 
   bool get onboarded => _p.getBool(_onboarded) ?? false;
   Future<void> setOnboarded(bool v) => _p.setBool(_onboarded, v);
+
+  /// The owner agreed to the contacts disclosure (Google Play's "prominent
+  /// disclosure"), so the system permission prompt may be shown.
+  bool get contactsConsent => _p.getBool(_contactsConsent) ?? false;
+  Future<void> setContactsConsent(bool v) => _p.setBool(_contactsConsent, v);
 
   bool get agentTested => _p.getBool(_agentTested) ?? false;
   Future<void> setAgentTested(bool v) => _p.setBool(_agentTested, v);

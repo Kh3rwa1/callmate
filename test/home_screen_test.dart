@@ -44,15 +44,15 @@ void main() {
       expect(find.text("Today's results"), findsOneWidget);
 
       final hot = b.leads.values.where((l) => l.isHot).length;
-      expect(find.text('$hot hot leads'), findsOneWidget);
+      expect(find.text('$hot ready to buy'), findsOneWidget);
 
       final pending = b.followUps.values.where((f) => f.isPending).length;
-      expect(find.text('$pending follow-ups ready'), findsOneWidget);
+      expect(find.text('$pending messages ready'), findsOneWidget);
 
       final newLeads = b.leads.values
           .where((l) => l.status == LeadStatus.newLead)
           .length;
-      expect(find.text('Call $newLeads New Leads'), findsOneWidget);
+      expect(find.text('Call $newLeads New Customers'), findsOneWidget);
 
       final unread = b.notifications.where((n) => !n.read).length;
       expect(find.byTooltip('$unread new notifications'), findsOneWidget);
@@ -60,7 +60,7 @@ void main() {
 
     appTest('hot leads action opens leads filtered to hot', (h) async {
       final hotCount = h.backend.leads.values.where((l) => l.isHot).length;
-      await h.tapText('$hotCount hot leads');
+      await h.tapText('$hotCount ready to buy');
       expect(h.location, '/leads');
       expect(_chipSelected('Hot'), isTrue);
     });
@@ -88,14 +88,14 @@ void main() {
       final pending = h.backend.followUps.values
           .where((f) => f.isPending)
           .length;
-      await h.tapText('$pending follow-ups ready');
+      await h.tapText('$pending messages ready');
       expect(h.location, '/followups');
     });
 
     appTest('callbacks card and activity rows navigate', (h) async {
       final n = h.container.read(dashboardProvider).value!.callbacksToday;
       expect(n, greaterThan(0));
-      await h.tapText(n == 1 ? '1 callback' : '$n callbacks');
+      await h.tapText(n == 1 ? '1 call back' : '$n call backs');
       expect(h.location, '/callbacks');
 
       await h.go('/home');
@@ -107,7 +107,7 @@ void main() {
     });
 
     appTest('new leads CTA opens campaign setup', (h) async {
-      await h.tap(find.textContaining('New Leads').first);
+      await h.tap(find.textContaining('New Customers').first);
       expect(h.location, '/campaign/new');
       expect(find.byType(CampaignSetupScreen), findsOneWidget);
     });
@@ -129,10 +129,10 @@ void main() {
       await h.settle(2);
 
       expect(
-        find.text('${b.agent.name} is calling your leads…'),
+        find.text('${b.agent.name} is calling your customers…'),
         findsOneWidget,
       );
-      await h.tap(find.text('${b.agent.name} is calling your leads…'));
+      await h.tap(find.text('${b.agent.name} is calling your customers…'));
       expect(h.location, '/campaigns/${c.id}');
       expect(find.byType(CampaignProgressScreen), findsOneWidget);
     });
@@ -141,8 +141,8 @@ void main() {
       h.backend.leads.removeWhere((_, l) => l.isHot);
       h.backend.emitChanged('leads');
       await h.settle();
-      expect(find.text('No hot leads yet'), findsOneWidget);
-      await h.tapText('Call new leads');
+      expect(find.text('No one ready to buy yet'), findsOneWidget);
+      await h.tapText('Call new customers');
       expect(h.location, '/campaign/new');
     });
 
@@ -156,7 +156,7 @@ void main() {
         );
         await h.tapText('Try again');
         expect(find.text('All caught up'), findsOneWidget);
-        expect(find.text('No hot leads yet'), findsOneWidget);
+        expect(find.text('No one ready to buy yet'), findsOneWidget);
         // The summary has no activity yet.
         expect(find.text('No calls yet'), findsOneWidget);
       },

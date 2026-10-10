@@ -69,7 +69,7 @@ void main() {
         find.text('What ${h.backend.agent.name} understood'),
         findsOneWidget,
       );
-      expect(find.text('Lead score'), findsOneWidget);
+      expect(find.text('Customer score'), findsOneWidget);
     }, location: '/calls');
 
     appTest('unanswered call opens the detail view', (h) async {
@@ -79,12 +79,9 @@ void main() {
       expect(h.location, '/calls/${call.id}');
       expect(find.text('Call details'), findsOneWidget);
       expect(find.text(call.status.label), findsWidgets);
-      expect(
-        find.textContaining('will try again in the next campaign'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('will try again next time'), findsOneWidget);
 
-      await h.tapText('Open lead');
+      await h.tapText('Open customer');
       expect(h.location, '/leads/${call.leadId}');
       expect(find.byType(LeadDetailScreen), findsOneWidget);
     }, location: '/calls');
@@ -96,7 +93,7 @@ void main() {
           find.text("${h.backend.agent.name} hasn't made any calls yet."),
           findsOneWidget,
         );
-        await h.tapText('Call New Leads');
+        await h.tapText('Call New Customers');
         expect(h.location, '/campaign/new');
       },
       location: '/calls',
@@ -123,16 +120,16 @@ void main() {
       );
       await h.push('/calls/${call.id}/result');
       expect(find.text('Prepare WhatsApp'), findsNothing);
-      await h.tapText('Open lead');
+      await h.tapText('Open customer');
       expect(h.location, '/leads/${call.leadId}');
     });
 
     appTest('Schedule Callback books a callback for the lead', (h) async {
       final call = h.backend.simulateCall(LeadTemperature.warm);
       await h.push('/calls/${call.id}/result');
-      await h.tap(find.widgetWithText(OutlinedButton, 'Schedule Callback'));
-      expect(find.text('Schedule callback'), findsOneWidget);
-      await h.tap(find.widgetWithText(FilledButton, 'Schedule Callback'));
+      await h.tap(find.widgetWithText(OutlinedButton, 'Schedule Call Back'));
+      expect(find.text('Schedule call back'), findsOneWidget);
+      await h.tap(find.widgetWithText(FilledButton, 'Schedule Call Back'));
       expect(
         h.backend.callbacks.values.where(
           (c) =>
@@ -140,7 +137,7 @@ void main() {
         ),
         hasLength(1),
       );
-      expect(find.textContaining('Callback set for'), findsOneWidget);
+      expect(find.textContaining('Call back set for'), findsOneWidget);
     });
 
     appTest('detail-only route shows the call facts', (h) async {

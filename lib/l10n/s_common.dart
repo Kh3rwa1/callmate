@@ -94,9 +94,9 @@ extension SCommon on S {
     'সঠিক মোবাইল নম্বর দিন',
   );
   String get phoneLooksWrong => pick(
-    'This phone number doesn\'t look right. Edit the lead and try again.',
-    'यह फ़ोन नंबर सही नहीं लग रहा। लीड बदलकर फिर कोशिश करें।',
-    'ফোন নম্বরটা ঠিক মনে হচ্ছে না। লিড এডিট করে আবার চেষ্টা করুন।',
+    'This phone number doesn\'t look right. Edit the customer and try again.',
+    'यह फ़ोन नंबर सही नहीं लग रहा। ग्राहक बदलकर फिर कोशिश करें।',
+    'ফোন নম্বরটা ঠিক মনে হচ্ছে না। গ্রাহক এডিট করে আবার চেষ্টা করুন।',
   );
   String get pdfTooLarge => pick(
     'That PDF is over 15 MB. Try a smaller file.',
@@ -114,7 +114,7 @@ extension SCommon on S {
   String get aiEmployeeTitle => pick('AI Employee', 'AI कर्मचारी', 'AI কর্মী');
   String get yourAiEmployee =>
       pick('Your AI employee', 'आपका AI कर्मचारी', 'আপনার AI কর্মী');
-  String get leadsWord => pick('Leads', 'लीड्स', 'লিড');
+  String get leadsWord => pick('Customers', 'ग्राहक', 'গ্রাহক');
   String get sample => pick('Sample', 'नमूना', 'নমুনা');
   String get active => pick('Active', 'सक्रिय', 'চালু');
   String get notScoredYet =>
@@ -129,7 +129,7 @@ extension SCommon on S {
     LeadStatus.queued => pick('Queued', 'कतार में', 'লাইনে আছে'),
     LeadStatus.calling => pick('Calling', 'कॉल जारी', 'কল চলছে'),
     LeadStatus.called => pick('Called', 'कॉल हो चुकी', 'কল হয়েছে'),
-    LeadStatus.callback => pick('Callback', 'कॉलबैक', 'কলব্যাক'),
+    LeadStatus.callback => pick('Call back', 'कॉल बैक', 'কল ব্যাক'),
     LeadStatus.noAnswer => pick('No answer', 'जवाब नहीं', 'উত্তর নেই'),
     LeadStatus.converted => pick('Converted', 'ग्राहक बने', 'গ্রাহক হয়েছেন'),
     LeadStatus.notInterested => pick(
@@ -160,9 +160,9 @@ extension SCommon on S {
       'আগ্রহী নন',
     ),
     LeadIntent.callbackRequested => pick(
-      'Wants callback',
-      'कॉलबैक चाहते हैं',
-      'কলব্যাক চান',
+      'Wants a call back',
+      'कॉल बैक चाहते हैं',
+      'কল ব্যাক চান',
     ),
     LeadIntent.unknown => pick('Unknown', 'पता नहीं', 'জানা নেই'),
   };
@@ -180,9 +180,9 @@ extension SCommon on S {
   /// One owner-facing label per next action, used on every screen.
   String nextAction(NextAction v) => switch (v) {
     NextAction.humanFollowUp => pick(
-      'Human follow-up',
-      'टीम से फ़ॉलो-अप',
-      'টিমের ফলো-আপ',
+      'You should call',
+      'टीम से मैसेज',
+      'টিমের মেসেজ',
     ),
     NextAction.sendWhatsapp => pick(
       'Send WhatsApp',
@@ -190,9 +190,9 @@ extension SCommon on S {
       'WhatsApp পাঠান',
     ),
     NextAction.whatsappAndCallback => pick(
-      'WhatsApp + callback',
-      'WhatsApp + कॉलबैक',
-      'WhatsApp + কলব্যাক',
+      'WhatsApp + call back',
+      'WhatsApp + कॉल बैक',
+      'WhatsApp + কল ব্যাক',
     ),
     NextAction.bookAppointment => pick(
       'Book appointment / visit',
@@ -293,11 +293,11 @@ extension SCommon on S {
   String skill(EmployeeSkill v) => switch (v) {
     EmployeeSkill.makeCalls => pick('Make Calls', 'कॉल करना', 'কল করা'),
     EmployeeSkill.qualifyLeads => pick(
-      'Qualify Leads',
-      'लीड परखना',
-      'লিড যাচাই',
+      'Find Serious Buyers',
+      'गंभीर खरीदार पहचानना',
+      'আসল ক্রেতা চেনা',
     ),
-    EmployeeSkill.followUp => pick('Follow Up', 'फ़ॉलो-अप', 'ফলো-আপ'),
+    EmployeeSkill.followUp => pick('Follow Up', 'मैसेज', 'মেসেজ'),
     EmployeeSkill.bookAppointments => pick(
       'Book Appointments',
       'अपॉइंटमेंट बुक करना',

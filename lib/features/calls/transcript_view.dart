@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/format.dart';
-import '../../core/widgets/mascot.dart';
+import '../../core/widgets/employee_avatar.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 
@@ -159,7 +159,7 @@ class TranscriptBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: isAgent
             ? [
-                const MascotAvatar(size: 26),
+                EmployeeAvatar(name: who, size: 26),
                 const SizedBox(width: 8),
                 bubble,
                 const SizedBox(width: 40),

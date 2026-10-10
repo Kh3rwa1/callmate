@@ -187,9 +187,11 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       interactionType: InteractionType.call,
       sampleRate: 16000,
       agentVariables: {
+        // Fallbacks only; the server and the caller pass the employee's own
+        // voice. "meera" is not a Bulbul v4 voice.
         'gender': 'female',
         'voice': 'female',
-        'speaker': 'meera',
+        'speaker': 'ishita_enhi_customer',
         'tts_model': 'bulbul:v4-flash',
         ...session.agentVariables,
         ...agentVariables,

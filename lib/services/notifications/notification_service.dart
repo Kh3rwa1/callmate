@@ -1,9 +1,34 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show StringCharacters;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-import '../../data/models/misc.dart';
+import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
+
+/// Splits a backend title like "🔥 Hot lead detected" into its leading
+/// emoji (rendered as a line icon) and the plain words.
+(String, String) splitNotificationTitle(String title) {
+  final chars = title.characters;
+  if (chars.isEmpty) return ('', title);
+  final first = chars.first;
+  final isLetter = RegExp(r'^[\p{L}\p{N}]', unicode: true).hasMatch(first);
+  if (isLetter) return ('', title);
+  return (first, chars.skip(1).toString().trim());
+}
+
+/// The notification title without its emoji prefix.
+String plainNotificationTitle(String title) => splitNotificationTitle(title).$2;
+
+/// Title shown for [n]. Always our own plain words for the type ("Customer
+/// ready to buy", not the backend's "Hot lead detected"), so the owner never
+/// sees jargon. Calling updates keep the backend's English title, which names
+/// the employee.
+String notificationTitleFor(S s, AppNotification n) =>
+    s.isEn && n.type == NotificationType.campaign
+    ? plainNotificationTitle(n.title)
+    : s.notificationTitle(n.type);
 
 /// Abstraction over remote push (FCM / APNs / other provider).
 /// Production: backend sends a data message {title, body, route}; the provider
@@ -23,9 +48,15 @@ class NoopPushProvider implements PushProvider {
 
 /// Presents notifications and routes taps to in-app deep links.
 class NotificationService {
-  NotificationService({PushProvider? push}) : push = push ?? NoopPushProvider();
+  NotificationService({PushProvider? push, this.strings})
+    : push = push ?? NoopPushProvider();
 
   final PushProvider push;
+
+  /// Strings in the owner's language, so the phone's notification tray says
+  /// "Customer ready to buy" (in Hindi/Bengali too), never the backend's
+  /// "Hot lead detected".
+  final S Function()? strings;
   final _plugin = FlutterLocalNotificationsPlugin();
   final _taps = StreamController<String>.broadcast();
   final _inApp = StreamController<AppNotification>.broadcast();
@@ -48,7 +79,7 @@ class NotificationService {
   static const _channel = AndroidNotificationDetails(
     'ai_employee_actions',
     'AI employee updates',
-    channelDescription: 'Hot leads, ready follow-ups and callbacks',
+    channelDescription: 'Customers ready to buy, messages and call backs',
     importance: Importance.high,
     priority: Priority.high,
   );
@@ -112,7 +143,9 @@ class NotificationService {
     try {
       await _plugin.show(
         id: n.id.hashCode & 0x7fffffff,
-        title: n.title,
+        title: strings == null
+            ? plainNotificationTitle(n.title)
+            : notificationTitleFor(strings!(), n),
         body: n.body,
         payload: n.route,
         notificationDetails: const NotificationDetails(

@@ -164,7 +164,6 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                       child: Text(s.aiCallsTitle, style: t.headlineMedium),
                     ),
                   ),
-                  const MascotAvatar(size: 40, state: MascotState.calling),
                 ],
               ),
             ),

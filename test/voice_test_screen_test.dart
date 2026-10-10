@@ -1,3 +1,5 @@
+import 'package:callpilot/core/providers.dart';
+import 'package:callpilot/core/settings.dart';
 import 'package:callpilot/core/theme/app_colors.dart';
 import 'package:callpilot/core/widgets/mascot.dart';
 import 'package:callpilot/features/home/home_screen.dart';
@@ -5,6 +7,8 @@ import 'package:callpilot/features/voice_test/voice_test_screen.dart';
 import 'package:callpilot/features/voice_test/voice_test_status.dart';
 import 'package:callpilot/services/voice/mock_voice_agent_service.dart';
 import 'package:callpilot/services/voice/voice_agent_service.dart';
+import 'package:callpilot/services/voice/voice_persona.dart';
+import 'package:callpilot/l10n/s.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -154,6 +158,27 @@ void main() {
       await h.tapText('Done');
       expect(h.location, '/home');
       expect(find.byType(HomeScreen), findsOneWidget);
+    }, voice: () => voice = _SpyVoice());
+
+    appTest(
+      'a man employee speaks in a man\'s voice, in the owner\'s language',
+      (h) async {
+        h.backend.agent = h.backend.agent.copyWith(voice: maleVoice);
+        h.container.read(dataVersionProvider.notifier).bump();
+        await h.container.read(languageProvider.notifier).set(AppLang.hi);
+        await h.push('/voice-test');
+        expect(voice.lastVariables?['gender'], 'male');
+        expect(voice.lastVariables?['speaker'], 'shubh_hi_customer');
+        expect(voice.lastVariables?['language_code'], 'hi-IN');
+      },
+      voice: () => voice = _SpyVoice(),
+    );
+
+    appTest('the default employee speaks in a woman\'s voice', (h) async {
+      await h.push('/voice-test');
+      expect(voice.lastVariables?['gender'], 'female');
+      expect(voice.lastVariables?['speaker'], 'ishita_enhi_customer');
+      expect(voice.lastVariables?['speaker'], isNot('meera'));
     }, voice: () => voice = _SpyVoice());
 
     appTest(

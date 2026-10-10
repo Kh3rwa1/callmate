@@ -3,11 +3,11 @@ import 's.dart';
 /// Leads list, lead detail, calling a lead and adding/importing leads.
 extension SLeads on S {
   // ------------------------------------------------------------ List
-  String get leadsTitle => pick('Leads', 'लीड्स', 'লিড');
+  String get leadsTitle => pick('Customers', 'ग्राहक', 'গ্রাহক');
   String get addOrImportLeads => pick(
-    'Add or import leads',
-    'लीड्स जोड़ें या इम्पोर्ट करें',
-    'লিড যোগ বা ইমপোর্ট করুন',
+    'Add or import customers',
+    'ग्राहक जोड़ें या इम्पोर्ट करें',
+    'গ্রাহক যোগ বা ইমপোর্ট করুন',
   );
   String get searchLeadsHint => pick(
     'Search name, phone or interest',
@@ -19,25 +19,28 @@ extension SLeads on S {
   String get filterCalled => pick('Called', 'कॉल हुई', 'কল হয়েছে');
   String get filterHot => pick('Hot', 'हॉट', 'হট');
   String get filterWarm => pick('Warm', 'वॉर्म', 'ওয়ার্ম');
-  String get filterCallback => pick('Callback', 'कॉलबैक', 'কলব্যাক');
+  String get filterCallback => pick('Call back', 'कॉल बैक', 'কল ব্যাক');
   String get noMatches =>
       pick('No matches', 'कुछ नहीं मिला', 'কিছু পাওয়া যায়নি');
   String noLeadsMatch(String q) => pick(
-    'No leads match “$q”.',
-    '“$q” से कोई लीड नहीं मिली।',
-    '“$q”-এর সঙ্গে কোনো লিড মিলল না।',
+    'No customers match “$q”.',
+    '“$q” से कोई ग्राहक नहीं मिला।',
+    '“$q”-এর সঙ্গে কোনো গ্রাহক মিলল না।',
   );
   String get hotLeadsAppearAfterCalls => pick(
-    'Hot leads show up here after calls.',
-    'कॉल के बाद हॉट लीड्स यहाँ दिखेंगी।',
-    'কলের পরে হট লিড এখানে দেখা যাবে।',
+    'Customers ready to buy show up here after calls.',
+    'कॉल के बाद खरीदने को तैयार ग्राहक यहाँ दिखेंगी।',
+    'কলের পরে কিনতে তৈরি গ্রাহক এখানে দেখা যাবে।',
   );
-  String get noLeadsHere =>
-      pick('No leads here', 'यहाँ कोई लीड नहीं', 'এখানে কোনো লিড নেই');
+  String get noLeadsHere => pick(
+    'No customers here',
+    'यहाँ कोई ग्राहक नहीं',
+    'এখানে কোনো গ্রাহক নেই',
+  );
   String get noLeadsForFilter => pick(
-    'No leads match this filter yet.',
-    'इस फ़िल्टर में अभी कोई लीड नहीं।',
-    'এই ফিল্টারে এখনও কোনো লিড নেই।',
+    'No customers match this filter yet.',
+    'इस फ़िल्टर में अभी कोई ग्राहक नहीं।',
+    'এই ফিল্টারে এখনও কোনো গ্রাহক নেই।',
   );
   String get interestUnknown => pick(
     'Interest not known yet',
@@ -57,7 +60,7 @@ extension SLeads on S {
 
   // ------------------------------------------------------------ Detail
   String get aiCallTooltip => pick('AI Call', 'AI कॉल', 'AI কল');
-  String get callbackTooltip => pick('Callback', 'कॉलबैक', 'কলব্যাক');
+  String get callbackTooltip => pick('Call back', 'कॉल बैक', 'কল ব্যাক');
   String get aiSummary => pick('AI summary', 'AI सारांश', 'AI সারাংশ');
   String get fullCallResult =>
       pick('Full call result', 'कॉल का पूरा नतीजा', 'কলের পুরো ফলাফল');
@@ -66,13 +69,13 @@ extension SLeads on S {
       pick('Not known yet', 'अभी पता नहीं', 'এখনও জানা নেই');
   String get language => pick('Language', 'भाषा', 'ভাষা');
   String get nextActionLabel => pick('Next action', 'अगला कदम', 'পরের পদক্ষেপ');
-  String get callbackLabel => pick('Callback', 'कॉलबैक', 'কলব্যাক');
+  String get callbackLabel => pick('Call back', 'कॉल बैक', 'কল ব্যাক');
   String get notScheduled => pick('Not scheduled', 'तय नहीं', 'ঠিক করা হয়নি');
   String get added => pick('Added', 'जोड़ी गई', 'যোগ হয়েছে');
   String get signals => pick('Signals', 'संकेत', 'সংকেত');
   String get positive => pick('Positive', 'अच्छा संकेत', 'ভালো সংকেত');
   String get concern => pick('Concern', 'चिंता', 'আপত্তি');
-  String get followUpSection => pick('Follow-up', 'फ़ॉलो-अप', 'ফলো-আপ');
+  String get followUpSection => pick('Message', 'मैसेज', 'মেসেজ');
   String get reviewAndSend =>
       pick('Review & send', 'देखें और भेजें', 'দেখে পাঠান');
   String get openAgain => pick('Open again', 'फिर से खोलें', 'আবার খুলুন');
@@ -121,7 +124,8 @@ extension SLeads on S {
       pick('Call $phone', '$phone पर कॉल करें', '$phone-এ কল করুন');
 
   // ------------------------------------------------------------ Add / import
-  String get addLeadsTitle => pick('Add leads', 'लीड्स जोड़ें', 'লিড যোগ করুন');
+  String get addLeadsTitle =>
+      pick('Add customers', 'ग्राहक जोड़ें', 'গ্রাহক যোগ করুন');
   String get importCsv =>
       pick('Import CSV', 'CSV इम्पोर्ट करें', 'CSV ইমপোর্ট');
   String get csvColumns => pick(
@@ -133,9 +137,9 @@ extension SLeads on S {
   String get chooseAnotherFile =>
       pick('Choose another file', 'दूसरी फ़ाइल चुनें', 'অন্য ফাইল বাছুন');
   String get trySample => pick(
-    'Try with sample leads',
-    'नमूना लीड्स से आज़माएँ',
-    'নমুনা লিড দিয়ে দেখুন',
+    'Try with sample customers',
+    'नमूना ग्राहक से आज़माएँ',
+    'নমুনা গ্রাহক দিয়ে দেখুন',
   );
   String get preview => pick('Preview', 'झलक', 'প্রিভিউ');
   String nReady(int n) => pick('$n ready', '$n तैयार', '$n টি তৈরি');
@@ -143,12 +147,15 @@ extension SLeads on S {
       pick('$n skipped', '$n छोड़ी गईं', '$n টি বাদ গেছে');
   String nMore(int n) => pick('+ $n more', '+ $n और', '+ আরও $n টি');
   String importN(int n) => pick(
-    'Import $n leads',
-    '$n लीड्स इम्पोर्ट करें',
-    '$n টি লিড ইমপোর্ট করুন',
+    'Import $n customers',
+    '$n ग्राहक इम्पोर्ट करें',
+    '$n টি গ্রাহক ইমপোর্ট করুন',
   );
-  String get orAddOne =>
-      pick('Or add one lead', 'या एक लीड जोड़ें', 'অথবা একটি লিড যোগ করুন');
+  String get orAddOne => pick(
+    'Or add one customer',
+    'या एक ग्राहक जोड़ें',
+    'অথবা একটি গ্রাহক যোগ করুন',
+  );
   String get customerNameHint =>
       pick('Customer name', 'ग्राहक का नाम', 'গ্রাহকের নাম');
   String get mobileNumberHint =>
@@ -156,9 +163,10 @@ extension SLeads on S {
   String optionalField(String label) =>
       pick('$label (optional)', '$label (ज़रूरी नहीं)', '$label (ঐচ্ছিক)');
   String get enterName => pick('Enter a name', 'नाम डालें', 'নাম লিখুন');
-  String get addLead => pick('Add lead', 'लीड जोड़ें', 'লিড যোগ করুন');
+  String get addLead =>
+      pick('Add customer', 'ग्राहक जोड़ें', 'গ্রাহক যোগ করুন');
   String get leadAdded =>
-      pick('Lead added ✓', 'लीड जुड़ गई ✓', 'লিড যোগ হয়েছে ✓');
+      pick('Customer added ✓', 'ग्राहक जुड़ गया ✓', 'গ্রাহক যোগ হয়েছে ✓');
   String get csvTooLarge => pick(
     'That file is over 2 MB. Split it and try again.',
     'फ़ाइल 2 MB से बड़ी है। उसे बाँटकर फिर कोशिश करें।',
@@ -177,10 +185,83 @@ extension SLeads on S {
     'সারি $row: ফোন নম্বর ভুল',
   );
   String nImported(int n) => pick(
-    '$n leads imported',
-    '$n लीड्स इम्पोर्ट हुईं',
-    '$n টি লিড ইমপোর্ট হয়েছে',
+    '$n customers imported',
+    '$n ग्राहक इम्पोर्ट हुए',
+    '$n টি গ্রাহক ইমপোর্ট হয়েছে',
   );
   String get callThemNow =>
       pick('Call them now', 'अभी कॉल करें', 'এখনই কল করুন');
+
+  // ------------------------------------------------------ Phone contacts
+  String get ctFromContacts =>
+      pick('From phone contacts', 'फ़ोन कॉन्टैक्ट्स से', 'ফোনের কন্টাক্ট থেকে');
+  String get ctFromContactsSub => pick(
+    'Pick customers already saved in your phone. Easiest way to start.',
+    'फ़ोन में सेव ग्राहक चुनें। शुरू करने का सबसे आसान तरीका।',
+    'ফোনে সেভ করা গ্রাহক বেছে নিন। শুরু করার সবচেয়ে সহজ উপায়।',
+  );
+  String get ctChoose => pick(
+    'Choose from contacts',
+    'कॉन्टैक्ट्स से चुनें',
+    'কন্টাক্ট থেকে বাছুন',
+  );
+  String get ctTitle => pick('Pick customers', 'ग्राहक चुनें', 'গ্রাহক বাছুন');
+  String get ctSearch =>
+      pick('Search name or number', 'नाम या नंबर खोजें', 'নাম বা নম্বর খুঁজুন');
+  String get ctSelectAll => pick('Select all', 'सभी चुनें', 'সব বাছুন');
+  String get ctClear => pick('Clear', 'हटाएँ', 'মুছুন');
+  String ctAddN(int n) => plural(
+    n,
+    'Add 1 customer',
+    'Add $n customers',
+    '$n ग्राहक जोड़ें',
+    '$n জন গ্রাহক যোগ করুন',
+  );
+  String get ctAccessTitle => pick(
+    'Allow contacts',
+    'कॉन्टैक्ट्स की अनुमति दें',
+    'কন্টাক্টের অনুমতি দিন',
+  );
+  String get ctAccessBody => pick(
+    'To pick customers, CallPilot needs to see your contacts. Only the people you choose are added.',
+    'ग्राहक चुनने के लिए CallPilot को आपके कॉन्टैक्ट्स देखने होंगे। सिर्फ़ वही लोग जुड़ेंगे जिन्हें आप चुनेंगे।',
+    'গ্রাহক বাছতে CallPilot-কে আপনার কন্টাক্ট দেখতে হবে। শুধু আপনি যাঁদের বাছবেন তাঁরাই যোগ হবেন।',
+  );
+  String get ctAllow => pick('Allow access', 'अनुमति दें', 'অনুমতি দিন');
+  String get ctNone => pick(
+    'No contacts with a mobile number',
+    'मोबाइल नंबर वाला कोई कॉन्टैक्ट नहीं',
+    'মোবাইল নম্বর সহ কোনো কন্টাক্ট নেই',
+  );
+  String get ctNoMatch => pick('No one matches', 'कोई नहीं मिला', 'কেউ মেলেনি');
+  String get ctHaveFile =>
+      pick('Have a file (CSV)?', 'फ़ाइल (CSV) है?', 'ফাইল (CSV) আছে?');
+
+  // Prominent disclosure, shown before Android's contacts permission prompt.
+  String get ctDiscTitle => pick(
+    'Before we open your contacts',
+    'कॉन्टैक्ट्स खोलने से पहले',
+    'কন্টাক্ট খোলার আগে',
+  );
+  String get ctDiscRead => pick(
+    'CallPilot reads the names and numbers saved on this phone, only to show you the list.',
+    'CallPilot इस फ़ोन में सेव नाम और नंबर पढ़ता है, सिर्फ़ आपको लिस्ट दिखाने के लिए।',
+    'CallPilot এই ফোনে সেভ করা নাম আর নম্বর পড়ে, শুধু আপনাকে তালিকা দেখানোর জন্য।',
+  );
+  String get ctDiscSend => pick(
+    'Only the people you tick are sent to CallPilot, so your AI employee can call them when you say so.',
+    'सिर्फ़ जिन लोगों पर आप टिक करेंगे, वही CallPilot को भेजे जाएँगे, ताकि आपके कहने पर आपका AI कर्मचारी उन्हें कॉल कर सके।',
+    'শুধু যাঁদের আপনি টিক দেবেন, তাঁরাই CallPilot-এ পাঠানো হবে, যাতে আপনি বললে আপনার AI কর্মী তাঁদের কল করতে পারে।',
+  );
+  String get ctDiscKeep => pick(
+    'Everyone else stays on your phone. We never sell your contacts.',
+    'बाकी सब आपके फ़ोन में ही रहते हैं। हम आपके कॉन्टैक्ट्स कभी नहीं बेचते।',
+    'বাকি সবাই আপনার ফোনেই থাকে। আমরা কখনও আপনার কন্টাক্ট বিক্রি করি না।',
+  );
+  String get ctDiscAgree => pick(
+    'I agree, continue',
+    'मैं सहमत हूँ, आगे बढ़ें',
+    'আমি রাজি, এগিয়ে যান',
+  );
+  String get ctDiscNo => pick('Not now', 'अभी नहीं', 'এখন না');
 }

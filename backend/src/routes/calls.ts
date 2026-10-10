@@ -6,6 +6,7 @@ import { requireSecret, isMockSarvam } from '../utils/secrets';
 import { checkCallCompliance } from '../services/compliance';
 import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS } from '../services/campaign_queue';
 import { parseLimit } from '../utils/pagination';
+import { voiceAgentVariables } from '../services/voice_persona';
 
 const callsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -216,6 +217,8 @@ callsApp.post('/leads/:id/call', async (c) => {
         agent_name: agent?.name ?? 'Riya',
         agent_role: agent?.role ?? 'Assistant',
         interest: lead.interest ?? lead.course_interest ?? '',
+        // The same voice the owner heard in the test call (gender + language).
+        ...voiceAgentVariables(agent),
       },
       webhookBaseUrl: c.env.PUBLIC_API_BASE_URL || new URL(c.req.url).origin,
     });

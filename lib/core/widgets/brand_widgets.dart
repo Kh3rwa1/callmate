@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/models/models.dart';
-import '../../data/templates/templates.dart';
 import '../config/brand.dart';
-import '../providers.dart';
 import '../theme/app_colors.dart';
-import 'mascot.dart';
 
 /// CallPilot logo mark (uses the launcher icon asset).
 class BrandMark extends StatelessWidget {
@@ -64,42 +59,4 @@ class BrandWordmark extends StatelessWidget {
       ),
     ],
   );
-}
-
-/// Mascot bound to the current AI employee (role → badge). Changing
-/// agent.role automatically changes the accessory everywhere.
-class EmployeeMascot extends ConsumerWidget {
-  const EmployeeMascot({
-    super.key,
-    this.state = MascotState.welcome,
-    this.size = 120,
-    this.halo = true,
-    this.animate = true,
-    this.agent,
-  });
-  final MascotState state;
-  final double size;
-  final bool halo;
-  final bool animate;
-  final Agent? agent;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final a = agent ?? ref.watch(agentProvider).value;
-    final role = a == null
-        ? null
-        : EmployeeRoleKind.parse(
-            a.roleKind == 'general'
-                ? EmployeeRoleKind.fromRole(a.role).name
-                : a.roleKind,
-          );
-    return Mascot(
-      state: state,
-      size: size,
-      halo: halo,
-      animate: animate,
-      role: role,
-      semanticLabel: a == null ? 'AI employee' : '${a.name}, ${a.role}',
-    );
-  }
 }

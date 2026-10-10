@@ -12,9 +12,9 @@ extension SCalls on S {
     '$agent এখনও কোনো কল করেনি।',
   );
   String get startCampaignToSeeCalls => pick(
-    'Start a campaign to see calls here.',
-    'कॉल्स यहाँ देखने के लिए कैंपेन शुरू करें।',
-    'এখানে কল দেখতে ক্যাম্পেন শুরু করুন।',
+    'Start calling to see calls here.',
+    'कॉल्स यहाँ देखने के लिए कॉलिंग शुरू करें।',
+    'এখানে কল দেখতে কলিং শুরু করুন।',
   );
 
   // ------------------------------------------------------------ Result
@@ -27,25 +27,27 @@ extension SCalls on S {
     'सारांश उपलब्ध नहीं है।',
     'সারাংশ পাওয়া যায়নি।',
   );
-  String get leadScoreTitle => pick('Lead score', 'लीड स्कोर', 'লিড স্কোর');
-  String tempLead(String temp) => pick('$temp lead', '$temp लीड', '$temp লিড');
+  String get leadScoreTitle =>
+      pick('Customer score', 'ग्राहक स्कोर', 'গ্রাহক স্কোর');
+  String tempLead(String temp) =>
+      pick('$temp customer', '$temp ग्राहक', '$temp গ্রাহক');
   String get nextStep => pick('Next step', 'अगला कदम', 'পরের পদক্ষেপ');
   String callBackAt(String when) =>
       pick('Call back $when', 'वापस कॉल: $when', 'আবার কল: $when');
   String get scheduleCallback =>
-      pick('Schedule Callback', 'कॉलबैक तय करें', 'কলব্যাক ঠিক করুন');
+      pick('Schedule Call Back', 'कॉल बैक तय करें', 'কল ব্যাক ঠিক করুন');
   String get prepareWhatsapp =>
       pick('Prepare WhatsApp', 'WhatsApp तैयार करें', 'WhatsApp তৈরি করুন');
-  String get openLead => pick('Open lead', 'लीड खोलें', 'লিড খুলুন');
+  String get openLead => pick('Open customer', 'ग्राहक खोलें', 'গ্রাহক খুলুন');
   String get status => pick('Status', 'स्थिति', 'অবস্থা');
   String get when => pick('When', 'कब', 'কখন');
   String get durationLabel => pick('Duration', 'अवधि', 'সময়কাল');
   String get outcome => pick('Outcome', 'नतीजा', 'ফলাফল');
   String get nextLabel => pick('Next', 'आगे', 'এরপর');
   String get willRetryNextCampaign => pick(
-    'Your AI employee will try again in the next campaign.',
-    'आपका AI कर्मचारी अगले कैंपेन में फिर कोशिश करेगा।',
-    'আপনার AI কর্মী পরের ক্যাম্পেনে আবার চেষ্টা করবে।',
+    'Your AI employee will try again next time.',
+    'आपका AI कर्मचारी अगले कॉलिंग में फिर कोशिश करेगा।',
+    'আপনার AI কর্মী পরের কলিংে আবার চেষ্টা করবে।',
   );
 
   // ------------------------------------------------------------ Transcript

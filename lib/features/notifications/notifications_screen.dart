@@ -12,25 +12,10 @@ import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
+import '../../services/notifications/notification_service.dart';
 
-/// Splits a backend title like "🔥 Hot lead detected" into its leading
-/// emoji (rendered as a line icon) and the plain words.
-(String, String) splitNotificationTitle(String title) {
-  final chars = title.characters;
-  if (chars.isEmpty) return ('', title);
-  final first = chars.first;
-  final isLetter = RegExp(r'^[\p{L}\p{N}]', unicode: true).hasMatch(first);
-  if (isLetter) return ('', title);
-  return (first, chars.skip(1).toString().trim());
-}
-
-/// The notification title without its emoji prefix.
-String plainNotificationTitle(String title) => splitNotificationTitle(title).$2;
-
-/// Title shown for [n]: the backend's words in English, a translation by
-/// type otherwise.
-String notificationTitleFor(S s, AppNotification n) =>
-    s.isEn ? plainNotificationTitle(n.title) : s.notificationTitle(n.type);
+export '../../services/notifications/notification_service.dart'
+    show splitNotificationTitle, plainNotificationTitle, notificationTitleFor;
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -308,7 +293,7 @@ class InAppNotificationBanner extends StatelessWidget {
                 FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF0F0F14),
+                    foregroundColor: const Color(0xFF0E173A),
                     minimumSize: const Size(0, 40),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     textStyle: const TextStyle(

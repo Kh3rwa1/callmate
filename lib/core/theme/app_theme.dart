@@ -349,7 +349,7 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: p.inverse,
-        actionTextColor: p.isDark ? p.brandFill : const Color(0xFFA9A4FF),
+        actionTextColor: p.isDark ? p.brandFill : const Color(0xFF7FB4FF),
         contentTextStyle: text.bodyMedium?.copyWith(
           color: p.onInverse,
           fontWeight: FontWeight.w600,

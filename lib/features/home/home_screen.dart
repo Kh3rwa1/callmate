@@ -202,7 +202,6 @@ class _HomeBody extends ConsumerWidget {
         SectionLabel(s.todaysResults),
         HomeStatStrip(
           stats: [
-            HomeStat(d.callsToday, s.statCalls, () => context.go('/calls')),
             HomeStat(
               d.connected,
               s.statConnected,

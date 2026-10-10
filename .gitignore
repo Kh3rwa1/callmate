@@ -61,3 +61,8 @@ GoogleService-Info.plist
 # Claude Code local settings
 .claude/settings.local.json
 tool/screenshots/out/
+
+# Local test logs and design scratch
+test_output.txt
+backend_test_output.txt
+Claude outputs/
