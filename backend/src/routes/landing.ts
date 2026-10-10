@@ -9,7 +9,7 @@
 import { Hono } from 'hono';
 import { Env } from '../types';
 import { escapeHtml } from './legal';
-import { getPlan, PAID_PLAN_IDS, Plan } from '../services/plans';
+import { getPlan, PAID_PLAN_IDS, Plan, priceWithGst } from '../services/plans';
 import { normalizeReferralCode, referralBonusMinutes } from '../services/referrals';
 
 export const PLAY_PACKAGE_ID = 'com.callpilot.app';
@@ -47,9 +47,14 @@ export function landingCsp(audioOrigin: string | null): string {
 
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
-function planCard(p: Plan, perMonth: boolean): string {
-  const price = p.priceInr > 0 ? `${inr(p.priceInr)}${perMonth ? '<small>/month</small>' : ''}` : 'Free';
-  return `<div class="plan"><h3>${escapeHtml(p.name)}</h3><p class="price">${price}</p>`
+// Prices are shown the way checkout charges them: base + GST, with the total spelled out.
+function planCard(p: Plan, perMonth: boolean, env: Env): string {
+  const gst = p.priceInr > 0 ? priceWithGst(p.priceInr, env) : null;
+  const price = gst
+    ? `${inr(gst.base_inr)} <small>+ GST${perMonth ? ' /month' : ''}</small>`
+    : 'Free';
+  const total = gst ? `<p class="total">${inr(gst.total_inr)} including GST</p>` : '';
+  return `<div class="plan"><h3>${escapeHtml(p.name)}</h3><p class="price">${price}</p>${total}`
     + `<p>${p.includedMinutes.toLocaleString('en-IN')} call minutes${perMonth && p.priceInr > 0 ? ' every month' : ''}</p></div>`;
 }
 
@@ -97,6 +102,7 @@ export function landingPage(env: Env, rawRef: string | undefined): string {
   .card p, .plan p { color: var(--soft); margin: 0; }
   .price { font-size: 1.5rem; font-weight: 700; color: var(--ink) !important; margin: 4px 0 !important; }
   .price small { font-size: 0.9rem; font-weight: 500; color: var(--soft); }
+  .total { font-size: 0.9rem; color: var(--soft); margin: 0 0 6px !important; }
   ol { padding-left: 1.25rem; } ol li { margin: 6px 0; }
   audio { width: 100%; }
   details { border-bottom: 1px solid var(--line); padding: 12px 0; }
@@ -131,10 +137,10 @@ ${demo}
 
 <section aria-labelledby="pricing"><h2 id="pricing">Simple pricing</h2>
 <div class="grid">
-${planCard(trial, false)}
-${paid.map((p) => planCard(p, true)).join('\n')}
+${planCard(trial, false, env)}
+${paid.map((p) => planCard(p, true, env)).join('\n')}
 </div>
-<p class="fine">Prices in Indian rupees. Paid plans are paid month by month in the app and never renew automatically.</p></section>
+<p class="fine">Prices in Indian rupees, plus 18% GST. Pay monthly, or yearly and get 2 months free, in the app. Plans never renew automatically.</p></section>
 
 <section aria-labelledby="faq"><h2 id="faq">Questions</h2>
 <details><summary>Is it legal to call my leads with AI?</summary><p>CallPilot calls only between 9 am and 9 pm, skips anyone marked "do not call", and only calls people who enquired with you or agreed to be contacted. You confirm consent before a campaign starts.</p></details>

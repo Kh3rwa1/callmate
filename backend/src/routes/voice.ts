@@ -8,7 +8,7 @@ import { consentEventStatement, CONSENT_TEXT_VERSIONS } from '../services/consen
 import { sendBusinessPushNotification } from '../services/fcm';
 import { billableMinutes, claimWebhookEvent, releaseWebhookEvent, recordCallUsage } from '../services/billing';
 import { MAX_DIAL_ATTEMPTS, requeueLead, maybeCompleteCampaign, sarvamWebhookToken } from '../services/campaign_queue';
-import { RETRY_SPACING_SECONDS, isInvalidNumberOutcome, isRetryableOutcome } from '../services/call_outcomes';
+import { RETRY_SPACING_SECONDS, isInvalidNumberOutcome, isRetryableOutcome, keepsLeadRating } from '../services/call_outcomes';
 import { callDurationSeconds } from '../services/economics';
 import { isAllowedSarvamPath } from '../services/sarvam_proxy_guard';
 import { hitRateLimit } from '../utils/rate_limit';
@@ -664,13 +664,14 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
   }
 
   try {
-    // Validate payload against schema: if invalid: score 0, temperature cold, flag for review, return 200
+    // Validate payload against schema: if invalid, the call is recorded as score 0 / cold and flagged
+    // for review (200); the lead keeps its earlier rating (services/call_outcomes.ts keepsLeadRating).
     const rawOutput = normalizeAgentOutput(data.output_variables || data.output_agent_variables || data.final_agent_variables
       || data.extracted_variables || data.extracted_data || data);
     const validation = validateCallOutput(rawOutput);
     const norm = validation.normalized;
 
-    const lead = await c.env.DB.prepare('SELECT name, phone FROM leads WHERE id = ? AND business_id = ?').bind(leadId, businessId).first<any>();
+    const lead = await c.env.DB.prepare('SELECT name, phone, temperature FROM leads WHERE id = ? AND business_id = ?').bind(leadId, businessId).first<any>();
     const leadName = lead?.name || call.lead_name || 'Customer';
 
     // 3. Billing calculation
@@ -757,7 +758,15 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
 
     // Update Lead with AND business_id = ?
     // Bug 3: Only update score/temperature on connected calls; otherwise update status = 'not_reached'
-    if (isConnected) {
+    if (isConnected && keepsLeadRating(validation.valid, norm, lead?.temperature)) {
+      // The call row above keeps this call's own result; the lead keeps its earlier rating.
+      statements.push(
+        c.env.DB.prepare(
+          `UPDATE leads SET status = 'called', callback_at = COALESCE(?, callback_at), updated_at = datetime('now')
+           WHERE id = ? AND business_id = ?`
+        ).bind(callbackAt, leadId, businessId)
+      );
+    } else if (isConnected) {
       statements.push(
         c.env.DB.prepare(
           `UPDATE leads SET

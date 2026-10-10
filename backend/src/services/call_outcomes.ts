@@ -32,3 +32,25 @@ export function isInvalidNumberOutcome(status: string | null | undefined, failur
   if (INVALID_NUMBER_STATUSES.has(String(status ?? '').toLowerCase().trim())) return true;
   return typeof failureReason === 'string' && INVALID_NUMBER_REASON.test(failureReason);
 }
+
+const TEMPERATURE_RANK: Record<string, number> = { cold: 0, warm: 1, hot: 2 };
+
+/**
+ * True when a connected call must NOT replace the lead's rating (temperature, score, summary).
+ * The call row always keeps its own result; this only protects the lead:
+ *  - an invalid / flagged output is a technical failure, not the customer's answer;
+ *  - an inconclusive call (intent 'unknown', e.g. "busy, call later" or a dropped line) never
+ *    lowers an earlier warm/hot rating, so a buyer is not buried as "not interested".
+ * A clear answer (not interested, opt-out, a new rating with a real intent) still replaces it.
+ */
+export function keepsLeadRating(
+  outputValid: boolean,
+  result: { intent?: string | null; temperature?: string | null },
+  currentTemperature: string | null | undefined,
+): boolean {
+  if (!outputValid) return true;
+  if (result.intent !== 'unknown') return false;
+  const next = TEMPERATURE_RANK[String(result.temperature ?? '')] ?? 0;
+  const current = TEMPERATURE_RANK[String(currentTemperature ?? '')] ?? 0;
+  return next < current;
+}

@@ -290,6 +290,10 @@ describe('Landing page GET /get', () => {
     expect(html).not.toMatch(/\son[a-z]+=/i);
     const starter = getPlan('starter', env as any);
     expect(html).toContain(`₹${starter.priceInr.toLocaleString('en-IN')}`);
+    // Same price checkout charges: base + GST, with the total spelled out.
+    expect(html).toContain(`₹${starter.priceInr.toLocaleString('en-IN')} <small>+ GST /month</small>`);
+    expect(html).toContain(`₹${Math.round(starter.priceInr * 1.18).toLocaleString('en-IN')} including GST`);
+    expect(html).toContain('plus 18% GST');
     expect(html).toContain('/legal/privacy');
     expect(html).toContain(escapeAmp(playStoreUrl(null)));
     expect(html).not.toContain('<audio');

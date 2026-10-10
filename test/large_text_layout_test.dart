@@ -73,25 +73,35 @@ void main() {
     });
   }
 
-  appTest('Extra large: the business name is not cut short', (h) async {
-    h.backend.business = h.backend.business.copyWith(
-      name: 'Sharma Coaching Hub',
-    );
-    h.backend.emitChanged('business');
-    await h.container.read(textSizeProvider.notifier).set(TextSize.extraLarge);
-    await phone(h, scale: 1.15);
-    expect(find.text('Sharma Coaching Hub'), findsOneWidget);
-    final p = paragraph(h.tester, find.byType(HomeScreen));
-    expect(p.text.toPlainText(), contains('Good'));
-    final name = h.tester.renderObject<RenderParagraph>(
-      find.descendant(
-        of: find.text('Sharma Coaching Hub'),
-        matching: find.byType(RichText),
-      ),
-    );
-    expect(name.didExceedMaxLines, isFalse);
-    expect(h.tester.takeException(), isNull);
-  });
+  // Real names, including the one cut short on a Samsung A34 at Extra large
+  // ("ABC Coaching…").
+  for (final bizName in const [
+    'Sharma Coaching Hub',
+    'ABC Coaching Centre',
+    'Bright Future Academy',
+  ]) {
+    appTest('Extra large: the business name "$bizName" is not cut short', (
+      h,
+    ) async {
+      h.backend.business = h.backend.business.copyWith(name: bizName);
+      h.backend.emitChanged('business');
+      await h.container
+          .read(textSizeProvider.notifier)
+          .set(TextSize.extraLarge);
+      await phone(h, scale: 1.15);
+      expect(find.text(bizName), findsOneWidget);
+      final p = paragraph(h.tester, find.byType(HomeScreen));
+      expect(p.text.toPlainText(), contains('Good'));
+      final name = h.tester.renderObject<RenderParagraph>(
+        find.descendant(
+          of: find.text(bizName),
+          matching: find.byType(RichText),
+        ),
+      );
+      expect(name.didExceedMaxLines, isFalse);
+      expect(h.tester.takeException(), isNull);
+    });
+  }
 
   appTest('Extra large: My employee rows show their values in full', (h) async {
     await h.container.read(textSizeProvider.notifier).set(TextSize.extraLarge);

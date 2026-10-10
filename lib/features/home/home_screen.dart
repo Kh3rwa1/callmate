@@ -250,7 +250,7 @@ class _HomeBody extends ConsumerWidget {
               count: d.followUpsReady == 0 ? null : d.followUpsReady,
               label: d.followUpsReady == 0
                   ? s.allCaughtUp
-                  : s.followUpsReadyLabel,
+                  : s.followUpsReadyLabel(d.followUpsReady),
               onTap: () => context.go('/followups'),
             ),
             HomeActionRow(

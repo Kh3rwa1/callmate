@@ -49,8 +49,8 @@ extension SHome on S {
     'नए ग्राहकों को कॉल करें',
     'নতুন গ্রাহকে কল করুন',
   );
-  String get followUpsReadyLabel =>
-      pick('messages ready', 'मैसेज तैयार', 'মেসেজ তৈরি');
+  String followUpsReadyLabel(int n) =>
+      plural(n, 'message ready', 'messages ready', 'मैसेज तैयार', 'মেসেজ তৈরি');
   String callbacksLabel(int n) =>
       plural(n, 'call back', 'call backs', 'कॉल बैक', 'কল ব্যাক');
   String get upcomingCallback =>

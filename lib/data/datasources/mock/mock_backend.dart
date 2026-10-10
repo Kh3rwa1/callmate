@@ -691,7 +691,7 @@ class MockBackend implements BackendEvents {
           type: NotificationType.campaign,
           title: '✅ ${agent.name} finished calling',
           body:
-              '${cur.stats.completed} calls · ${cur.stats.hot} ready to buy · $ready messages ready.',
+              '${cur.stats.completed} calls · ${cur.stats.hot} ready to buy · $ready ${ready == 1 ? 'message' : 'messages'} ready.',
           route: '/followups',
           actionLabel: 'Review & send',
           createdAt: DateTime.now(),
