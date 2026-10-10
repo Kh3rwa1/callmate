@@ -173,7 +173,10 @@ enum NotificationType {
   hotLead('hot_lead'),
   followUpReady('followup_ready'),
   callback('callback'),
-  campaign('campaign');
+  campaign('campaign'),
+
+  /// A new enquiry arrived through the hosted form or webhook (speed-to-lead).
+  newLead('new_lead');
 
   const NotificationType(this.wire);
   final String wire;

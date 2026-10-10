@@ -246,6 +246,10 @@ final knowledgeRepoProvider = Provider<KnowledgeRepository>(
 final leadRepoProvider = Provider<LeadRepository>(
   (ref) => _pick(ref, MockLeadRepository.new, ApiLeadRepository.new),
 );
+final leadSourceRepoProvider = Provider<LeadSourceRepository>(
+  (ref) =>
+      _pick(ref, MockLeadSourceRepository.new, ApiLeadSourceRepository.new),
+);
 final callRepoProvider = Provider<CallRepository>(
   (ref) => _pick(ref, MockCallRepository.new, ApiCallRepository.new),
 );
@@ -377,6 +381,12 @@ final dashboardProvider = FutureProvider<DailySummary>((ref) {
   return ref.watch(dashboardRepoProvider).today();
 });
 
+/// The home results card: this week vs last week.
+final weekResultsProvider = FutureProvider<ResultsSummary>((ref) {
+  ref.watch(dataVersionProvider);
+  return ref.watch(dashboardRepoProvider).results(ResultsRange.week);
+});
+
 final followUpsProvider = FutureProvider<List<FollowUp>>((ref) {
   ref.watch(dataVersionProvider);
   return ref.watch(followUpRepoProvider).list();
@@ -425,6 +435,12 @@ final usageProvider = FutureProvider<Usage>((ref) {
 final notificationsProvider = FutureProvider<List<AppNotification>>((ref) {
   ref.watch(dataVersionProvider);
   return ref.watch(notificationRepoProvider).list();
+});
+
+/// Speed-to-lead form and webhooks (Customers → Get leads automatically).
+final leadSourcesProvider = FutureProvider<List<LeadSource>>((ref) {
+  ref.watch(dataVersionProvider);
+  return ref.watch(leadSourceRepoProvider).list();
 });
 
 final newLeadsProvider = FutureProvider<List<Lead>>((ref) {

@@ -244,6 +244,15 @@ business) re-sends a delayed message and does **not** use up retries.
   ```
 - **Phone Privacy:** Phone numbers appear only in masked format (`91XXXXXX345`) in compliance with PII privacy rules.
 
+### 5.0 Daily summary push
+
+The same 10-minute cron runs `runDailyDigests` (`backend/src/services/digest.ts`).
+Between 19:00 and 22:00 Asia/Kolkata it sends each business one push
+("Today: 12 calls, 3 ready to buy — tap to see them"), deduped per local date
+in `digest_log`. Skipped when the owner turned it off
+(`businesses.digest_enabled = 0`), when no device is registered, and on days
+with no enquiries and no calls. Owner test calls never count.
+
 ### 5.1 Alerts & monitoring
 
 The 10-minute cron (`scheduled` in `backend/src/index.ts`) runs

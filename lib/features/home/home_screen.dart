@@ -14,6 +14,7 @@ import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import '../campaign/campaign_widgets.dart';
 import 'home_widgets.dart';
+import 'results_card.dart';
 import '../../core/widgets/brand_widgets.dart';
 import '../usage/plan_banner.dart';
 
@@ -292,6 +293,7 @@ class _HomeBody extends ConsumerWidget {
           const SizedBox(height: 20),
           CallNewLeadsButton(count: d.newLeadsReady),
         ],
+        const HomeResultsSection(),
         SectionLabel(s.todaysActivity),
         HomeActivityList(
           items: d.activity.take(3).toList(),

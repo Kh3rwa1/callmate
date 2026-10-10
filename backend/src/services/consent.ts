@@ -26,6 +26,10 @@ export const CONSENT_TEXT_VERSIONS = {
   campaignAttestation: 'campaign-attestation-2026-10',
   /** Opt-out detected in the call (services/compliance.ts isOptOutRequest). */
   inCallOptOut: 'opt-out-detector-v1',
+  /** Person ticked the consent box on the hosted enquiry form (routes/lead_capture_public.ts). */
+  form: 'enquiry-form-2026-10',
+  /** Integration posted `consent: true` to the lead webhook. */
+  webhook: 'lead-webhook-2026-10',
 } as const;
 
 export interface ConsentEventInput {

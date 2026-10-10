@@ -303,6 +303,36 @@ async function run() {
   assert.strictEqual(updatedLead.data.score.value, 92);
   console.log('   ✓ Lead was updated with AI analysis and hot temperature');
 
+  // 11b. Speed-to-lead: hosted form + webhook enquiry is AI-called via the queue within seconds
+  console.log('11b. Speed-to-lead (form + webhook -> instant call)...');
+  const form = await req('/lead-sources', { method: 'POST', headers: authHeader, body: JSON.stringify({ kind: 'form' }) });
+  assert.strictEqual(form.status, 201);
+  const formPage = await fetch(`${BASE}/f/${form.data.slug}`);
+  assert.strictEqual(formPage.status, 200);
+  assert.ok((formPage.headers.get('content-security-policy') || '').includes("default-src 'none'"));
+  const hook = await req('/lead-sources', { method: 'POST', headers: authHeader, body: JSON.stringify({ kind: 'webhook' }) });
+  assert.strictEqual(hook.status, 201);
+  assert.ok(hook.data.token);
+  const badHook = await req(`/hooks/leads/${hook.data.slug}`, {
+    method: 'POST', headers: { Authorization: 'Bearer wrong' },
+    body: JSON.stringify({ name: 'Web Enquiry', phone: '9830077123', consent: true }),
+  });
+  assert.strictEqual(badHook.status, 401);
+  const hookLead = await req(`/hooks/leads/${hook.data.slug}`, {
+    method: 'POST', headers: { Authorization: `Bearer ${hook.data.token}` },
+    body: JSON.stringify({ name: 'Web Enquiry', phone: '9830077123', interest: 'Demo', consent: true }),
+  });
+  assert.strictEqual(hookLead.status, 201, JSON.stringify(hookLead.data));
+  let instantCall = null;
+  for (let i = 0; i < 30 && !instantCall; i++) {
+    const calls = await req(`/calls?lead_id=${hookLead.data.lead_id}`, { headers: authHeader });
+    instantCall = Array.isArray(calls.data) ? calls.data[0] : null;
+    if (!instantCall) await new Promise((r) => setTimeout(r, 1000));
+  }
+  assert.ok(instantCall, 'webhook enquiry was not called within 30s');
+  assert.strictEqual(instantCall.status, 'calling');
+  console.log('   ✓ Webhook enquiry created and AI-called via the queue');
+
   // 12. Account Deletion (Apple App Store Guideline 5.1.1(v))
   console.log('12. Account Deletion...');
   const delAcc = await req('/auth/account', {

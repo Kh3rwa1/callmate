@@ -6,6 +6,7 @@ import { parseLimit } from '../utils/pagination';
 import {
   consentEventStatement, recordConsentEventsForLeads, hashIp, clientIp, CONSENT_TEXT_VERSIONS,
 } from '../services/consent';
+import { normalizePhone } from '../utils/phone';
 
 function isUniqueViolation(err: any): boolean {
   return /UNIQUE constraint failed/i.test(String(err?.message ?? err));
@@ -50,15 +51,6 @@ function formatLead(row: any) {
   };
 }
 
-function normalizePhone(p: string): string | null {
-  const digits = p.replace(/\D/g, '');
-  if (digits.length === 10) return `91${digits}`;
-  if (digits.length === 11 && digits.startsWith('0')) return `91${digits.slice(1)}`;
-  if (digits.startsWith('91') && digits.length === 12) return digits;
-  if (digits.length >= 8 && digits.length <= 15) return digits;
-  return null;
-}
-
 // GET /leads
 // Keyset cursor pagination on (created_at, id) with limit capped at 100
 leadsApp.get('/leads', async (c) => {
@@ -70,7 +62,8 @@ leadsApp.get('/leads', async (c) => {
   const limit = parseLimit(c.req.query('limit'), 20, 100);
   const fields = c.req.query('fields');
 
-  let sql = 'SELECT * FROM leads WHERE business_id = ?';
+  // The owner's own test lead (POST /agent/test-call) is not a customer.
+  let sql = 'SELECT * FROM leads WHERE business_id = ? AND is_owner_test = 0';
   const params: any[] = [user.business_id];
 
   if (filter === 'new') {

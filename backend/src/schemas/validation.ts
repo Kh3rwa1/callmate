@@ -132,6 +132,15 @@ export const patchBusinessSchema = z.object({
   whatsapp_number: z.string().nullable().optional(),
   human_number: z.string().nullable().optional(),
   owner_name: z.string().nullable().optional(),
+  /** Daily 19:00 summary push (services/digest.ts). */
+  digest_enabled: z.boolean().optional(),
+  /** Average sale value for the results card's revenue estimate; null clears it. */
+  avg_deal_value_inr: z.number().int().min(1).max(100_000_000).nullable().optional(),
+});
+
+/** POST /agent/test-call: the owner's own mobile number. */
+export const ownerTestCallSchema = z.object({
+  phone: z.string().min(8).max(20),
 });
 
 export const patchAgentSchema = z.object({
@@ -177,6 +186,29 @@ export const patchCallbackSchema = z.object({
 export const deviceTokenSchema = z.object({
   token: z.string().min(1, 'Token is required'),
   platform: z.enum(['android', 'ios', 'web']).default('android'),
+});
+
+// ==========================================
+// Lead capture (speed-to-lead)
+// ==========================================
+export const createLeadSourceSchema = z.object({
+  kind: z.enum(['form', 'webhook']),
+  auto_call: z.boolean().optional(),
+});
+
+export const patchLeadSourceSchema = z.object({
+  auto_call: z.boolean(),
+});
+
+/** Public enquiry: hosted form fields and the webhook JSON body share these limits. */
+export const LEAD_NAME_MAX = 100;
+export const LEAD_INTEREST_MAX = 500;
+
+export const leadWebhookSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(LEAD_NAME_MAX),
+  phone: z.string().min(8, 'Phone number must be at least 8 digits').max(20),
+  interest: z.string().max(LEAD_INTEREST_MAX).nullable().optional(),
+  consent: z.literal(true, { message: 'consent must be true: the person agreed to receive a call' }),
 });
 
 /**
