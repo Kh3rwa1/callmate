@@ -3,7 +3,7 @@ import { env } from 'cloudflare:test';
 import { migrateTestDb } from './setup-db';
 import app from '../src/index';
 import { signJWT } from '../src/auth';
-import { sarvamSpeaker, voiceGender, voiceLang } from '../src/services/voice_persona';
+import { callLang, sarvamSpeaker, voiceAgentVariables, voiceGender, voiceLang } from '../src/services/voice_persona';
 
 describe('voice persona', () => {
   it('reads the gender from every stored voice label', () => {
@@ -14,6 +14,18 @@ describe('voice persona', () => {
     expect(voiceGender(undefined)).toBe('female');
     expect(voiceLang('hi')).toBe('hi');
     expect(voiceLang('fr')).toBe('en');
+  });
+
+  it('real calls speak the employee\'s first language in the employee\'s voice', () => {
+    expect(callLang('["Hindi", "English"]')).toBe('hi');
+    expect(callLang(['Bengali'])).toBe('bn');
+    expect(callLang('["English", "Hindi"]')).toBe('en');
+    expect(callLang(null)).toBe('en');
+    expect(callLang('not json')).toBe('en');
+    expect(voiceAgentVariables({ voice: 'Friendly · Male', languages: '["Bengali"]' })).toMatchObject({
+      gender: 'male', speaker: 'bappa_bn_conversation', language_code: 'bn-IN',
+    });
+    expect(voiceAgentVariables(null).speaker).toBe('ishita_enhi_customer');
   });
 
   it('never uses the retired v1 voice "meera"', () => {

@@ -14,6 +14,7 @@ import { Env } from '../types';
 import { checkCallCompliance } from './compliance';
 import { maskPhone } from '../utils/crypto_data';
 import { isMockSarvam } from '../utils/secrets';
+import { voiceAgentVariables } from './voice_persona';
 
 export interface CampaignJobMessage {
   campaign_id: string;
@@ -250,7 +251,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
   }
 
   const business = await env.DB.prepare('SELECT name FROM businesses WHERE id = ?').bind(business_id).first<any>();
-  const agent = await env.DB.prepare('SELECT name, role FROM agents WHERE business_id = ?').bind(business_id).first<any>();
+  const agent = await env.DB.prepare('SELECT name, role, voice, languages FROM agents WHERE business_id = ?').bind(business_id).first<any>();
 
   const dial = await dialSarvam(env, {
     callId,
@@ -264,6 +265,8 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
       agent_name: agent?.name ?? 'Riya',
       agent_role: agent?.role ?? 'Assistant',
       interest: lead.interest ?? '',
+      // The same voice the owner heard in the test call (gender + language).
+      ...voiceAgentVariables(agent),
     },
     webhookBaseUrl: env.PUBLIC_API_BASE_URL || job.webhook_base_url,
   });

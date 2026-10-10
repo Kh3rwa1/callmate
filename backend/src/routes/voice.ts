@@ -14,7 +14,7 @@ import { buildSystemPrompt, loadHistory, saveTurn } from '../services/prompt';
 import { requireSecret } from '../utils/secrets';
 import { timingSafeEqual } from '../utils/compare';
 import { jsonErrorHandler } from '../utils/errors';
-import { VoiceGender, auraVoice, sarvamLanguageCode, sarvamSpeaker, voiceGender, voiceLang } from '../services/voice_persona';
+import { VoiceGender, auraVoice, sarvamLanguageCode, sarvamSpeaker, voiceAgentVariables, voiceGender, voiceLang } from '../services/voice_persona';
 
 const voiceApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 // voiceApp is also dispatched directly (voiceApp.fetch) for the proxy, bypassing the main app's onError.
@@ -102,11 +102,7 @@ voiceApp.post('/test-session', async (c) => {
       business_name: businessName,
       agent_name: agentName,
       agent_role: agent?.role || 'Assistant',
-      gender,
-      voice: gender,
-      speaker: sarvamSpeaker(gender, lang),
-      language_code: sarvamLanguageCode(lang),
-      tts_model: 'bulbul:v4-flash',
+      ...voiceAgentVariables(agent, lang),
       mode: 'owner_test',
     },
     user_identifier: user.id,

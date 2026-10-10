@@ -41,3 +41,32 @@ export function sarvamLanguageCode(lang: VoiceLang = 'en'): string {
 export function auraVoice(gender: VoiceGender): string {
   return gender === 'male' ? 'orion' : 'luna';
 }
+
+/**
+ * Language for a call to a customer: the employee's first spoken language
+ * (owner's order). English → the English–Hindi personas most Indian callers
+ * expect.
+ */
+export function callLang(languages?: string | string[] | null): VoiceLang {
+  let list: unknown = languages;
+  if (typeof languages === 'string') {
+    try { list = JSON.parse(languages); } catch { list = [languages]; }
+  }
+  const first = Array.isArray(list) ? String(list[0] ?? '').toLowerCase() : '';
+  if (first.startsWith('hindi')) return 'hi';
+  if (first.startsWith('bengali') || first.startsWith('bangla')) return 'bn';
+  return 'en';
+}
+
+/** Agent variables that set the employee's voice on a Sarvam call. */
+export function voiceAgentVariables(agent?: { voice?: string | null; languages?: string | string[] | null } | null, lang?: VoiceLang) {
+  const gender = voiceGender(agent?.voice);
+  const l = lang ?? callLang(agent?.languages);
+  return {
+    gender,
+    voice: gender,
+    speaker: sarvamSpeaker(gender, l),
+    language_code: sarvamLanguageCode(l),
+    tts_model: 'bulbul:v4-flash',
+  };
+}
