@@ -10,6 +10,7 @@
  * Outside calling hours the message is re-sent with a delay until the window opens (Queues caps a
  * delay at 12h, so long waits hop more than once and re-check each time).
  */
+import { recordConsentEventsForLeads, CONSENT_TEXT_VERSIONS } from './consent';
 import { Env } from '../types';
 import { timingSafeEqual } from '../utils/compare';
 import { normalizePhone } from '../utils/phone';
@@ -132,7 +133,7 @@ export async function captureLead(
   env: Env,
   source: LeadSourceRow,
   input: CaptureInput,
-  opts: { fallbackBaseUrl?: string; waitUntil?: (p: Promise<unknown>) => void } = {},
+  opts: { fallbackBaseUrl?: string; waitUntil?: (p: Promise<unknown>) => void; ipHash?: string | null } = {},
 ): Promise<CaptureResult> {
   const phone = normalizePhone(input.phone);
   if (!phone) return { status: 'invalid_phone' };
@@ -178,6 +179,12 @@ export async function captureLead(
     }
     status = 'created';
   }
+
+  // Evidence of the opt-in this enquiry carried (shown in the lead's consent history).
+  // Records the lead's stored value: a repeat enquiry never overrides an earlier opt-out.
+  await recordConsentEventsForLeads(env.DB, businessId, [leadId], {
+    source: source.kind, textVersion: CONSENT_TEXT_VERSIONS[source.kind], ipHash: opts.ipHash ?? null,
+  });
 
   if (autoCall) {
     await enqueueInstantCall(env, {

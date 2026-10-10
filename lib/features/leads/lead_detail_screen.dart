@@ -361,6 +361,8 @@ class _Body extends ConsumerWidget {
               ],
             ),
           ),
+        SectionLabel(s.consentHistory),
+        ConsentHistoryCard(leadId: l.id),
         if (lastCall != null && !lastCall.transcript.isEmpty) ...[
           SectionLabel(s.transcript),
           AppCard(

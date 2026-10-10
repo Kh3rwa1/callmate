@@ -69,7 +69,8 @@ Tenant-isolated documents stored in Cloudflare R2 and indexed into Sarvam AI.
 | `POST` | `/leads/import` | `{"leads": [{"name": "...", "phone": "..."}, ...]}` | `{"imported": number, "skipped": number, "errors": [...]}`. Max 1000 per batch. Unique constraint on `(business_id, phone)` prevents duplicates. |
 | `GET` | `/leads/:id` | - | `Lead` object |
 | `PATCH` | `/leads/:id` | Partial `Lead` updates (`name`, `status`, `interest`, `do_not_call`, `consent`, etc.) | Updated `Lead` |
-| `POST` | `/leads/:id/call` | - | Initiates outbound call to lead via Sarvam, with the same guardrails as campaigns: agent calling hours, DNC/opt-out, max 3 calls per lead per day, concurrent-call cap and remaining minutes. Errors: `409` `outside_hours` / `do_not_call` / `max_daily_attempts`, `429` `concurrency_limit`, `402` `exhausted_minutes`, `502`/`503` `dial_failed` (503 = retryable). Returns `{ call, sarvam_dispatched }`. |
+| `GET` | `/leads/:id/consent-history` | - | `{"items": [{"id", "consent_value", "source", "text_version", "created_at"}]}` newest first (max 100). `source` is `form` / `webhook` / `import_attestation` / `manual` / `in_call_opt_out`. `404` if the lead is not in your business. |
+| `POST` | `/leads/:id/call` | - | Initiates outbound call to lead via Sarvam, with the same guardrails as campaigns: agent calling hours, DNC/opt-out (per business and the platform-wide `/stop` list), max 3 calls per lead per day, at most 3 different businesses per phone number per 24h, concurrent-call cap and remaining minutes. Errors: `409` `outside_hours` / `do_not_call` / `max_daily_attempts` / `platform_frequency_cap`, `429` `concurrency_limit`, `402` `exhausted_minutes`, `502`/`503` `dial_failed` (503 = retryable). Returns `{ call, sarvam_dispatched }`. |
 
 ---
 
@@ -78,7 +79,7 @@ Tenant-isolated documents stored in Cloudflare R2 and indexed into Sarvam AI.
 | Method | Path | Response |
 |---|---|---|
 | `GET` | `/calls?filter=all|connected|noAnswer|hot&lead_id=&cursor=&limit=20` | Paginated `Call` items. Scoped by `business_id`. |
-| `GET` | `/calls/:id` | Full `Call` detail. `raw_metadata` and `transcript` are decrypted on retrieval using AES-256-GCM. |
+| `GET` | `/calls/:id` | Full `Call` detail. `transcript` and `recording_url` are stored encrypted (AES-256-GCM) and decrypted on retrieval (legacy plaintext rows are returned as-is). After `RETENTION_DAYS` (default 180) `transcript`, `recording_url` and `summary` are cleared (null / empty). |
 
 ---
 
@@ -125,7 +126,8 @@ Receives post-call telemetry from Sarvam telephony.
 3. **Tenant Resolution:** Derives `business_id` and `lead_id` strictly from our database row associated with `interaction_id`. Never trusts tenant claims from the webhook payload.
 4. **Structured Output Validation:** Validates output variables against `backend/schemas/call_output.schema.json`. If schema validation fails, assigns score 0, temperature `cold`, flags for manual review, and returns `200` to prevent retry storms.
 5. **Data Protection:** Encrypts `raw_metadata` and transcripts at rest using AES-256-GCM. Never logs transcripts or plain phone numbers.
-6. **Billing & FCM Push:** Atomically increments `minutes_used` based on duration. Dispatches FCM data messages for hot leads, campaign completion, and callback reminders (rate limited to 1 per 10 min for follow-ups).
+6. **Billing & FCM Push:** Bills each call once (idempotent ledger): connected calls of **10 s or more** pay `ceil(seconds / 60)` minutes (every started minute); connected calls under 10 s and `no_answer` / `busy` / `failed` / `voicemail` / invalid-number outcomes bill **0** minutes. Every call also records our cost (`calls.billed_minutes`, `calls.cost_inr`, `usage_ledger.cost_inr`) at `COST_PER_MIN_SARVAM_INR + COST_PER_MIN_TELEPHONY_INR` per started minute of the real duration. Dispatches FCM data messages for hot leads, campaign completion, and callback reminders (rate limited to 1 per 10 min for follow-ups).
+7. **Waste control:** campaign leads are re-dialled only after `busy` / `no_answer`, at most 3 dials in total (1 + 2 retries), each retry ≥ 3 h later. An invalid / unreachable number (status `invalid_number` / `not_reachable` / `unreachable`, or a `failure_reason` such as "Invalid phone number" / "not in service") sets `leads.phone_invalid = 1`; campaigns then mark the lead `skipped_invalid` until the owner edits its phone (`phone_invalid` is returned on leads).
 
 ---
 
@@ -134,10 +136,11 @@ Receives post-call telemetry from Sarvam telephony.
 | Method | Path | Response |
 |---|---|---|
 | `GET` | `/dashboard/today` | `DailySummary`: leads count, connected calls, hot leads, follow-ups ready, callbacks scheduled, recent activity feed. |
-| `GET` | `/usage` | `Usage`: subscription (`plan_name`, `plan_id` `trial`/`starter`, `plan_status` `trial`/`active`/`past_due`/`cancelled`, `current_period_end` UTC or null, included minutes, price), minutes used, calls made, `checkout_plan`. |
-| `GET` | `/billing` | `{plan_id, plan_name, plan_status, current_period_end, price_inr, included_minutes, minutes_used, minutes_left, checkout_plan}`. |
-| `POST` | `/billing/checkout` | Body `{"plan_id": "starter"}` (optional). Creates a Razorpay Payment Link and returns `{url, id}`. `503 billing_not_configured` when Razorpay keys are not set; `502 billing_unavailable` if Razorpay fails. |
-| `POST` | `/webhooks/razorpay` | Public. Razorpay `payment_link.paid` webhook, verified with `X-Razorpay-Signature` = hex HMAC-SHA256(raw body, `RAZORPAY_WEBHOOK_SECRET`). Idempotent per Razorpay payment id: activates the paid plan, resets `minutes_used`, extends `current_period_end` by one month. |
+| `GET` | `/usage` | `Usage`: `subscription` (`plan_name`, `plan_id` `trial`/`starter`/`growth`, `plan_status` `trial`/`active`/`past_due`/`cancelled`, `current_period_end` UTC or null, `billing_cycle` `monthly`/`annual`, `annual_until`, `included_minutes` (plan grant this period), `topup_minutes`, `bonus_minutes`, price), `minutes_used`, `minutes_remaining` (= plan + top-up + bonus − used), calls made, `checkout_plan`, `plans`, `topups`, `can_buy_topup`, `gst_rate`. |
+| `GET` | `/billing` | `{plan_id, plan_name, plan_status, billing_cycle, current_period_end, annual_until, price_inr, included_minutes, topup_minutes, bonus_minutes, minutes_used, minutes_left, gst_rate, checkout_plan, plans, topups, can_buy_topup}`. Catalogue items: `{plan_id, kind: plan/annual/topup, name, price_inr (before GST), gst_inr, total_inr, included_minutes, months}`. |
+| `POST` | `/billing/checkout` | Body `{"plan_id": "<catalogue id>"}` (optional/null = `starter`). Ids: `starter` (₹4,999 / 1,000 min a month), `growth` (₹11,999 / 3,000 min), `starter_annual` / `growth_annual` (10 × monthly price, 12 monthly grants), `topup_250` (₹1,499 → +250 min), `topup_1000` (₹5,499 → +1,000 min). Prices exclude GST; the payment link charges `total_inr` = round(price × (1 + `GST_RATE`)). Returns `{url, id, plan_id, base_inr, gst_inr, total_inr}`. `400 invalid_plan` for unknown ids; `409 plan_not_active` for a top-up without an active plan; `503 billing_not_configured` when Razorpay keys are not set; `502 billing_unavailable` if Razorpay fails. |
+| `POST` | `/webhooks/razorpay` | Public. Razorpay `payment_link.paid` webhook, verified with `X-Razorpay-Signature` = hex HMAC-SHA256(raw body, `RAZORPAY_WEBHOOK_SECRET`). Idempotent per Razorpay payment id. The amount must cover the base + GST stored in the link notes (links from before GST: the base price). Monthly plan: activates it, resets `minutes_used`, extends `current_period_end` by a month. Annual: same for month 1 and sets `annual_until` +12 months; the 10-minute cron re-grants the plan's minutes each month until then without a payment. Top-up: adds `topup_minutes` (active plans only; otherwise recorded as `needs_review`). Payments store `kind`, `base_paise`, `gst_paise`. |
+| `GET` | `/admin/economics?days=30` | Ops only: header `x-health-key: <HEALTH_CHECK_SECRET>` (or `Authorization: Bearer …`), like `/health/deep`. `days` 1–366. Returns `{days, revenue_basis: "cash_ex_gst", cost_per_min_inr, total, by_plan[], by_product[]}`; `total`/`by_plan` lines have `revenue_inr` (ex-GST), `minutes_billed`, `cost_inr`, `gross_margin_inr`, `gross_margin_pct`, `wasted_minutes` (minutes we paid for but did not bill), `wasted_cost_inr`, `calls`; `total` adds `gst_collected_inr`, `payments`. |
 | `GET` | `/referrals` | `{code, link, bonus_minutes, signed_up, rewarded, minutes_earned}`. `code` is the business's referral code (6 chars from `23456789ABCDEFGHJKMNPQRSTUVWXYZ`, created on first call); `link` is `<PUBLIC_API_BASE_URL>/get?ref=<code>`. |
 | `GET` | `/notifications` | List of in-app notifications. |
 | `PATCH` | `/notifications/:id` | `{"read": true}` |
@@ -151,6 +154,14 @@ Receives post-call telemetry from Sarvam telephony.
 
 ---
 
+## 10b. Public opt-out page (`/stop`)
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| `GET` | `/stop` | - | HTML form (no scripts, strict CSP). |
+| `POST` | `/stop` | form field `phone` (`application/x-www-form-urlencoded`) | HTML. `200` number added to the platform-wide do-not-call list (`global_dnc`, HMAC only), `400` invalid number, `429` more than 10 submissions per IP per hour, `503` hashing key not configured. |
+
+Campaign dispatch additionally allows one call per business per number per 24h; a lead that hits it (or the cross-business cap) is `rescheduled`.
 ## 10b. Speed-to-lead: lead capture & instant AI call
 
 Every new enquiry from a business's hosted form or webhook becomes a lead (`consent: "explicit_opt_in"`, `source: "form"` / `"webhook"`) and, with `auto_call` on, gets an AI call within about a minute. The call goes through a queue message (`kind: "instant_call"` on the campaign dispatch queue) and the **same guards and dial as `POST /leads/:id/call`** (`backend/src/services/dial.ts`): calling hours clamped to TRAI 09:00–21:00 in the lead's timezone, do-not-call/opt-out, max 3 calls per lead per day, concurrency cap, plan status and minutes headroom. Outside calling hours the call is delayed until the window opens (re-queued in hops of at most 12 h). The owner gets a `new_lead` notification + push ("New enquiry from Ravi" / "Your AI employee is calling them now.", or why it was not called).

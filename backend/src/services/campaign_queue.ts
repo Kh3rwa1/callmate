@@ -6,7 +6,9 @@
  *                 |         |
  *                 |         +-> retry_pending -> (re-queued) -> calling ...
  *                 |         +-> failed (attempts exhausted or permanent error)
- *                 +-> rescheduled (outside hours) / skipped_dnc / max_attempts_exceeded
+ *                 +-> rescheduled (outside hours) / skipped_dnc / skipped_invalid / max_attempts_exceeded
+ *
+ * Retries after an unanswered call: services/call_outcomes.ts (busy / no-answer only, >= 3 h apart).
  *
  * The ONLY transition into 'calling' is the atomic claim in processCampaignJob.
  */
@@ -14,8 +16,10 @@ import { Env } from '../types';
 import { checkCallCompliance, allowAnyCallingHours } from './compliance';
 import { maskPhone } from '../utils/crypto_data';
 import { isMockSarvam } from '../utils/secrets';
-import { isPlanBlocked, pauseCampaignForBilling } from './plans';
+import { isPlanBlocked, pauseCampaignForBilling, MinuteBalances, minutesRemaining, MINUTE_BALANCE_COLUMNS } from './plans';
 import { buildCallAgentVariables } from './call_variables';
+import { buildDisclosureOverrides, SarvamAppOverrides } from './disclosure';
+import { globalDncSecret } from './global_dnc';
 
 export interface CampaignJobMessage {
   campaign_id: string;
@@ -47,13 +51,9 @@ export const MAX_CONCURRENT_CALLS_PER_BUSINESS = 5;
  */
 export const RESERVED_MINUTES_PER_CALL = 5;
 
-/** True when the remaining minutes cover the calls in progress plus one more. */
-export function hasMinutesHeadroom(
-  usage: { included_minutes: number; minutes_used: number },
-  activeCalls: number,
-): boolean {
-  const remaining = usage.included_minutes - usage.minutes_used;
-  return remaining >= (activeCalls + 1) * RESERVED_MINUTES_PER_CALL;
+/** True when the remaining minutes (plan + top-up + bonus) cover the calls in progress plus one more. */
+export function hasMinutesHeadroom(usage: MinuteBalances, activeCalls: number): boolean {
+  return minutesRemaining(usage) >= (activeCalls + 1) * RESERVED_MINUTES_PER_CALL;
 }
 /** Cloudflare Queues caps retry/send delay (12h at time of writing; verify in CF docs). */
 export const MAX_QUEUE_DELAY_SECONDS = 12 * 60 * 60;
@@ -129,6 +129,8 @@ export interface DialRequest {
   phone: string;
   agentVariables: Record<string, unknown>;
   webhookBaseUrl?: string | null;
+  /** AI + recording disclosure (services/disclosure.ts); omitted = no app_overrides sent. */
+  appOverrides?: SarvamAppOverrides;
 }
 
 /**
@@ -166,6 +168,7 @@ export async function dialSarvam(env: Env, req: DialRequest): Promise<DialResult
       app_version: appVersion,
       connection_config: { connection_id: env.SARVAM_CONNECTION_ID, agent_phone_number: agentPhone },
       agent_variables: req.agentVariables,
+      ...(req.appOverrides ? { app_overrides: req.appOverrides } : {}),
     },
     user_config: { user_phone_number: toE164(req.phone) },
     webhook_config: await sarvamWebhookConfig(req.webhookBaseUrl, env.SARVAM_WEBHOOK_SECRET, req.callId),
@@ -228,6 +231,13 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
   const lead = await env.DB.prepare('SELECT * FROM leads WHERE id = ? AND business_id = ?')
     .bind(lead_id, business_id).first<any>();
   if (!lead) return { success: true, reason: 'lead_not_found' };
+  // Sarvam already reported this number invalid / unreachable: don't pay to dial it again.
+  if (lead.phone_invalid === 1) {
+    await env.DB.prepare(`UPDATE campaign_leads SET status = 'skipped_invalid' WHERE campaign_id = ? AND lead_id = ?`)
+      .bind(campaign_id, lead_id).run();
+    await maybeCompleteCampaign(env.DB, campaign_id);
+    return { success: true, reason: 'phone_invalid' };
+  }
 
   const compliance = await checkCallCompliance(env.DB, {
     businessId: business_id,
@@ -237,6 +247,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
     hoursEnd: campaign.calling_hours_end,
     timezone: lead.timezone || 'Asia/Kolkata',
     skipTraiClamp: allowAnyCallingHours(env),
+    globalDncSecret: globalDncSecret(env),
   });
 
   if (!compliance.allowed) {
@@ -244,6 +255,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
       outside_hours: 'rescheduled',
       do_not_call: 'skipped_dnc',
       max_daily_attempts: 'rescheduled',
+      platform_frequency_cap: 'rescheduled',
       max_campaign_attempts: 'max_attempts_exceeded',
     };
     const newStatus = statusFor[compliance.reason!] ?? 'failed';
@@ -258,8 +270,8 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
 
   // 5. Billing guard
   if (await isPlanBlocked(env.DB, business_id)) return pauseCampaignForBilling(env.DB, campaign_id, business_id);
-  const usage = await env.DB.prepare('SELECT included_minutes, minutes_used FROM usage WHERE business_id = ?')
-    .bind(business_id).first<{ included_minutes: number; minutes_used: number }>();
+  const usage = await env.DB.prepare(`SELECT ${MINUTE_BALANCE_COLUMNS} FROM usage WHERE business_id = ?`)
+    .bind(business_id).first<MinuteBalances>();
   if (usage && !hasMinutesHeadroom(usage, active?.cnt ?? 0)) {
     await env.DB.prepare(`UPDATE campaigns SET status = 'paused' WHERE id = ? AND business_id = ?`)
       .bind(campaign_id, business_id).run();
@@ -300,6 +312,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
       businessId: business_id, business, agent, lead, callId, campaignId: campaign_id,
     }),
     webhookBaseUrl: env.PUBLIC_API_BASE_URL || job.webhook_base_url,
+    appOverrides: buildDisclosureOverrides(env, { agent, business, lead }),
   });
 
   if (dial.ok) {

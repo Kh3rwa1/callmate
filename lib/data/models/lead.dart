@@ -258,3 +258,33 @@ class LeadImportResult {
     errors: jStrList(j, 'errors'),
   );
 }
+
+/// One entry of a lead's consent evidence trail
+/// (`GET /leads/:id/consent-history`).
+class ConsentEvent {
+  const ConsentEvent({
+    required this.id,
+    required this.consentValue,
+    required this.source,
+    required this.createdAt,
+    this.textVersion,
+  });
+  final String id;
+
+  /// `explicit_opt_in`, `inquiry`, `existing_customer`, `unknown`, `opt_out`,
+  /// `owner_attested`, `do_not_call` or `do_not_call_removed`.
+  final String consentValue;
+
+  /// `form`, `webhook`, `import_attestation`, `manual` or `in_call_opt_out`.
+  final String source;
+  final String? textVersion;
+  final DateTime createdAt;
+
+  factory ConsentEvent.fromJson(Json j) => ConsentEvent(
+    id: jStr(j, 'id'),
+    consentValue: jStr(j, 'consent_value', 'unknown'),
+    source: jStr(j, 'source', 'manual'),
+    textVersion: jStrN(j, 'text_version'),
+    createdAt: jDate(j, 'created_at') ?? DateTime.now(),
+  );
+}

@@ -148,6 +148,31 @@ redeploy; the older agent version keeps working.
 `whatsapp_followup_required`, `whatsapp_message`, `callback_at`.
 Allowed values: `backend/schemas/call_output.schema.json`.
 
+## Disclosure override
+
+Every call should open by saying it is an AI assistant, for which business,
+and that it may be recorded (`COMPLIANCE.md`). With the Worker var
+`SARVAM_DISCLOSURE_OVERRIDE = "true"` the backend sends, on every dial,
+
+```json
+"app_overrides": {
+  "initial_bot_message": "Hello Asha, this is Arjun, an AI assistant calling from Bright Future about your enquiry. This call may be recorded for quality. Is this a good time to talk?",
+  "initial_language_name": "English"
+}
+```
+
+in the employee's first language (English / Hindi / Bengali; text in
+`backend/src/services/disclosure.ts`). Names are cleaned and cut to 40
+characters; only the lead's first name is spoken. Unset (default) = no
+`app_overrides` key at all.
+
+**To turn it on:** set `SARVAM_DISCLOSURE_OVERRIDE = "true"` in
+`[env.staging.vars]`, deploy staging, call your own number and check the
+greeting, that the agent carries on naturally after it, and that
+`calls.failure_reason` is empty. Then do the same in `[vars]` for production.
+`GET /health/deep` shows `compliance.disclosure_override`. To roll back, remove
+the line and redeploy.
+
 ## Checking it works
 
 ```bash
@@ -159,6 +184,7 @@ npx wrangler tail --format=json | jq 'select(.level=="error")'   # live errors
 |---|---|
 | `sarvam_not_configured` | API key, a `[vars]` value or the caller IDs missing |
 | `sarvam_http_401/403` | wrong or revoked `SARVAM_API_KEY` |
+| `sarvam_http_422: … app_overrides …` | the agent version rejects the disclosure override: unset `SARVAM_DISCLOSURE_OVERRIDE` |
 | `sarvam_http_422: … Agent variables … not found` | `SARVAM_AGENT_VARIABLES` lists a name the agent version doesn't declare (see Agent variables) |
 | `sarvam_http_404/422` | agent version not committed, or caller ID not onboarded on the connection |
 | Call rings but lead stays "calling" | webhook not reaching the Worker: check `PUBLIC_API_BASE_URL` and the Sarvam webhook delivery log |

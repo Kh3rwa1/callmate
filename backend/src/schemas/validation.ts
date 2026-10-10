@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { TRAI_EARLIEST_HOUR, TRAI_LATEST_HOUR } from '../services/compliance';
+import { PRODUCT_IDS } from '../services/plans';
 
 // ==========================================
 // Auth Schemas
@@ -107,6 +108,19 @@ export const createCampaignSchema = z.object({
 }).refine((d) => d.calling_hours_start < d.calling_hours_end, {
   message: 'Calling hours start must be before calling hours end',
   path: ['calling_hours_end'],
+});
+
+// ==========================================
+// Billing Schemas
+// ==========================================
+/** POST /billing/checkout. plan_id is a catalogue product id (services/plans.ts PRODUCT_IDS). */
+export const checkoutSchema = z.object({
+  plan_id: z.enum(PRODUCT_IDS).nullable().optional(),
+});
+
+/** GET /admin/economics?days= */
+export const economicsQuerySchema = z.object({
+  days: z.coerce.number().int().min(1).max(366).default(30),
 });
 
 // ==========================================

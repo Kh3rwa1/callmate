@@ -12,8 +12,10 @@ import { maskPhone } from '../utils/crypto_data';
 import { isMockSarvam } from '../utils/secrets';
 import { checkCallCompliance, allowAnyCallingHours, ComplianceCheckResult } from './compliance';
 import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS, hasMinutesHeadroom } from './campaign_queue';
-import { isPlanBlocked } from './plans';
+import { isPlanBlocked, MinuteBalances, MINUTE_BALANCE_COLUMNS } from './plans';
 import { buildCallAgentVariables } from './call_variables';
+import { buildDisclosureOverrides } from './disclosure';
+import { globalDncSecret } from './global_dnc';
 
 export type PlaceCallOutcome =
   | { ok: true; callId: string; dispatched: boolean; lead: any }
@@ -59,6 +61,7 @@ export async function placeLeadCall(env: Env, p: PlaceCallParams): Promise<Place
     hoursEnd: agent?.calling_hours_end,
     timezone: lead.timezone || 'Asia/Kolkata',
     skipTraiClamp: allowAnyCallingHours(env),
+    globalDncSecret: globalDncSecret(env),
     now: p.now,
   });
   if (!compliance.allowed) {
@@ -78,8 +81,9 @@ export async function placeLeadCall(env: Env, p: PlaceCallParams): Promise<Place
   if ((active?.cnt ?? 0) >= MAX_CONCURRENT_CALLS_PER_BUSINESS) return { ok: false, code: 'concurrency_limit' };
 
   if (await isPlanBlocked(env.DB, businessId)) return { ok: false, code: 'plan_blocked' };
-  const usage = await env.DB.prepare('SELECT included_minutes, minutes_used FROM usage WHERE business_id = ?')
-    .bind(businessId).first<{ included_minutes: number; minutes_used: number }>();
+  // Plan + top-up + bonus balances (services/plans.ts minutesRemaining).
+  const usage = await env.DB.prepare(`SELECT ${MINUTE_BALANCE_COLUMNS} FROM usage WHERE business_id = ?`)
+    .bind(businessId).first<MinuteBalances>();
   if (usage && !hasMinutesHeadroom(usage, active?.cnt ?? 0)) return { ok: false, code: 'exhausted_minutes' };
 
   const business = await env.DB.prepare('SELECT name FROM businesses WHERE id = ?').bind(businessId).first<any>();
@@ -108,6 +112,7 @@ export async function placeLeadCall(env: Env, p: PlaceCallParams): Promise<Place
       businessId, business, agent, lead, callId,
     }),
     webhookBaseUrl: env.PUBLIC_API_BASE_URL || p.fallbackBaseUrl,
+    appOverrides: buildDisclosureOverrides(env, { agent, business, lead }),
   });
 
   if (dial.ok) {

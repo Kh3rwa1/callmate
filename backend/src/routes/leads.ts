@@ -3,6 +3,9 @@ import { Env, AuthUser } from '../types';
 import { safeJsonParse } from '../utils/json';
 import { parseJsonBody, createLeadSchema, importLeadsSchema, patchLeadSchema } from '../schemas/validation';
 import { parseLimit } from '../utils/pagination';
+import {
+  consentEventStatement, recordConsentEventsForLeads, hashIp, clientIp, CONSENT_TEXT_VERSIONS,
+} from '../services/consent';
 import { normalizePhone } from '../utils/phone';
 
 function isUniqueViolation(err: any): boolean {
@@ -41,6 +44,7 @@ function formatLead(row: any) {
     callback_at: row.callback_at,
     attributes: safeJsonParse(row.attributes, {}),
     do_not_call: row.do_not_call === 1,
+    phone_invalid: row.phone_invalid === 1,
     consent: row.consent || 'unknown',
     timezone: row.timezone || 'Asia/Kolkata',
     created_at: row.created_at,
@@ -169,11 +173,18 @@ leadsApp.post('/leads', async (c) => {
   const consent = body.consent || 'unknown';
   const timezone = body.timezone || 'Asia/Kolkata';
 
+  const ipHash = await hashIp(c.env, clientIp(c));
   try {
-    await c.env.DB.prepare(
-      `INSERT INTO leads (id, business_id, name, phone, interest, source, status, attributes, do_not_call, consent, timezone, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?, datetime('now'), datetime('now'))`
-    ).bind(id, user.business_id, body.name.trim(), phone, interest, source, attributes, doNotCall, consent, timezone).run();
+    await c.env.DB.batch([
+      c.env.DB.prepare(
+        `INSERT INTO leads (id, business_id, name, phone, interest, source, status, attributes, do_not_call, consent, timezone, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      ).bind(id, user.business_id, body.name.trim(), phone, interest, source, attributes, doNotCall, consent, timezone),
+      consentEventStatement(c.env.DB, {
+        businessId: user.business_id, leadId: id, consentValue: consent, source: 'manual',
+        textVersion: CONSENT_TEXT_VERSIONS.manual, ipHash,
+      }),
+    ]);
   } catch (err) {
     // Lost a race with a concurrent create of the same phone (idx_leads_business_phone)
     if (isUniqueViolation(err)) return c.json(DUPLICATE_PHONE_BODY, 409);
@@ -203,6 +214,7 @@ leadsApp.post('/leads/import', async (c) => {
   const seenInBatch = new Set<string>();
 
   const statements: D1PreparedStatement[] = [];
+  const insertedIds: string[] = [];
   let skipped = 0;
   const errors: string[] = [];
 
@@ -224,6 +236,7 @@ leadsApp.post('/leads/import', async (c) => {
 
     seenInBatch.add(phone);
     const id = `lead_${crypto.randomUUID().slice(0, 12)}`;
+    insertedIds.push(id);
     const interest = item.interest || item.course_interest || null;
     const source = item.source || 'CSV Import';
     const attributes = JSON.stringify(item.attributes || {});
@@ -250,6 +263,12 @@ leadsApp.post('/leads/import', async (c) => {
     }
   }
   skipped += statements.length - imported;
+  // Evidence: the owner's per-row consent statement at import (rows skipped as duplicates have no lead).
+  if (insertedIds.length > 0) {
+    await recordConsentEventsForLeads(c.env.DB, user.business_id, insertedIds, {
+      source: 'import_attestation', textVersion: CONSENT_TEXT_VERSIONS.import, ipHash: await hashIp(c.env, clientIp(c)),
+    });
+  }
 
   return c.json({
     imported,
@@ -301,18 +320,33 @@ leadsApp.patch('/leads/:id', async (c) => {
         name = ?, phone = ?, interest = ?, status = ?,
         temperature = ?, score = ?, summary = ?, next_action = ?,
         callback_at = ?, attributes = ?, do_not_call = ?, consent = ?,
-        timezone = ?, updated_at = datetime('now')
+        timezone = ?, phone_invalid = CASE WHEN phone = ? THEN phone_invalid ELSE 0 END,
+        updated_at = datetime('now')
        WHERE id = ? AND business_id = ?`
     ).bind(
       name, phone, interest, status,
       temperature, score, summary, nextAction,
       callbackAt, attributes, doNotCall, consent,
-      timezone, id, user.business_id
+      timezone, phone, id, user.business_id
     ).run();
   } catch (err) {
     // Phone changed to one another lead of this business already has
     if (isUniqueViolation(err)) return c.json(DUPLICATE_PHONE_BODY, 409);
     throw err;
+  }
+
+  // Evidence trail for consent / do-not-call changes made by the owner.
+  const consentChanged = (consent ?? 'unknown') !== (existing.consent ?? 'unknown');
+  const dncChanged = Number(doNotCall) !== Number(existing.do_not_call ?? 0);
+  if (consentChanged || dncChanged) {
+    const ipHash = await hashIp(c.env, clientIp(c));
+    const events = [];
+    if (consentChanged) events.push(consent ?? 'unknown');
+    if (dncChanged) events.push(doNotCall ? 'do_not_call' : 'do_not_call_removed');
+    await c.env.DB.batch(events.map((value) => consentEventStatement(c.env.DB, {
+      businessId: user.business_id, leadId: id, consentValue: value, source: 'manual',
+      textVersion: CONSENT_TEXT_VERSIONS.manual, ipHash,
+    })));
   }
 
   const updated = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
@@ -325,7 +359,10 @@ leadsApp.delete('/leads/:id', async (c) => {
   const id = c.req.param('id');
   const existing = await c.env.DB.prepare('SELECT id FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   if (!existing) return c.json({ message: 'Lead not found.', code: 'not_found' }, 404);
-  await c.env.DB.prepare('DELETE FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id).run();
+  await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM consent_events WHERE lead_id = ? AND business_id = ?').bind(id, user.business_id),
+    c.env.DB.prepare('DELETE FROM leads WHERE id = ? AND business_id = ?').bind(id, user.business_id),
+  ]);
   return c.json({ success: true });
 });
 

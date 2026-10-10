@@ -10,6 +10,9 @@ import { isDevEnv } from './utils/secrets';
 import { runMaintenance } from './services/maintenance';
 import { recordOpsEvent, runAlertChecks } from './services/alerts';
 import { allowedAgentVariables } from './services/call_variables';
+import { callerIdsAreDltSeries } from './services/compliance';
+import { disclosureEnabled } from './services/disclosure';
+import { runComplianceCron } from './services/retention';
 
 import { authApp } from './routes/auth';
 import { businessApp } from './routes/business';
@@ -25,6 +28,10 @@ import { runBillingRenewals } from './services/plans';
 import { legalApp } from './routes/legal';
 import { landingApp } from './routes/landing';
 import { referralsApp } from './routes/referrals';
+import { economicsReport, runLongCallWatchdog } from './services/economics';
+import { economicsQuerySchema } from './schemas/validation';
+import { stopApp } from './routes/stop';
+import { consentApp } from './routes/consent';
 import { resultsApp } from './routes/results';
 import { runDailyDigests } from './services/digest';
 import { leadSourcesApp } from './routes/lead_sources';
@@ -139,10 +146,27 @@ app.get('/health/deep', async (c) => {
       checks,
       sarvam,
       agent_variables: allowedAgentVariables(c.env),
+      // Regulatory posture (informational; does not affect status). TRAI wants commercial calls
+      // from 140/160-series numbers; see COMPLIANCE.md.
+      compliance: {
+        caller_ids_dlt_series: callerIdsAreDltSeries(c.env),
+        disclosure_override: disclosureEnabled(c.env),
+      },
       time: new Date().toISOString(),
     },
     statusCode
   );
+});
+
+// Admin margin report (revenue vs Sarvam + telephony cost). Same key as /health/deep.
+app.get('/admin/economics', async (c) => {
+  const secret = c.env.HEALTH_CHECK_SECRET;
+  if (!secret) return c.json({ message: 'HEALTH_CHECK_SECRET is required on server', code: 'not_configured' }, 500);
+  const key = c.req.header('x-health-key') || c.req.header('authorization')?.replace(/^Bearer\s+/i, '');
+  if (!key || !timingSafeEqual(key, secret)) return c.json({ message: 'Unauthorized.', code: 'unauthorized' }, 401);
+  const q = economicsQuerySchema.safeParse({ days: c.req.query('days') ?? undefined });
+  if (!q.success) return c.json({ message: 'days must be a whole number from 1 to 366.', code: 'validation_error' }, 400);
+  return c.json(await economicsReport(c.env, q.data.days));
 });
 
 // ------------------------------------------------------------- Public Routes
@@ -153,6 +177,8 @@ app.route('/legal', legalApp);
 
 // Public marketing landing page (GET / stays the JSON service info above)
 app.route('/get', landingApp);
+// Public opt-out: anyone can stop calls to their number from every business (global_dnc).
+app.route('/stop', stopApp);
 // Speed-to-lead: hosted enquiry form (/f/:slug) and lead webhook (/hooks/leads/:slug, bearer token)
 app.route('/', leadCapturePublicApp);
 
@@ -183,6 +209,7 @@ protectedApp.use('*', authMiddleware);
 // Mount all protected resource routes
 protectedApp.route('/', businessApp);
 protectedApp.route('/', leadsApp);
+protectedApp.route('/', consentApp);
 protectedApp.route('/', callsApp);
 protectedApp.route('/', campaignsApp);
 protectedApp.route('/', fcApp);
@@ -230,6 +257,8 @@ export default {
     ctx.waitUntil(runMaintenance(env));
     ctx.waitUntil(runBillingRenewals(env));
     ctx.waitUntil(runAlertChecks(env));
+    ctx.waitUntil(runLongCallWatchdog(env));
+    ctx.waitUntil(runComplianceCron(env));
     ctx.waitUntil(runDailyDigests(env));
   },
 };

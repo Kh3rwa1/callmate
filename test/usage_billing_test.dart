@@ -19,6 +19,7 @@ class _FakeUsageRepo implements UsageRepository {
   final Object? error;
   int gets = 0;
   int checkouts = 0;
+  String? lastPlanId;
 
   @override
   Future<Usage> get() async {
@@ -29,6 +30,7 @@ class _FakeUsageRepo implements UsageRepository {
   @override
   Future<String?> checkout({String planId = 'starter'}) async {
     checkouts++;
+    lastPlanId = planId;
     if (error != null) throw error!;
     return url;
   }
@@ -173,7 +175,10 @@ void main() {
       (h) async {
         await _scrollTo(h, find.text('Upgrade'));
         await h.tap(find.text('Upgrade'));
+        expect(opened.checkouts, 0); // the plan picker opens first
+        await h.tap(find.text('Pay ₹5,899'));
         expect(opened.checkouts, 1);
+        expect(opened.lastPlanId, 'starter');
         expect(launched.single.toString(), 'https://rzp.io/i/abc');
 
         // Paid in the browser; the webhook activated the plan.
@@ -224,9 +229,14 @@ void main() {
       (h) async {
         await _scrollTo(h, find.text('Upgrade'));
         await h.tap(find.text('Upgrade'));
+        await h.tap(find.text('Pay ₹5,899'));
+        // Shown inside the sheet (a snackbar would sit behind it).
         expect(
-          find.text(
-            'Our team will reach out on WhatsApp to upgrade your plan.',
+          find.descendant(
+            of: find.byType(BottomSheet),
+            matching: find.text(
+              'Our team will reach out on WhatsApp to upgrade your plan.',
+            ),
           ),
           findsOneWidget,
         );
@@ -251,8 +261,14 @@ void main() {
       (h) async {
         await _scrollTo(h, find.text('Upgrade'));
         await h.tap(find.text('Upgrade'));
+        await h.tap(find.text('Pay ₹5,899'));
         expect(
-          find.text("Couldn't open the payment page. Please try again."),
+          find.descendant(
+            of: find.byType(BottomSheet),
+            matching: find.text(
+              "Couldn't open the payment page. Please try again.",
+            ),
+          ),
           findsOneWidget,
         );
       },

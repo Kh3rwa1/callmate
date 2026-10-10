@@ -279,6 +279,12 @@ class ApiLeadRepository implements LeadRepository {
     // A campaign takes at most 500 leads (backend MAX_CAMPAIGN_LEADS).
     query: {'filter': 'new', 'limit': 500, 'fields': 'id,name,phone'},
   );
+
+  @override
+  Future<List<ConsentEvent>> consentHistory(String leadId) => api.get(
+    '/leads/$leadId/consent-history',
+    (d) => _l(d).map(ConsentEvent.fromJson).toList(),
+  );
 }
 
 class ApiLeadSourceRepository implements LeadSourceRepository {

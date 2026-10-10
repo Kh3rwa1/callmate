@@ -50,7 +50,12 @@ async function summary(token: string) {
   return (await res.json()) as any;
 }
 
-async function includedMinutes(businessId: string): Promise<number> {
+async function bonusMinutes(businessId: string): Promise<number> {
+  const r = await env.DB.prepare('SELECT bonus_minutes FROM usage WHERE business_id = ?').bind(businessId).first<any>();
+  return Number(r?.bonus_minutes);
+}
+
+async function planMinutes(businessId: string): Promise<number> {
   const r = await env.DB.prepare('SELECT included_minutes FROM usage WHERE business_id = ?').bind(businessId).first<any>();
   return Number(r?.included_minutes);
 }
@@ -131,19 +136,23 @@ describe('Referral program', () => {
     expect(row).toMatchObject({ referrer_business_id: referrer.businessId, code, status: 'signed_up' });
     expect((await summary(referrer.token))).toMatchObject({ signed_up: 1, rewarded: 0, minutes_earned: 0 });
 
-    const referrerBefore = await includedMinutes(referrer.businessId);
+    const referrerBefore = await bonusMinutes(referrer.businessId);
     const first = await pay(referred.businessId, `pay_ref_${Date.now()}_1`);
     expect(first.applied).toBe(true);
     const plan = getPlan('starter', env as any);
-    expect(await includedMinutes(referred.businessId)).toBe(plan.includedMinutes + 200);
-    expect(await includedMinutes(referrer.businessId)).toBe(referrerBefore + 200);
+    // The bonus goes to the separate bonus balance, which renewals never reset.
+    expect(await planMinutes(referred.businessId)).toBe(plan.includedMinutes);
+    expect(await bonusMinutes(referred.businessId)).toBe(200);
+    expect(await bonusMinutes(referrer.businessId)).toBe(referrerBefore + 200);
 
     // Redelivery of the same payment and a second payment do not credit again.
     const paymentId = `pay_ref_${Date.now()}_2`;
     await pay(referred.businessId, paymentId);
     await pay(referred.businessId, paymentId);
     expect(await onFirstPayment(env as any, referred.businessId)).toBe(false);
-    expect(await includedMinutes(referrer.businessId)).toBe(referrerBefore + 200);
+    expect(await bonusMinutes(referrer.businessId)).toBe(referrerBefore + 200);
+    // The renewal payment above reset plan minutes but kept the bonus.
+    expect(await bonusMinutes(referred.businessId)).toBe(200);
 
     const credits = await env.DB.prepare('SELECT business_id, minutes FROM referral_credits WHERE referral_id = ?').bind(row.id).all<any>();
     expect(credits.results).toHaveLength(2);
@@ -159,10 +168,10 @@ describe('Referral program', () => {
       `INSERT INTO payments (id, razorpay_payment_id, business_id, plan_id, amount_paise, status, applied_at)
        VALUES (?, ?, ?, 'starter', 1, 'paid', datetime('now'))`
     ).bind(`pay_c_${Date.now()}`, `rzp_c_${Date.now()}`, referred.businessId).run();
-    const before = await includedMinutes(referrer.businessId);
+    const before = await bonusMinutes(referrer.businessId);
     const results = await Promise.all([1, 2, 3].map(() => onFirstPayment(env as any, referred.businessId)));
     expect(results.filter(Boolean)).toHaveLength(1);
-    expect(await includedMinutes(referrer.businessId)).toBe(before + 200);
+    expect(await bonusMinutes(referrer.businessId)).toBe(before + 200);
   });
 
   it('does not reward before a payment is applied', async () => {

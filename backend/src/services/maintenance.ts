@@ -1,5 +1,6 @@
 import { Env } from '../types';
 import { MAX_DIAL_ATTEMPTS, requeueLead, maybeCompleteCampaign } from './campaign_queue';
+import { RETRY_SPACING_SECONDS } from './call_outcomes';
 
 export async function runMaintenance(env: Env): Promise<void> {
   // 1. Prune rate-limit + idempotency tables
@@ -32,7 +33,7 @@ export async function runMaintenance(env: Env): Promise<void> {
       ...(s.campaign_id ? [env.DB.prepare(`UPDATE campaign_leads SET status = ? WHERE call_id = ?`)
         .bind(retry ? 'retry_pending' : 'failed', s.id)] : []),
     ]);
-    if (retry) await requeueLead(env, s.campaign_id, s.business_id, s.lead_id, 30 * 60);
+    if (retry) await requeueLead(env, s.campaign_id, s.business_id, s.lead_id, RETRY_SPACING_SECONDS);
     else if (s.campaign_id) await maybeCompleteCampaign(env.DB, s.campaign_id);
   }
 }

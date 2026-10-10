@@ -329,14 +329,68 @@ names each dial sends.
 
 ## 6. Billing, Plans & Trials
 
-- **Plans** (`backend/src/services/plans.ts`): `trial` (`TRIAL_MINUTES`, default
-  30, no expiry date) and `starter` (₹4999 / month, 1000 minutes).
+- **Plans** (`backend/src/services/plans.ts`, `PRODUCTS`): `trial` (`TRIAL_MINUTES`,
+  default 30, no expiry date) and the catalogue `POST /billing/checkout` sells
+  (prices before GST):
+
+  | id | price | minutes |
+  |---|---|---|
+  | `starter` | ₹4,999 / month | 1,000 / month |
+  | `growth` | ₹11,999 / month | 3,000 / month |
+  | `starter_annual` | ₹49,990 / year (10 × monthly, "2 months free") | 1,000 / month for 12 months |
+  | `growth_annual` | ₹1,19,990 / year | 3,000 / month for 12 months |
+  | `topup_250` | ₹1,499 | +250, until the period ends |
+  | `topup_1000` | ₹5,499 | +1,000, until the period ends |
+
+- **GST:** `GST_RATE` (plain var, default `0.18`). The Razorpay link charges
+  `round(price × (1 + GST_RATE))` whole rupees; the base / GST split is stored in
+  the link notes and in `payments.base_paise` / `payments.gst_paise` (legacy
+  pre-GST rows: base = amount, GST 0). The app shows price, GST and total.
+- **Minute balances** (all in `usage`): `included_minutes` (plan grant, reset at
+  each renewal / annual month), `topup_minutes` (expire with the period: reset
+  when a new period starts; an early renewal paid while the period is still
+  running carries the unused top-up over), `bonus_minutes` (referrals etc., never
+  reset; add with `addBonusMinutes(env, businessId, minutes, reason)`).
+  Remaining = plan + top-up + bonus − `minutes_used` (`minutesRemaining`);
+  usage is consumed plan first, then top-up, then bonus, and at a period reset
+  only the part used beyond plan + top-up is deducted from bonus.
+- **Annual plans:** the payment grants month 1 and sets `annual_until` (+12
+  months, stacked if renewed early) and `annual_plan_id`. The renewal cron
+  re-grants that plan's minutes each month (minutes_used 0, top-ups expire)
+  while `annual_until` is more than a day ahead; the last month ends exactly at
+  `annual_until`, after which the plan goes `past_due` like a monthly one.
+- **Top-ups** need `plan_status = 'active'` (checkout returns `409
+  plan_not_active`). A top-up paid after the plan lapsed is stored with
+  `payments.status = 'needs_review'` and not applied: refund it or add the
+  minutes by hand (`UPDATE usage SET topup_minutes = topup_minutes + 250 ...`).
+- **What a call costs the owner:** connected calls of 10 s or more bill
+  `ceil(seconds / 60)` minutes; shorter connected calls, no-answer, busy,
+  failed and voicemail bill 0 (`services/billing.ts`). Campaign retries only
+  after busy / no-answer, max 3 dials, ≥ 3 h apart (`services/call_outcomes.ts`);
+  invalid / unreachable numbers get `leads.phone_invalid = 1` and are skipped
+  until the phone is edited.
+- **Economics report:** our cost per call is
+  `COST_PER_MIN_SARVAM_INR` (default 2) + `COST_PER_MIN_TELEPHONY_INR` (default
+  0.6) per started minute of the real duration, billed or not. Margin report:
+  ```bash
+  curl -s -H "x-health-key: $HEALTH_CHECK_SECRET" \
+    "https://callpilot-backend.dulalkisku0.workers.dev/admin/economics?days=30" | jq
+  ```
+  Revenue is cash received in the window, ex-GST (an annual payment counts in
+  full in the month it was paid). `wasted_minutes` = minutes we paid Sarvam /
+  telephony for that were not billed (voicemail, < 10 s, unanswered with
+  duration). Update the cost vars when Sarvam or telephony pricing changes.
+- **Long calls:** the cron logs `call_over_max_duration` once per call still
+  `calling` after `MAX_CALL_MINUTES` (default 8). Sarvam's instant-outbound API
+  has no end-call endpoint, so we cannot hang up; tighten the agent's own
+  end-of-call rules in the Sarvam dashboard if these show up.
 - **Trial abuse guard:** every signup records HMAC(`OTP_PEPPER`) hashes of its
   phone and email in `trial_grants`. A phone/email seen before (including after
   account deletion) gets a 0-minute trial.
 - **Payment:** the app calls `POST /billing/checkout` → Razorpay Payment Link →
   `payment_link.paid` webhook → plan `active`, `minutes_used = 0`,
-  `current_period_end` +1 month. Each Razorpay payment id is applied once.
+  `current_period_end` +1 month (annual / top-up: see above). Each Razorpay
+  payment id is applied once.
 - **Renewal:** the 10-minute cron marks `active` plans whose
   `current_period_end` has passed as `past_due`; calls and campaigns then return
   `402 plan_inactive` until the owner pays again (the same checkout renews).
@@ -353,18 +407,53 @@ names each dial sends.
 - **Account deletion** keeps `payments` and `usage_ledger` rows for invoices/GST,
   with PII nulled and `business_id` replaced by a stable `anon_…` pseudonym.
 
-## 7. Referrals & landing page
+---
+
+## 7. Regulatory operations (TRAI / DPDP)
+
+What the code enforces and what the owner must do: `COMPLIANCE.md`.
+
+- **Someone asks to stop all calls** (email, complaint): add their number on
+  `https://<api domain>/stop` for them. It goes into `global_dnc` (HMAC of the
+  number, keyed by `OTP_PEPPER`, falling back to `ENCRYPTION_KEY`) and no
+  business can dial it again. **Rotating `OTP_PEPPER` orphans every entry**
+  (hashes no longer match): before rotating, keep the old value as the hashing
+  key or re-enter the numbers.
+- **A business keeps calling someone who opted out in a call:** in-call
+  opt-outs are per business (`leads.do_not_call`); check
+  `SELECT * FROM consent_events WHERE lead_id = '…'` and add the number to
+  `/stop` if they want every business blocked.
+- **`platform_frequency_cap`** (409 on a manual call, `rescheduled` in a
+  campaign): the number was rung by 3 other businesses in the last 24h, or this
+  business's campaign already rang it today. Expected; it clears itself.
+- **Retention:** the 10-minute cron clears `transcript`, `recording_url`,
+  `summary` and `raw_metadata` of calls older than `RETENTION_DAYS` (default
+  180, minimum 7), 500 calls per run. Change it in `wrangler.toml` `[vars]`
+  and keep `/legal/privacy` (which shows the value) in step with any notice
+  you gave owners.
+- **Disclosure override:** `SARVAM_DISCLOSURE_OVERRIDE` (`docs/SARVAM_SETUP.md`
+  → Disclosure override). If dials start failing with a 422 mentioning
+  `app_overrides`, unset it and redeploy.
+- **`caller_ids_not_dlt_series` warning** in production logs: the caller IDs in
+  `SARVAM_AGENT_PHONE_NUMBERS` are not TRAI 140/160-series numbers. Owner task:
+  get DLT-registered 140 (promotional) / 160 (service) numbers onto the Sarvam
+  connection, then update the var. `/health/deep` →
+  `compliance.caller_ids_dlt_series` turns `true`.
+
+---
+
+## 8. Referrals & landing page
 
 - **Referral codes** live in `businesses.referral_code` (created on the first
   `GET /referrals`). New signups may send `referral_code`; it is recorded in
   `referrals` (status `signed_up`).
 - **Reward:** on the referred business's first applied Razorpay payment, both
   businesses get `REFERRAL_BONUS_MINUTES` (default 200) added to
-  `usage.included_minutes`, once (`referrals.status = 'rewarded'`, one
+  `usage.bonus_minutes`, once (`referrals.status = 'rewarded'`, one
   `referral_credits` row per business). Change the amount with a plain var:
   `REFERRAL_BONUS_MINUTES = "300"` in `[vars]` / `[env.staging.vars]`, redeploy.
-  Bonus minutes count toward the current period; a renewal resets
-  `included_minutes` to the plan amount.
+  Bonus minutes are used after plan and top-up minutes and survive renewals
+  (§6).
 - **Abuse guards:** own code, the referrer's phone/email, and a phone that was
   ever referred before are ignored (rows survive account deletion with
   `anon_…` ids). Rewards need a verified payment.

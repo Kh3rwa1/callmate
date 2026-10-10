@@ -158,7 +158,7 @@ export async function onFirstPayment(env: Env, businessId: string): Promise<bool
          WHERE id = ? AND status = 'signed_up'`
       ).bind(nonce, ref.id),
       env.DB.prepare(
-        `UPDATE usage SET included_minutes = included_minutes + ? WHERE business_id IN (?, ?) AND ${won}`
+        `UPDATE usage SET bonus_minutes = bonus_minutes + ? WHERE business_id IN (?, ?) AND ${won}`
       ).bind(minutes, businessId, ref.referrer_business_id, ref.id, nonce),
       credit(businessId),
       credit(ref.referrer_business_id),

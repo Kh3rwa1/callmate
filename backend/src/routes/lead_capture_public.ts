@@ -8,6 +8,7 @@
  * Spam: hidden honeypot field, per-IP and per-form rate limits, phone validation, 24h phone dedupe.
  */
 import { ensureReferralCode, referralLink } from '../services/referrals';
+import { hashIp } from '../services/consent';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { Env } from '../types';
@@ -227,7 +228,7 @@ leadCapturePublicApp.post('/f/:slug', async (c) => {
 
   const result = await captureLead(c.env, source, {
     name: values.name, phone: values.phone, interest: values.interest || null,
-  }, { fallbackBaseUrl: new URL(c.req.url).origin, waitUntil: waitUntilOf(c) });
+  }, { fallbackBaseUrl: new URL(c.req.url).origin, waitUntil: waitUntilOf(c), ipHash: await hashIp(c.env, clientIp(c) === 'unknown' ? null : clientIp(c)) });
   if (result.status === 'invalid_phone') return invalid('Please enter a valid mobile number.');
 
   // Duplicates get the same page: never reveal whether a number is already known.
