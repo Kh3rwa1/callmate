@@ -7,6 +7,7 @@
  * The form page runs no script and loads nothing external (strict CSP, like routes/legal.ts).
  * Spam: hidden honeypot field, per-IP and per-form rate limits, phone validation, 24h phone dedupe.
  */
+import { ensureReferralCode, referralLink } from '../services/referrals';
 import { hashIp } from '../services/consent';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
@@ -56,7 +57,7 @@ async function businessName(db: D1Database, businessId: string): Promise<string 
 
 // ------------------------------------------------------------------ HTML
 
-function shell(title: string, body: string): string {
+function shell(title: string, body: string, poweredHref = '/get'): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -91,7 +92,7 @@ function shell(title: string, body: string): string {
 <body>
 <main>
 ${body}
-<footer>Powered by CallPilot · <a href="/legal/privacy">Privacy</a></footer>
+<footer><a href="${escapeHtml(poweredHref)}">Powered by CallPilot</a> · <a href="/legal/privacy">Privacy</a></footer>
 </main>
 </body>
 </html>`;
@@ -103,7 +104,7 @@ export function consentText(business: string): string {
 
 export interface FormValues { name?: string; phone?: string; interest?: string; consent?: boolean }
 
-export function formPage(business: string, slug: string, values: FormValues = {}, error?: string): string {
+export function formPage(business: string, slug: string, values: FormValues = {}, error?: string, poweredHref?: string): string {
   const b = escapeHtml(business);
   const v = (s?: string) => escapeHtml(s ?? '');
   return shell(`Enquire · ${b}`, `
@@ -125,10 +126,10 @@ export function formPage(business: string, slug: string, values: FormValues = {}
     <label class="consent"><input type="checkbox" name="consent" value="yes" required${values.consent ? ' checked' : ''}><span>${escapeHtml(consentText(business))}</span></label>
     <button type="submit">Request a call</button>
   </form>
-</div>`);
+</div>`, poweredHref);
 }
 
-export function thankYouPage(business: string, name: string, autoCall: boolean): string {
+export function thankYouPage(business: string, name: string, autoCall: boolean, poweredHref?: string): string {
   const b = escapeHtml(business);
   const first = escapeHtml(name.trim().split(/\s+/)[0] || '');
   return shell(`Thank you · ${b}`, `
@@ -137,7 +138,7 @@ export function thankYouPage(business: string, name: string, autoCall: boolean):
   <p class="lede">${autoCall
     ? `${b} will call you in about a minute, or when their calling hours start. The call may be from an AI assistant.`
     : `${b} has your enquiry and will get in touch soon.`}</p>
-</div>`);
+</div>`, poweredHref);
 }
 
 export function messagePage(title: string, message: string): string {
@@ -158,6 +159,15 @@ function sendHtml(c: Context, html: string, status: 200 | 400 | 404 | 413 | 429 
 const NOT_FOUND_TITLE = 'Form not available';
 const NOT_FOUND_MESSAGE = 'This enquiry form is no longer available. Please contact the business directly.';
 
+/** "Powered by CallPilot" link carrying the business's referral code; plain landing link on any error. */
+async function poweredHrefFor(env: Env, businessId: string): Promise<string> {
+  try {
+    return referralLink(await ensureReferralCode(env, businessId));
+  } catch {
+    return referralLink(null);
+  }
+}
+
 async function formContext(c: Context<{ Bindings: Env }>): Promise<{ source: LeadSourceRow; business: string } | null> {
   const source = await findActiveSource(c.env.DB, c.req.param('slug') ?? '', 'form');
   if (!source) return null;
@@ -170,7 +180,7 @@ async function formContext(c: Context<{ Bindings: Env }>): Promise<{ source: Lea
 leadCapturePublicApp.get('/f/:slug', async (c) => {
   const ctx = await formContext(c);
   if (!ctx) return sendHtml(c, messagePage(NOT_FOUND_TITLE, NOT_FOUND_MESSAGE), 404);
-  return sendHtml(c, formPage(ctx.business, ctx.source.public_slug));
+  return sendHtml(c, formPage(ctx.business, ctx.source.public_slug, {}, undefined, await poweredHrefFor(c.env, ctx.source.business_id)));
 });
 
 leadCapturePublicApp.post('/f/:slug', async (c) => {
@@ -222,7 +232,7 @@ leadCapturePublicApp.post('/f/:slug', async (c) => {
   if (result.status === 'invalid_phone') return invalid('Please enter a valid mobile number.');
 
   // Duplicates get the same page: never reveal whether a number is already known.
-  return sendHtml(c, thankYouPage(business, values.name, source.auto_call === 1));
+  return sendHtml(c, thankYouPage(business, values.name, source.auto_call === 1, await poweredHrefFor(c.env, source.business_id)));
 });
 
 // ------------------------------------------------------------------ webhook

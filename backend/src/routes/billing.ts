@@ -7,6 +7,7 @@ import { checkoutSchema } from '../schemas/validation';
 import {
   billingView, getPlan, hmacHex, isProductId, priceWithGst, Product, PRODUCTS, RESET_PERIOD_BONUS_SQL,
 } from '../services/plans';
+import { onFirstPayment } from '../services/referrals';
 
 const billingApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -273,6 +274,7 @@ export async function handleRazorpayWebhook(c: any): Promise<Response> {
     ).bind(businessId, paymentId),
   ]);
   const duplicate = (results[0].meta?.changes ?? 0) === 0;
+  await onFirstPayment(env, businessId); // referral bonus; idempotent, so redeliveries are safe
   return c.json({ received: true, applied: !duplicate, duplicate, plan_id: product.id });
 }
 

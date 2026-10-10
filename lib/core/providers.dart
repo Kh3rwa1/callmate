@@ -11,6 +11,7 @@ import '../data/repositories/repositories.dart';
 import '../data/templates/templates.dart';
 import '../l10n/l10n.dart';
 import '../services/analytics/analytics_service.dart';
+import '../services/attribution/install_referrer.dart';
 import '../services/auth/google_auth_service.dart';
 import '../services/crash/crash_reporting_service.dart';
 import '../services/notifications/notification_service.dart';
@@ -131,6 +132,7 @@ class SessionNotifier extends AsyncNotifier<bool> {
   Future<void> completeGoogleRegistration({
     required String businessName,
     required String phone,
+    String? referralCode,
   }) async {
     final google = ref.read(googleAuthProvider);
     final idToken = ref.read(useMockProvider)
@@ -142,6 +144,7 @@ class SessionNotifier extends AsyncNotifier<bool> {
           idToken: idToken,
           businessName: businessName,
           phone: phone,
+          referralCode: referralCode,
         );
     ref.read(dataVersionProvider.notifier).bump();
     state = const AsyncValue.data(true);
@@ -167,12 +170,18 @@ class SessionNotifier extends AsyncNotifier<bool> {
     required String phone,
     required String businessName,
     required String otp,
+    String? referralCode,
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       await ref
           .read(authRepoProvider)
-          .register(phone: phone, businessName: businessName, otp: otp);
+          .register(
+            phone: phone,
+            businessName: businessName,
+            otp: otp,
+            referralCode: referralCode,
+          );
       ref.read(dataVersionProvider.notifier).bump();
       return true;
     });
@@ -268,6 +277,9 @@ final usageRepoProvider = Provider<UsageRepository>(
 final notificationRepoProvider = Provider<NotificationRepository>(
   (ref) =>
       _pick(ref, MockNotificationRepository.new, ApiNotificationRepository.new),
+);
+final referralRepoProvider = Provider<ReferralRepository>(
+  (ref) => _pick(ref, MockReferralRepository.new, ApiReferralRepository.new),
 );
 final dashboardRepoProvider = Provider<DashboardRepository>(
   (ref) => _pick(ref, MockDashboardRepository.new, ApiDashboardRepository.new),
@@ -431,6 +443,25 @@ final usageProvider = FutureProvider<Usage>((ref) {
   ref.watch(dataVersionProvider);
   return ref.watch(usageRepoProvider).get();
 });
+
+final referralsProvider = FutureProvider<ReferralSummary>((ref) {
+  ref.watch(dataVersionProvider);
+  return ref.watch(referralRepoProvider).get();
+});
+
+/// Reads the Play install referrer (once, then cached in prefs).
+final installReferrerServiceProvider = Provider<InstallReferrerService>((ref) {
+  LocalPrefs? prefs;
+  try {
+    prefs = ref.watch(localPrefsProvider);
+  } catch (_) {}
+  return InstallReferrerService(prefs);
+});
+
+/// Referral code this install came with (prefills the signup field).
+final installReferralCodeProvider = FutureProvider<String?>(
+  (ref) => ref.watch(installReferrerServiceProvider).referralCode(),
+);
 
 final notificationsProvider = FutureProvider<List<AppNotification>>((ref) {
   ref.watch(dataVersionProvider);

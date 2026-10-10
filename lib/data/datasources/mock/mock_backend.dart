@@ -40,6 +40,15 @@ class MockBackend implements BackendEvents {
   final List<KnowledgeSource> knowledge = [];
   final List<LeadSource> leadSources = [];
   late Usage usage;
+
+  /// Demo referral stats: two businesses joined, one has paid.
+  ReferralSummary referrals = const ReferralSummary(
+    code: 'SHARE4',
+    link: 'https://callpilot-backend.dulalkisku0.workers.dev/get?ref=SHARE4',
+    signedUp: 2,
+    rewarded: 1,
+    minutesEarned: 200,
+  );
   final List<ActivityItem> activity = [];
   int _id = 1000;
   Timer? _campaignTimer;

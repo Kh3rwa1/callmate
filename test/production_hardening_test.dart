@@ -75,6 +75,7 @@ class _AuthRepo implements AuthRepository {
     required String idToken,
     String? businessName,
     String? phone,
+    String? referralCode,
   }) async => GoogleSignInOutcome.signedIn;
   @override
   Future<void> requestOtp({required String phone}) async {}
@@ -86,6 +87,7 @@ class _AuthRepo implements AuthRepository {
     required String phone,
     required String businessName,
     required String otp,
+    String? referralCode,
   }) async => session = true;
   @override
   Future<void> logout() async => session = false;

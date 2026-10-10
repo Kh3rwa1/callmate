@@ -18,3 +18,4 @@ export 's_misc.dart';
 export 's_auth.dart';
 export 's_voice.dart';
 export 's_onboarding.dart';
+export 's_growth.dart';

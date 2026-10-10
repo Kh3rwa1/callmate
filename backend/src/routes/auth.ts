@@ -8,6 +8,7 @@ import { requireSecret, isDevEnv } from '../utils/secrets';
 import { deleteR2Prefix } from '../utils/r2';
 import { hitRateLimit } from '../utils/rate_limit';
 import { timingSafeEqual } from '../utils/compare';
+import { recordReferral, referralDeletionStatements } from '../services/referrals';
 import { claimTrialMinutes, rememberTrialIdentities, anonymisedBusinessId, getPlan, RATE_PER_MINUTE_INR } from '../services/plans';
 
 const authApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -255,6 +256,7 @@ authApp.post('/google', async (c) => {
   }
 
   const { userId, businessId } = await provisionAccount(c.env, phone, body.business_name.trim(), { firebaseUid: identity.uid, email: identity.email });
+  await recordReferral(c.env, businessId, body.referral_code, { phone, email: identity.email });
   return c.json(await issueSession(c, userId, phone, businessId));
 });
 
@@ -285,6 +287,7 @@ authApp.post('/register', async (c) => {
   if (otpError) return otpError;
 
   const { userId, businessId } = await provisionAccount(c.env, phone, businessName);
+  await recordReferral(c.env, businessId, body.referral_code, { phone });
   return c.json(await issueSession(c, userId, phone, businessId));
 });
 
@@ -420,6 +423,7 @@ authApp.delete('/account', authMiddleware, async (c) => {
   await c.env.DB.batch([
     ...rememberTrial,
     c.env.DB.prepare('UPDATE usage_ledger SET business_id = ? WHERE business_id = ?').bind(anonId, businessId),
+    ...referralDeletionStatements(c.env, businessId, anonId),
     c.env.DB.prepare(
       `UPDATE payments SET business_id = ?, contact_email = NULL, contact_phone = NULL, anonymized_at = datetime('now')
        WHERE business_id = ?`

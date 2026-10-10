@@ -26,6 +26,8 @@ import { voiceApp, handleSarvamWebhook } from './routes/voice';
 import { billingApp, handleRazorpayWebhook } from './routes/billing';
 import { runBillingRenewals } from './services/plans';
 import { legalApp } from './routes/legal';
+import { landingApp } from './routes/landing';
+import { referralsApp } from './routes/referrals';
 import { economicsReport, runLongCallWatchdog } from './services/economics';
 import { economicsQuerySchema } from './schemas/validation';
 import { stopApp } from './routes/stop';
@@ -173,6 +175,8 @@ app.route('/auth', authApp);
 // Privacy policy, terms and account-deletion pages (linked from the app and Play Store listing)
 app.route('/legal', legalApp);
 
+// Public marketing landing page (GET / stays the JSON service info above)
+app.route('/get', landingApp);
 // Public opt-out: anyone can stop calls to their number from every business (global_dnc).
 app.route('/stop', stopApp);
 // Speed-to-lead: hosted enquiry form (/f/:slug) and lead webhook (/hooks/leads/:slug, bearer token)
@@ -212,6 +216,7 @@ protectedApp.route('/', fcApp);
 protectedApp.route('/', knowledgeApp);
 protectedApp.route('/', dashApp);
 protectedApp.route('/', billingApp);
+protectedApp.route('/', referralsApp);
 protectedApp.route('/', resultsApp);
 protectedApp.route('/', leadSourcesApp);
 protectedApp.route('/voice', voiceApp);

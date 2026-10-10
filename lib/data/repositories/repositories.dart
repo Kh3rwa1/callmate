@@ -13,11 +13,13 @@ abstract class AuthRepository {
 
   /// Exchanges a Firebase ID token for our session. New accounts also need
   /// [businessName] and [phone]; without them the result is
-  /// [GoogleSignInOutcome.registrationRequired].
+  /// [GoogleSignInOutcome.registrationRequired]. [referralCode] (optional) is
+  /// the code of the business that invited this one.
   Future<GoogleSignInOutcome> signInWithGoogle({
     required String idToken,
     String? businessName,
     String? phone,
+    String? referralCode,
   });
   Future<void> requestOtp({required String phone});
   Future<void> login({required String phone, required String otp});
@@ -25,6 +27,7 @@ abstract class AuthRepository {
     required String phone,
     required String businessName,
     required String otp,
+    String? referralCode,
   });
   Future<void> logout();
   Future<void> deleteAccount();
@@ -131,6 +134,11 @@ abstract class UsageRepository {
   /// Throws `ApiException(code: 'billing_not_configured')` when online
   /// payments are not set up.
   Future<String?> checkout({String planId = 'starter'});
+}
+
+/// Referral program (`GET /referrals`).
+abstract class ReferralRepository {
+  Future<ReferralSummary> get();
 }
 
 abstract class NotificationRepository {

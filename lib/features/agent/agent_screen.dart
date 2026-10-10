@@ -141,6 +141,7 @@ class _Body extends ConsumerWidget {
     final a = agent;
     final usage = ref.watch(usageProvider).value;
     final knowledge = ref.watch(knowledgeProvider).value;
+    final referralBonus = ref.watch(referralsProvider).value?.bonusMinutes;
     final caps = a.capabilities.isEmpty ? genericCapabilities : a.capabilities;
     final lang = ref.watch(languageProvider);
     final mode = ref.watch(themeModeProvider);
@@ -222,6 +223,14 @@ class _Body extends ConsumerWidget {
                 icon: Icons.ring_volume_outlined,
                 title: s.hearYourAiShort,
                 onTap: () => showOwnerTestCallSheet(context),
+              ),
+              _NavRow(
+                icon: Icons.card_giftcard_outlined,
+                title: s.inviteAndEarn,
+                value: referralBonus == null
+                    ? null
+                    : s.inviteRowValue(referralBonus),
+                onTap: () => context.push('/invite'),
               ),
               _NavRow(
                 icon: Icons.event_outlined,

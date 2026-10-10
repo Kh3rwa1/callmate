@@ -208,6 +208,10 @@ describe('Speed-to-lead: capture sources, public form, webhook, instant call', (
       expect(html).toContain(`name="${HONEYPOT_FIELD}"`);
       expect(html).toContain('value="+91 "');
       expect(html).toContain('may be an automated AI call');
+      // Growth loop: the footer links to the landing page with this business's referral code.
+      const biz = await env.DB.prepare('SELECT referral_code FROM businesses WHERE id = ?').bind(bizA).first<any>();
+      expect(biz.referral_code).toMatch(/^[2-9A-HJKMNP-Z]{6}$/);
+      expect(html).toContain(`href="/get?ref=${biz.referral_code}">Powered by CallPilot</a>`);
     });
 
     it('escapes values echoed back into the form', () => {

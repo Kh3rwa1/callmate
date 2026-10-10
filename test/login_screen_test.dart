@@ -15,6 +15,7 @@ class TestAuthRepository implements AuthRepository {
   String? registerPhone;
   String? registerBiz;
   String? registerOtp;
+  String? referralSent;
   bool session = false;
   bool googleAccountExists = false;
   final googleCalls = <Map<String, String?>>[];
@@ -27,7 +28,9 @@ class TestAuthRepository implements AuthRepository {
     required String idToken,
     String? businessName,
     String? phone,
+    String? referralCode,
   }) async {
+    referralSent = referralCode;
     googleCalls.add({
       'token': idToken,
       'business': businessName,
@@ -58,7 +61,9 @@ class TestAuthRepository implements AuthRepository {
     required String phone,
     required String businessName,
     required String otp,
+    String? referralCode,
   }) async {
+    referralSent = referralCode;
     registerPhone = phone;
     registerBiz = businessName;
     registerOtp = otp;
@@ -104,6 +109,7 @@ void main() {
   Future<(TestAuthRepository, FakeGoogleAuth)> pumpLogin(
     WidgetTester tester, {
     bool accountExists = false,
+    String? installReferral,
   }) async {
     final repo = TestAuthRepository()..googleAccountExists = accountExists;
     final google = FakeGoogleAuth();
@@ -115,6 +121,9 @@ void main() {
           googleAuthProvider.overrideWithValue(google),
           useMockProvider.overrideWithValue(false),
           localPrefsProvider.overrideWithValue(prefs),
+          installReferralCodeProvider.overrideWith(
+            (ref) async => installReferral,
+          ),
         ],
         child: const MaterialApp(home: LoginScreen()),
       ),
@@ -173,6 +182,46 @@ void main() {
       'phone': '919830012345',
     });
     expect(repo.session, isTrue);
+  });
+
+  testWidgets('install referral code is prefilled, editable and sent', (
+    tester,
+  ) async {
+    final (repo, _) = await pumpLogin(tester, installReferral: 'ABC234');
+    await tester.ensureVisible(find.text('Continue with Google'));
+    await settle(tester);
+    await tester.tap(find.text('Continue with Google'));
+    await settle(tester);
+
+    final field = find.byKey(const ValueKey('referral-code-field'));
+    expect(field, findsOneWidget);
+    expect(find.text('Referral code (optional)'), findsOneWidget);
+    expect(tester.widget<TextField>(field).controller!.text, 'ABC234');
+
+    await tester.enterText(find.byType(TextField).at(0), 'Apex Coaching');
+    await tester.enterText(find.byType(TextField).at(1), '9830012345');
+    await tester.enterText(field, 'XYZ789');
+    await tester.ensureVisible(find.text('Create Account'));
+    await settle(tester);
+    await tester.tap(find.text('Create Account'));
+    await settle(tester);
+    expect(repo.referralSent, 'XYZ789');
+  });
+
+  testWidgets('an empty referral field sends no code', (tester) async {
+    final (repo, _) = await pumpLogin(tester);
+    await tester.ensureVisible(find.text('Continue with Google'));
+    await settle(tester);
+    await tester.tap(find.text('Continue with Google'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField).at(0), 'Apex Coaching');
+    await tester.enterText(find.byType(TextField).at(1), '9830012345');
+    await tester.ensureVisible(find.text('Create Account'));
+    await settle(tester);
+    await tester.tap(find.text('Create Account'));
+    await settle(tester);
+    expect(repo.session, isTrue);
+    expect(repo.referralSent, isNull);
   });
 
   testWidgets('closing the Google picker is not an error', (tester) async {

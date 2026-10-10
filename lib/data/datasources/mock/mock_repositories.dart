@@ -33,6 +33,7 @@ class MockAuthRepository implements AuthRepository {
     required String idToken,
     String? businessName,
     String? phone,
+    String? referralCode,
   }) => _lag(() {
     _session = true;
     return GoogleSignInOutcome.signedIn;
@@ -47,6 +48,7 @@ class MockAuthRepository implements AuthRepository {
     required String phone,
     required String businessName,
     required String otp,
+    String? referralCode,
   }) => _lag(() => _session = true);
   @override
   Future<void> logout() async => _session = false;
@@ -533,6 +535,13 @@ class MockUsageRepository implements UsageRepository {
     }
     return null;
   });
+}
+
+class MockReferralRepository implements ReferralRepository {
+  MockReferralRepository(this.b);
+  final MockBackend b;
+  @override
+  Future<ReferralSummary> get() => _lag(() => b.referrals, 150);
 }
 
 class MockNotificationRepository implements NotificationRepository {

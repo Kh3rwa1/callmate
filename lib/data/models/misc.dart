@@ -555,3 +555,36 @@ class VoiceChatReply {
     conversationId: jStrN(j, 'conversation_id'),
   );
 }
+
+/// `GET /referrals`: the business's referral code, share link and results.
+class ReferralSummary {
+  const ReferralSummary({
+    required this.code,
+    required this.link,
+    this.bonusMinutes = 200,
+    this.signedUp = 0,
+    this.rewarded = 0,
+    this.minutesEarned = 0,
+  });
+  final String code;
+  final String link;
+
+  /// Minutes each side gets when an invited business makes its first payment.
+  final int bonusMinutes;
+
+  /// Businesses that signed up with this code.
+  final int signedUp;
+
+  /// Of those, how many have paid (both sides rewarded).
+  final int rewarded;
+  final int minutesEarned;
+
+  factory ReferralSummary.fromJson(Json j) => ReferralSummary(
+    code: jStr(j, 'code'),
+    link: jStr(j, 'link'),
+    bonusMinutes: jInt(j, 'bonus_minutes', 200),
+    signedUp: jInt(j, 'signed_up'),
+    rewarded: jInt(j, 'rewarded'),
+    minutesEarned: jInt(j, 'minutes_earned'),
+  );
+}

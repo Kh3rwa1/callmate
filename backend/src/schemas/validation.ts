@@ -13,6 +13,7 @@ export const registerSchema = z.object({
   phone: z.string().min(8, 'Phone number must be at least 8 digits').max(16, 'Phone number too long'),
   otp: z.string().length(6, 'OTP must be exactly 6 digits'),
   business_name: z.string().min(1, 'Business name is required').max(120),
+  referral_code: z.string().max(32).nullable().optional(),
 });
 
 export const loginSchema = z.object({
@@ -24,6 +25,7 @@ export const googleSignInSchema = z.object({
   id_token: z.string().min(100, 'Invalid sign-in token').max(4096),
   business_name: z.string().max(120).optional(),
   phone: z.string().max(16).optional(),
+  referral_code: z.string().max(32).nullable().optional(),
 });
 
 export const refreshSchema = z.object({

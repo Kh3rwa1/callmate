@@ -42,6 +42,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   final _businessController = TextEditingController();
+  final _referralController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   late final _termsTap = TapGestureRecognizer()
     ..onTap = () => _open(AppEnv.termsUrl);
@@ -64,7 +65,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Timer? _countdownTimer;
 
   @override
+  void initState() {
+    super.initState();
+    // Prefill the code this install came with (Play install referrer).
+    ref
+        .read(installReferralCodeProvider.future)
+        .then((code) {
+          if (mounted && code != null && _referralController.text.isEmpty) {
+            _referralController.text = code;
+          }
+        })
+        .catchError((_) {});
+  }
+
+  /// The referral code typed or prefilled, or null when empty.
+  String? get _referralCode {
+    final code = _referralController.text.trim();
+    return code.isEmpty ? null : code;
+  }
+
+  @override
   void dispose() {
+    _referralController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
     _businessController.dispose();
@@ -156,7 +178,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       await ref
           .read(sessionProvider.notifier)
-          .completeGoogleRegistration(businessName: businessName, phone: phone);
+          .completeGoogleRegistration(
+            businessName: businessName,
+            phone: phone,
+            referralCode: _referralCode,
+          );
       if (!mounted) return;
       HapticFeedback.heavyImpact();
       context.go('/onboarding');
@@ -225,6 +251,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               phone: phone,
               businessName: _businessController.text.trim(),
               otp: otp,
+              referralCode: _referralCode,
             );
       } else {
         await ref.read(sessionProvider.notifier).login(phone: phone, otp: otp);
@@ -522,6 +549,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ),
   );
 
+  /// Editable; prefilled from the install referrer when there is one.
+  Widget _referralField(S s) => TextField(
+    key: const ValueKey('referral-code-field'),
+    controller: _referralController,
+    textCapitalization: TextCapitalization.characters,
+    inputFormatters: [
+      FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9 -]')),
+      LengthLimitingTextInputFormatter(12),
+    ],
+    decoration: InputDecoration(
+      labelText: s.referralCodeOptional,
+      helperText: s.referralCodeHelper,
+      prefixIcon: const Icon(Icons.card_giftcard_outlined),
+    ),
+  );
+
   Widget _googleRegisterFields(S s) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -551,6 +594,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           prefixText: '+91 ',
         ),
       ),
+      const SizedBox(height: 14),
+      _referralField(s),
       const SizedBox(height: 20),
       PrimaryButton(
         label: s.createAccountCta,
@@ -587,15 +632,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: _isRegister
             ? Padding(
                 padding: const EdgeInsets.only(bottom: 14),
-                child: TextField(
-                  controller: _businessController,
-                  textCapitalization: TextCapitalization.words,
-                  autofillHints: const [AutofillHints.organizationName],
-                  decoration: InputDecoration(
-                    labelText: s.businessName,
-                    hintText: s.businessNameHint,
-                    prefixIcon: const Icon(Icons.business_outlined),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _businessController,
+                      textCapitalization: TextCapitalization.words,
+                      autofillHints: const [AutofillHints.organizationName],
+                      decoration: InputDecoration(
+                        labelText: s.businessName,
+                        hintText: s.businessNameHint,
+                        prefixIcon: const Icon(Icons.business_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _referralField(s),
+                  ],
                 ),
               )
             : const SizedBox(width: double.infinity),

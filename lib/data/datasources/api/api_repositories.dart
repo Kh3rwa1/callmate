@@ -48,6 +48,7 @@ class ApiAuthRepository implements AuthRepository {
     required String idToken,
     String? businessName,
     String? phone,
+    String? referralCode,
   }) async {
     try {
       await api.post(
@@ -57,6 +58,7 @@ class ApiAuthRepository implements AuthRepository {
           'id_token': idToken,
           'business_name': ?businessName,
           'phone': ?phone,
+          'referral_code': ?referralCode,
         },
       );
       return GoogleSignInOutcome.signedIn;
@@ -84,10 +86,16 @@ class ApiAuthRepository implements AuthRepository {
     required String phone,
     required String businessName,
     required String otp,
+    String? referralCode,
   }) => api.post(
     '/auth/register',
     (d) => _save(d),
-    data: {'phone': phone, 'business_name': businessName, 'otp': otp},
+    data: {
+      'phone': phone,
+      'business_name': businessName,
+      'otp': otp,
+      'referral_code': ?referralCode,
+    },
   );
 
   /// Revokes the refresh token server-side (best effort), then forgets it.
@@ -444,6 +452,14 @@ class ApiUsageRepository implements UsageRepository {
     (d) => jStrN(_j(d), 'url'),
     data: {'plan_id': planId},
   );
+}
+
+class ApiReferralRepository implements ReferralRepository {
+  ApiReferralRepository(this.api);
+  final ApiClient api;
+  @override
+  Future<ReferralSummary> get() =>
+      api.get('/referrals', (d) => ReferralSummary.fromJson(_j(d)));
 }
 
 class ApiNotificationRepository implements NotificationRepository {
