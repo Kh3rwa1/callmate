@@ -6,6 +6,7 @@ import { requireSecret, isMockSarvam } from '../utils/secrets';
 import { checkCallCompliance, allowAnyCallingHours } from '../services/compliance';
 import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS, hasMinutesHeadroom } from '../services/campaign_queue';
 import { parseLimit } from '../utils/pagination';
+import { buildCallAgentVariables } from '../services/call_variables';
 
 const callsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -209,17 +210,10 @@ callsApp.post('/leads/:id/call', async (c) => {
     const dial = await dialSarvam(c.env, {
       callId,
       phone: lead.phone,
-      agentVariables: {
-        call_id: callId,
-        lead_id: lead.id,
-        lead_name: lead.name,
-        business_name: business?.name ?? 'our business',
-        agent_name: agent?.name ?? 'Assistant',
-        agent_role: agent?.role ?? 'Assistant',
-        interest: lead.interest ?? lead.course_interest ?? '',
-        // No voice variables (gender, speaker, ...): Sarvam rejects the whole dial with a 422
-        // unless the agent declares every variable sent. Add them to the agent first.
-      },
+      // Only SARVAM_AGENT_VARIABLES are sent: Sarvam 422s the dial on any undeclared variable.
+      agentVariables: await buildCallAgentVariables(c.env, {
+        businessId: user.business_id, business, agent, lead, callId,
+      }),
       webhookBaseUrl: c.env.PUBLIC_API_BASE_URL || new URL(c.req.url).origin,
     });
 

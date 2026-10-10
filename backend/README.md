@@ -89,6 +89,8 @@ Configure with `wrangler secret put <KEY>`:
 | `FCM_SERVICE_ACCOUNT_JSON` | Firebase service account JSON (needs `project_id`, `client_email`, `private_key`) | Required for push notifications (FCM HTTP v1) |
 | `PUBLIC_API_BASE_URL` | Public https origin of this Worker, e.g. `https://api.yourdomain.com` (a `[vars]` entry, not a secret) | Required: Sarvam webhooks for queued/retried campaign calls use it |
 | `HEALTH_CHECK_SECRET` | Token for `GET /health/deep` | Recommended |
+| `ALERT_WEBHOOK_URL` | Slack / Discord / Google Chat incoming webhook for ops alerts (RUNBOOK §5.1) | Recommended |
+| `SARVAM_AGENT_VARIABLES` | `[vars]`: comma-separated agent_variables to send per dial; unset = the 8 the agent declares (docs/SARVAM_SETUP.md) | Optional |
 | `ALLOWED_ORIGINS` | Comma-separated CORS origins | Optional (Android app needs none) |
 
 ---

@@ -236,3 +236,73 @@ business) re-sends a delayed message and does **not** use up retries.
   npx wrangler tail --format=json | jq 'select(.level=="error")'
   ```
 - **Phone Privacy:** Phone numbers appear only in masked format (`91XXXXXX345`) in compliance with PII privacy rules.
+
+### 5.1 Alerts & monitoring
+
+The 10-minute cron (`scheduled` in `backend/src/index.ts`) runs
+`runAlertChecks` (`backend/src/services/alerts.ts`). It looks at the **last
+hour** and raises at most **one alert per type per hour** (deduped in the D1
+table `alert_state`). Nothing is sent while everything is healthy.
+
+| Alert type | Fires when (last hour) | Source |
+|---|---|---|
+| `sarvam_dial_failures` | ≥ 3 calls `status='failed'` with `failure_reason LIKE 'sarvam_%'` | `calls` |
+| `stuck_calls` | ≥ 3 calls still `calling` after 45 min, or swept to `timed_out` | `calls` |
+| `queue_dead_letters` | ≥ 1 campaign job reached the dead-letter queue | `ops_events` (written by the DLQ consumer) |
+| `webhook_auth_failures` | ≥ 10 `/webhooks/sarvam` requests rejected with 401 | `ops_events` (written by the webhook route) |
+
+Thresholds live in `ALERT_THRESHOLDS` in `alerts.ts`.
+
+Every alert goes to:
+1. **Logs, always:** a `console.error` JSON line with `"msg":"ops_alert"`,
+   `type`, `count`, `env` and `text`.
+2. **Chat, if configured:** a POST to `ALERT_WEBHOOK_URL`. It is sent as
+   `{"text": …}`, which Slack and Google Chat incoming webhooks accept
+   (`{"content": …}` for Discord URLs). Set it as a secret:
+   ```bash
+   cd backend
+   env -u CLOUDFLARE_API_TOKEN npx wrangler secret put ALERT_WEBHOOK_URL --env staging
+   env -u CLOUDFLARE_API_TOKEN npx wrangler secret put ALERT_WEBHOOK_URL          # production
+   ```
+
+**Tail logs:**
+```bash
+cd backend
+env -u CLOUDFLARE_API_TOKEN npx wrangler tail --env staging
+env -u CLOUDFLARE_API_TOKEN npx wrangler tail --env staging --format=json | jq 'select(.logs[]?.message[]? | tostring | contains("ops_alert"))'
+```
+
+**Deep health check:** `GET /health/deep` with header `x-health-key: $HEALTH_CHECK_SECRET`
+returns D1/R2 reachability, `sarvam_config`, a `sarvam` map of which dial
+settings are set (true/false, never the values) and the `agent_variables`
+names each dial sends.
+
+**What to do per alert**
+
+- `sarvam_dial_failures` — read the reasons; `failure_reason` holds Sarvam's
+  HTTP status and error body:
+  ```bash
+  npx wrangler d1 execute callpilot-db-staging --env staging --remote --command="
+    SELECT id, started_at, failure_reason FROM calls
+    WHERE status='failed' AND failure_reason LIKE 'sarvam_%' ORDER BY started_at DESC LIMIT 20;"
+  ```
+  - `sarvam_http_422: … Agent variables … not found` → the backend sent a
+    variable the agent version doesn't declare. Remove it from
+    `SARVAM_AGENT_VARIABLES` (or declare it in the agent and bump
+    `SARVAM_APP_VERSION`); see `docs/SARVAM_SETUP.md` → Agent variables.
+  - `sarvam_http_422/404` otherwise → agent version not committed or caller
+    ID not onboarded on the connection.
+  - `sarvam_http_401/403` → API key wrong or revoked (§3.2).
+  - `sarvam_http_429/5xx`, `sarvam_network` → Sarvam outage/rate limit; campaign
+    dials retry on their own. Check Sarvam status.
+  - `sarvam_not_configured` → a `[vars]` value or `SARVAM_API_KEY` is missing
+    (`/health/deep` shows which).
+- `stuck_calls` — Sarvam isn't reaching `/webhooks/sarvam`. Check
+  `PUBLIC_API_BASE_URL`, the Sarvam webhook delivery log, and look for
+  `webhook_auth_failures` at the same time (a rotated `SARVAM_WEBHOOK_SECRET`
+  invalidates tokens of calls already in flight).
+- `queue_dead_letters` — see §4.4. The `ops_events.detail` column has the
+  job's `campaign:lead` key; correlate with `sarvam_dial_failures`.
+- `webhook_auth_failures` — after a secret rotation a burst is expected for
+  in-flight calls. A sustained stream from unknown sources is probing; no
+  action needed beyond watching, since bad tokens are rejected.
