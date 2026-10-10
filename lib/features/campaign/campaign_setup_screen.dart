@@ -269,7 +269,7 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                                     duration: const Duration(milliseconds: 700),
                                     style: t.displayMedium?.copyWith(
                                       height: 1,
-                                      fontWeight: FontWeight.w800,
+                                      fontWeight: FontWeight.w600,
                                       letterSpacing: -1.5,
                                     ),
                                   ),

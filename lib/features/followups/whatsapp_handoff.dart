@@ -155,7 +155,7 @@ class WhatsAppButton extends StatelessWidget {
             textStyle: const TextStyle(
               fontFamily: AppTheme.fontFamily,
               fontFamilyFallback: AppTheme.fontFallback,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
               fontSize: 15,
             ),
           ),

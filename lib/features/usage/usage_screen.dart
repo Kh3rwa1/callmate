@@ -55,6 +55,7 @@ class UsageScreen extends ConsumerWidget {
                       style: t.displaySmall?.copyWith(
                         color: Colors.white,
                         fontSize: 52,
+                        fontWeight: FontWeight.w500,
                         height: 1,
                         letterSpacing: -1.8,
                       ),

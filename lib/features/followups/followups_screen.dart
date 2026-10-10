@@ -13,6 +13,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import 'whatsapp_handoff.dart';
+import '../../core/widgets/brand_widgets.dart';
 
 /// Follow-ups – "Who needs a message?"
 class FollowUpsScreen extends ConsumerWidget {
@@ -51,7 +52,7 @@ class FollowUpsScreen extends ConsumerWidget {
                         children: [
                           Semantics(
                             header: true,
-                            child: Text(
+                            child: GradientText(
                               s.followUpsTitle,
                               style: t.headlineMedium,
                             ),
@@ -271,7 +272,7 @@ class _FollowUpRow extends ConsumerWidget {
               'WhatsApp',
               style: TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],

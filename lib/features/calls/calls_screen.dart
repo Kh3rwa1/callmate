@@ -15,6 +15,7 @@ import '../../data/models/models.dart';
 import '../../data/repositories/repositories.dart';
 import '../../l10n/l10n.dart';
 import '../leads/leads_controller.dart';
+import '../../core/widgets/brand_widgets.dart';
 
 final callFilterProvider = NotifierProvider<CallFilterController, CallFilter>(
   CallFilterController.new,
@@ -161,7 +162,10 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                   Expanded(
                     child: Semantics(
                       header: true,
-                      child: Text(s.aiCallsTitle, style: t.headlineMedium),
+                      child: GradientText(
+                        s.aiCallsTitle,
+                        style: t.headlineMedium,
+                      ),
                     ),
                   ),
                 ],

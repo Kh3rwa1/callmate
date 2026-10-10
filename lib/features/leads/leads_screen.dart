@@ -17,6 +17,7 @@ import '../../l10n/l10n.dart';
 import '../campaign/campaign_widgets.dart';
 import 'leads_controller.dart';
 import 'lead_card.dart';
+import '../../core/widgets/brand_widgets.dart';
 
 /// Leads – "Who should I care about?" (sorted hot → warm → new → cold)
 class LeadsScreen extends ConsumerStatefulWidget {
@@ -108,7 +109,10 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                   Expanded(
                     child: Semantics(
                       header: true,
-                      child: Text(s.leadsTitle, style: t.headlineMedium),
+                      child: GradientText(
+                        s.leadsTitle,
+                        style: t.headlineMedium,
+                      ),
                     ),
                   ),
                   AnimatedSwitcher(

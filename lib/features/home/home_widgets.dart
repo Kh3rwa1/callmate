@@ -128,7 +128,8 @@ class HomeAgentCard extends StatelessWidget {
                                 key: const ValueKey('none'),
                                 style: t.displaySmall?.copyWith(
                                   color: onBrand,
-                                  fontSize: 46,
+                                  fontSize: 58,
+                                  fontWeight: FontWeight.w500,
                                   height: 1,
                                 ),
                               )
@@ -139,9 +140,10 @@ class HomeAgentCard extends StatelessWidget {
                                 format: Fmt.number,
                                 style: t.displaySmall?.copyWith(
                                   color: onBrand,
-                                  fontSize: 46,
+                                  fontSize: 58,
+                                  fontWeight: FontWeight.w500,
                                   height: 1,
-                                  letterSpacing: -1.5,
+                                  letterSpacing: -2.6,
                                 ),
                               ),
                       ),
@@ -326,9 +328,10 @@ class HomeStatStrip extends StatelessWidget {
                             format: Fmt.number,
                             style: t.headlineMedium?.copyWith(
                               color: stats[i].accent ?? AppColors.ink,
-                              fontSize: 27,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w500,
                               height: 1.1,
-                              letterSpacing: -0.8,
+                              letterSpacing: -1.3,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -409,7 +412,7 @@ class HomeActionRow extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final strong = t.titleMedium?.copyWith(
       color: AppColors.ink,
-      fontWeight: FontWeight.w800,
+      fontWeight: FontWeight.w600,
     );
     return InkWell(
       onTap: () {

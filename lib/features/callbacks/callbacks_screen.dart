@@ -92,14 +92,18 @@ class CallbacksScreen extends ConsumerWidget {
                           children: [
                             Icon(
                               Icons.check_rounded,
-                              color: AppColors.onInverse,
+                              color: (AppColors.isDark
+                                  ? AppColors.background
+                                  : Colors.white),
                             ),
                             const SizedBox(width: 6),
                             Text(
                               s.done,
                               style: TextStyle(
-                                color: AppColors.onInverse,
-                                fontWeight: FontWeight.w800,
+                                color: (AppColors.isDark
+                                    ? AppColors.background
+                                    : Colors.white),
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],

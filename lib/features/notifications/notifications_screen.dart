@@ -134,7 +134,7 @@ class _NotificationRow extends StatelessWidget {
                             style: t.titleSmall?.copyWith(
                               fontWeight: n.read
                                   ? FontWeight.w600
-                                  : FontWeight.w800,
+                                  : FontWeight.w600,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -293,13 +293,13 @@ class InAppNotificationBanner extends StatelessWidget {
                 FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF0E173A),
+                    foregroundColor: const Color(0xFF1D4FD8),
                     minimumSize: const Size(0, 40),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     textStyle: const TextStyle(
                       fontFamily: AppTheme.fontFamily,
                       fontFamilyFallback: AppTheme.fontFallback,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       fontSize: 13,
                     ),
                   ),
