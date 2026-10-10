@@ -133,6 +133,12 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                         : const SizedBox.shrink(key: ValueKey('none')),
                   ),
                   IconButton(
+                    key: const Key('leads-get-automatically'),
+                    tooltip: s.getLeadsAutomatically,
+                    onPressed: () => context.push('/leads/auto'),
+                    icon: const Icon(Icons.bolt_rounded),
+                  ),
+                  IconButton(
                     tooltip: s.addOrImportLeads,
                     onPressed: () => context.push('/leads/import'),
                     icon: const Icon(Icons.person_add_alt_outlined),

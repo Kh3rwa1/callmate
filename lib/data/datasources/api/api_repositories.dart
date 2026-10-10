@@ -273,6 +273,34 @@ class ApiLeadRepository implements LeadRepository {
   );
 }
 
+class ApiLeadSourceRepository implements LeadSourceRepository {
+  ApiLeadSourceRepository(this.api);
+  final ApiClient api;
+
+  @override
+  Future<List<LeadSource>> list() =>
+      api.get('/lead-sources', (d) => _l(d).map(LeadSource.fromJson).toList());
+
+  @override
+  Future<LeadSource> create(LeadSourceKind kind) => api.post(
+    '/lead-sources',
+    (d) => LeadSource.fromJson(_j(d)),
+    data: {'kind': kind.wire},
+  );
+
+  @override
+  Future<LeadSource> setAutoCall(String id, {required bool autoCall}) =>
+      api.patch(
+        '/lead-sources/$id',
+        (d) => LeadSource.fromJson(_j(d)),
+        data: {'auto_call': autoCall},
+      );
+
+  @override
+  Future<void> revoke(String id) =>
+      api.post('/lead-sources/$id/revoke', (_) {});
+}
+
 class ApiCallRepository implements CallRepository {
   ApiCallRepository(this.api);
   final ApiClient api;

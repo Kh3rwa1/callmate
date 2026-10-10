@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { parseJsonBody, ownerTestCallSchema } from '../schemas/validation';
-import { normalizePhone } from './leads';
-import { placeLeadCall } from './calls';
+import { normalizePhone } from '../utils/phone';
+import { respondWithLeadCall } from './calls';
 import { DEFAULT_BUSINESS_TIMEZONE, estimatedValue, localMidnightUtc, periodResults, PeriodResults } from '../services/results';
 
 const resultsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -142,7 +142,7 @@ resultsApp.post('/agent/test-call', async (c) => {
 
   let res: Response;
   try {
-    res = await placeLeadCall(c, leadId);
+    res = await respondWithLeadCall(c, leadId);
   } catch (err) {
     await releaseSlot();
     throw err;

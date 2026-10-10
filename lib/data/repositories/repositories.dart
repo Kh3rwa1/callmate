@@ -62,6 +62,18 @@ abstract class LeadRepository {
 
 enum LeadFilter { all, newLeads, called, hot, warm, callback }
 
+/// Speed-to-lead capture: the hosted enquiry form and webhooks.
+abstract class LeadSourceRepository {
+  /// Active sources (revoked ones are gone).
+  Future<List<LeadSource>> list();
+
+  /// A form is one per business: returns the existing one if there is one.
+  /// A new webhook carries its [LeadSource.token] (shown once).
+  Future<LeadSource> create(LeadSourceKind kind);
+  Future<LeadSource> setAutoCall(String id, {required bool autoCall});
+  Future<void> revoke(String id);
+}
+
 abstract class CallRepository {
   Future<Page<Call>> list({
     CallFilter filter = CallFilter.all,

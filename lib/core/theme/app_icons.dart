@@ -58,6 +58,7 @@ class AppIcons {
     NotificationType.followUpReady => Icons.chat_bubble_rounded,
     NotificationType.callback => Icons.event_rounded,
     NotificationType.campaign => Icons.campaign_rounded,
+    NotificationType.newLead => Icons.bolt_rounded,
   };
 
   static const _byEmoji = <String, IconData>{

@@ -166,6 +166,25 @@ bool matchesLeadFilter(Lead l, LeadFilter f) => switch (f) {
     l.status == LeadStatus.callback || l.callbackAt != null,
 };
 
+class MockLeadSourceRepository implements LeadSourceRepository {
+  MockLeadSourceRepository(this.b);
+  final MockBackend b;
+
+  @override
+  Future<List<LeadSource>> list() => _lag(() => List.of(b.leadSources), 200);
+
+  @override
+  Future<LeadSource> create(LeadSourceKind kind) =>
+      _lag(() => b.createLeadSource(kind));
+
+  @override
+  Future<LeadSource> setAutoCall(String id, {required bool autoCall}) =>
+      _lag(() => b.setLeadSourceAutoCall(id, autoCall), 150);
+
+  @override
+  Future<void> revoke(String id) => _lag(() => b.revokeLeadSource(id));
+}
+
 class MockLeadRepository implements LeadRepository {
   MockLeadRepository(this.b);
   final MockBackend b;

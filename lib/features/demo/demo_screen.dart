@@ -105,6 +105,11 @@ class DemoScreen extends ConsumerWidget {
                 }
               },
             ),
+            row(Icons.bolt_rounded, s.simulateFormEnquiry, () {
+              final lead = b.simulateFormEnquiry();
+              notif.present(b.notifications.first);
+              context.push('/leads/${lead.id}');
+            }),
             row(
               Icons.rocket_launch_outlined,
               'Simulate campaign progress',

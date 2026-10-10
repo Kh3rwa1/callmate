@@ -85,11 +85,21 @@ class LeadCard extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              l.name,
-                              style: t.titleMedium,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    l.name,
+                                    style: t.titleMedium,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (s.leadSourceLabel(l.source) != null) ...[
+                                  const SizedBox(width: 6),
+                                  LeadSourceChip(source: l.source),
+                                ],
+                              ],
                             ),
                             const SizedBox(height: 2),
                             Text(

@@ -3,6 +3,7 @@ import { Env, AuthUser } from '../types';
 import { safeJsonParse } from '../utils/json';
 import { parseJsonBody, createLeadSchema, importLeadsSchema, patchLeadSchema } from '../schemas/validation';
 import { parseLimit } from '../utils/pagination';
+import { normalizePhone } from '../utils/phone';
 
 function isUniqueViolation(err: any): boolean {
   return /UNIQUE constraint failed/i.test(String(err?.message ?? err));
@@ -45,15 +46,6 @@ function formatLead(row: any) {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
-}
-
-export function normalizePhone(p: string): string | null {
-  const digits = p.replace(/\D/g, '');
-  if (digits.length === 10) return `91${digits}`;
-  if (digits.length === 11 && digits.startsWith('0')) return `91${digits.slice(1)}`;
-  if (digits.startsWith('91') && digits.length === 12) return digits;
-  if (digits.length >= 8 && digits.length <= 15) return digits;
-  return null;
 }
 
 // GET /leads

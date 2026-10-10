@@ -32,7 +32,11 @@ The CallPilot platform enforces the following operational guardrails at runtime:
    - Outbound attempts are limited to a maximum of **3 calls per lead per 24-hour period**.
    - Outbound campaign retries are capped at **3 total attempts per campaign**.
 
-4. **Zero Automated Messaging**:
+4. **Speed-to-lead consent**:
+   - Leads from the hosted enquiry form (`/f/:slug`) are only created when the person ticks a consent box naming the business and saying the call may be an automated AI call; webhook senders must send `consent: true`. Such leads get `consent = 'explicit_opt_in'` with the enquiry time in `last_enquiry_at`.
+   - Their instant AI call runs the same guards as any manual call (calling hours, DNC/opt-out, daily cap, minutes). A repeat enquiry never overrides an opt-out or do-not-call flag.
+
+5. **Zero Automated Messaging**:
    - CallPilot guarantees that **no automated messages are sent via WhatsApp or external channels**. WhatsApp follow-up messages require explicit human initiation (`status = 'ready' -> opened`).
 
 ---
