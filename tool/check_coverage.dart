@@ -1,10 +1,33 @@
 import 'dart:io';
 
-/// Minimum line coverage for lib/data + lib/services combined.
-const minDataAndServices = 80.0;
+// Coverage ratchet for `flutter test --coverage` (reads coverage/lcov.info).
+//
+// Thresholds sit ~2 points under the measured baseline so normal churn passes
+// but a real regression fails CI. Baseline measured 2026-10-10:
+//   lib/data 94.31%, lib/services 55.16%, data+services 83.78%,
+//   lib/ (excl. l10n + generated) 91.05%.
+// Raise these when coverage improves; never lower them to land a PR.
+//
+// Run with plain `dart tool/check_coverage.dart` (only needs dart:io).
 
-/// Minimum line coverage for everything under lib/.
-const minOverall = 85.0;
+/// Minimum line coverage for lib/data + lib/services combined.
+const minDataAndServices = 81.5;
+
+/// Minimum line coverage for lib/services on its own (weakest area; floor so
+/// it cannot silently get worse while lib/data carries the combined number).
+const minServices = 53.0;
+
+/// Minimum line coverage for everything under lib/, excluding string tables
+/// (lib/l10n) and generated code, which would otherwise distort the number.
+const minOverall = 89.0;
+
+/// Files left out of the overall bucket.
+bool _excluded(String path) =>
+    path.contains('lib/l10n/') ||
+    path.endsWith('.g.dart') ||
+    path.endsWith('.freezed.dart') ||
+    path.endsWith('.gr.dart') ||
+    path.endsWith('.mocks.dart');
 
 class _Bucket {
   int found = 0;
@@ -31,6 +54,7 @@ void main() {
   final services = _Bucket();
   final combined = _Bucket();
   final overall = _Bucket();
+  final raw = _Bucket();
 
   var currentFile = '';
   for (final line in lcovFile.readAsLinesSync()) {
@@ -40,6 +64,8 @@ void main() {
       final parts = line.substring(3).split(',');
       if (parts.length < 2 || !currentFile.contains('lib/')) continue;
       final covered = (int.tryParse(parts[1]) ?? 0) > 0;
+      raw.add(covered);
+      if (_excluded(currentFile)) continue;
       overall.add(covered);
       if (currentFile.contains('lib/data/')) {
         data.add(covered);
@@ -58,13 +84,17 @@ void main() {
     ..writeln('  lib/data:     ${data.describe()}')
     ..writeln('  lib/services: ${services.describe()}')
     ..writeln('  Combined:     ${combined.describe()}')
-    ..writeln('  lib/ overall: ${overall.describe()}')
+    ..writeln('  lib/ gated:   ${overall.describe()}  (excl. l10n/generated)')
+    ..writeln('  lib/ raw:     ${raw.describe()}  (informational)')
     ..writeln(rule);
 
   final failures = <String>[
     if (combined.pct < minDataAndServices)
       'Combined data+services coverage (${combined.pct.toStringAsFixed(2)}%) '
           'is below the required $minDataAndServices% threshold.',
+    if (services.pct < minServices)
+      'lib/services coverage (${services.pct.toStringAsFixed(2)}%) is below '
+          'the required $minServices% threshold.',
     if (overall.pct < minOverall)
       'Overall lib/ coverage (${overall.pct.toStringAsFixed(2)}%) is below '
           'the required $minOverall% threshold.',
@@ -76,7 +106,7 @@ void main() {
     exit(1);
   }
   stdout.writeln(
-    'SUCCESS: coverage meets the thresholds '
-    '(data+services >= $minDataAndServices%, lib/ >= $minOverall%).',
+    'SUCCESS: coverage meets the thresholds (data+services >= '
+    '$minDataAndServices%, services >= $minServices%, lib/ >= $minOverall%).',
   );
 }

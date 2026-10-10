@@ -26,7 +26,9 @@ String plainNotificationTitle(String title) => splitNotificationTitle(title).$2;
 /// sees jargon. Calling updates keep the backend's English title, which names
 /// the employee.
 String notificationTitleFor(S s, AppNotification n) =>
-    s.isEn && n.type == NotificationType.campaign
+    s.isEn &&
+        (n.type == NotificationType.campaign ||
+            n.type == NotificationType.newLead)
     ? plainNotificationTitle(n.title)
     : s.notificationTitle(n.type);
 

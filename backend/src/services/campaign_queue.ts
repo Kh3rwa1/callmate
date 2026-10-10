@@ -18,6 +18,8 @@ import { maskPhone } from '../utils/crypto_data';
 import { isMockSarvam } from '../utils/secrets';
 import { isPlanBlocked, pauseCampaignForBilling, MinuteBalances, minutesRemaining, MINUTE_BALANCE_COLUMNS } from './plans';
 import { buildCallAgentVariables } from './call_variables';
+import { buildDisclosureOverrides, SarvamAppOverrides } from './disclosure';
+import { globalDncSecret } from './global_dnc';
 
 export interface CampaignJobMessage {
   campaign_id: string;
@@ -127,6 +129,8 @@ export interface DialRequest {
   phone: string;
   agentVariables: Record<string, unknown>;
   webhookBaseUrl?: string | null;
+  /** AI + recording disclosure (services/disclosure.ts); omitted = no app_overrides sent. */
+  appOverrides?: SarvamAppOverrides;
 }
 
 /**
@@ -164,6 +168,7 @@ export async function dialSarvam(env: Env, req: DialRequest): Promise<DialResult
       app_version: appVersion,
       connection_config: { connection_id: env.SARVAM_CONNECTION_ID, agent_phone_number: agentPhone },
       agent_variables: req.agentVariables,
+      ...(req.appOverrides ? { app_overrides: req.appOverrides } : {}),
     },
     user_config: { user_phone_number: toE164(req.phone) },
     webhook_config: await sarvamWebhookConfig(req.webhookBaseUrl, env.SARVAM_WEBHOOK_SECRET, req.callId),
@@ -242,6 +247,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
     hoursEnd: campaign.calling_hours_end,
     timezone: lead.timezone || 'Asia/Kolkata',
     skipTraiClamp: allowAnyCallingHours(env),
+    globalDncSecret: globalDncSecret(env),
   });
 
   if (!compliance.allowed) {
@@ -249,6 +255,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
       outside_hours: 'rescheduled',
       do_not_call: 'skipped_dnc',
       max_daily_attempts: 'rescheduled',
+      platform_frequency_cap: 'rescheduled',
       max_campaign_attempts: 'max_attempts_exceeded',
     };
     const newStatus = statusFor[compliance.reason!] ?? 'failed';
@@ -305,6 +312,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
       businessId: business_id, business, agent, lead, callId, campaignId: campaign_id,
     }),
     webhookBaseUrl: env.PUBLIC_API_BASE_URL || job.webhook_base_url,
+    appOverrides: buildDisclosureOverrides(env, { agent, business, lead }),
   });
 
   if (dial.ok) {

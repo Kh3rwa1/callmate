@@ -5,6 +5,7 @@ import { parseJsonBody, createCampaignSchema } from '../schemas/validation';
 import { enqueueCampaignJobs, maybeCompleteCampaign } from '../services/campaign_queue';
 import { parseLimit, MAX_LIST_LIMIT } from '../utils/pagination';
 import { isPlanBlocked, PLAN_BLOCKED_BODY, MinuteBalances, minutesRemaining, MINUTE_BALANCE_COLUMNS } from '../services/plans';
+import { recordConsentEventsForLeads, hashIp, clientIp, CONSENT_TEXT_VERSIONS } from '../services/consent';
 
 const campaignsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -83,7 +84,8 @@ campaignsApp.post('/campaigns', async (c) => {
       const slice = leadIds.slice(i, i + chunkSize);
       const placeholders = slice.map(() => '?').join(',');
       const check = await c.env.DB.prepare(
-        `SELECT COUNT(*) as cnt FROM leads WHERE business_id = ? AND id IN (${placeholders})`
+        // The owner's own test lead (POST /agent/test-call) is never campaign material.
+        `SELECT COUNT(*) as cnt FROM leads WHERE business_id = ? AND is_owner_test = 0 AND id IN (${placeholders})`
       ).bind(user.business_id, ...slice).first<{ cnt: number }>();
       validCount += check?.cnt || 0;
     }
@@ -192,6 +194,16 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
     }
   }
   for (let i = 0; i < skipStmts.length; i += 80) await c.env.DB.batch(skipStmts.slice(i, i + 80));
+  // Evidence: the owner attested consent for the leads whose consent was unknown and that will be called.
+  if (consentAttestation) {
+    const attested = (results ?? []).filter((l) => l.consent === 'unknown' && toQueue.includes(l.id)).map((l) => l.id);
+    if (attested.length > 0) {
+      await recordConsentEventsForLeads(c.env.DB, user.business_id, attested, {
+        source: 'import_attestation', textVersion: CONSENT_TEXT_VERSIONS.campaignAttestation,
+        consentValue: 'owner_attested', ipHash: await hashIp(c.env, clientIp(c)),
+      });
+    }
+  }
   const queued = toQueue.length
     ? await enqueueCampaignJobs(c.env, id, user.business_id, toQueue, new URL(c.req.url).origin)
     : 0;

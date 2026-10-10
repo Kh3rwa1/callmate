@@ -399,7 +399,7 @@ authApp.delete('/account', authMiddleware, async (c) => {
   await deleteR2Prefix(c.env.KNOWLEDGE_BUCKET, `${businessId}/`);
 
   // 2. Delete from optional / future tables if present (Phase 6 RAG & chat)
-  const optionalTables = ['chat_messages', 'knowledge_chunks', 'knowledge_fts'];
+  const optionalTables = ['chat_messages', 'knowledge_chunks', 'knowledge_fts', 'lead_sources'];
   for (const tbl of optionalTables) {
     try {
       const exists = await c.env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").bind(tbl).first();
@@ -430,6 +430,7 @@ authApp.delete('/account', authMiddleware, async (c) => {
     c.env.DB.prepare('DELETE FROM callbacks WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM followups WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM calls WHERE business_id = ?').bind(businessId),
+    c.env.DB.prepare('DELETE FROM consent_events WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM leads WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM knowledge_sources WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM devices WHERE business_id = ?').bind(businessId),

@@ -1,15 +1,14 @@
-import { Hono } from 'hono';
+import { Hono, Context } from 'hono';
 import { Env, AuthUser } from '../types';
 import { safeJsonParse } from '../utils/json';
-import { decryptAtRest, maskPhone } from '../utils/crypto_data';
-import { requireSecret, isMockSarvam } from '../utils/secrets';
-import { checkCallCompliance, allowAnyCallingHours } from '../services/compliance';
-import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS, hasMinutesHeadroom } from '../services/campaign_queue';
+import { decryptAtRest } from '../utils/crypto_data';
+import { requireSecret } from '../utils/secrets';
 import { parseLimit } from '../utils/pagination';
-import { isPlanBlocked, PLAN_BLOCKED_BODY, MinuteBalances, MINUTE_BALANCE_COLUMNS } from '../services/plans';
-import { buildCallAgentVariables } from '../services/call_variables';
+import { PLAN_BLOCKED_BODY } from '../services/plans';
+import { placeLeadCall } from '../services/dial';
 
-const callsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+type CallsEnv = { Bindings: Env; Variables: { user: AuthUser } };
+const callsApp = new Hono<CallsEnv>();
 
 async function formatCall(row: any, secret?: string) {
   if (!row) return null;
@@ -47,7 +46,7 @@ async function formatCall(row: any, secret?: string) {
     lead_phone: row.lead_phone,
     status: row.status,
     duration_seconds: row.duration_seconds || 0,
-    recording_url: row.recording_url,
+    recording_url: await decryptAtRest(row.recording_url ?? null, secret).catch(() => null),
     transcript: transcriptObj,
     lead_score: leadScoreObj,
     summary: row.summary,
@@ -150,98 +149,55 @@ const BLOCKED_CALL_MESSAGES: Record<string, string> = {
   outside_hours: 'This lead can only be called during calling hours.',
   do_not_call: 'This lead has opted out of calls.',
   max_daily_attempts: 'This lead has already been called 3 times today.',
+  platform_frequency_cap: 'This number has already been called by several businesses today. Try again tomorrow.',
 };
 
-callsApp.post('/leads/:id/call', async (c) => {
+/**
+ * Places one outbound AI call to a lead of the signed-in business, with every guard (calling hours,
+ * DNC, daily attempts, concurrency, plan, minutes). The single dial path for POST /leads/:id/call and
+ * POST /agent/test-call (routes/results.ts).
+ */
+export async function respondWithLeadCall(c: Context<CallsEnv>, leadId: string): Promise<Response> {
   const user = c.get('user');
-  const leadId = c.req.param('id');
   const secret = requireSecret(c.env, 'ENCRYPTION_KEY');
 
-  const lead = await c.env.DB.prepare('SELECT * FROM leads WHERE id = ? AND business_id = ?').bind(leadId, user.business_id).first<any>();
-  if (!lead) return c.json({ message: 'Lead not found.', code: 'not_found' }, 404);
-
-  const agent = await c.env.DB.prepare('SELECT * FROM agents WHERE business_id = ?').bind(user.business_id).first<any>();
-
-  const compliance = await checkCallCompliance(c.env.DB, {
+  // Guards + dial are shared with the speed-to-lead instant call (services/dial.ts).
+  const placed = await placeLeadCall(c.env, {
     businessId: user.business_id,
     leadId,
-    hoursStart: agent?.calling_hours_start,
-    hoursEnd: agent?.calling_hours_end,
-    timezone: lead.timezone || 'Asia/Kolkata',
-    skipTraiClamp: allowAnyCallingHours(c.env),
+    fallbackBaseUrl: new URL(c.req.url).origin,
   });
-  if (!compliance.allowed) {
-    return c.json({
-      message: BLOCKED_CALL_MESSAGES[compliance.reason!] ?? 'This call is not allowed right now.',
-      code: compliance.reason,
-    }, 409);
-  }
 
-  const active = await c.env.DB.prepare(
-    `SELECT COUNT(*) AS cnt FROM calls
-     WHERE business_id = ? AND status = 'calling' AND started_at > datetime('now', '-20 minutes')`
-  ).bind(user.business_id).first<{ cnt: number }>();
-  if ((active?.cnt ?? 0) >= MAX_CONCURRENT_CALLS_PER_BUSINESS) {
-    return c.json({ message: 'Too many calls in progress. Try again in a minute.', code: 'concurrency_limit' }, 429);
-  }
-
-  if (await isPlanBlocked(c.env.DB, user.business_id)) return c.json(PLAN_BLOCKED_BODY, 402);
-  const usage = await c.env.DB.prepare(`SELECT ${MINUTE_BALANCE_COLUMNS} FROM usage WHERE business_id = ?`)
-    .bind(user.business_id).first<MinuteBalances>();
-  if (usage && !hasMinutesHeadroom(usage, active?.cnt ?? 0)) {
-    return c.json({ message: 'You have used all included calling minutes.', code: 'exhausted_minutes' }, 402);
-  }
-
-  const business = await c.env.DB.prepare('SELECT name FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
-  const callId = `call_${crypto.randomUUID().slice(0, 12)}`;
-
-  await c.env.DB.prepare(`
-    INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, status, started_at, created_at)
-    VALUES (?, ?, ?, ?, ?, 'calling', datetime('now'), datetime('now'))
-  `).bind(callId, user.business_id, lead.id, lead.name, lead.phone).run();
-
-  const markLeadCalling = c.env.DB.prepare(
-    `UPDATE leads SET status = 'calling', updated_at = datetime('now') WHERE id = ? AND business_id = ?`
-  ).bind(leadId, user.business_id);
-
-  let dispatched = false;
-  if (isMockSarvam(c.env)) {
-    // Dev/test: the mock webhook or maintenance sweeper completes the call.
-    await markLeadCalling.run();
-  } else {
-    const dial = await dialSarvam(c.env, {
-      callId,
-      phone: lead.phone,
-      // Only SARVAM_AGENT_VARIABLES are sent: Sarvam 422s the dial on any undeclared variable.
-      agentVariables: await buildCallAgentVariables(c.env, {
-        businessId: user.business_id, business, agent, lead, callId,
-      }),
-      webhookBaseUrl: c.env.PUBLIC_API_BASE_URL || new URL(c.req.url).origin,
-    });
-
-    if (dial.ok) {
-      dispatched = true;
-      await c.env.DB.batch([
-        c.env.DB.prepare('UPDATE calls SET interaction_id = ? WHERE id = ? AND business_id = ?')
-          .bind(dial.interactionId, callId, user.business_id),
-        markLeadCalling,
-      ]);
-    } else {
-      console.error(JSON.stringify({ msg: 'sarvam_manual_dial_failed', lead: maskPhone(lead.phone), error: dial.error }));
-      await c.env.DB.prepare(`UPDATE calls SET status = 'failed', failure_reason = ? WHERE id = ? AND business_id = ?`)
-        .bind(dial.error, callId, user.business_id).run();
-      return c.json({
-        message: dial.retryable ? 'The calling service is busy. Please try again shortly.' : 'The call could not be placed.',
-        code: 'dial_failed',
-      }, dial.retryable ? 503 : 502);
+  if (!placed.ok) {
+    switch (placed.code) {
+      case 'not_found':
+        return c.json({ message: 'Lead not found.', code: 'not_found' }, 404);
+      case 'blocked':
+        return c.json({
+          message: BLOCKED_CALL_MESSAGES[placed.reason] ?? 'This call is not allowed right now.',
+          code: placed.reason,
+        }, 409);
+      case 'concurrency_limit':
+        return c.json({ message: 'Too many calls in progress. Try again in a minute.', code: 'concurrency_limit' }, 429);
+      case 'plan_blocked':
+        return c.json(PLAN_BLOCKED_BODY, 402);
+      case 'exhausted_minutes':
+        return c.json({ message: 'You have used all included calling minutes.', code: 'exhausted_minutes' }, 402);
+      case 'dial_failed':
+        return c.json({
+          message: placed.retryable ? 'The calling service is busy. Please try again shortly.' : 'The call could not be placed.',
+          code: 'dial_failed',
+        }, placed.retryable ? 503 : 502);
     }
   }
 
-  const created = await c.env.DB.prepare('SELECT * FROM calls WHERE id = ? AND business_id = ?').bind(callId, user.business_id).first();
+  const created = await c.env.DB.prepare('SELECT * FROM calls WHERE id = ? AND business_id = ?').bind(placed.callId, user.business_id).first();
   return c.json({
     call: await formatCall(created, secret),
-    sarvam_dispatched: dispatched,
+    sarvam_dispatched: placed.dispatched,
   });
-});
+}
+
+callsApp.post('/leads/:id/call', (c) => respondWithLeadCall(c, c.req.param('id')));
 
 export { callsApp };

@@ -271,6 +271,40 @@ class ApiLeadRepository implements LeadRepository {
     // A campaign takes at most 500 leads (backend MAX_CAMPAIGN_LEADS).
     query: {'filter': 'new', 'limit': 500, 'fields': 'id,name,phone'},
   );
+
+  @override
+  Future<List<ConsentEvent>> consentHistory(String leadId) => api.get(
+    '/leads/$leadId/consent-history',
+    (d) => _l(d).map(ConsentEvent.fromJson).toList(),
+  );
+}
+
+class ApiLeadSourceRepository implements LeadSourceRepository {
+  ApiLeadSourceRepository(this.api);
+  final ApiClient api;
+
+  @override
+  Future<List<LeadSource>> list() =>
+      api.get('/lead-sources', (d) => _l(d).map(LeadSource.fromJson).toList());
+
+  @override
+  Future<LeadSource> create(LeadSourceKind kind) => api.post(
+    '/lead-sources',
+    (d) => LeadSource.fromJson(_j(d)),
+    data: {'kind': kind.wire},
+  );
+
+  @override
+  Future<LeadSource> setAutoCall(String id, {required bool autoCall}) =>
+      api.patch(
+        '/lead-sources/$id',
+        (d) => LeadSource.fromJson(_j(d)),
+        data: {'auto_call': autoCall},
+      );
+
+  @override
+  Future<void> revoke(String id) =>
+      api.post('/lead-sources/$id/revoke', (_) {});
 }
 
 class ApiCallRepository implements CallRepository {
@@ -303,6 +337,15 @@ class ApiCallRepository implements CallRepository {
   Future<Call> triggerCall(String leadId) => api.post(
     '/leads/$leadId/call',
     (d) => Call.fromJson(_j(d is Map && d.containsKey('call') ? d['call'] : d)),
+  );
+  @override
+  Future<OwnerTestCallInfo> ownerTestCallInfo() =>
+      api.get('/agent/test-call', (d) => OwnerTestCallInfo.fromJson(_j(d)));
+  @override
+  Future<OwnerTestCallInfo> callOwner(String phone) => api.post(
+    '/agent/test-call',
+    (d) => OwnerTestCallInfo.fromJson(_j(d)),
+    data: {'phone': phone},
   );
 }
 
@@ -443,6 +486,13 @@ class ApiDashboardRepository implements DashboardRepository {
       ),
     );
   });
+
+  @override
+  Future<ResultsSummary> results(ResultsRange range) => api.get(
+    '/dashboard/results',
+    (d) => ResultsSummary.fromJson(_j(d)),
+    query: {'range': range.wire},
+  );
 }
 
 class ApiVoiceSessionRepository implements VoiceSessionRepository {

@@ -8,13 +8,14 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { Env } from '../types';
+import { retentionDays } from '../services/retention';
 
 export const LEGAL_LAST_UPDATED = '10 October 2026';
 const DEFAULT_SUPPORT_EMAIL = 'support@callpilot.app';
 const DEFAULT_ENTITY = 'CallPilot';
 
 // Strict: these pages run no script and load nothing from elsewhere.
-const LEGAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+export const LEGAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 export function escapeHtml(value: string): string {
   return value
@@ -25,19 +26,22 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-interface LegalVars {
+export interface LegalVars {
   entity: string;
   email: string;
+  /** Days call recordings, transcripts and summaries are kept (RETENTION_DAYS). */
+  retentionDays: number;
 }
 
-function legalVars(env: Env): LegalVars {
+export function legalVars(env: Env): LegalVars {
   return {
     entity: escapeHtml((env.LEGAL_ENTITY_NAME || DEFAULT_ENTITY).trim()),
     email: escapeHtml((env.SUPPORT_EMAIL || DEFAULT_SUPPORT_EMAIL).trim()),
+    retentionDays: retentionDays(env),
   };
 }
 
-function page(title: string, v: LegalVars, body: string): string {
+export function page(title: string, v: LegalVars, body: string): string {
   return `<!doctype html>
 <!--
   TODO(owner): DRAFT, pending legal review. Before relying on this page:
@@ -67,6 +71,11 @@ function page(title: string, v: LegalVars, body: string): string {
   li { margin: 4px 0; }
   a { color: var(--accent); }
   .lede { color: var(--soft); margin-top: 0; }
+  form { margin: 16px 0; }
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
+  input[type=tel] { width: 100%; max-width: 360px; font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  button { margin-top: 12px; font: inherit; font-weight: 600; padding: 10px 18px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
+  .notice { padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); }
   nav { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.95rem; margin-bottom: 24px; }
   footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--soft); font-size: 0.9rem; }
 </style>
@@ -77,6 +86,7 @@ function page(title: string, v: LegalVars, body: string): string {
   <a href="/legal/privacy">Privacy Policy</a>
   <a href="/legal/terms">Terms of Service</a>
   <a href="/legal/delete-account">Delete your account</a>
+  <a href="/stop">Stop calls to my number</a>
 </nav>
 ${body}
 <footer>
@@ -119,7 +129,8 @@ export function privacyPage(v: LegalVars): string {
 <p>We do not sell personal data and do not use your leads’ data to market to them ourselves.</p>
 
 <h2>4. AI calls and recording</h2>
-<p>Calls are made by an AI voice agent, not a person, on behalf of the business named in the call, and the person called should be told at the start that they are speaking with an AI and that the call is recorded. Calls are recorded and transcribed so the owner can review them and so the lead can be scored. If a lead asks not to be called again, CallPilot marks the number as do-not-call and stops calling it.</p>
+<p>Calls are made by an AI voice agent, not a person, on behalf of the business named in the call, and the person called should be told at the start that they are speaking with an AI and that the call is recorded. Calls are recorded and transcribed so the owner can review them and so the lead can be scored. If a lead asks not to be called again, CallPilot marks the number as do-not-call for that business and stops calling it.</p>
+<p><strong>Stop all CallPilot calls:</strong> anyone can enter their phone number at <a href="/stop">/stop</a> and no business using CallPilot will call that number again. We keep only a one-way hash of the number, not the number itself.</p>
 
 <h2>5. Who processes the data for us</h2>
 <ul>
@@ -132,8 +143,9 @@ export function privacyPage(v: LegalVars): string {
 
 <h2>6. How long we keep it</h2>
 <ul>
-  <li>Account, lead, call, recording and transcript data are kept while your account is active and deleted when you delete your account.</li>
-  <li>Transcripts are encrypted at rest.</li>
+  <li>Call recordings, transcripts and AI summaries are deleted ${v.retentionDays} days after the call; the call’s date, duration, status and score are kept for reporting.</li>
+  <li>Account, lead and call data are kept while your account is active and deleted when you delete your account.</li>
+  <li>Transcripts and recording links are encrypted at rest.</li>
   <li>Database backups are kept for up to 30 days and then overwritten, so deleted data disappears from backups within that time.</li>
   <li>Security and webhook logs are kept for up to 90 days.</li>
   <li>We may keep billing records for as long as tax law requires.</li>

@@ -373,6 +373,105 @@ class DailySummary {
   final List<ActivityItem> activity;
 }
 
+/// Period the home results card covers (`GET /dashboard/results?range=`).
+enum ResultsRange {
+  today('today'),
+  week('week'),
+  month('month');
+
+  const ResultsRange(this.wire);
+  final String wire;
+}
+
+/// What the AI employee achieved in one period. The owner's own test calls
+/// never count.
+class PeriodResults {
+  const PeriodResults({
+    this.enquiries = 0,
+    this.calls = 0,
+    this.callsConnected = 0,
+    this.interested = 0,
+    this.readyToBuy = 0,
+    this.followUpsSent = 0,
+    this.estimatedValueInr,
+  });
+
+  /// New leads added in the period.
+  final int enquiries;
+  final int calls;
+  final int callsConnected;
+
+  /// Distinct leads scored warm or hot on a connected call.
+  final int interested;
+
+  /// Distinct leads scored hot on a connected call.
+  final int readyToBuy;
+
+  /// WhatsApp follow-ups the owner sent.
+  final int followUpsSent;
+
+  /// readyToBuy × average sale value; null until the owner sets that value.
+  final int? estimatedValueInr;
+
+  factory PeriodResults.fromJson(Json j) => PeriodResults(
+    enquiries: jInt(j, 'enquiries'),
+    calls: jInt(j, 'calls'),
+    callsConnected: jInt(j, 'calls_connected'),
+    interested: jInt(j, 'interested'),
+    readyToBuy: jInt(j, 'ready_to_buy'),
+    followUpsSent: jInt(j, 'followups_sent'),
+    estimatedValueInr: jIntN(j, 'estimated_value_inr'),
+  );
+}
+
+/// `GET /dashboard/results`: the current period plus the one before it.
+class ResultsSummary {
+  const ResultsSummary({
+    required this.range,
+    required this.current,
+    this.previous = const PeriodResults(),
+    this.avgDealValueInr,
+    this.hasCalls = false,
+  });
+
+  final ResultsRange range;
+  final PeriodResults current;
+  final PeriodResults previous;
+  final int? avgDealValueInr;
+
+  /// Whether the AI has ever called a customer (else Home offers a test call).
+  final bool hasCalls;
+
+  factory ResultsSummary.fromJson(Json j) => ResultsSummary(
+    range: ResultsRange.values.firstWhere(
+      (r) => r.wire == jStrN(j, 'range'),
+      orElse: () => ResultsRange.week,
+    ),
+    current: PeriodResults.fromJson(j),
+    previous: PeriodResults.fromJson(jObj(j, 'previous') ?? const {}),
+    avgDealValueInr: jIntN(j, 'avg_deal_value_inr'),
+    hasCalls: jBool(j, 'has_calls'),
+  );
+}
+
+/// `GET/POST /agent/test-call`: the owner's number and test calls left today.
+class OwnerTestCallInfo {
+  const OwnerTestCallInfo({
+    this.phone,
+    this.remainingToday = 0,
+    this.limit = 3,
+  });
+  final String? phone;
+  final int remainingToday;
+  final int limit;
+
+  factory OwnerTestCallInfo.fromJson(Json j) => OwnerTestCallInfo(
+    phone: jStrN(j, 'phone'),
+    remainingToday: jInt(j, 'remaining_today'),
+    limit: jInt(j, 'limit', 3),
+  );
+}
+
 class ActivityItem {
   const ActivityItem({
     required this.emoji,

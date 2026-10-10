@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../../../core/network/api_client.dart' show ApiException;
 
+import '../../../core/network/api_client.dart';
 import '../../../core/utils/phone.dart';
 import '../../models/models.dart';
 import '../../repositories/repositories.dart';
@@ -166,6 +167,25 @@ bool matchesLeadFilter(Lead l, LeadFilter f) => switch (f) {
     l.status == LeadStatus.callback || l.callbackAt != null,
 };
 
+class MockLeadSourceRepository implements LeadSourceRepository {
+  MockLeadSourceRepository(this.b);
+  final MockBackend b;
+
+  @override
+  Future<List<LeadSource>> list() => _lag(() => List.of(b.leadSources), 200);
+
+  @override
+  Future<LeadSource> create(LeadSourceKind kind) =>
+      _lag(() => b.createLeadSource(kind));
+
+  @override
+  Future<LeadSource> setAutoCall(String id, {required bool autoCall}) =>
+      _lag(() => b.setLeadSourceAutoCall(id, autoCall), 150);
+
+  @override
+  Future<void> revoke(String id) => _lag(() => b.revokeLeadSource(id));
+}
+
 class MockLeadRepository implements LeadRepository {
   MockLeadRepository(this.b);
   final MockBackend b;
@@ -268,6 +288,30 @@ class MockLeadRepository implements LeadRepository {
     () => b.leads.values.where((l) => l.status == LeadStatus.newLead).toList(),
     150,
   );
+
+  /// The mock keeps no history: one event for how the lead was added, plus
+  /// the opt-out if there is one.
+  @override
+  Future<List<ConsentEvent>> consentHistory(String leadId) => _lag(() {
+    final l = b.leads[leadId];
+    if (l == null) throw StateError('Lead not found');
+    final imported = l.source.toLowerCase().contains('import');
+    return [
+      if (l.consent == 'opt_out')
+        ConsentEvent(
+          id: 'ce_${l.id}_opt_out',
+          consentValue: 'opt_out',
+          source: 'in_call_opt_out',
+          createdAt: l.updatedAt,
+        ),
+      ConsentEvent(
+        id: 'ce_${l.id}_added',
+        consentValue: l.consent == 'opt_out' ? 'unknown' : l.consent,
+        source: imported ? 'import_attestation' : 'manual',
+        createdAt: l.createdAt,
+      ),
+    ];
+  }, 120);
 }
 
 class MockCallRepository implements CallRepository {
@@ -317,6 +361,43 @@ class MockCallRepository implements CallRepository {
   @override
   Future<Call> triggerCall(String leadId) => _lag(() {
     return b.simulateCall(LeadTemperature.hot, leadId: leadId);
+  }, 300);
+
+  /// Demo: the owner's number and a 3-a-day limit (nothing actually dials).
+  static const ownerPhone = '919830012345';
+  static const ownerTestCallLimit = 3;
+  int _ownerTestCalls = 0;
+
+  OwnerTestCallInfo _ownerInfo() => OwnerTestCallInfo(
+    phone: ownerPhone,
+    remainingToday: (ownerTestCallLimit - _ownerTestCalls).clamp(
+      0,
+      ownerTestCallLimit,
+    ),
+    limit: ownerTestCallLimit,
+  );
+
+  @override
+  Future<OwnerTestCallInfo> ownerTestCallInfo() => _lag(_ownerInfo, 150);
+
+  @override
+  Future<OwnerTestCallInfo> callOwner(String phone) => _lag(() {
+    if (!PhoneUtils.isValid(phone)) {
+      throw const ApiException(
+        'Invalid phone number format.',
+        statusCode: 400,
+        code: 'invalid_phone',
+      );
+    }
+    if (_ownerTestCalls >= ownerTestCallLimit) {
+      throw const ApiException(
+        'You can hear your AI 3 times a day. Try again tomorrow, or talk to it in the app.',
+        statusCode: 429,
+        code: 'test_call_limit',
+      );
+    }
+    _ownerTestCalls++;
+    return _ownerInfo();
   }, 300);
 }
 
@@ -504,6 +585,56 @@ class MockDashboardRepository implements DashboardRepository {
           .where((l) => l.status == LeadStatus.newLead)
           .length,
       activity: List.of(b.activity.take(5)),
+    );
+  });
+
+  @override
+  Future<ResultsSummary> results(ResultsRange range) => _lag(() {
+    final days = switch (range) {
+      ResultsRange.today => 1,
+      ResultsRange.week => 7,
+      ResultsRange.month => 30,
+    };
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day - (days - 1));
+    final prevStart = DateTime(now.year, now.month, now.day - (2 * days - 1));
+    final avg = b.business.avgDealValueInr;
+
+    PeriodResults period(DateTime from, DateTime to) {
+      bool inRange(DateTime t) => !t.isBefore(from) && t.isBefore(to);
+      final calls = b.calls.where((c) => inRange(c.startedAt)).toList();
+      final connected = calls.where((c) => c.status.isConnected).toList();
+      final interested = connected
+          .where(
+            (c) => c.isHot || c.leadScore?.temperature == LeadTemperature.warm,
+          )
+          .map((c) => c.leadId)
+          .toSet();
+      final hot = connected.where((c) => c.isHot).map((c) => c.leadId).toSet();
+      return PeriodResults(
+        enquiries: b.leads.values.where((l) => inRange(l.createdAt)).length,
+        calls: calls.length,
+        callsConnected: connected.length,
+        interested: interested.length,
+        readyToBuy: hot.length,
+        followUpsSent: b.followUps.values
+            .where(
+              (f) =>
+                  (f.status == FollowUpStatus.opened ||
+                      f.status == FollowUpStatus.done) &&
+                  inRange(f.openedAt ?? f.createdAt),
+            )
+            .length,
+        estimatedValueInr: avg == null ? null : hot.length * avg,
+      );
+    }
+
+    return ResultsSummary(
+      range: range,
+      current: period(start, now.add(const Duration(seconds: 1))),
+      previous: period(prevStart, start),
+      avgDealValueInr: avg,
+      hasCalls: b.calls.isNotEmpty,
     );
   });
 }

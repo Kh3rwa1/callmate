@@ -4,6 +4,7 @@ import { signJWT, verifyJWT, getJwtSecret } from '../auth';
 import { safeJsonParse } from '../utils/json';
 import { encryptAtRest } from '../utils/crypto_data';
 import { isOptOutRequest } from '../services/compliance';
+import { consentEventStatement, CONSENT_TEXT_VERSIONS } from '../services/consent';
 import { sendBusinessPushNotification } from '../services/fcm';
 import { billableMinutes, claimWebhookEvent, releaseWebhookEvent, recordCallUsage } from '../services/billing';
 import { MAX_DIAL_ATTEMPTS, requeueLead, maybeCompleteCampaign, sarvamWebhookToken } from '../services/campaign_queue';
@@ -696,6 +697,8 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     const encSecret = requireSecret(c.env, 'ENCRYPTION_KEY', 32);
     const encryptedTranscript = await encryptAtRest(transcript, encSecret);
     const encryptedRawMetadata = await encryptAtRest(rawBody, encSecret);
+    // Recording links are bearer URLs to the call audio: encrypted at rest like the transcript.
+    const encryptedRecordingUrl = await encryptAtRest(data.recording_url || null, encSecret);
 
     // 2.2: Opt-out detection from caller responses/intents
     const optOutRequested = isOptOutRequest(data);
@@ -703,7 +706,12 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
       statements.push(
         c.env.DB.prepare(
           `UPDATE leads SET do_not_call = 1, consent = 'opt_out', updated_at = datetime('now') WHERE id = ? AND business_id = ?`
-        ).bind(leadId, businessId)
+        ).bind(leadId, businessId),
+        // Opt-outs stay per business (this lead only); the public /stop page covers every business.
+        consentEventStatement(c.env.DB, {
+          businessId, leadId, consentValue: 'opt_out', source: 'in_call_opt_out',
+          textVersion: CONSENT_TEXT_VERSIONS.inCallOptOut,
+        }),
       );
     }
 
@@ -730,7 +738,7 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
           completed_at = datetime('now')
          WHERE id = ? AND business_id = ?`
       ).bind(
-        callStatus, durationSeconds, data.recording_url || null, encryptedTranscript, encryptedRawMetadata,
+        callStatus, durationSeconds, encryptedRecordingUrl, encryptedTranscript, encryptedRawMetadata,
         norm.score, norm.temperature, norm.intent, norm.summary, objections,
         positiveSignals, norm.next_action, followUpId, callbackAt,
         callId, businessId

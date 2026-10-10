@@ -9,6 +9,7 @@ import {
 } from '../src/services/economics';
 import { isInvalidNumberOutcome, isRetryableOutcome, RETRY_SPACING_SECONDS } from '../src/services/call_outcomes';
 import { processCampaignJob, sarvamWebhookToken, MAX_DIAL_ATTEMPTS } from '../src/services/campaign_queue';
+import { placeLeadCall } from '../src/services/dial';
 
 const jwtSecret = 'test-jwt-signing-secret-key-32chars-min-length';
 const BIZ = 'biz_econ';
@@ -218,6 +219,30 @@ describe('Unit economics', () => {
       }), env);
       expect(fixed.status).toBe(200);
       expect(((await fixed.json()) as any).phone_invalid).toBe(false);
+    });
+  });
+
+  describe('single-lead dial (manual, instant form call, owner test call)', () => {
+    it('counts top-up and bonus minutes, not just plan minutes', async () => {
+      const biz = 'biz_econ_dial';
+      await env.DB.batch([
+        env.DB.prepare("INSERT OR REPLACE INTO businesses (id, name) VALUES (?, 'Dial Biz')").bind(biz),
+        env.DB.prepare(
+          `INSERT OR REPLACE INTO usage (id, business_id, plan_id, plan_status, plan_name, included_minutes, minutes_used, topup_minutes, bonus_minutes)
+           VALUES ('usg_econ_dial', ?, 'starter', 'active', 'Starter', 1000, 1000, 0, 50)`
+        ).bind(biz),
+        env.DB.prepare(
+          `INSERT OR REPLACE INTO leads (id, business_id, name, phone, status, consent) VALUES ('lead_econ_dial', ?, 'Lead', '919811190101', 'new', 'explicit_opt_in')`
+        ).bind(biz),
+      ]);
+      const e = { ...env, DEV_ALLOW_ANY_CALLING_HOURS: 'true' } as any;
+      // Plan used up but 50 bonus minutes left: the call goes ahead.
+      expect(await placeLeadCall(e, { businessId: biz, leadId: 'lead_econ_dial' })).toMatchObject({ ok: true });
+
+      // No bonus or top-up left either: blocked.
+      await env.DB.prepare("DELETE FROM calls WHERE business_id = ?").bind(biz).run();
+      await env.DB.prepare('UPDATE usage SET bonus_minutes = 0 WHERE business_id = ?').bind(biz).run();
+      expect(await placeLeadCall(e, { businessId: biz, leadId: 'lead_econ_dial' })).toMatchObject({ ok: false, code: 'exhausted_minutes' });
     });
   });
 

@@ -239,6 +239,37 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          // Speed-to-lead: new enquiries arrive (and get called) by themselves.
+          Reveal(
+            child: AppCard(
+              key: const Key('import-get-leads-automatically'),
+              onTap: () => context.push('/leads/auto'),
+              child: Row(
+                children: [
+                  IconBubble(
+                    size: 48,
+                    child: Icon(
+                      Icons.bolt_rounded,
+                      color: AppColors.brand,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(s.getLeadsAutomatically, style: t.titleMedium),
+                        Text(s.leadCaptureEntrySubtitle, style: t.bodyMedium),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
+                ],
+              ),
+            ),
+          ),
           Reveal(index: 1, child: SectionLabel(s.ctHaveFile)),
           Reveal(
             index: 1,

@@ -4,6 +4,7 @@ import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import '../motion/motion.dart';
 import '../theme/app_colors.dart';
+import 'app_card.dart';
 
 /// Colours and icon for a lead temperature (labels come from [SCommon]).
 class TempStyle {
@@ -226,6 +227,29 @@ class LeadAvatar extends StatelessWidget {
             fontSize: size * 0.34,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// "Form" / "Website" chip for leads that arrived by themselves through the
+/// enquiry form or a website webhook. Nothing for leads added by hand.
+class LeadSourceChip extends StatelessWidget {
+  const LeadSourceChip({super.key, required this.source});
+  final String source;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = context.s.leadSourceLabel(source);
+    if (label == null) return const SizedBox.shrink();
+    return Pill(
+      label: label,
+      dense: true,
+      color: AppColors.info,
+      icon: Icon(
+        source == 'form' ? Icons.dynamic_form_outlined : Icons.language_rounded,
+        size: 12,
+        color: AppColors.info,
       ),
     );
   }

@@ -91,9 +91,18 @@ class _Body extends ConsumerWidget {
                     style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
                   ),
                   const SizedBox(height: 8),
-                  PopIn(
-                    delay: const Duration(milliseconds: 180),
-                    child: ScoreBadge(score: l.score, showNumber: true),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      PopIn(
+                        delay: const Duration(milliseconds: 180),
+                        child: ScoreBadge(score: l.score, showNumber: true),
+                      ),
+                      if (s.leadSourceLabel(l.source) != null)
+                        LeadSourceChip(source: l.source),
+                    ],
                   ),
                 ],
               ),
@@ -352,6 +361,8 @@ class _Body extends ConsumerWidget {
               ],
             ),
           ),
+        SectionLabel(s.consentHistory),
+        ConsentHistoryCard(leadId: l.id),
         if (lastCall != null && !lastCall.transcript.isEmpty) ...[
           SectionLabel(s.transcript),
           AppCard(

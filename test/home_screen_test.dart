@@ -27,6 +27,10 @@ class _FlakyDashboard implements DashboardRepository {
       newLeadsReady: 0,
     );
   }
+
+  @override
+  Future<ResultsSummary> results(ResultsRange range) async =>
+      ResultsSummary(range: range, current: const PeriodResults());
 }
 
 bool _chipSelected(String label) =>
