@@ -65,7 +65,7 @@ class _KnowledgeSheetState extends State<_KnowledgeSheet> {
     final s = context.s;
     final t = Theme.of(context).textTheme;
     final (title, hint) = switch (widget.type) {
-      KnowledgeType.website => (s.addWebsite, 'abccoaching.in'),
+      KnowledgeType.website => (s.addWebsite, 'yourbusiness.in'),
       KnowledgeType.faq => (s.addFaq, s.hintFaq),
       KnowledgeType.businessInfo => (s.addBusinessInfo, s.hintBusinessInfo),
       _ => (s.pasteInformation, s.hintServices),

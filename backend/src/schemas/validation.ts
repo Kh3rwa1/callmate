@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TRAI_EARLIEST_HOUR, TRAI_LATEST_HOUR } from '../services/compliance';
 
 // ==========================================
 // Auth Schemas
@@ -87,6 +88,8 @@ export const patchLeadSchema = z.object({
 // ==========================================
 // Campaign Schemas
 // ==========================================
+const TRAI_HOURS_MESSAGE = `Calls are only allowed between ${TRAI_EARLIEST_HOUR}:00 and ${TRAI_LATEST_HOUR}:00 (TRAI)`;
+
 export const startCampaignSchema = z.object({
   consent_attestation: z.boolean().optional(),
 });
@@ -95,9 +98,9 @@ export const createCampaignSchema = z.object({
   purpose: z.string().min(1, 'Campaign purpose is required').max(255).optional(),
   title: z.string().min(1).max(255).optional(),
   lead_ids: z.array(z.string()).max(MAX_CAMPAIGN_LEADS, `A campaign can include at most ${MAX_CAMPAIGN_LEADS} leads`).default([]),
-  calling_hours_start: z.number().int().min(0).max(23).default(10),
-  // Exclusive end hour: calls allowed while hour < end, so 24 means "until midnight".
-  calling_hours_end: z.number().int().min(1).max(24).default(19),
+  // TRAI window 09:00-21:00 local time. Exclusive end hour: calls allowed while hour < end.
+  calling_hours_start: z.number().int().min(TRAI_EARLIEST_HOUR, TRAI_HOURS_MESSAGE).max(TRAI_LATEST_HOUR - 1, TRAI_HOURS_MESSAGE).default(10),
+  calling_hours_end: z.number().int().min(TRAI_EARLIEST_HOUR + 1, TRAI_HOURS_MESSAGE).max(TRAI_LATEST_HOUR, TRAI_HOURS_MESSAGE).default(19),
   options: z.record(z.string(), z.any()).optional(),
 }).refine((d) => d.calling_hours_start < d.calling_hours_end, {
   message: 'Calling hours start must be before calling hours end',
@@ -141,11 +144,14 @@ export const patchAgentSchema = z.object({
   goal: z.string().optional(),
   formality: z.number().min(0).max(1).optional(),
   capabilities: z.array(z.string()).optional(),
-  calling_hours_start: z.number().int().min(0).max(23).optional(),
-  calling_hours_end: z.number().int().min(1).max(24).optional(),
+  calling_hours_start: z.number().int().min(TRAI_EARLIEST_HOUR, TRAI_HOURS_MESSAGE).max(TRAI_LATEST_HOUR - 1, TRAI_HOURS_MESSAGE).optional(),
+  calling_hours_end: z.number().int().min(TRAI_EARLIEST_HOUR + 1, TRAI_HOURS_MESSAGE).max(TRAI_LATEST_HOUR, TRAI_HOURS_MESSAGE).optional(),
   transfer_number: z.string().nullable().optional(),
   voice: z.string().optional(),
   status: z.enum(['active', 'paused', 'inactive']).optional(),
+}).refine((d) => d.calling_hours_start === undefined || d.calling_hours_end === undefined || d.calling_hours_start < d.calling_hours_end, {
+  message: 'Calling hours start must be before calling hours end',
+  path: ['calling_hours_end'],
 });
 
 // ==========================================

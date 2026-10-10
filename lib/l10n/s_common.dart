@@ -334,7 +334,7 @@ extension SCommon on S {
   String date(DateTime d) => Fmt.date(d, lang: lang);
   String greeting() => Fmt.greeting(null, lang);
 
-  /// "Riya" style fallback when the employee hasn't loaded yet.
+  /// Generic fallback when the employee hasn't loaded yet.
   String employeeName(String? name) =>
       (name == null || name.isEmpty) ? yourAiEmployee : name;
 }

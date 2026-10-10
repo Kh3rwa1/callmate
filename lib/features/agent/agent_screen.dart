@@ -261,6 +261,11 @@ class _Body extends ConsumerWidget {
                 },
                 onTap: () => showAppearanceSheet(context, ref),
               ),
+              _NavRow(
+                icon: Icons.help_outline_rounded,
+                title: s.helpSupport,
+                onTap: () => showSupportSheet(context),
+              ),
             ],
           ),
         ),

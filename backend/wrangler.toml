@@ -21,6 +21,9 @@ SARVAM_APP_VERSION = "2"
 SARVAM_CONNECTION_ID = "0da745db-ed-2dd19091-839b"
 SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
+# Shown on the public /legal pages. TODO(owner): set a monitored inbox and the registered company name.
+SUPPORT_EMAIL = "support@callpilot.app"
+LEGAL_ENTITY_NAME = "CallPilot"
 
 # Migrations: `npm run db:migrate:prod` (wrangler d1 migrations apply).
 # Demo seed data lives in ./seeds and is NEVER applied by migrations.
@@ -77,6 +80,9 @@ SARVAM_APP_VERSION = "2"
 SARVAM_CONNECTION_ID = "0da745db-ed-2dd19091-839b"
 SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
+# Shown on the public /legal pages. TODO(owner): set a monitored inbox and the registered company name.
+SUPPORT_EMAIL = "support@callpilot.app"
+LEGAL_ENTITY_NAME = "CallPilot"
 ALLOWED_ORIGINS = "http://localhost:8080,http://127.0.0.1:8080"
 
 # Migrations: `npm run db:migrate:staging`.
