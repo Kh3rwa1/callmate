@@ -134,6 +134,56 @@ extension SAgent on S {
     'सिर्फ़ जुड़ी हुई कॉल के मिनट गिने जाते हैं।',
     'শুধু কথা হওয়া কলের মিনিট গোনা হয়।',
   );
+  String get planTrial => pick('Free trial', 'फ़्री ट्रायल', 'ফ্রি ট্রায়াল');
+  String get planActive => pick('Active', 'चालू', 'চালু');
+  String get planPaymentDue =>
+      pick('Payment due', 'भुगतान बाकी', 'পেমেন্ট বাকি');
+  String get planCancelled => pick('Cancelled', 'रद्द', 'বাতিল');
+  String get renewPlan =>
+      pick('Renew plan', 'प्लान रिन्यू करें', 'প্ল্যান রিনিউ করুন');
+  String get paymentDueOn =>
+      pick('Payment was due on', 'भुगतान की तारीख थी', 'পেমেন্টের তারিখ ছিল');
+  String get trialMinutesNote => pick(
+    'Free trial minutes do not renew. Upgrade to keep calling.',
+    'फ़्री ट्रायल के मिनट दोबारा नहीं मिलते। कॉल जारी रखने के लिए अपग्रेड करें।',
+    'ফ্রি ট্রায়ালের মিনিট আবার পাওয়া যায় না। কল চালিয়ে যেতে আপগ্রেড করুন।',
+  );
+  String planOffer(String name, String price, String minutes) => pick(
+    '$name: $price / month · $minutes minutes',
+    '$name: $price / महीना · $minutes मिनट',
+    '$name: $price / মাস · $minutes মিনিট',
+  );
+  String get paymentPageFailed => pick(
+    "Couldn't open the payment page. Please try again.",
+    'पेमेंट पेज नहीं खुला। फिर से कोशिश करें।',
+    'পেমেন্ট পেজ খোলা গেল না। আবার চেষ্টা করুন।',
+  );
+  String get paymentReceived => pick(
+    'Payment received. Your plan is active ✓',
+    'भुगतान मिल गया। आपका प्लान चालू है ✓',
+    'পেমেন্ট পাওয়া গেছে। আপনার প্ল্যান চালু ✓',
+  );
+  String get bannerPastDue => pick(
+    'Payment due – calls are paused. Renew your plan to keep calling.',
+    'भुगतान बाकी है – कॉल रुकी हैं। कॉल जारी रखने के लिए प्लान रिन्यू करें।',
+    'পেমেন্ট বাকি – কল বন্ধ আছে। কল চালিয়ে যেতে প্ল্যান রিনিউ করুন।',
+  );
+  String get bannerTrialUsedUp => pick(
+    'Your free trial minutes are used up. Upgrade to keep calling.',
+    'आपके फ़्री ट्रायल के मिनट ख़त्म हो गए। कॉल जारी रखने के लिए अपग्रेड करें।',
+    'আপনার ফ্রি ট্রায়ালের মিনিট শেষ। কল চালিয়ে যেতে আপগ্রেড করুন।',
+  );
+  String bannerTrialLow(String n) => pick(
+    'Only $n free trial minutes left.',
+    'फ़्री ट्रायल के सिर्फ़ $n मिनट बचे हैं।',
+    'ফ্রি ট্রায়ালের মাত্র $n মিনিট বাকি।',
+  );
+  String get bannerMinutesUsedUp => pick(
+    'All calling minutes are used up for this month.',
+    'इस महीने के सभी कॉल मिनट ख़त्म हो गए।',
+    'এই মাসের সব কলের মিনিট শেষ।',
+  );
+  String get viewPlan => pick('View plan', 'प्लान देखें', 'প্ল্যান দেখুন');
   String get foundingPlan =>
       pick('Founding Plan', 'फ़ाउंडिंग प्लान', 'ফাউন্ডিং প্ল্যান');
 }

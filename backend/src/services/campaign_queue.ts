@@ -14,6 +14,7 @@ import { Env } from '../types';
 import { checkCallCompliance } from './compliance';
 import { maskPhone } from '../utils/crypto_data';
 import { isMockSarvam } from '../utils/secrets';
+import { isPlanBlocked, pauseCampaignForBilling } from './plans';
 
 export interface CampaignJobMessage {
   campaign_id: string;
@@ -240,6 +241,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
   }
 
   // 5. Billing guard
+  if (await isPlanBlocked(env.DB, business_id)) return pauseCampaignForBilling(env.DB, campaign_id, business_id);
   const usage = await env.DB.prepare('SELECT included_minutes, minutes_used FROM usage WHERE business_id = ?')
     .bind(business_id).first<{ included_minutes: number; minutes_used: number }>();
   if (usage && usage.included_minutes - usage.minutes_used <= 0) {

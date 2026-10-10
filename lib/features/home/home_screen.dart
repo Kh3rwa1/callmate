@@ -15,6 +15,7 @@ import '../../l10n/l10n.dart';
 import '../campaign/campaign_widgets.dart';
 import 'home_widgets.dart';
 import '../../core/widgets/brand_widgets.dart';
+import '../usage/plan_banner.dart';
 
 /// Home – "What happened today?"
 class HomeScreen extends ConsumerWidget {
@@ -150,6 +151,22 @@ class HomeScreen extends ConsumerWidget {
                           ),
                         )
                       : const SizedBox(width: double.infinity),
+                ),
+              ),
+              // Payment due / trial running low.
+              SliverToBoxAdapter(
+                child: AnimatedSize(
+                  duration: AppMotion.of(context, AppMotion.slow),
+                  curve: AppMotion.emphasized,
+                  alignment: Alignment.topCenter,
+                  child: const PlanBanner(
+                    padding: EdgeInsets.fromLTRB(
+                      AppSpace.page,
+                      14,
+                      AppSpace.page,
+                      0,
+                    ),
+                  ),
                 ),
               ),
               SliverPadding(

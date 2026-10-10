@@ -90,6 +90,7 @@ class MockBackend implements BackendEvents {
         includedMinutes: 1000,
         renewsAt: DateTime(now.year, now.month + 1, 1),
         priceInr: 4999,
+        currentPeriodEnd: DateTime(now.year, now.month + 1, 1),
       ),
       minutesUsed: 642,
       callsMade: 0,
@@ -811,6 +812,45 @@ class MockBackend implements BackendEvents {
   }
 
   void emitChanged(String scope) => _events.add(DataChangedEvent(scope));
+
+  /// Demo: what the Razorpay webhook does on a verified payment – plan
+  /// active, minutes reset, one more month.
+  void simulatePlanPayment() {
+    final now = DateTime.now();
+    usage = usage.copyWith(
+      minutesUsed: 0,
+      subscription: usage.subscription.copyWith(
+        planName: 'Starter',
+        planId: 'starter',
+        status: PlanStatus.active,
+        includedMinutes: 1000,
+        priceInr: 4999,
+        currentPeriodEnd: DateTime(now.year, now.month + 1, now.day),
+      ),
+    );
+    emitChanged('usage');
+  }
+
+  /// Demo: plan state for trying the trial / payment-due banners.
+  void simulatePlanState(PlanStatus status, {int minutesLeft = 30}) {
+    final trial = status == PlanStatus.trial;
+    final included = trial ? 30 : 1000;
+    final now = DateTime.now();
+    final periodEnd = trial ? null : DateTime(now.year, now.month, now.day);
+    usage = usage.copyWith(
+      minutesUsed: (included - minutesLeft).clamp(0, included),
+      subscription: Subscription(
+        planName: trial ? 'Free trial' : 'Starter',
+        planId: trial ? 'trial' : 'starter',
+        status: status,
+        includedMinutes: included,
+        renewsAt: periodEnd ?? now,
+        priceInr: trial ? 0 : 4999,
+        currentPeriodEnd: periodEnd,
+      ),
+    );
+    emitChanged('usage');
+  }
 
   void dispose() {
     _campaignTimer?.cancel();

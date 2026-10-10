@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
+import { billingView, getPlan, RATE_PER_MINUTE_INR } from '../services/plans';
 
 const dashApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -73,21 +74,28 @@ dashApp.get('/usage', async (c) => {
   let row = await c.env.DB.prepare('SELECT * FROM usage WHERE business_id = ?').bind(user.business_id).first<any>();
 
   if (!row) {
+    // Usage rows are created at signup (with the trial grant). A missing row must not mint
+    // free minutes, so it is backfilled as a trial with 0 minutes; the owner can buy a plan.
     const id = `usage_${crypto.randomUUID().slice(0, 12)}`;
     await c.env.DB.prepare(
-      `INSERT INTO usage (id, business_id, plan_name, included_minutes, renews_at, price_inr, minutes_used, calls_made, rate_per_minute_inr)
-       VALUES (?, ?, 'Founding Plan', 1000, datetime('now', '+30 days'), 4999, 0, 0, 6)`
-    ).bind(id, user.business_id).run();
-    row = await c.env.DB.prepare('SELECT * FROM usage WHERE id = ? AND business_id = ?').bind(id, user.business_id).first<any>();
+      `INSERT OR IGNORE INTO usage (id, business_id, plan_id, plan_status, plan_name, included_minutes, renews_at, price_inr, minutes_used, calls_made, rate_per_minute_inr)
+       VALUES (?, ?, 'trial', 'trial', ?, 0, datetime('now'), 0, 0, 0, ?)`
+    ).bind(id, user.business_id, getPlan('trial', c.env).name, RATE_PER_MINUTE_INR).run();
+    row = await c.env.DB.prepare('SELECT * FROM usage WHERE business_id = ?').bind(user.business_id).first<any>();
   }
 
+  const billing = billingView(row, c.env);
   return c.json({
     subscription: {
       plan_name: row.plan_name,
       included_minutes: row.included_minutes,
       renews_at: row.renews_at,
       price_inr: row.price_inr,
+      plan_id: billing.plan_id,
+      plan_status: billing.plan_status,
+      current_period_end: billing.current_period_end,
     },
+    checkout_plan: billing.checkout_plan,
     minutes_used: row.minutes_used || 0,
     calls_made: row.calls_made || 0,
     rate_per_minute_inr: row.rate_per_minute_inr || 6,

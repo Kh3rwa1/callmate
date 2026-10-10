@@ -172,15 +172,18 @@ void main() {
       expect(find.byType(UsageScreen), findsOneWidget);
       expect(find.text(u.subscription.planName), findsOneWidget);
       expect(find.text('Calls made'), findsOneWidget);
+      expect(find.text('Active'), findsOneWidget);
       expect(find.text('Renews on'), findsOneWidget);
       expect(find.text('${Fmt.number(u.minutesUsed)} used'), findsOneWidget);
       expect(find.text('minutes remaining'), findsOneWidget);
 
-      await _tapListItem(h, find.text('Upgrade'));
+      // Mock backend "pays" instantly: plan renewed, minutes reset.
+      await _tapListItem(h, find.text('Renew plan'));
       expect(
-        find.text('Our team will reach out on WhatsApp to upgrade your plan.'),
+        find.text('Payment received. Your plan is active ✓'),
         findsOneWidget,
       );
+      expect(h.backend.usage.minutesUsed, 0);
     }, location: '/usage');
   });
 

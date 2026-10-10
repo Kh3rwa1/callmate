@@ -503,7 +503,10 @@ describe('Comprehensive Coverage Boost Test Suite (Target ≥80% Lines)', () => 
       const res = await fetchWithAuth('/usage', {}, tokenNoUsage);
       expect(res.status).toBe(200);
       const data = await res.json() as any;
-      expect(data.subscription.plan_name).toBe('Founding Plan');
+      // A missing row is backfilled as a 0-minute trial: it must never mint free minutes.
+      expect(data.subscription.plan_name).toBe('Free trial');
+      expect(data.subscription.plan_status).toBe('trial');
+      expect(data.subscription.included_minutes).toBe(0);
       expect(data.minutes_used).toBe(0);
     });
 

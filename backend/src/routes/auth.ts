@@ -8,6 +8,7 @@ import { requireSecret, isDevEnv } from '../utils/secrets';
 import { deleteR2Prefix } from '../utils/r2';
 import { hitRateLimit } from '../utils/rate_limit';
 import { timingSafeEqual } from '../utils/compare';
+import { claimTrialMinutes, rememberTrialIdentities, anonymisedBusinessId, getPlan, RATE_PER_MINUTE_INR } from '../services/plans';
 
 const authApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -174,6 +175,9 @@ async function provisionAccount(
   const businessId = `biz_${crypto.randomUUID().slice(0, 12)}`;
   const agentId = `agent_${crypto.randomUUID().slice(0, 12)}`;
   const usageId = `usage_${crypto.randomUUID().slice(0, 12)}`;
+  // A phone/email that already had a trial (e.g. deleted account, signing up again) gets 0 minutes.
+  const trialMinutes = await claimTrialMinutes(env, { phone, email: identity?.email ?? null });
+  const trial = getPlan('trial', env);
 
   await env.DB.batch([
     env.DB.prepare(
@@ -187,9 +191,9 @@ async function provisionAccount(
       `INSERT INTO users (id, phone, business_id, firebase_uid, email, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))`
     ).bind(userId, phone, businessId, identity?.firebaseUid ?? null, identity?.email ?? null),
     env.DB.prepare(
-      `INSERT INTO usage (id, business_id, plan_name, included_minutes, renews_at, price_inr, minutes_used, calls_made, rate_per_minute_inr)
-       VALUES (?, ?, 'Founding Plan', 1000, datetime('now', '+30 days'), 4999, 0, 0, 6)`
-    ).bind(usageId, businessId),
+      `INSERT INTO usage (id, business_id, plan_id, plan_status, current_period_end, plan_name, included_minutes, renews_at, price_inr, minutes_used, calls_made, rate_per_minute_inr)
+       VALUES (?, ?, 'trial', 'trial', NULL, ?, ?, datetime('now'), 0, 0, 0, ?)`
+    ).bind(usageId, businessId, trial.name, trialMinutes, RATE_PER_MINUTE_INR),
   ]);
   return { userId, businessId };
 }
@@ -405,8 +409,21 @@ authApp.delete('/account', authMiddleware, async (c) => {
     } catch {}
   }
 
-  // 3. Delete all business data and user account
+  // 3. Billing records are retained for invoices/GST but anonymised: PII nulled, business_id
+  //    replaced by a stable pseudonym. Trial identities are remembered so a re-signup gets no new trial.
+  const account = await c.env.DB.prepare('SELECT phone, email FROM users WHERE id = ?')
+    .bind(user.id).first<{ phone: string | null; email: string | null }>();
+  const anonId = await anonymisedBusinessId(c.env, businessId);
+  const rememberTrial = await rememberTrialIdentities(c.env, { phone: account?.phone ?? user.phone, email: account?.email ?? null });
+
+  // 4. Delete all business data and user account
   await c.env.DB.batch([
+    ...rememberTrial,
+    c.env.DB.prepare('UPDATE usage_ledger SET business_id = ? WHERE business_id = ?').bind(anonId, businessId),
+    c.env.DB.prepare(
+      `UPDATE payments SET business_id = ?, contact_email = NULL, contact_phone = NULL, anonymized_at = datetime('now')
+       WHERE business_id = ?`
+    ).bind(anonId, businessId),
     c.env.DB.prepare('DELETE FROM refresh_tokens_v2 WHERE user_id = ?').bind(user.id),
     c.env.DB.prepare('DELETE FROM campaign_leads WHERE campaign_id IN (SELECT id FROM campaigns WHERE business_id = ?)').bind(businessId),
     c.env.DB.prepare('DELETE FROM campaigns WHERE business_id = ?').bind(businessId),
@@ -418,7 +435,6 @@ authApp.delete('/account', authMiddleware, async (c) => {
     c.env.DB.prepare('DELETE FROM devices WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM notifications WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM usage WHERE business_id = ?').bind(businessId),
-    c.env.DB.prepare('DELETE FROM usage_ledger WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM voice_sessions WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare("DELETE FROM rate_limits WHERE bucket LIKE ?").bind(`chat:biz:${businessId}%`),
     c.env.DB.prepare("DELETE FROM rate_limits WHERE bucket LIKE ?").bind(`chat:user:${user.id}%`),

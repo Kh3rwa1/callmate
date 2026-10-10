@@ -110,6 +110,18 @@ class DemoScreen extends ConsumerWidget {
               'Simulate campaign progress',
               () => context.push('/campaign/new'),
             ),
+            row(
+              Icons.hourglass_bottom_rounded,
+              'Simulate trial running low',
+              () {
+                b.simulatePlanState(PlanStatus.trial, minutesLeft: 4);
+                context.go('/home');
+              },
+            ),
+            row(Icons.credit_card_off_outlined, 'Simulate payment due', () {
+              b.simulatePlanState(PlanStatus.pastDue, minutesLeft: 0);
+              context.go('/home');
+            }),
           ]),
           SectionLabel(s.notifications),
           group([

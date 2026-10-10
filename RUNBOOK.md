@@ -17,6 +17,13 @@ This runbook provides actionable procedures for deploying, managing, operating, 
    (`MSG91_AUTH_KEY` / `GUPSHUP_API_KEY` / `EXOTEL_SID`+`EXOTEL_TOKEN`) and
    `HEALTH_CHECK_SECRET`. Production refuses to send OTPs without an SMS
    provider.
+   Billing (Razorpay): `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and
+   `RAZORPAY_WEBHOOK_SECRET`. In the Razorpay dashboard (Settings → Webhooks)
+   add `https://<api domain>/webhooks/razorpay` with the same secret and the
+   event `payment_link.paid`. Without the keys, "Upgrade" in the app shows the
+   "our team will contact you" message (checkout returns 503
+   `billing_not_configured`). Optional plain vars: `TRIAL_MINUTES` (default 30)
+   and `BILLING_RETURN_URL`.
    The Sarvam agent, org, workspace, connection and caller IDs are plain `[vars]`
    in `wrangler.toml`. After committing a new agent version in Sarvam, bump
    `SARVAM_APP_VERSION` and redeploy.
@@ -212,3 +219,31 @@ business) re-sends a delayed message and does **not** use up retries.
   npx wrangler tail --format=json | jq 'select(.level=="error")'
   ```
 - **Phone Privacy:** Phone numbers appear only in masked format (`91XXXXXX345`) in compliance with PII privacy rules.
+
+---
+
+## 6. Billing, Plans & Trials
+
+- **Plans** (`backend/src/services/plans.ts`): `trial` (`TRIAL_MINUTES`, default
+  30, no expiry date) and `starter` (₹4999 / month, 1000 minutes).
+- **Trial abuse guard:** every signup records HMAC(`OTP_PEPPER`) hashes of its
+  phone and email in `trial_grants`. A phone/email seen before (including after
+  account deletion) gets a 0-minute trial.
+- **Payment:** the app calls `POST /billing/checkout` → Razorpay Payment Link →
+  `payment_link.paid` webhook → plan `active`, `minutes_used = 0`,
+  `current_period_end` +1 month. Each Razorpay payment id is applied once.
+- **Renewal:** the 10-minute cron marks `active` plans whose
+  `current_period_end` has passed as `past_due`; calls and campaigns then return
+  `402 plan_inactive` until the owner pays again (the same checkout renews).
+- **Accounts that existed before migration 0009** are `starter`/`active` with
+  their current minutes and `current_period_end = NULL`, so they never expire
+  via the cron; their first payment starts a normal monthly period.
+- **Manual adjustments** (e.g. paid by bank transfer):
+  ```bash
+  npx wrangler d1 execute callpilot-db --remote --command="
+    UPDATE usage SET plan_id='starter', plan_name='Starter', plan_status='active',
+      included_minutes=1000, minutes_used=0, price_inr=4999,
+      current_period_end=datetime('now','+1 month') WHERE business_id='biz_xxx';"
+  ```
+- **Account deletion** keeps `payments` and `usage_ledger` rows for invoices/GST,
+  with PII nulled and `business_id` replaced by a stable `anon_…` pseudonym.
