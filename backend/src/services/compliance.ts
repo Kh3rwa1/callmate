@@ -91,10 +91,12 @@ export async function checkCallCompliance(
     };
   }
 
-  // 3. Max Attempts per day check (max 3 calls per day)
+  // 3. Max Attempts per day check (max 3 calls per day). A dial the provider rejected
+  // never rang the lead, so it doesn't count.
   const callsToday = await db.prepare(
     `SELECT COUNT(*) as cnt FROM calls
-     WHERE lead_id = ? AND business_id = ? AND started_at > datetime('now', '-1 day')`
+     WHERE lead_id = ? AND business_id = ? AND started_at > datetime('now', '-1 day')
+       AND NOT (status = 'failed' AND interaction_id IS NULL)`
   ).bind(params.leadId, params.businessId).first<{ cnt: number }>();
 
   if (callsToday && callsToday.cnt >= 3) {

@@ -149,9 +149,35 @@ describe('Quality hardening regressions', () => {
 
       const call = await env.DB.prepare('SELECT status, failure_reason FROM calls WHERE lead_id = ?').bind('lead_q_fail').first<any>();
       expect(call.status).toBe('failed');
-      expect(call.failure_reason).toBe('sarvam_http_400');
+      expect(call.failure_reason).toBe('sarvam_http_400: {"error":"bad number"}');
       const lead = await env.DB.prepare('SELECT status FROM leads WHERE id = ?').bind('lead_q_fail').first<any>();
       expect(lead.status).not.toBe('calling');
+    });
+
+    it("a 422 records Sarvam's validation detail without echoing the input", async () => {
+      await seedLead('lead_q_422');
+      vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => new Response(JSON.stringify({
+        detail: [{ loc: ['body', 'user_config', 'user_phone_number'], msg: 'invalid number', type: 'value_error', input: '+919999999999' }],
+      }), { status: 422 }));
+
+      const res = await callLead('lead_q_422', prodEnv);
+      expect(res.status).toBe(502);
+      const call = await env.DB.prepare('SELECT failure_reason FROM calls WHERE lead_id = ?').bind('lead_q_422').first<any>();
+      expect(call.failure_reason).toBe('sarvam_http_422: body.user_config.user_phone_number: invalid number');
+      expect(call.failure_reason).not.toContain('9999');
+    });
+
+    it('dials the provider rejected do not use up the 3-per-day cap', async () => {
+      await seedLead('lead_q_rejected');
+      for (let i = 0; i < 3; i++) {
+        await env.DB.prepare(
+          `INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, status, failure_reason, started_at)
+           VALUES (?, ?, 'lead_q_rejected', 'R', '919800000001', 'failed', 'sarvam_http_422', datetime('now'))`
+        ).bind(`call_q_rej_${i}`, bizId).run();
+      }
+      vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => new Response(JSON.stringify({ attempt_id: 'att_1' }), { status: 200 }));
+      const res = await callLead('lead_q_rejected', prodEnv);
+      expect(res.status).toBe(200);
     });
 
     it('a transient dial failure returns 503 so the client can retry', async () => {
