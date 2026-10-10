@@ -18,15 +18,15 @@ void main() {
       );
     });
 
-    test('package id is com.callpilot.app; launcher label is CallPilot', () {
+    test('package id is com.echoing.heights; launcher label is CallPilot', () {
       final gradle = File('android/app/build.gradle.kts').readAsStringSync();
-      expect(gradle, contains('applicationId = "com.callpilot.app"'));
-      expect(gradle, contains('namespace = "com.callpilot.app"'));
+      expect(gradle, contains('applicationId = "com.echoing.heights"'));
+      expect(gradle, contains('namespace = "com.echoing.heights"'));
       expect(
         File(
-          'android/app/src/main/kotlin/com/callpilot/app/MainActivity.kt',
+          'android/app/src/main/kotlin/com/echoing/heights/MainActivity.kt',
         ).readAsStringSync(),
-        startsWith('package com.callpilot.app'),
+        startsWith('package com.echoing.heights'),
       );
       expect(
         File('android/app/src/main/AndroidManifest.xml').readAsStringSync(),
@@ -37,7 +37,7 @@ void main() {
       ).readAsStringSync();
       expect(
         RegExp(
-          r'PRODUCT_BUNDLE_IDENTIFIER = com\.callpilot\.app;',
+          r'PRODUCT_BUNDLE_IDENTIFIER = com\.echoing\.heights;',
         ).allMatches(pbx).length,
         3,
       );

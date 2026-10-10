@@ -1,4 +1,4 @@
-# Google Play store listing – CallPilot (`com.callpilot.app`)
+# Google Play store listing – CallPilot (`com.echoing.heights`)
 
 Copy for the Play Console main store listing in English (default), Hindi
 (`hi-IN`) and Bengali (`bn-IN`). Limits: title ≤ 30, short description ≤ 80,

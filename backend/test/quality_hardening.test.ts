@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach, vi, afterAll } from 'vitest';
 import { env } from 'cloudflare:test';
+import { useIndianBusinessHours, useRealClock } from './clock';
 import { migrateTestDb } from './setup-db';
 import app from '../src/index';
 import { signJWT } from '../src/auth';
@@ -47,7 +48,10 @@ async function setAgentHours(start: number, end: number) {
 }
 
 describe('Quality hardening regressions', () => {
+  afterAll(useRealClock);
+
   beforeAll(async () => {
+    useIndianBusinessHours();
     await migrateTestDb();
     await env.DB.batch([
       env.DB.prepare("INSERT OR REPLACE INTO businesses (id, name, category) VALUES (?, 'Quality Academy', 'education')").bind(bizId),

@@ -160,6 +160,15 @@ extension SCommon on S {
     LeadTemperature.unknown => pick('New', 'नया', 'নতুন'),
   };
 
+  /// Short form for small badges in lists, where the full words get cut
+  /// off on a phone ("Not interested n…"). Detail screens keep [temperature].
+  String temperatureShort(LeadTemperature v) => switch (v) {
+    LeadTemperature.hot => pick('Wants to buy', 'खरीदना चाहें', 'কিনতে চান'),
+    LeadTemperature.warm => pick('Thinking', 'सोच रहे हैं', 'ভাবছেন'),
+    LeadTemperature.cold => pick('Not now', 'अभी नहीं', 'এখন নয়'),
+    LeadTemperature.unknown => pick('New', 'नया', 'নতুন'),
+  };
+
   String intent(LeadIntent v) => switch (v) {
     LeadIntent.interested => pick('Interested', 'रुचि है', 'আগ্রহী'),
     LeadIntent.exploring => pick(

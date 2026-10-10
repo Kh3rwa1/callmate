@@ -290,6 +290,10 @@ describe('Landing page GET /get', () => {
     expect(html).not.toMatch(/\son[a-z]+=/i);
     const starter = getPlan('starter', env as any);
     expect(html).toContain(`₹${starter.priceInr.toLocaleString('en-IN')}`);
+    // Same price checkout charges: base + GST, with the total spelled out.
+    expect(html).toContain(`₹${starter.priceInr.toLocaleString('en-IN')} <small>+ GST /month</small>`);
+    expect(html).toContain(`₹${Math.round(starter.priceInr * 1.18).toLocaleString('en-IN')} including GST`);
+    expect(html).toContain('plus 18% GST');
     expect(html).toContain('/legal/privacy');
     expect(html).toContain(escapeAmp(playStoreUrl(null)));
     expect(html).not.toContain('<audio');
@@ -298,7 +302,7 @@ describe('Landing page GET /get', () => {
   it('carries a valid ref into the Play Store referrer', async () => {
     const html = await (await call('/get?ref=abc234')).text();
     expect(playStoreUrl('ABC234')).toBe(
-      'https://play.google.com/store/apps/details?id=com.callpilot.app&referrer=utm_source%3Dlanding%26utm_campaign%3DABC234');
+      'https://play.google.com/store/apps/details?id=com.echoing.heights&referrer=utm_source%3Dlanding%26utm_campaign%3DABC234');
     expect(html).toContain(escapeAmp(playStoreUrl('ABC234')));
     expect(html).toContain('<strong>ABC234</strong>');
   });

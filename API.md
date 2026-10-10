@@ -1,6 +1,6 @@
 # CallPilot – Backend API Contract (v1)
 
-> **Product:** CallPilot (`com.callpilot.app`).  
+> **Product:** CallPilot (`com.echoing.heights`).  
 > **Backend Architecture:** Cloudflare Workers (Hono) + Cloudflare D1 (SQLite) + Cloudflare R2 + Cloudflare Queues + Sarvam AI Voice Agents.
 
 The mobile app communicates **only** with this backend. The backend manages authentication, telephony orchestration via Sarvam AI, webhook validation, tenant data isolation, encryption at rest, and FCM push notifications.
@@ -246,7 +246,7 @@ Three more `lead_sources` kinds feed the **same** pipeline (`captureLead` → co
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/` | JSON service info (unchanged). `/health` stays `{"status":"ok"}`. |
-| `GET` | `/get?ref=<code>` | Mobile-first landing page (HTML, no scripts, strict CSP). Pricing is read from the plan catalogue. The Play Store CTA is `https://play.google.com/store/apps/details?id=com.callpilot.app&referrer=<urlencoded utm_source=landing&utm_campaign=<code or none>>`; the app reads it with the Play Install Referrer API and prefills the signup referral code. Invalid `ref` values are dropped. Shows an `<audio>` demo when `DEMO_AUDIO_URL` (https) is set. |
+| `GET` | `/get?ref=<code>` | Mobile-first landing page (HTML, no scripts, strict CSP). Pricing is read from the plan catalogue. The Play Store CTA is `https://play.google.com/store/apps/details?id=com.echoing.heights&referrer=<urlencoded utm_source=landing&utm_campaign=<code or none>>`; the app reads it with the Play Install Referrer API and prefills the signup referral code. Invalid `ref` values are dropped. Shows an `<audio>` demo when `DEMO_AUDIO_URL` (https) is set. |
 | `GET` | `/legal/privacy`, `/legal/terms`, `/legal/delete-account` | Legal pages. |
 
 `poweredByFooterHtml(code)` in `backend/src/services/referrals.ts` returns a small "Powered by CallPilot" link to `/get?ref=<code>` for public pages a business shares (e.g. the lead form).

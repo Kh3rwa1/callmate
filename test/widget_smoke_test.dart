@@ -27,4 +27,53 @@ void main() {
     expect(find.textContaining('87'), findsNothing);
     expect(find.byIcon(Icons.local_fire_department_rounded), findsOneWidget);
   });
+
+  testWidgets(
+    'list badges use short words; screen readers hear the full words',
+    (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Column(
+                children: [
+                  ScoreBadge(
+                    score: LeadScore(
+                      value: 20,
+                      temperature: LeadTemperature.cold,
+                      intent: LeadIntent.unknown,
+                    ),
+                  ),
+                  ScoreBadge(
+                    score: LeadScore(
+                      value: 55,
+                      temperature: LeadTemperature.warm,
+                      intent: LeadIntent.exploring,
+                    ),
+                  ),
+                  ScoreBadge(
+                    large: true,
+                    score: LeadScore(
+                      value: 20,
+                      temperature: LeadTemperature.cold,
+                      intent: LeadIntent.unknown,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      // Compact badges: short enough to never be cut off in a 412 dp list row.
+      expect(find.text('Not now'), findsOneWidget);
+      expect(find.text('Thinking'), findsOneWidget);
+      // Large badge (detail screens) keeps the full words.
+      expect(find.text('Not interested now'), findsOneWidget);
+      expect(find.bySemanticsLabel('Not interested now'), findsNWidgets(2));
+      expect(find.bySemanticsLabel('Thinking about it'), findsOneWidget);
+      handle.dispose();
+    },
+  );
 }

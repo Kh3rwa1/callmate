@@ -55,7 +55,8 @@ class ScoreBadge extends StatelessWidget {
     final s = context.s;
     final t = score?.temperature ?? LeadTemperature.unknown;
     final style = TempStyle.of(t);
-    final word = s.temperature(t);
+    // Compact list badges use the short words; large/numbered ones explain more.
+    final word = large || showNumber ? s.temperature(t) : s.temperatureShort(t);
     final text = score == null
         ? s.notScoredYet
         : showNumber
@@ -70,7 +71,7 @@ class ScoreBadge extends StatelessWidget {
               '$word, 100 में से ${score!.value}',
               '$word, 100-এর মধ্যে ${score!.value}',
             )
-          : word,
+          : s.temperature(t),
       child: ExcludeSemantics(
         child: AnimatedContainer(
           // Words are longer than "87 · Hot"; cap the width so a long

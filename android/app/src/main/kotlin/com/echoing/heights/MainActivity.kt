@@ -1,4 +1,4 @@
-package com.callpilot.app
+package com.echoing.heights
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

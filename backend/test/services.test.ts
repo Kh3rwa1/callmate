@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { env } from 'cloudflare:test';
+import { useIndianBusinessHours, useRealClock } from './clock';
 import { migrateTestDb } from './setup-db';
 import { safeJsonParse } from '../src/utils/json';
 import { maskPhone, encryptAtRest, decryptAtRest } from '../src/utils/crypto_data';
@@ -119,6 +120,9 @@ describe('Utility & Services Unit Tests', () => {
   });
 
   describe('Compliance service', () => {
+    beforeAll(useIndianBusinessHours);
+    afterAll(useRealClock);
+
     it('evaluates calling hours window correctly', () => {
       const inWindow = isWithinCallingHours(0, 24, 'Asia/Kolkata');
       expect(inWindow).toBe(true);
