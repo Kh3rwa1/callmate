@@ -339,7 +339,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ? null
                             : _privacyTap,
                         style: t.bodySmall?.copyWith(
-                          fontSize: 11,
+                          fontSize: 13,
                           color: AppColors.inkFaint,
                         ),
                       ),

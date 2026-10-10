@@ -323,7 +323,7 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen>
                   Flexible(
                     child: Text(
                       s.nothingSendsUntil,
-                      style: t.bodySmall?.copyWith(fontSize: 12.5),
+                      style: t.bodySmall?.copyWith(fontSize: 13),
                     ),
                   ),
                 ],

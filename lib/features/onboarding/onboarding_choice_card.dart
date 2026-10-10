@@ -135,7 +135,7 @@ class _OnboardingChoiceCardState extends State<OnboardingChoiceCard>
           child: AnimatedContainer(
             duration: d,
             curve: AppMotion.standard,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: selected ? AppColors.brandSoft : AppColors.surface,
               borderRadius: BorderRadius.circular(AppRadius.cardSm),
@@ -159,8 +159,8 @@ class _OnboardingChoiceCardState extends State<OnboardingChoiceCard>
                       ),
                       child: AnimatedContainer(
                         duration: d,
-                        width: 40,
-                        height: 40,
+                        width: 52,
+                        height: 52,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: selected
@@ -174,7 +174,7 @@ class _OnboardingChoiceCardState extends State<OnboardingChoiceCard>
                           ),
                           duration: d,
                           builder: (_, c, _) =>
-                              Icon(widget.icon, size: 21, color: c),
+                              Icon(widget.icon, size: 28, color: c),
                         ),
                       ),
                     ),
@@ -198,8 +198,8 @@ class _OnboardingChoiceCardState extends State<OnboardingChoiceCard>
                 const SizedBox(height: 14),
                 Text(
                   widget.title,
-                  style: t.titleSmall,
-                  maxLines: 2,
+                  style: t.titleMedium,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (widget.subtitle != null) ...[
@@ -207,7 +207,7 @@ class _OnboardingChoiceCardState extends State<OnboardingChoiceCard>
                   Text(
                     widget.subtitle!,
                     style: t.bodySmall?.copyWith(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: AppColors.inkFaint,
                     ),
                     maxLines: 2,

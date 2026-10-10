@@ -106,13 +106,10 @@ class _CallPilotAppState extends ConsumerState<CallPilotApp> {
           AppLang.fromCode(device?.languageCode).locale,
       routerConfig: router,
       builder: (context, child) {
-        // Respect user font scaling up to 1.5x for accessibility.
+        // The phone's font size times the in-app "Text size", up to 2x.
         final mq = MediaQuery.of(context);
         final scaled = mq.copyWith(
-          textScaler: mq.textScaler.clamp(
-            minScaleFactor: 0.85,
-            maxScaleFactor: 1.5,
-          ),
+          textScaler: appTextScaler(mq.textScaler, ref.watch(textSizeProvider)),
         );
         return PaletteScope(
           child: MediaQuery(

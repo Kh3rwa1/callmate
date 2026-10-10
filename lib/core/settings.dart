@@ -46,6 +46,56 @@ class LanguageController extends Notifier<AppLang?> {
   }
 }
 
+/// In-app text size, applied on top of the phone's own font size.
+enum TextSize {
+  normal(1.0),
+  large(1.2),
+  extraLarge(1.4);
+
+  const TextSize(this.factor);
+
+  /// Multiplier on top of the system text scale.
+  final double factor;
+
+  String? get wire => switch (this) {
+    TextSize.normal => null,
+    TextSize.large => 'large',
+    TextSize.extraLarge => 'xlarge',
+  };
+
+  static TextSize parse(String? v) => switch (v) {
+    'large' => TextSize.large,
+    'xlarge' => TextSize.extraLarge,
+    _ => TextSize.normal,
+  };
+}
+
+final textSizeProvider = NotifierProvider<TextSizeController, TextSize>(
+  TextSizeController.new,
+);
+
+class TextSizeController extends Notifier<TextSize> {
+  @override
+  TextSize build() => TextSize.parse(_prefs(ref)?.textSize);
+
+  Future<void> set(TextSize size) async {
+    state = size;
+    await _prefs(ref)?.setTextSize(size.wire);
+  }
+}
+
+/// Smallest and largest overall text scale (phone setting × in-app size).
+const kMinTextScale = 0.85;
+const kMaxTextScale = 2.0;
+
+/// The text scaler the app runs with: the phone's scale times the in-app
+/// [TextSize], kept between [kMinTextScale] and [kMaxTextScale].
+TextScaler appTextScaler(TextScaler system, TextSize size) {
+  final base = system.scale(100) / 100;
+  final f = (base * size.factor).clamp(kMinTextScale, kMaxTextScale);
+  return TextScaler.linear(f);
+}
+
 LocalPrefs? _prefs(Ref ref) {
   try {
     return ref.read(localPrefsProvider);

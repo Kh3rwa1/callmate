@@ -131,7 +131,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
                         children: [
                           Expanded(
                             child: Text(
-                              s.data(u.subscription.planName),
+                              s.planDisplayName(u.subscription.planName),
                               style: t.labelLarge?.copyWith(
                                 color: Colors.white70,
                                 fontWeight: FontWeight.w700,
@@ -274,10 +274,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
               Text(
                 s.planOffer(
                   s.data(u.checkoutPlan.name),
-                  s.priceWithGst(
-                    Fmt.inr(u.checkoutPlan.priceInr),
-                    Fmt.inr(u.checkoutPlan.gstInr),
-                  ),
+                  s.priceInclGst(Fmt.inr(u.checkoutPlan.totalInr)),
                   Fmt.number(u.checkoutPlan.includedMinutes),
                 ),
                 style: t.bodySmall?.copyWith(color: AppColors.inkSoft),

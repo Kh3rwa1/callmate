@@ -137,7 +137,7 @@ void main() {
     );
 
     appTest('add button opens the import screen', (h) async {
-      await h.tap(find.byTooltip('Add or import customers'));
+      await h.tap(find.byKey(const Key('leads-add')));
       expect(h.location, '/leads/import');
       expect(find.byType(ImportLeadsScreen), findsOneWidget);
     }, location: '/leads');
@@ -203,7 +203,7 @@ void main() {
       final signals =
           rahul.score!.positiveSignals.length + rahul.objections.length;
       if (signals > 0) {
-        expect(find.text('Signals'), findsOneWidget);
+        expect(find.text('What they said'), findsOneWidget);
         expect(find.byType(LeadSignalChip), findsNWidgets(signals));
       }
 

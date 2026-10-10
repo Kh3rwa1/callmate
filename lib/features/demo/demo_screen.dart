@@ -8,6 +8,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_card.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
+import '../agent/owner_test_call_sheet.dart' show heardAiProvider;
+import '../home/getting_started.dart' show checklistDismissedProvider;
 
 /// Development / demo controls – lets the full loop be demoed without
 /// live telephony. Hidden in prod flavor.
@@ -161,6 +163,13 @@ class DemoScreen extends ConsumerWidget {
           group([
             row(Icons.replay_rounded, s.replayOnboarding, () async {
               await ref.read(localPrefsProvider).reset();
+              if (context.mounted) context.go('/onboarding');
+            }),
+            row(Icons.person_outline_rounded, s.demoNewOwner, () async {
+              b.resetToNewAccount();
+              await ref.read(localPrefsProvider).reset();
+              ref.invalidate(checklistDismissedProvider);
+              ref.invalidate(heardAiProvider);
               if (context.mounted) context.go('/onboarding');
             }),
           ]),

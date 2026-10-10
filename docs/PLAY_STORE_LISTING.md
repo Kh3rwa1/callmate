@@ -66,7 +66,7 @@ Start with free trial minutes. Paid plans are paid month by month inside the app
 INVITE & EARN
 Share your invite link with another business owner. When they make their first payment, you both get bonus call minutes.
 
-Questions? Write to support@callpilot.app
+Questions? Write to founder@olitun.in
 Privacy policy: https://callpilot-backend.dulalkisku0.workers.dev/legal/privacy
 ```
 
@@ -117,7 +117,7 @@ Privacy policy: https://callpilot-backend.dulalkisku0.workers.dev/legal/privacy
 बुलाएँ और कमाएँ
 अपना इनवाइट लिंक किसी दूसरे बिज़नेस मालिक को भेजें। उनके पहले पेमेंट पर आप दोनों को बोनस कॉल मिनट मिलते हैं।
 
-सवाल? लिखें support@callpilot.app
+सवाल? लिखें founder@olitun.in
 प्राइवेसी पॉलिसी: https://callpilot-backend.dulalkisku0.workers.dev/legal/privacy
 ```
 
@@ -168,7 +168,7 @@ Privacy policy: https://callpilot-backend.dulalkisku0.workers.dev/legal/privacy
 আমন্ত্রণ করুন, আয় করুন
 আপনার ইনভাইট লিংক অন্য কোনো ব্যবসার মালিককে পাঠান। তাঁদের প্রথম পেমেন্টে আপনারা দুজনেই বোনাস কল মিনিট পাবেন।
 
-প্রশ্ন? লিখুন support@callpilot.app
+প্রশ্ন? লিখুন founder@olitun.in
 প্রাইভেসি পলিসি: https://callpilot-backend.dulalkisku0.workers.dev/legal/privacy
 ```
 

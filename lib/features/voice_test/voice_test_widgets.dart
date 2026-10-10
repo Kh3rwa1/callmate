@@ -260,7 +260,7 @@ class VoiceSuggestionChip extends StatelessWidget {
         label: Text(
           label,
           style: TextStyle(
-            fontSize: 12.5,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
             color: AppColors.inkSoft,
           ),

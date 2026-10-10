@@ -67,8 +67,39 @@ class AppEnv {
   /// Where "Help & support" emails go.
   static const String supportEmail = String.fromEnvironment(
     'SUPPORT_EMAIL',
-    defaultValue: 'support@callpilot.app',
+    defaultValue: 'founder@olitun.in',
   );
+
+  /// "Watch 1-minute video" on the Help sheet, one link per app language.
+  /// Empty hides the option for that language.
+  static const String helpVideoUrlEn = String.fromEnvironment(
+    'HELP_VIDEO_URL_EN',
+    defaultValue: '',
+  );
+  static const String helpVideoUrlHi = String.fromEnvironment(
+    'HELP_VIDEO_URL_HI',
+    defaultValue: '',
+  );
+  static const String helpVideoUrlBn = String.fromEnvironment(
+    'HELP_VIDEO_URL_BN',
+    defaultValue: '',
+  );
+
+  /// The help video for [langCode] ('en' / 'hi' / 'bn'), or null if that
+  /// language has none configured (the option is then hidden).
+  static String? helpVideoUrl(
+    String langCode, {
+    String en = helpVideoUrlEn,
+    String hi = helpVideoUrlHi,
+    String bn = helpVideoUrlBn,
+  }) {
+    final url = switch (langCode) {
+      'hi' => hi,
+      'bn' => bn,
+      _ => en,
+    }.trim();
+    return url.isEmpty ? null : url;
+  }
 
   static AppFlavor get flavor => switch (_flavorRaw) {
     'prod' => AppFlavor.prod,

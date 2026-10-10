@@ -35,6 +35,9 @@ import 'storage/secure_store.dart';
 
 final useMockProvider = Provider<bool>((_) => AppEnv.useMock);
 
+/// "Now", overridable in tests (calling hours, checklist).
+final clockProvider = Provider<DateTime Function()>((_) => DateTime.now);
+
 final localPrefsProvider = Provider<LocalPrefs>(
   (_) => throw UnimplementedError('override in main'),
 );

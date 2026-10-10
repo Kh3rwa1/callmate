@@ -196,10 +196,10 @@ class AppTheme {
           labelLarge: s(16, FontWeight.w600, letterSpacing: -0.1),
           labelMedium: s(13, FontWeight.w500, color: p.inkSoft),
           labelSmall: s(
-            11.5,
+            13,
             FontWeight.w600,
             color: p.inkFaint,
-            letterSpacing: 0.9,
+            letterSpacing: 0.5,
           ),
         );
 

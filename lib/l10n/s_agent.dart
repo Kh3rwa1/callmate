@@ -166,8 +166,6 @@ extension SAgent on S {
       pick('$price / month', '$price / महीना', '$price / মাস');
   String pricePerYear(String price) =>
       pick('$price / year', '$price / साल', '$price / বছর');
-  String priceWithGst(String base, String gst) =>
-      pick('$base + $gst GST', '$base + $gst GST', '$base + $gst GST');
   String get priceLabel => pick('Price', 'कीमत', 'দাম');
   String gstLabel(String pct) =>
       pick('GST ($pct%)', 'GST ($pct%)', 'GST ($pct%)');
@@ -256,6 +254,4 @@ extension SAgent on S {
     'এই মাসের সব কলের মিনিট শেষ।',
   );
   String get viewPlan => pick('View plan', 'प्लान देखें', 'প্ল্যান দেখুন');
-  String get foundingPlan =>
-      pick('Founding Plan', 'फ़ाउंडिंग प्लान', 'ফাউন্ডিং প্ল্যান');
 }

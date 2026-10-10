@@ -28,7 +28,7 @@ extension SCalls on S {
     'সারাংশ পাওয়া যায়নি।',
   );
   String get leadScoreTitle =>
-      pick('Customer score', 'ग्राहक स्कोर', 'গ্রাহক স্কোর');
+      pick('How likely to buy', 'खरीदने की संभावना', 'কেনার সম্ভাবনা');
   String tempLead(String temp) =>
       pick('$temp customer', '$temp ग्राहक', '$temp গ্রাহক');
   String get nextStep => pick('Next step', 'अगला कदम', 'পরের পদক্ষেপ');
@@ -47,12 +47,12 @@ extension SCalls on S {
   String get willRetryNextCampaign => pick(
     'Your AI employee will try again next time.',
     'आपका AI कर्मचारी अगले कॉलिंग में फिर कोशिश करेगा।',
-    'আপনার AI কর্মী পরের কলিংে আবার চেষ্টা করবে।',
+    'আপনার AI কর্মী পরের বার আবার চেষ্টা করবে।',
   );
 
   // ------------------------------------------------------------ Transcript
   String showFullTranscript(int n) => pick(
-    'Show full transcript ($n lines)',
+    'Show full conversation ($n lines)',
     'पूरी बातचीत देखें ($n लाइनें)',
     'পুরো কথোপকথন দেখুন ($n লাইন)',
   );

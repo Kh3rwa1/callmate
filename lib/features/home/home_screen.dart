@@ -9,10 +9,12 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/settings_sheets.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import '../campaign/campaign_widgets.dart';
+import 'getting_started.dart';
 import 'home_widgets.dart';
 import 'results_card.dart';
 import '../../core/widgets/brand_widgets.dart';
@@ -87,27 +89,34 @@ class HomeScreen extends ConsumerWidget {
                           onPressed: () => context.push('/demo'),
                           icon: const Icon(Icons.science_outlined, size: 22),
                         ),
-                      IconButton(
-                        tooltip: unread > 0
+                      TopBarAction(
+                        key: const Key('home-help'),
+                        icon: const Icon(Icons.help_outline_rounded, size: 26),
+                        label: s.help,
+                        onTap: () => showHelpSheet(context),
+                      ),
+                      TopBarAction(
+                        key: const Key('home-alerts'),
+                        semanticsLabel: unread > 0
                             ? s.newNotifications(unread)
                             : s.notifications,
-                        color: AppColors.ink,
-                        onPressed: () => context.push('/notifications'),
+                        label: s.alertsShort,
+                        onTap: () => context.push('/notifications'),
                         icon: Badge(
                           isLabelVisible: unread > 0,
                           label: Text('$unread'),
                           backgroundColor: AppColors.hotFill,
-                          largeSize: 16,
+                          largeSize: 18,
                           padding: const EdgeInsets.symmetric(horizontal: 5),
                           textStyle: t.labelSmall?.copyWith(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0,
                           ),
                           offset: const Offset(5, -4),
                           child: const Icon(
                             Icons.notifications_none_rounded,
-                            size: 25,
+                            size: 26,
                           ),
                         ),
                       ),
@@ -132,6 +141,11 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+              ),
+              // New owners: three first steps, ticked from real data.
+              const SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpace.page),
+                sliver: SliverToBoxAdapter(child: GettingStartedCard()),
               ),
               // The live banner grows in and out instead of popping.
               SliverToBoxAdapter(
@@ -270,23 +284,24 @@ class _HomeBody extends ConsumerWidget {
                   : s.followUpsReadyLabel,
               onTap: () => context.go('/followups'),
             ),
-            if (d.callbacksToday > 0 || next != null)
-              HomeActionRow(
-                icon: Icons.event_outlined,
-                color: AppColors.info,
-                tint: AppColors.infoSoft,
-                count: d.callbacksToday > 0 ? d.callbacksToday : null,
-                label: d.callbacksToday > 0
-                    ? s.callbacksLabel(d.callbacksToday)
-                    : s.upcomingCallback,
-                detail: next == null
-                    ? null
-                    : s.nextCallback(
-                        next.leadName.split(' ').first,
-                        Fmt.time(next.scheduledAt),
-                      ),
-                onTap: () => context.push('/callbacks'),
-              ),
+            HomeActionRow(
+              icon: Icons.event_outlined,
+              color: AppColors.info,
+              tint: AppColors.infoSoft,
+              count: d.callbacksToday > 0 ? d.callbacksToday : null,
+              label: d.callbacksToday > 0
+                  ? s.callbacksLabel(d.callbacksToday)
+                  : next != null
+                  ? s.upcomingCallback
+                  : s.callbacksTitle,
+              detail: next == null
+                  ? null
+                  : s.nextCallback(
+                      next.leadName.split(' ').first,
+                      Fmt.time(next.scheduledAt),
+                    ),
+              onTap: () => context.push('/callbacks'),
+            ),
           ],
         ),
         if (d.newLeadsReady > 0) ...[
@@ -310,3 +325,61 @@ List<Widget> _stagger(List<Widget> children) => [
   for (var i = 0; i < children.length; i++)
     Reveal(id: 'home-section-$i', index: 2 + i, child: children[i]),
 ];
+
+/// Icon with a word under it, for the Home top bar (Help, Alerts): owners
+/// shouldn't have to guess what a bare icon does.
+class TopBarAction extends StatelessWidget {
+  const TopBarAction({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.semanticsLabel,
+  });
+  final Widget icon;
+  final String label;
+  final String? semanticsLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Semantics(
+      button: true,
+      label: semanticsLabel ?? label,
+      excludeSemantics: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          Haptics.tap();
+          onTap();
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 56, minHeight: 56),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconTheme(
+                  data: IconThemeData(color: AppColors.ink),
+                  child: icon,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  maxLines: 1,
+                  style: t.labelMedium?.copyWith(
+                    fontSize: 13,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

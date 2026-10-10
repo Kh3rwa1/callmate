@@ -120,7 +120,7 @@ class TranscriptBubble extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: t.labelMedium?.copyWith(
                       color: isAgent ? AppColors.brand : AppColors.inkSoft,
-                      fontSize: 11.5,
+                      fontSize: 13,
                     ),
                   ),
                 ),
@@ -129,7 +129,7 @@ class TranscriptBubble extends StatelessWidget {
                   Text(
                     Fmt.duration(at!),
                     style: t.bodySmall?.copyWith(
-                      fontSize: 11,
+                      fontSize: 13,
                       color: AppColors.inkFaint,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),

@@ -238,14 +238,15 @@ class _OptionCard extends StatelessWidget {
     final title = item.isTopup
         ? s.topupMinutes(Fmt.number(item.includedMinutes))
         : s.data(item.isAnnual ? _baseName(item) : item.name);
+    // One all-in price (GST included); the breakdown below shows the split.
     final sub = item.isTopup
-        ? s.priceWithGst(Fmt.inr(item.priceInr), Fmt.inr(item.gstInr))
-        : s.minutesPerMonth(Fmt.number(item.includedMinutes));
+        ? s.inclGst
+        : '${s.minutesPerMonth(Fmt.number(item.includedMinutes))} · ${s.inclGst}';
     final price = item.isTopup
-        ? Fmt.inr(item.priceInr)
+        ? Fmt.inr(item.totalInr)
         : (item.isAnnual
-              ? s.pricePerYear(Fmt.inr(item.priceInr))
-              : s.pricePerMonth(Fmt.inr(item.priceInr)));
+              ? s.pricePerYear(Fmt.inr(item.totalInr))
+              : s.pricePerMonth(Fmt.inr(item.totalInr)));
     return Semantics(
       selected: selected,
       button: true,

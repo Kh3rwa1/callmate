@@ -69,7 +69,7 @@ void main() {
 
     appTest('checklist items toggle their options', (h) async {
       for (final label in [
-        'Score the customer',
+        'Rate how likely they are to buy',
         'Write a WhatsApp message',
         'Suggest a call back',
         'Tell me who is ready to buy',
@@ -112,13 +112,13 @@ void main() {
             (l) => l.status == LeadStatus.newLead && l.consent == 'unknown',
           )
           .length;
-      expect(find.textContaining('will be skipped'), findsOneWidget);
+      expect(find.textContaining('won\'t be called'), findsOneWidget);
       expect(
         find.textContaining('Start calling $unknown customers'),
         findsNothing,
       );
       await h.tap(attest);
-      expect(find.textContaining('will be skipped'), findsNothing);
+      expect(find.textContaining('won\'t be called'), findsNothing);
     }, location: '/campaign/new');
 
     appTest('"Not now" cancels without creating a campaign', (h) async {

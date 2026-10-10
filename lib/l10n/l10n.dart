@@ -20,3 +20,4 @@ export 's_voice.dart';
 export 's_onboarding.dart';
 export 's_growth.dart';
 export 's_playbook.dart';
+export 's_easy.dart';

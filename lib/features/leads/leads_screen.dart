@@ -132,16 +132,12 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                           )
                         : const SizedBox.shrink(key: ValueKey('none')),
                   ),
-                  IconButton(
-                    key: const Key('leads-get-automatically'),
-                    tooltip: s.getLeadsAutomatically,
-                    onPressed: () => context.push('/leads/auto'),
-                    icon: const Icon(Icons.bolt_rounded),
-                  ),
-                  IconButton(
-                    tooltip: s.addOrImportLeads,
-                    onPressed: () => context.push('/leads/import'),
-                    icon: const Icon(Icons.person_add_alt_outlined),
+                  _LabeledAction(
+                    key: const Key('leads-add'),
+                    icon: Icons.person_add_alt_outlined,
+                    label: s.addShort,
+                    semanticsLabel: s.addOrImportLeads,
+                    onTap: () => context.push('/leads/import'),
                   ),
                 ],
               ),
@@ -181,6 +177,10 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                   );
                 },
               ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(AppSpace.page, 10, AppSpace.page, 0),
+              child: _AutoLeadsCard(),
             ),
             const SizedBox(height: 6),
             FilterChipRow(
@@ -299,6 +299,101 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
       message: s.addLeadsToStart,
       actionLabel: s.addLeads,
       onAction: () => context.push('/leads/import'),
+    );
+  }
+}
+
+/// Icon with a word under it ("Add"), instead of a bare icon.
+class _LabeledAction extends StatelessWidget {
+  const _LabeledAction({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.semanticsLabel,
+  });
+  final IconData icon;
+  final String label;
+  final String? semanticsLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: semanticsLabel ?? label,
+    excludeSemantics: true,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 56, minHeight: 56),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 26, color: AppColors.ink),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontSize: 13,
+                  color: AppColors.ink,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// "Get new customers automatically": the enquiry form, IndiaMART and ad
+/// lead sources, as a card anyone can see (it used to be a bare ⚡ icon).
+class _AutoLeadsCard extends StatelessWidget {
+  const _AutoLeadsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    final t = Theme.of(context).textTheme;
+    return Semantics(
+      button: true,
+      label: s.getCustomersAuto,
+      excludeSemantics: true,
+      child: AppCard(
+        key: const Key('leads-get-automatically'),
+        onTap: () => context.push('/leads/auto'),
+        shadow: false,
+        color: AppColors.brandSoft,
+        border: Border.all(color: AppColors.brand.withValues(alpha: 0.35)),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Icon(Icons.bolt_rounded, color: AppColors.brand, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    s.getCustomersAuto,
+                    style: t.titleMedium?.copyWith(color: AppColors.brandDeep),
+                  ),
+                  Text(
+                    s.getCustomersAutoSub,
+                    style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: AppColors.brand),
+          ],
+        ),
+      ),
     );
   }
 }

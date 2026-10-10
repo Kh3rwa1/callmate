@@ -134,7 +134,7 @@ void main() {
   testWidgets('existing Google account signs straight in', (tester) async {
     final (repo, _) = await pumpLogin(tester, accountExists: true);
     expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.text('Send OTP'), findsNothing);
+    expect(find.text('Send code'), findsNothing);
 
     await tester.ensureVisible(find.text('Continue with Google'));
 

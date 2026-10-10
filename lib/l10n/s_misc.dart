@@ -1,5 +1,6 @@
 import '../data/models/models.dart';
 import 's.dart';
+import 's_data.dart';
 
 /// Notifications, callbacks, teaching the AI, demo controls and splash.
 extension SMisc on S {
@@ -170,4 +171,17 @@ extension SMisc on S {
   String get resetLabel => pick('Reset', 'रीसेट', 'রিসেট');
   String get replayOnboarding =>
       pick('Replay onboarding', 'ऑनबोर्डिंग दोबारा', 'অনবোর্ডিং আবার');
+
+  // ------------------------------------------------------------ Prices
+  /// One all-in price: "₹5,899 (incl. GST)".
+  String priceInclGst(String total) =>
+      pick('$total (incl. GST)', '$total (GST सहित)', '$total (GST সহ)');
+  String get inclGst => pick('incl. GST', 'GST सहित', 'GST সহ');
+
+  /// The plan's name for display: the backend's name, or "Starter" when the
+  /// account still carries the old placeholder name (or none).
+  String planDisplayName(String name) {
+    final n = name.trim();
+    return data(n.isEmpty || n == 'Founding Plan' ? 'Starter' : n);
+  }
 }

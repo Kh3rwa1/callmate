@@ -138,8 +138,8 @@ void main() {
       expect(values.map(s.consentValue).toSet(), hasLength(values.length));
       expect(sources.map(s.consentSource).toSet(), hasLength(sources.length));
     }
-    expect(const S(AppLang.hi).consentHistory, 'सहमति का रिकॉर्ड');
-    expect(const S(AppLang.bn).consentHistory, 'সম্মতির রেকর্ড');
+    expect(const S(AppLang.hi).consentHistory, 'कॉल करने की अनुमति');
+    expect(const S(AppLang.bn).consentHistory, 'কল করার অনুমতি');
   });
 
   testWidgets('ConsentHistoryCard lists events', (tester) async {
@@ -169,7 +169,10 @@ void main() {
   testWidgets('ConsentHistoryCard shows an empty state', (tester) async {
     await tester.pumpWidget(_card(const []));
     await tester.pumpAndSettle();
-    expect(find.text('No consent changes recorded yet.'), findsOneWidget);
+    expect(
+      find.text('Nothing noted yet about whether they agreed to calls.'),
+      findsOneWidget,
+    );
   });
 
   group('LeadDetailScreen consent history', () {
@@ -177,7 +180,7 @@ void main() {
       final lead = h.backend.leads.values.first;
       await h.push('/leads/${lead.id}');
       await h.tester.scrollUntilVisible(
-        find.text('Consent history'),
+        find.text('Permission to call'),
         300,
         scrollable: find.byType(Scrollable).last,
       );

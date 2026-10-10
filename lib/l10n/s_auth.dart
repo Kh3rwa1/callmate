@@ -88,7 +88,7 @@ extension SAuth on S {
     'वेरिफ़िकेशन कोड पाएँ',
     'ভেরিফিকেশন কোড পান',
   );
-  String get sendOtp => pick('Send OTP', 'OTP भेजें', 'OTP পাঠান');
+  String get sendOtp => pick('Send code', 'कोड भेजें', 'কোড পাঠান');
   String get haveAccount => pick(
     'Already have an account? Sign in',
     'पहले से अकाउंट है? साइन इन करें',
@@ -99,7 +99,11 @@ extension SAuth on S {
     'नए हैं? अकाउंट बनाएँ',
     'নতুন? অ্যাকাউন্ট তৈরি করুন',
   );
-  String get otpLabel => pick('6-digit OTP', '6 अंकों का OTP', '6 সংখ্যার OTP');
+  String get otpLabel => pick(
+    '6-digit code from SMS',
+    'SMS में आया 6 अंकों का कोड',
+    'SMS-এ আসা 6 সংখ্যার কোড',
+  );
   String get verifyCreate => pick(
     'Verify & Create Account',
     'वेरिफ़ाई करके अकाउंट बनाएँ',

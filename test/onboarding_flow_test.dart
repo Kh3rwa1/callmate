@@ -1,21 +1,17 @@
 import 'package:callpilot/core/providers.dart';
 import 'package:callpilot/data/datasources/mock/mock_repositories.dart';
 import 'package:callpilot/data/models/models.dart';
-import 'package:callpilot/data/templates/templates.dart';
 import 'package:callpilot/features/home/home_screen.dart';
 import 'package:callpilot/features/onboarding/onboarding_controller.dart';
 import 'package:callpilot/features/onboarding/onboarding_screens.dart';
 import 'package:callpilot/features/voice_test/voice_test_screen.dart';
+import 'package:callpilot/services/voice/voice_persona.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers/app_harness.dart';
 
-/// Business repository whose first save fails, to exercise retry UI.
-///
-/// The failure is delayed past the "learning" animation: CreateAgentScreen
-/// only attaches a listener to the save future after ~1.7 s, so an earlier
-/// failure escapes as an unhandled async error (see report).
+/// Business repository whose first save fails, to exercise the inline error.
 class _FailOnceBusinessRepository extends MockBusinessRepository {
   _FailOnceBusinessRepository(super.b);
   int saves = 0;
@@ -23,239 +19,149 @@ class _FailOnceBusinessRepository extends MockBusinessRepository {
   @override
   Future<Business> saveBusiness(Business business) async {
     saves++;
-    if (saves == 1) {
-      await Future<void>.delayed(const Duration(seconds: 3));
-      throw StateError('backend unavailable');
-    }
+    if (saves == 1) throw StateError('backend unavailable');
     return super.saveBusiness(business);
   }
 }
 
+/// 2 PM in India (inside calling hours) and 11 PM (outside).
+DateTime _istAfternoon() => DateTime.utc(2026, 10, 10, 8, 30);
+DateTime _istNight() => DateTime.utc(2026, 10, 10, 17, 30);
+
 void main() {
-  Finder field(int i) => find.byType(TextFormField).at(i);
-
-  group('Onboarding flow', () {
+  group('First run (3 steps)', () {
     appTest(
-      'owner completes onboarding end to end',
+      'owner hears the AI in 3 steps: type → name + voice → call me now',
       (h) async {
-        // ---- Welcome
-        expect(find.byType(WelcomeScreen), findsOneWidget);
-        await h.tapText('Create My AI Employee');
-        expect(h.location, '/onboarding/business-type');
-        expect(find.text('1/6'), findsOneWidget);
-
-        // ---- Business type: Continue is disabled until a category is picked.
-        await h.tapText('Continue');
-        expect(h.location, '/onboarding/business-type');
+        // ---- 1/3 Business type: one tap moves on.
+        expect(find.byType(BusinessTypeScreen), findsOneWidget);
+        expect(find.byKey(const Key('onboarding-dots')), findsOneWidget);
+        expect(find.textContaining('6 quick steps'), findsNothing);
+        expect(find.bySemanticsLabel('Step 1 of 3'), findsOneWidget);
         await h.tapText('Clinic');
-        final draft = h.container.read(onboardingProvider);
-        expect(draft.category, BusinessCategory.clinic);
-        expect(draft.skills, isNotEmpty, reason: 'defaults pre-selected');
-        await h.tapText('Continue');
-        expect(h.location, '/onboarding/skills');
+        expect(h.location, '/onboarding/name');
+        expect(
+          h.container.read(onboardingProvider).category,
+          BusinessCategory.clinic,
+        );
 
-        // ---- Skills: toggling updates the suggested employee.
-        await h.tapText('Sales');
+        // ---- 2/3 Name (prefilled from sign-up) + voice.
+        final field = find.byType(TextFormField);
         expect(
-          h.container.read(onboardingProvider).skills,
-          contains(EmployeeSkill.sales),
+          h.tester.widget<TextFormField>(field).controller!.text,
+          h.backend.business.name,
         );
-        final role = h.container.read(onboardingProvider).suggestedAgent.role;
-        final article = 'AEIOU'.contains(role[0]) ? 'an' : 'a';
-        expect(
-          find.text('We\'ll set up $article $role for you.'),
-          findsOneWidget,
-        );
-        await h.tapText('Continue');
-        expect(h.location, '/onboarding/details');
-
-        // ---- Business details: prefilled from sign-up; name is required.
-        expect(
-          h.tester.widget<TextFormField>(field(0)).controller!.text,
-          isNotEmpty,
-        );
-        await h.tester.enterText(field(0), '');
+        await h.tester.enterText(field, '');
         await h.tapText('Continue');
         expect(find.text('Please enter your business name'), findsOneWidget);
-        expect(h.location, '/onboarding/details');
-        await h.tester.enterText(field(0), 'Sunrise Clinic');
-        await h.tester.enterText(field(1), '5 Lake Road, Kolkata');
+        expect(h.location, '/onboarding/name');
+        await h.tester.enterText(field, 'Sunrise Clinic');
+        await h.tapText("Man's voice");
+        final d = h.container.read(onboardingProvider);
+        expect(d.maleVoiceChosen, isTrue);
+        expect(isMaleVoice(d.employeeVoice), isTrue);
         await h.tapText('Continue');
-        expect(h.location, '/onboarding/offer');
+        expect(h.location, '/onboarding/hear');
 
-        // ---- Offer: offerings required, phone numbers validated.
-        expect(
-          h.tester.widget<TextFormField>(field(3)).controller!.text,
-          '5 Lake Road, Kolkata',
-          reason: 'location is prefilled from the address',
-        );
-        await h.tester.enterText(field(4), '123');
-        await h.tapText('Continue');
-        expect(find.textContaining('Add at least one'), findsOneWidget);
-        expect(find.text('Enter a valid mobile number'), findsOneWidget);
-        await h.tester.enterText(field(0), 'Consultation, Dental care');
-        await h.tester.enterText(field(1), '₹500 per visit');
-        await h.tester.enterText(field(2), 'Mon–Sat 9–8');
-        await h.tester.enterText(field(4), '98300 12345');
-        await h.tester.enterText(field(5), '98300 99999');
-        await h.tapText('Continue');
-        expect(h.location, '/onboarding/teach');
-
-        // ---- Teach: nothing added yet → "Skip for now".
-        expect(find.text('Skip for now'), findsOneWidget);
-
-        // Website sheet validates the URL.
-        await h.tapText('Add website');
-        await h.tester.enterText(find.byType(TextFormField).last, 'nope');
-        await h.tapText('Add to your AI\'s knowledge');
-        expect(find.text('Enter a valid website'), findsOneWidget);
-        await h.tester.enterText(
-          find.byType(TextFormField).last,
-          'sunriseclinic.in',
-        );
-        await h.tapText('Add to your AI\'s knowledge');
-        var k = h.container.read(onboardingProvider).knowledge;
-        expect(k.single.url, 'https://sunriseclinic.in');
-
-        // FAQ sheet requires some detail and defaults the title.
-        await h.tapText('Add FAQ');
-        await h.tester.enterText(find.byType(TextFormField).last, 'short');
-        await h.tapText('Add to your AI\'s knowledge');
-        expect(find.text('Add a little more detail'), findsOneWidget);
-        await h.tester.enterText(
-          find.byType(TextFormField).last,
-          'Q: Do you take walk-ins?\nA: Yes, before noon.',
-        );
-        await h.tapText('Add to your AI\'s knowledge');
-        k = h.container.read(onboardingProvider).knowledge;
-        expect(k.map((e) => e.title), ['Website', 'FAQ']);
-
-        // Pasted notes keep a custom title; then remove it again.
-        await h.tapText('Paste text');
-        await h.tester.enterText(
-          find.byType(TextFormField).first,
-          'Parking info',
-        );
-        await h.tester.enterText(
-          find.byType(TextFormField).last,
-          'Free parking is available behind the clinic.',
-        );
-        await h.tapText('Add to your AI\'s knowledge');
-        expect(find.text('Parking info'), findsOneWidget);
-        await h.tap(find.byTooltip('Remove').last);
-        expect(find.text('Parking info'), findsNothing);
-        expect(h.container.read(onboardingProvider).knowledge, hasLength(2));
-
-        // Importing leads is explained, not faked as an option.
-        expect(
-          find.textContaining('customers from your phone contacts'),
-          findsOneWidget,
-        );
-
-        await h.tapText('Continue');
-        expect(h.location, '/onboarding/create');
-
-        // ---- Create agent: learning phase, then "meet".
-        expect(find.byType(CreateAgentScreen), findsOneWidget);
-        expect(find.byType(LinearProgressIndicator), findsOneWidget);
-        expect(find.text('Meet your AI employee'), findsNothing);
-        await h.settle(40);
-        expect(find.text('Meet your AI employee'), findsOneWidget);
-
-        // Business + knowledge were persisted.
+        // Business + employee exist, with the business type's defaults.
         expect(h.backend.business.name, 'Sunrise Clinic');
         expect(h.backend.business.category, BusinessCategory.clinic);
-        expect(h.backend.business.offerings, ['Consultation', 'Dental care']);
-        expect(h.backend.business.whatsappNumber, '98300 12345');
-        expect(
-          h.backend.knowledge.map((e) => e.title),
-          containsAll(['Website', 'FAQ']),
-        );
-
-        // Empty name blocks activation.
-        await h.tester.enterText(find.byType(TextField).at(0), '');
-        await h.settle(2);
-        expect(find.text('Name your employee'), findsOneWidget);
-        await h.tapText('Activate Employee');
-        expect(h.location, '/onboarding/create');
-
-        await h.tester.enterText(find.byType(TextField).at(0), 'Kabir');
-        await h.tester.enterText(
-          find.byType(TextField).at(1),
-          'Front Desk Assistant',
-        );
-        await h.settle(2);
-        expect(find.text('Kabir'), findsWidgets);
-        await h.tapText('Activate Employee');
-        expect(h.location, '/onboarding/test');
-        expect(h.backend.agent.name, 'Kabir');
-        expect(h.backend.agent.role, 'Front Desk Assistant');
         expect(h.backend.agent.status, AgentStatus.active);
-
-        // ---- First call screen → dashboard.
-        expect(find.byType(FirstCallScreen), findsOneWidget);
-        expect(find.text('Talk to Kabir'), findsOneWidget);
-        await h.tapText('Skip');
+        expect(isMaleVoice(h.backend.agent.voice), isTrue);
+        expect(h.backend.agent.name, d.resolvedEmployeeName);
+        expect(h.backend.agent.skills, isNotEmpty);
         expect(h.prefs.onboarded, isTrue);
+
+        // ---- 3/3 Hear your AI: number prefilled, one tap.
+        expect(find.byType(HearAiScreen), findsOneWidget);
+        await h.settle(4);
+        await h.tapText('Call me now');
+        expect(h.prefs.heardAi, isTrue);
+        await h.tapText('Go to home');
         expect(h.location, '/home');
         expect(find.byType(HomeScreen), findsOneWidget);
       },
       location: '/onboarding',
       onboarded: false,
+      overrides: () => [clockProvider.overrideWithValue(_istAfternoon)],
     );
 
     appTest(
-      'back button returns to the previous step',
+      'outside calling hours the last step offers the in-app voice test',
       (h) async {
-        await h.tapText('Create My AI Employee');
+        expect(find.byKey(const Key('outside-hours')), findsOneWidget);
+        expect(find.text('Call me now'), findsNothing);
+        await h.tap(find.textContaining('Talk in-app with'));
+        expect(h.location, '/voice-test');
+        expect(
+          h.tester
+              .widget<VoiceTestScreen>(find.byType(VoiceTestScreen))
+              .fromOnboarding,
+          isTrue,
+        );
+      },
+      location: '/onboarding/hear',
+      onboarded: false,
+      overrides: () => [clockProvider.overrideWithValue(_istNight)],
+    );
+
+    appTest(
+      'skip on the last step goes home',
+      (h) async {
+        await h.tap(find.byKey(const Key('hear-skip')));
+        expect(h.prefs.onboarded, isTrue);
+        expect(h.location, '/home');
+      },
+      location: '/onboarding/hear',
+      onboarded: false,
+    );
+
+    appTest(
+      'back button returns to the type step and keeps the choice',
+      (h) async {
         await h.tapText('Retail');
-        await h.tapText('Continue');
-        expect(h.location, '/onboarding/skills');
+        expect(h.location, '/onboarding/name');
         await h.tap(find.byTooltip('Back'));
-        expect(h.location, '/onboarding/business-type');
-        // Selection survives navigating back.
+        expect(h.location, '/onboarding');
         expect(
           h.container.read(onboardingProvider).category,
           BusinessCategory.retail,
         );
+        // Continue is enabled once a type is picked.
+        await h.tapText('Continue');
+        expect(h.location, '/onboarding/name');
       },
       location: '/onboarding',
       onboarded: false,
     );
 
     appTest(
-      'skills step requires at least one skill',
+      'old step links land on the new steps',
       (h) async {
-        h.container
-            .read(onboardingProvider.notifier)
-            .update((d) => d.copyWith(category: BusinessCategory.other));
-        await h.settle(2);
-        expect(h.container.read(onboardingProvider).skills, isEmpty);
-        await h.tapText('Continue');
-        expect(h.location, '/onboarding/skills');
-        await h.tapText('Follow Up');
-        await h.tapText('Continue');
-        expect(h.location, '/onboarding/details');
+        await h.go('/onboarding/skills');
+        expect(h.location, '/onboarding/name');
+        await h.go('/onboarding/business-type');
+        expect(h.location, '/onboarding');
+        await h.go('/onboarding/test');
+        expect(h.location, '/onboarding/hear');
       },
-      location: '/onboarding/skills',
+      location: '/onboarding',
       onboarded: false,
     );
 
     late _FailOnceBusinessRepository failing;
     appTest(
-      'create step shows an error and recovers on retry',
+      'a failed save shows the error on the step and recovers',
       (h) async {
-        await h.settle(30);
-        expect(
-          find.text('We couldn\'t set up your AI employee'),
-          findsOneWidget,
-        );
-        await h.tapText('Try again');
-        await h.settle(30);
+        await h.tapText('Continue');
+        expect(find.byKey(const Key('setup-error')), findsOneWidget);
+        expect(h.location, '/onboarding/name');
+        expect(h.prefs.onboarded, isFalse);
+        await h.tapText('Continue');
         expect(failing.saves, 2);
-        expect(find.text('Meet your AI employee'), findsOneWidget);
+        expect(h.location, '/onboarding/hear');
       },
-      location: '/onboarding/create',
+      location: '/onboarding/name',
       onboarded: false,
       overrides: () => [
         businessRepoProvider.overrideWith((ref) {
@@ -264,39 +170,6 @@ void main() {
           );
         }),
       ],
-    );
-
-    appTest(
-      'first call CTA opens the in-app voice test',
-      (h) async {
-        await h.tapText('Talk to ${h.backend.agent.name}');
-        expect(h.location, '/voice-test');
-        expect(find.byType(VoiceTestScreen), findsOneWidget);
-        expect(
-          h.tester
-              .widget<VoiceTestScreen>(find.byType(VoiceTestScreen))
-              .fromOnboarding,
-          isTrue,
-        );
-      },
-      location: '/onboarding/test',
-      onboarded: false,
-    );
-
-    appTest(
-      'agent tested shows the shortcut to the dashboard',
-      (h) async {
-        await h.prefs.setAgentTested(true);
-        h.router.go('/onboarding');
-        await h.settle();
-        h.router.go('/onboarding/test');
-        await h.settle();
-        await h.tapText('Go to dashboard');
-        expect(h.prefs.onboarded, isTrue);
-        expect(h.location, '/home');
-      },
-      location: '/onboarding/test',
-      onboarded: false,
     );
   });
 }

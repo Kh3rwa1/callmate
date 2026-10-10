@@ -24,7 +24,7 @@ void main() {
     appTest('redirects to onboarding when not onboarded', (h) async {
       await h.go('/leads');
       expect(h.location, '/onboarding');
-      expect(find.byType(WelcomeScreen), findsOneWidget);
+      expect(find.byType(BusinessTypeScreen), findsOneWidget);
     }, onboarded: false);
 
     appTest('main tabs render their screens', (h) async {

@@ -36,9 +36,9 @@ extension SCampaign on S {
     '$name আপনার গ্রাহকদের কল করছে…',
   );
   String campaignBannerStats(int done, int total, int hot) => pick(
-    '$done of $total done · $hot hot',
-    '$total में से $done पूरी · $hot हॉट',
-    '$total-এর মধ্যে $done শেষ · $hot হট',
+    '$done of $total done · $hot ready to buy',
+    '$total में से $done पूरी · $hot खरीदने को तैयार',
+    '$total-এর মধ্যে $done শেষ · $hot কিনতে তৈরি',
   );
 
   // ------------------------------------------------------------ Setup
@@ -54,8 +54,11 @@ extension SCampaign on S {
   String get callingHours => pick('Calling hours', 'कॉल का समय', 'কলের সময়');
   String get afterEachCall =>
       pick('After each call', 'हर कॉल के बाद', 'প্রতিটি কলের পরে');
-  String get optScoreLead =>
-      pick('Score the customer', 'ग्राहक को स्कोर करें', 'গ্রাহকের স্কোর দিন');
+  String get optScoreLead => pick(
+    'Rate how likely they are to buy',
+    'बताएँ कि उनके खरीदने की कितनी संभावना है',
+    'ওঁদের কেনার সম্ভাবনা কতটা, তা জানান',
+  );
   String get optWhatsapp => pick(
     'Write a WhatsApp message',
     'WhatsApp मैसेज बनाएँ',
@@ -112,14 +115,14 @@ extension SCampaign on S {
     '$hours · $name নিজেকে AI সহকারী হিসেবে পরিচয় দেবে',
   );
   String noConsentSkipped(int n) => pick(
-    '$n customers will be skipped (no permission recorded)',
-    '$n ग्राहक छोड़ दिए जाएँगे (सहमति दर्ज नहीं)',
-    '$n টি গ্রাহক বাদ যাবে (সম্মতি নথিভুক্ত নেই)',
+    '$n customers won\'t be called: they haven\'t said yes to calls yet',
+    '$n ग्राहकों को कॉल नहीं होगी: उन्होंने अभी कॉल के लिए हाँ नहीं कहा',
+    '$n জন গ্রাহককে কল করা হবে না: ওঁরা এখনও কলে রাজি হননি',
   );
   String noConsentWarn(int n) => pick(
-    '$n customers have no permission recorded',
-    '$n ग्राहकों की सहमति दर्ज नहीं है',
-    '$n টি গ্রাহকের সম্মতি নথিভুক্ত নেই',
+    '$n customers haven\'t said yes to calls yet',
+    '$n ग्राहकों ने अभी कॉल के लिए हाँ नहीं कहा',
+    '$n জন গ্রাহক এখনও কলে রাজি হননি',
   );
   String get consentAttest => pick(
     'I confirm these contacts asked to be contacted',

@@ -215,13 +215,13 @@ class _Body extends ConsumerWidget {
                   if (l.attributes[a.key] != null)
                     LeadDetailRow(
                       s.data(a.label),
-                      _fmtAttr(a.key, l.attributes[a.key]!),
+                      s.data(_fmtAttr(a.key, l.attributes[a.key]!)),
                     ),
                 for (final e in l.attributes.entries)
                   if (!wf.attributes.any((a) => a.key == e.key))
                     LeadDetailRow(
-                      s.data(_titleCase(e.key)),
-                      _fmtAttr(e.key, e.value),
+                      s.attributeLabel(e.key),
+                      s.data(_fmtAttr(e.key, e.value)),
                     ),
                 if (l.language != null)
                   LeadDetailRow(s.language, s.data(l.language!)),
@@ -378,9 +378,6 @@ class _Body extends ConsumerWidget {
     );
   }
 }
-
-String _titleCase(String k) =>
-    k.isEmpty ? k : k[0].toUpperCase() + k.substring(1).replaceAll('_', ' ');
 
 String _fmtAttr(String key, String v) =>
     key == 'budget' && int.tryParse(v) != null ? Fmt.inr(int.parse(v)) : v;

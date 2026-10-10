@@ -35,6 +35,27 @@ void main() {
   OnboardingDraft draft() => container.read(onboardingProvider);
 
   group('OnboardingDraft', () {
+    test('employee name follows the chosen voice unless typed', () {
+      const coaching = OnboardingDraft(category: BusinessCategory.coaching);
+      expect(coaching.maleVoiceChosen, isFalse);
+      expect(coaching.resolvedEmployeeName, 'Riya');
+      final male = coaching.copyWith(employeeVoice: maleVoice);
+      expect(male.maleVoiceChosen, isTrue);
+      expect(male.resolvedEmployeeName, OnboardingDraft.defaultMaleName);
+      expect(
+        male.copyWith(employeeName: ' Kabir ').resolvedEmployeeName,
+        'Kabir',
+      );
+      final appt = const OnboardingDraft().copyWith(
+        skills: {EmployeeSkill.bookAppointments},
+      );
+      expect(appt.resolvedEmployeeName, 'Arjun');
+      expect(
+        appt.copyWith(employeeVoice: femaleVoice).resolvedEmployeeName,
+        OnboardingDraft.defaultFemaleName,
+      );
+    });
+
     test('defaults are empty and template falls back to the last one', () {
       const d = OnboardingDraft();
       expect(d.category, isNull);

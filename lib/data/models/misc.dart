@@ -134,7 +134,7 @@ class Subscription {
   );
 
   factory Subscription.fromJson(Json j) => Subscription(
-    planName: jStr(j, 'plan_name', 'Founding Plan'),
+    planName: jStr(j, 'plan_name', 'Starter'),
     includedMinutes: jInt(j, 'included_minutes'),
     renewsAt: jDate(j, 'renews_at') ?? DateTime.now(),
     priceInr: jInt(j, 'price_inr'),

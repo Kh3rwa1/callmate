@@ -1,14 +1,9 @@
-/// Onboarding flow screens, one per file.
+/// First-run screens, one per file.
 ///
-/// Flow: Welcome → Business type → Employee skills → Business name → Offer →
-///       Teach → Meet your AI employee → Test → Home
+/// Flow (3 steps): Business type → Business name + voice → Hear your AI →
+/// Home. Skills, address, offer details and teaching are optional, later.
 library;
 
-export 'business_details_screen.dart';
 export 'business_type_screen.dart';
-export 'create_agent_screen.dart';
-export 'employee_skills_screen.dart';
-export 'first_call_screen.dart';
-export 'offer_details_screen.dart';
-export 'teach_ai_onboarding_screen.dart';
-export 'welcome_screen.dart';
+export 'hear_ai_screen.dart';
+export 'name_voice_screen.dart';
