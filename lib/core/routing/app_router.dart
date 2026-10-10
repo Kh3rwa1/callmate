@@ -275,7 +275,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/usage',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (_, s) => _page(s, const UsageScreen()),
+        pageBuilder: (_, s) => _page(
+          s,
+          UsageScreen(openTopup: s.uri.queryParameters['topup'] == '1'),
+        ),
       ),
       GoRoute(
         path: '/demo',

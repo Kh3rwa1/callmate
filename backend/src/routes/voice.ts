@@ -8,6 +8,8 @@ import { consentEventStatement, CONSENT_TEXT_VERSIONS } from '../services/consen
 import { sendBusinessPushNotification } from '../services/fcm';
 import { billableMinutes, claimWebhookEvent, releaseWebhookEvent, recordCallUsage } from '../services/billing';
 import { MAX_DIAL_ATTEMPTS, requeueLead, maybeCompleteCampaign, sarvamWebhookToken } from '../services/campaign_queue';
+import { RETRY_SPACING_SECONDS, isInvalidNumberOutcome, isRetryableOutcome } from '../services/call_outcomes';
+import { callDurationSeconds } from '../services/economics';
 import { isAllowedSarvamPath } from '../services/sarvam_proxy_guard';
 import { hitRateLimit } from '../utils/rate_limit';
 import { retrieveKnowledge } from '../services/knowledge';
@@ -33,6 +35,8 @@ const CONNECTED_STATUSES = ['completed', 'connected', 'answered', 'ended'];
 const TERMINAL_FAILURE_STATUSES = new Set([
   'no_answer', 'no-answer', 'not_answered', 'busy', 'failed', 'not_reached', 'unreachable',
   'cancelled', 'canceled', 'rejected', 'declined', 'timeout', 'error',
+  // Never billed; voicemail / invalid numbers are also never retried (services/call_outcomes.ts).
+  'voicemail', 'answering_machine', 'machine_detected', 'invalid_number', 'invalid', 'not_reachable', 'number_unreachable',
 ]);
 
 /** QA accounts listed in the VOICE_UNLIMITED_EMAILS secret skip the session cap. */
@@ -669,8 +673,11 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     const leadName = lead?.name || call.lead_name || 'Customer';
 
     // 3. Billing calculation
-    const bill = billableMinutes(finalStatus, data.duration_seconds ?? data.duration);
-    await recordCallUsage(c.env, businessId, callId, bill.minutes, bill.seconds);
+    // Billing: connected calls >= 10 s pay ceil(seconds / 60); everything else bills 0 minutes,
+    // while the ledger still records our cost of the real duration (services/billing.ts).
+    const rawDuration = data.duration_seconds ?? data.duration;
+    const bill = billableMinutes(finalStatus, rawDuration);
+    await recordCallUsage(c.env, businessId, callId, bill.minutes, bill.seconds, callDurationSeconds(rawDuration));
     if (bill.flagged) {
       console.warn(JSON.stringify({ msg: 'call_duration_missing_flagged', callId, businessId, finalStatus }));
     }
@@ -750,12 +757,18 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
         ).bind(norm.temperature, norm.score, norm.summary, objections, norm.next_action, callbackAt, leadId, businessId)
       );
     } else {
+      // Invalid / unreachable number: campaigns skip the lead until its phone is edited.
+      const phoneInvalid = isInvalidNumberOutcome(rawStatus, data.failure_reason);
+      if (phoneInvalid) {
+        console.warn(JSON.stringify({ msg: 'lead_phone_invalid', callId, businessId, status: rawStatus }));
+      }
       statements.push(
         c.env.DB.prepare(
           `UPDATE leads SET
-            status = 'not_reached', updated_at = datetime('now')
+            status = 'not_reached', phone_invalid = CASE WHEN ? = 1 THEN 1 ELSE phone_invalid END,
+            updated_at = datetime('now')
            WHERE id = ? AND business_id = ?`
-        ).bind(leadId, businessId)
+        ).bind(phoneInvalid ? 1 : 0, leadId, businessId)
       );
     }
 
@@ -816,7 +829,9 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
 
       if (cl && cl.status === 'calling') {
         const connected = bill.minutes > 0 || ['completed', 'connected', 'answered'].includes(finalStatus);
-        const next = connected ? 'completed' : (cl.attempts >= MAX_DIAL_ATTEMPTS ? 'failed' : 'retry_pending');
+        // Retry only busy / no-answer, at most MAX_DIAL_ATTEMPTS dials (1 + 2 retries), >= 3 h apart.
+        const retry = !connected && isRetryableOutcome(finalStatus) && cl.attempts < MAX_DIAL_ATTEMPTS;
+        const next = connected ? 'completed' : (retry ? 'retry_pending' : 'failed');
         await c.env.DB.batch([
           c.env.DB.prepare('UPDATE campaign_leads SET status = ? WHERE call_id = ?').bind(next, callId),
           c.env.DB.prepare(`UPDATE campaigns SET
@@ -829,7 +844,7 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
         ]);
 
         if (next === 'retry_pending') {
-          await requeueLead(c.env, cl.campaign_id, businessId, cl.lead_id, 2 * 60 * 60, webhookOrigin); // retry no-answers after 2h
+          await requeueLead(c.env, cl.campaign_id, businessId, cl.lead_id, RETRY_SPACING_SECONDS, webhookOrigin);
         }
 
         // 6. Check whether the campaign is finished

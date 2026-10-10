@@ -926,22 +926,51 @@ class MockBackend implements BackendEvents {
     return lead;
   }
 
-  /// Demo: what the Razorpay webhook does on a verified payment – plan
-  /// active, minutes reset, one more month.
-  void simulatePlanPayment() {
+  /// Demo: what the Razorpay webhook does on a verified payment for
+  /// [planId] (a catalogue id). Plans: active, minutes reset, one more month
+  /// (annual: re-granted monthly for a year). Top-ups: extra minutes on the
+  /// active plan. Returns false (nothing changes) for a top-up without an
+  /// active plan, like the server's `plan_not_active`.
+  bool simulatePlanPayment({String planId = 'starter'}) {
     final now = DateTime.now();
+    final item = [
+      ...CheckoutPlan.defaultPlans,
+      ...CheckoutPlan.defaultTopups,
+    ].firstWhere((p) => p.planId == planId, orElse: () => const CheckoutPlan());
+    final sub = usage.subscription;
+    if (item.isTopup) {
+      if (sub.status != PlanStatus.active) return false;
+      usage = usage.copyWith(
+        subscription: sub.copyWith(
+          topupMinutes: sub.topupMinutes + item.includedMinutes,
+        ),
+      );
+      emitChanged('usage');
+      return true;
+    }
+    final base = CheckoutPlan.defaultPlans.firstWhere(
+      (p) => p.planId == item.basePlanId,
+    );
     usage = usage.copyWith(
       minutesUsed: 0,
-      subscription: usage.subscription.copyWith(
-        planName: 'Starter',
-        planId: 'starter',
+      subscription: Subscription(
+        planName: base.name,
+        planId: base.planId,
         status: PlanStatus.active,
-        includedMinutes: 1000,
-        priceInr: 4999,
+        includedMinutes: base.includedMinutes,
+        renewsAt: DateTime(now.year, now.month + 1, now.day),
+        priceInr: base.priceInr,
         currentPeriodEnd: DateTime(now.year, now.month + 1, now.day),
+        annual: item.isAnnual,
+        annualUntil: item.isAnnual
+            ? DateTime(now.year + 1, now.month, now.day)
+            : null,
+        // Bonus survives renewals (simplified: the mock never consumes it).
+        bonusMinutes: sub.bonusMinutes,
       ),
     );
     emitChanged('usage');
+    return true;
   }
 
   /// Demo: plan state for trying the trial / payment-due banners.

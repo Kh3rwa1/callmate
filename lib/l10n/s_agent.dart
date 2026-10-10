@@ -147,9 +147,64 @@ extension SAgent on S {
     'প্ল্যান আপগ্রেড করতে আমাদের টিম WhatsApp-এ যোগাযোগ করবে।',
   );
   String get onlyConnectedCount => pick(
-    'Only connected minutes count.',
-    'सिर्फ़ जुड़ी हुई कॉल के मिनट गिने जाते हैं।',
-    'শুধু কথা হওয়া কলের মিনিট গোনা হয়।',
+    'Only connected calls of 10 seconds or more count. Unanswered calls and voicemail are free.',
+    'सिर्फ़ 10 सेकंड या उससे लंबी जुड़ी हुई कॉल गिनी जाती हैं। बिना उठाई कॉल और वॉइसमेल मुफ़्त हैं।',
+    'শুধু 10 সেকেন্ড বা তার বেশি কথা হওয়া কল গোনা হয়। না-ধরা কল আর ভয়েসমেল ফ্রি।',
+  );
+
+  // ------------------------------------------------------------ Plans & top-ups
+  String get choosePlan =>
+      pick('Choose a plan', 'प्लान चुनें', 'প্ল্যান বেছে নিন');
+  String get changePlan => pick('Change plan', 'प्लान बदलें', 'প্ল্যান বদলান');
+  String get billingMonthly => pick('Monthly', 'मासिक', 'মাসিক');
+  String get billingYearly => pick('Yearly', 'सालाना', 'বার্ষিক');
+  String get twoMonthsFree =>
+      pick('2 months free', '2 महीने मुफ़्त', '2 মাস ফ্রি');
+  String minutesPerMonth(String n) =>
+      pick('$n minutes / month', '$n मिनट / महीना', '$n মিনিট / মাস');
+  String pricePerMonth(String price) =>
+      pick('$price / month', '$price / महीना', '$price / মাস');
+  String pricePerYear(String price) =>
+      pick('$price / year', '$price / साल', '$price / বছর');
+  String priceWithGst(String base, String gst) =>
+      pick('$base + $gst GST', '$base + $gst GST', '$base + $gst GST');
+  String get priceLabel => pick('Price', 'कीमत', 'দাম');
+  String gstLabel(String pct) =>
+      pick('GST ($pct%)', 'GST ($pct%)', 'GST ($pct%)');
+  String get totalToPay => pick('Total to pay', 'कुल भुगतान', 'মোট পেমেন্ট');
+  String payAmount(String total) =>
+      pick('Pay $total', '$total चुकाएँ', '$total পেমেন্ট করুন');
+  String get currentPlanTag =>
+      pick('Current plan', 'मौजूदा प्लान', 'বর্তমান প্ল্যান');
+  String get buyMoreMinutes =>
+      pick('Buy more minutes', 'और मिनट ख़रीदें', 'আরও মিনিট কিনুন');
+  String get buyMinutes => pick('Buy minutes', 'मिनट ख़रीदें', 'মিনিট কিনুন');
+  String topupMinutes(String n) => pick('+$n minutes', '+$n मिनट', '+$n মিনিট');
+  String get topupValidity => pick(
+    'Extra minutes stay valid until your plan renews.',
+    'अतिरिक्त मिनट प्लान रिन्यू होने तक चलेंगे।',
+    'অতিরিক্ত মিনিট প্ল্যান রিনিউ হওয়া পর্যন্ত থাকবে।',
+  );
+  String get topupNeedsActivePlan => pick(
+    'Extra minutes can be added to an active plan. Buy or renew a plan first.',
+    'अतिरिक्त मिनट सिर्फ़ चालू प्लान में जुड़ते हैं। पहले प्लान ख़रीदें या रिन्यू करें।',
+    'অতিরিক্ত মিনিট শুধু চালু প্ল্যানে যোগ হয়। আগে প্ল্যান কিনুন বা রিনিউ করুন।',
+  );
+  String get topupAdded => pick(
+    'Extra minutes added ✓',
+    'अतिरिक्त मिनट जुड़ गए ✓',
+    'অতিরিক্ত মিনিট যোগ হয়েছে ✓',
+  );
+  String get addedMinutes =>
+      pick('Added minutes', 'जोड़े गए मिनट', 'যোগ করা মিনিট');
+  String get bonusMinutesLabel =>
+      pick('Bonus minutes', 'बोनस मिनट', 'বোনাস মিনিট');
+  String get yearlyPlanUntil =>
+      pick('Yearly plan until', 'सालाना प्लान तक', 'বার্ষিক প্ল্যান পর্যন্ত');
+  String bannerPaidLow(String n) => pick(
+    'Only $n calling minutes left this month.',
+    'इस महीने सिर्फ़ $n कॉल मिनट बचे हैं।',
+    'এই মাসে মাত্র $n কলের মিনিট বাকি।',
   );
   String get planTrial => pick('Free trial', 'फ़्री ट्रायल', 'ফ্রি ট্রায়াল');
   String get planActive => pick('Active', 'चालू', 'চালু');

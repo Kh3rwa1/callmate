@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../../core/network/api_client.dart' show ApiException;
 
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/phone.dart';
@@ -523,7 +524,13 @@ class MockUsageRepository implements UsageRepository {
   Future<Usage> get() => _lag(() => b.usage);
   @override
   Future<String?> checkout({String planId = 'starter'}) => _lag(() {
-    b.simulatePlanPayment();
+    if (!b.simulatePlanPayment(planId: planId)) {
+      throw const ApiException(
+        'Extra minutes can be added to an active plan. Buy or renew a plan first.',
+        statusCode: 409,
+        code: 'plan_not_active',
+      );
+    }
     return null;
   });
 }
