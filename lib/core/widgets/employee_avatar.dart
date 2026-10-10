@@ -135,7 +135,7 @@ class _EmployeeAvatarState extends State<EmployeeAvatar>
               style: TextStyle(
                 color: ink,
                 fontSize: size * (letters.characters.length > 1 ? 0.36 : 0.44),
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
                 letterSpacing: -0.5,
                 height: 1,
               ),

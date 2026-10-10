@@ -37,9 +37,10 @@ class AppShadows {
         ]
       : const [
           BoxShadow(
-            color: Color(0x0A14121F),
-            blurRadius: 24,
-            offset: Offset(0, 8),
+            color: Color(0x0D1A2A5E),
+            blurRadius: 30,
+            spreadRadius: -6,
+            offset: Offset(0, 12),
           ),
           BoxShadow(
             color: Color(0x05000000),
@@ -82,9 +83,9 @@ class AppShadows {
 class AppTheme {
   const AppTheme._();
 
-  static const fontFamily = 'PlusJakartaSans';
+  static const fontFamily = 'Geist';
 
-  /// Devanagari and Bengali glyphs: Plus Jakarta Sans covers Latin only.
+  /// Devanagari and Bengali glyphs: Geist covers Latin only.
   static const fontFallback = ['Hind', 'HindSiliguri'];
 
   static ThemeData light() => _build(AppPalette.light);
@@ -139,52 +140,66 @@ class AppTheme {
           displayColor: p.ink,
         )
         .copyWith(
+          // Display sizes sit at semibold with tight tracking: confident
+          // without shouting. Body copy stays regular weight for calm.
           displayMedium: s(
-            44,
-            FontWeight.w800,
+            42,
+            FontWeight.w600,
             color: p.ink,
-            height: 1.05,
-            letterSpacing: -1.6,
+            height: 1.04,
+            letterSpacing: -1.7,
           ),
           displaySmall: s(
-            36,
-            FontWeight.w800,
+            34,
+            FontWeight.w600,
             color: p.ink,
             height: 1.08,
-            letterSpacing: -1.2,
+            letterSpacing: -1.25,
           ),
           headlineMedium: s(
             30,
-            FontWeight.w800,
+            FontWeight.w600,
             color: p.ink,
             height: 1.1,
-            letterSpacing: -1.0,
+            letterSpacing: -1.05,
           ),
           headlineSmall: s(
-            24,
-            FontWeight.w800,
+            23,
+            FontWeight.w600,
             color: p.ink,
-            height: 1.15,
+            height: 1.18,
             letterSpacing: -0.6,
           ),
-          titleLarge: s(20, FontWeight.w800, color: p.ink, letterSpacing: -0.4),
+          titleLarge: s(
+            20,
+            FontWeight.w600,
+            color: p.ink,
+            height: 1.25,
+            letterSpacing: -0.45,
+          ),
           titleMedium: s(
             17,
-            FontWeight.w700,
+            FontWeight.w600,
             color: p.ink,
-            letterSpacing: -0.2,
+            height: 1.3,
+            letterSpacing: -0.25,
           ),
-          titleSmall: s(15, FontWeight.w700, color: p.ink),
-          bodyLarge: s(16, FontWeight.w500, color: p.ink, height: 1.5),
-          bodyMedium: s(15, FontWeight.w500, color: p.inkSoft, height: 1.45),
-          bodySmall: s(13, FontWeight.w500, color: p.inkFaint, height: 1.4),
-          labelLarge: s(16, FontWeight.w700),
-          labelMedium: s(13, FontWeight.w700, color: p.inkSoft),
+          titleSmall: s(
+            15,
+            FontWeight.w600,
+            color: p.ink,
+            letterSpacing: -0.15,
+          ),
+          bodyLarge: s(16, FontWeight.w400, color: p.ink, height: 1.5),
+          bodyMedium: s(15, FontWeight.w400, color: p.inkSoft, height: 1.5),
+          bodySmall: s(13, FontWeight.w400, color: p.inkFaint, height: 1.45),
+          labelLarge: s(16, FontWeight.w600, letterSpacing: -0.1),
+          labelMedium: s(13, FontWeight.w500, color: p.inkSoft),
           labelSmall: s(
-            12,
-            FontWeight.w800,
+            11.5,
+            FontWeight.w600,
             color: p.inkFaint,
-            letterSpacing: 1.1,
+            letterSpacing: 0.9,
           ),
         );
 
@@ -348,10 +363,10 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: p.inverse,
-        actionTextColor: p.isDark ? p.brandFill : const Color(0xFF7FB4FF),
+        backgroundColor: p.strong,
+        actionTextColor: const Color(0xFF8DBBFF),
         contentTextStyle: text.bodyMedium?.copyWith(
-          color: p.onInverse,
+          color: Colors.white,
           fontWeight: FontWeight.w600,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -385,8 +400,10 @@ class AppTheme {
         inactiveTrackColor: p.brandSoft,
         thumbColor: p.brand,
         overlayColor: p.brand.withValues(alpha: 0.12),
-        valueIndicatorColor: p.inverse,
-        valueIndicatorTextStyle: text.labelMedium?.copyWith(color: p.onInverse),
+        valueIndicatorColor: p.strong,
+        valueIndicatorTextStyle: text.labelMedium?.copyWith(
+          color: Colors.white,
+        ),
         trackHeight: 6,
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
@@ -395,10 +412,10 @@ class AppTheme {
       ),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
-          color: p.inverse,
+          color: p.strong,
           borderRadius: BorderRadius.circular(10),
         ),
-        textStyle: text.bodySmall?.copyWith(color: p.onInverse),
+        textStyle: text.bodySmall?.copyWith(color: Colors.white),
       ),
       badgeTheme: BadgeThemeData(
         backgroundColor: p.hotFill,

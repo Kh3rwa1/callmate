@@ -87,7 +87,7 @@ class AppPalette {
 
   final Color mascotHalo;
 
-  /// Primary buttons, selected chips, snackbars: ink in light, paper in dark.
+  /// Primary buttons and selected chips: the brand blue, with white on top.
   final Color inverse;
   final Color onInverse;
 
@@ -107,14 +107,14 @@ class AppPalette {
 
   static const light = AppPalette(
     brightness: Brightness.light,
-    background: Color(0xFFF4F7FC),
+    background: Color(0xFFF6F8FC),
     surface: Color(0xFFFFFFFF),
     surfaceMuted: Color(0xFFEDF2FA),
-    border: Color(0xFFDFE6F2),
+    border: Color(0xFFE4E9F2),
     hairline: Color(0x0F000000),
-    ink: Color(0xFF0E173A),
-    inkSoft: Color(0xFF4A5470),
-    inkFaint: Color(0xFF5F6880),
+    ink: Color(0xFF252E73),
+    inkSoft: Color(0xFF5A6597),
+    inkFaint: Color(0xFF5E679A),
     brand: Color(0xFF0058E6),
     brandSoft: Color(0xFFE5EFFF),
     brandDeep: Color(0xFF003FB8),
@@ -135,12 +135,12 @@ class AppPalette {
     whatsappSoft: Color(0xFFE3F6EA),
     whatsappFill: Color(0xFF0F7A3F),
     mascotHalo: Color(0xFFE0F0FA),
-    inverse: Color(0xFF0E173A),
+    inverse: Color(0xFF1D5BF0),
     onInverse: Color(0xFFFFFFFF),
-    strong: Color(0xFF0B1430),
+    strong: Color(0xFF1B2160),
     bubble: Color(0xFFE7F8DD),
     bubbleBorder: Color(0xFFCDEBC0),
-    shadow: Color(0xFF0E173A),
+    shadow: Color(0xFF252E73),
     skeletonHighlight: Color(0xFFF8FAFE),
   );
 
@@ -174,8 +174,8 @@ class AppPalette {
     whatsappSoft: Color(0xFF123222),
     whatsappFill: Color(0xFF117A40),
     mascotHalo: Color(0xFF16244A),
-    inverse: Color(0xFFEEF2FA),
-    onInverse: Color(0xFF0E173A),
+    inverse: Color(0xFF3B74FF),
+    onInverse: Color(0xFFFFFFFF),
     strong: Color(0xFF16213A),
     bubble: Color(0xFF173323),
     bubbleBorder: Color(0xFF24503A),
@@ -247,10 +247,19 @@ class AppColors {
 
   /// Fixed brand gradient of the hero card (identical in both modes).
   static const heroGradient = [
-    Color(0xFF2E7DFF),
-    Color(0xFF0562FD),
-    Color(0xFF0038C8),
+    Color(0xFF3D8BFF),
+    Color(0xFF1F5BF2),
+    Color(0xFF4A30D9),
   ];
+
+  /// Primary call-to-action fill: a soft diagonal sweep of the brand blue.
+  static const ctaGradient = [Color(0xFF3D86FF), Color(0xFF3550EE)];
+
+  /// Page titles: brand blue drifting into violet. Both ends keep AA
+  /// contrast on every light surface; dark mode uses the pastel pair.
+  static List<Color> get titleGradient => isDark
+      ? const [Color(0xFF9CC3FF), Color(0xFFC9B8FF)]
+      : const [Color(0xFF1D4FD8), Color(0xFF6A2FD6)];
 
   /// Status dot on dark/brand surfaces.
   static const liveDot = Color(0xFF86EFAC);

@@ -176,9 +176,9 @@ class Reveal extends StatefulWidget {
     required this.child,
     this.index = 0,
     this.id,
-    this.offset = 14,
-    this.duration = const Duration(milliseconds: 460),
-    this.stagger = const Duration(milliseconds: 45),
+    this.offset = 18,
+    this.duration = const Duration(milliseconds: 560),
+    this.stagger = const Duration(milliseconds: 60),
     this.maxDelayed = 8,
   });
 
@@ -242,11 +242,12 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
     // ends would remount the child and drop its state.
     builder: (_, child) {
       final v = _t.value.clamp(0.0, 1.0);
+      // Opacity leads slightly so the lift and settle read as one gesture.
       return Opacity(
-        opacity: v,
+        opacity: Curves.easeOut.transform(v),
         child: Transform.translate(
           offset: Offset(0, widget.offset * (1 - v)),
-          child: child,
+          child: Transform.scale(scale: 0.98 + 0.02 * v, child: child),
         ),
       );
     },

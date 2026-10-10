@@ -18,6 +18,7 @@ import '../../data/models/models.dart';
 import '../../data/templates/templates.dart';
 import '../../l10n/l10n.dart';
 import '../../services/voice/voice_persona.dart';
+import '../../core/widgets/brand_widgets.dart';
 
 /// AI Employee – "What can my AI employee do?" plus the app's settings.
 class AgentScreen extends ConsumerWidget {
@@ -107,7 +108,7 @@ class _Body extends ConsumerWidget {
           TextButton(
             style: TextButton.styleFrom(
               foregroundColor: AppColors.hot,
-              textStyle: const TextStyle(fontWeight: FontWeight.w800),
+              textStyle: const TextStyle(fontWeight: FontWeight.w600),
             ),
             onPressed: () {
               Haptics.warn();
@@ -152,7 +153,7 @@ class _Body extends ConsumerWidget {
       children: [
         Semantics(
           header: true,
-          child: Text(s.aiEmployeeTitle, style: t.headlineMedium),
+          child: GradientText(s.aiEmployeeTitle, style: t.headlineMedium),
         ),
         const SizedBox(height: 18),
         reveal(_Hero(agent: a)),
@@ -315,7 +316,7 @@ class _Hero extends StatelessWidget {
                     Text(
                       a.name,
                       style: t.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

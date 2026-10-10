@@ -39,7 +39,7 @@ class CampaignStatTile extends StatelessWidget {
                 duration: const Duration(milliseconds: 500),
                 style: t.headlineMedium?.copyWith(
                   color: color,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

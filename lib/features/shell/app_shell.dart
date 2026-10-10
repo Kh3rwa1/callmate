@@ -203,8 +203,8 @@ class _NavItem extends StatelessWidget {
               style: (t.labelSmall ?? const TextStyle()).copyWith(
                 fontSize: 11.5,
                 letterSpacing: 0,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-                color: selected ? AppColors.ink : AppColors.inkFaint,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                color: selected ? AppColors.brand : AppColors.inkFaint,
               ),
               child: Text(
                 data.label,
@@ -239,7 +239,7 @@ class _Badge extends StatelessWidget {
       style: const TextStyle(
         color: Colors.white,
         fontSize: 10,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w600,
         height: 1.1,
         fontFeatures: [FontFeature.tabularFigures()],
       ),

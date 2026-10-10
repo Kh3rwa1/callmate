@@ -52,11 +52,48 @@ class BrandWordmark extends StatelessWidget {
         Brand.appName,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
           fontSize: size,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
           color: color ?? AppColors.ink,
           letterSpacing: -0.3,
         ),
       ),
     ],
+  );
+}
+
+/// Text painted with [AppColors.titleGradient] – used for page titles so
+/// headings carry the brand instead of plain ink.
+class GradientText extends StatelessWidget {
+  const GradientText(
+    this.text, {
+    super.key,
+    this.style,
+    this.maxLines,
+    this.overflow,
+    this.textAlign,
+    this.colors,
+  });
+  final String text;
+  final TextStyle? style;
+  final int? maxLines;
+  final TextOverflow? overflow;
+  final TextAlign? textAlign;
+  final List<Color>? colors;
+
+  @override
+  Widget build(BuildContext context) => ShaderMask(
+    blendMode: BlendMode.srcIn,
+    shaderCallback: (bounds) => LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: colors ?? AppColors.titleGradient,
+    ).createShader(Offset.zero & bounds.size),
+    child: Text(
+      text,
+      style: style,
+      maxLines: maxLines,
+      overflow: overflow,
+      textAlign: textAlign,
+    ),
   );
 }

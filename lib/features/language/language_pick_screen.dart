@@ -155,7 +155,7 @@ class _LangCard extends StatelessWidget {
                       Text(
                         name,
                         style: t.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 2),

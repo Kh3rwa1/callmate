@@ -98,7 +98,7 @@ class ScoreBadge extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: style.fg,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     fontSize: large ? 15 : 12.5,
                     letterSpacing: 0.1,
                     fontFeatures: const [FontFeature.tabularFigures()],
@@ -219,7 +219,7 @@ class LeadAvatar extends StatelessWidget {
         child: Text(
           initials.toUpperCase(),
           style: TextStyle(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             color: temperature == LeadTemperature.unknown
                 ? AppColors.inkSoft
                 : style.fg,

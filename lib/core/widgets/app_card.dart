@@ -109,7 +109,7 @@ class SectionLabel extends StatelessWidget {
               text,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontSize: 18,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
                 letterSpacing: -0.3,
               ),
             ),
@@ -164,7 +164,7 @@ class Pill extends StatelessWidget {
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: fg,
                 fontSize: dense ? 11.5 : 12.5,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -206,7 +206,7 @@ class StatusDot extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: textColor ?? c,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -321,60 +321,161 @@ class PrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = !loading && onPressed != null;
     final fg = color == null ? AppColors.onInverse : Colors.white;
+    final br = BorderRadius.circular(AppRadius.button);
+    final glowColor = color ?? AppColors.ctaGradient.last;
     return Pressable(
       enabled: enabled,
       scale: 0.965,
-      child: FilledButton(
-        style: color == null
-            ? null
-            : FilledButton.styleFrom(
-                backgroundColor: color,
-                foregroundColor: Colors.white,
-              ),
-        onPressed: enabled
-            ? () {
-                Haptics.press();
-                onPressed!();
-              }
-            : null,
-        child: SwapFade(
-          duration: AppMotion.fast,
-          child: loading
-              ? SizedBox(
-                  key: const ValueKey('loading'),
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.4, color: fg),
+      child: AnimatedContainer(
+        duration: AppMotion.of(context, AppMotion.base),
+        curve: AppMotion.standard,
+        decoration: BoxDecoration(
+          borderRadius: br,
+          gradient: enabled && color == null
+              ? const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: AppColors.ctaGradient,
                 )
-              : Padding(
-                  key: const ValueKey('label'),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (icon != null) ...[
-                        Icon(icon, size: 21),
-                        const SizedBox(width: 8),
-                      ],
-                      Flexible(
-                        child: Text(
-                          label,
-                          maxLines: 2,
-                          textAlign: TextAlign.center,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+              : null,
+          boxShadow: enabled ? AppShadows.glow(glowColor) : null,
+        ),
+        child: _Sheen(
+          enabled: enabled,
+          radius: br,
+          child: FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: color ?? Colors.transparent,
+              foregroundColor: fg,
+              shadowColor: Colors.transparent,
+            ),
+            onPressed: enabled
+                ? () {
+                    Haptics.press();
+                    onPressed!();
+                  }
+                : null,
+            child: SwapFade(
+              duration: AppMotion.fast,
+              child: loading
+                  ? SizedBox(
+                      key: const ValueKey('loading'),
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        color: fg,
                       ),
-                      if (trailingArrow) ...[
-                        const SizedBox(width: 8),
-                        const Icon(Icons.arrow_forward_rounded, size: 20),
-                      ],
-                    ],
-                  ),
-                ),
+                    )
+                  : Padding(
+                      key: const ValueKey('label'),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (icon != null) ...[
+                            Icon(icon, size: 21),
+                            const SizedBox(width: 8),
+                          ],
+                          Flexible(
+                            child: Text(
+                              label,
+                              maxLines: 2,
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (trailingArrow) ...[
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward_rounded, size: 20),
+                          ],
+                        ],
+                      ),
+                    ),
+            ),
+          ),
         ),
       ),
     );
   }
+}
+
+/// One soft band of light that crosses a CTA shortly after it appears –
+/// a quiet "this is the thing to press". Plays once; never loops.
+class _Sheen extends StatefulWidget {
+  const _Sheen({
+    required this.child,
+    required this.enabled,
+    required this.radius,
+  });
+  final Widget child;
+  final bool enabled;
+  final BorderRadius radius;
+
+  @override
+  State<_Sheen> createState() => _SheenState();
+}
+
+class _SheenState extends State<_Sheen> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+  bool _scheduled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_scheduled || !widget.enabled || AppMotion.reduced(context)) return;
+    _scheduled = true;
+    Future.delayed(const Duration(milliseconds: 650), () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    children: [
+      widget.child,
+      Positioned.fill(
+        child: IgnorePointer(
+          child: ClipRRect(
+            borderRadius: widget.radius,
+            child: AnimatedBuilder(
+              animation: _c,
+              builder: (context, _) {
+                if (!_c.isAnimating) return const SizedBox.shrink();
+                final t = AppMotion.standard.transform(_c.value);
+                return FractionalTranslation(
+                  translation: Offset(-1.2 + 2.4 * t, 0),
+                  child: const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment(-1, -0.4),
+                        end: Alignment(1, 0.4),
+                        colors: [
+                          Color(0x00FFFFFF),
+                          Color(0x38FFFFFF),
+                          Color(0x00FFFFFF),
+                        ],
+                        stops: [0.3, 0.5, 0.7],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
 }
 
 class SecondaryButton extends StatelessWidget {
@@ -517,6 +618,15 @@ class AppFilterChip extends StatelessWidget {
                   color: selected ? AppColors.inverse : AppColors.border,
                   width: 1.2,
                 ),
+                boxShadow: selected
+                    ? [
+                        BoxShadow(
+                          color: AppColors.inverse.withValues(alpha: 0.28),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
+                        ),
+                      ]
+                    : null,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,

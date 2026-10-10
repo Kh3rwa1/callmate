@@ -7,6 +7,7 @@ import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../l10n/l10n.dart';
+import '../../core/widgets/brand_widgets.dart';
 
 /// Shared onboarding frame: progress, back, scrollable body, sticky CTA.
 ///
@@ -86,7 +87,7 @@ class OnboardingScaffold extends StatelessWidget {
                     Reveal(
                       child: Semantics(
                         header: true,
-                        child: Text(title, style: t.headlineMedium),
+                        child: GradientText(title, style: t.headlineMedium),
                       ),
                     ),
                     if (subtitle != null) ...[

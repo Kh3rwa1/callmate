@@ -50,12 +50,11 @@ Future<void> _loadFamily(String family, String file, List<String> weights) {
 }
 
 Future<void> _loadFonts() async {
-  await _loadFamily('PlusJakartaSans', 'PlusJakartaSans', [
+  await _loadFamily('Geist', 'Geist', [
     'Regular',
     'Medium',
     'SemiBold',
     'Bold',
-    'ExtraBold',
   ]);
   // Devanagari and Bengali fallbacks.
   const indic = ['Regular', 'Medium', 'SemiBold', 'Bold'];

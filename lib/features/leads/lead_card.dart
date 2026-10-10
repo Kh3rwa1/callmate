@@ -214,7 +214,7 @@ class _Status extends StatelessWidget {
             s.onCall,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: AppColors.success,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

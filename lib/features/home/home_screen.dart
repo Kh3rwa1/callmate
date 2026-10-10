@@ -14,6 +14,7 @@ import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import '../campaign/campaign_widgets.dart';
 import 'home_widgets.dart';
+import '../../core/widgets/brand_widgets.dart';
 
 /// Home – "What happened today?"
 class HomeScreen extends ConsumerWidget {
@@ -62,7 +63,7 @@ class HomeScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 2),
                             SwapFade(
-                              child: Text(
+                              child: GradientText(
                                 biz?.name ?? s.homeWelcome,
                                 key: ValueKey(biz?.name),
                                 style: t.headlineSmall?.copyWith(
@@ -98,7 +99,7 @@ class HomeScreen extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 5),
                           textStyle: t.labelSmall?.copyWith(
                             fontSize: 10,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w600,
                             letterSpacing: 0,
                           ),
                           offset: const Offset(5, -4),
