@@ -340,3 +340,36 @@ names each dial sends.
   ```
 - **Account deletion** keeps `payments` and `usage_ledger` rows for invoices/GST,
   with PII nulled and `business_id` replaced by a stable `anon_…` pseudonym.
+
+---
+
+## 7. Regulatory operations (TRAI / DPDP)
+
+What the code enforces and what the owner must do: `COMPLIANCE.md`.
+
+- **Someone asks to stop all calls** (email, complaint): add their number on
+  `https://<api domain>/stop` for them. It goes into `global_dnc` (HMAC of the
+  number, keyed by `OTP_PEPPER`, falling back to `ENCRYPTION_KEY`) and no
+  business can dial it again. **Rotating `OTP_PEPPER` orphans every entry**
+  (hashes no longer match): before rotating, keep the old value as the hashing
+  key or re-enter the numbers.
+- **A business keeps calling someone who opted out in a call:** in-call
+  opt-outs are per business (`leads.do_not_call`); check
+  `SELECT * FROM consent_events WHERE lead_id = '…'` and add the number to
+  `/stop` if they want every business blocked.
+- **`platform_frequency_cap`** (409 on a manual call, `rescheduled` in a
+  campaign): the number was rung by 3 other businesses in the last 24h, or this
+  business's campaign already rang it today. Expected; it clears itself.
+- **Retention:** the 10-minute cron clears `transcript`, `recording_url`,
+  `summary` and `raw_metadata` of calls older than `RETENTION_DAYS` (default
+  180, minimum 7), 500 calls per run. Change it in `wrangler.toml` `[vars]`
+  and keep `/legal/privacy` (which shows the value) in step with any notice
+  you gave owners.
+- **Disclosure override:** `SARVAM_DISCLOSURE_OVERRIDE` (`docs/SARVAM_SETUP.md`
+  → Disclosure override). If dials start failing with a 422 mentioning
+  `app_overrides`, unset it and redeploy.
+- **`caller_ids_not_dlt_series` warning** in production logs: the caller IDs in
+  `SARVAM_AGENT_PHONE_NUMBERS` are not TRAI 140/160-series numbers. Owner task:
+  get DLT-registered 140 (promotional) / 160 (service) numbers onto the Sarvam
+  connection, then update the var. `/health/deep` →
+  `compliance.caller_ids_dlt_series` turns `true`.

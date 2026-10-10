@@ -267,6 +267,30 @@ class MockLeadRepository implements LeadRepository {
     () => b.leads.values.where((l) => l.status == LeadStatus.newLead).toList(),
     150,
   );
+
+  /// The mock keeps no history: one event for how the lead was added, plus
+  /// the opt-out if there is one.
+  @override
+  Future<List<ConsentEvent>> consentHistory(String leadId) => _lag(() {
+    final l = b.leads[leadId];
+    if (l == null) throw StateError('Lead not found');
+    final imported = l.source.toLowerCase().contains('import');
+    return [
+      if (l.consent == 'opt_out')
+        ConsentEvent(
+          id: 'ce_${l.id}_opt_out',
+          consentValue: 'opt_out',
+          source: 'in_call_opt_out',
+          createdAt: l.updatedAt,
+        ),
+      ConsentEvent(
+        id: 'ce_${l.id}_added',
+        consentValue: l.consent == 'opt_out' ? 'unknown' : l.consent,
+        source: imported ? 'import_attestation' : 'manual',
+        createdAt: l.createdAt,
+      ),
+    ];
+  }, 120);
 }
 
 class MockCallRepository implements CallRepository {

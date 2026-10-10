@@ -58,6 +58,9 @@ abstract class LeadRepository {
   Future<LeadImportResult> import(List<NewLeadInput> leads);
   Future<Lead> update(Lead lead);
   Future<List<Lead>> newLeads();
+
+  /// Consent evidence trail, newest first.
+  Future<List<ConsentEvent>> consentHistory(String leadId);
 }
 
 enum LeadFilter { all, newLeads, called, hot, warm, callback }

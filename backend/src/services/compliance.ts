@@ -1,10 +1,11 @@
 /**
  * Calling Compliance Guardrails (TRAI & Tenant Calling Rules)
  */
+import { isInGlobalDnc } from './global_dnc';
 
 export interface ComplianceCheckResult {
   allowed: boolean;
-  reason?: 'outside_hours' | 'do_not_call' | 'max_daily_attempts' | 'max_campaign_attempts';
+  reason?: 'outside_hours' | 'do_not_call' | 'max_daily_attempts' | 'max_campaign_attempts' | 'platform_frequency_cap';
   reschedule?: boolean;
   rescheduleDelaySeconds?: number;
 }
@@ -34,6 +35,29 @@ export function clampToTraiWindow(startHour: number, endHour: number): { start: 
  */
 export function allowAnyCallingHours(env: { ENVIRONMENT?: string; DEV_ALLOW_ANY_CALLING_HOURS?: string }): boolean {
   return (env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'test') && env.DEV_ALLOW_ANY_CALLING_HOURS === 'true';
+}
+
+/** Distinct businesses that may call one phone number in a rolling 24h (platform-wide). */
+export const PLATFORM_MAX_BUSINESSES_PER_PHONE = 3;
+
+/**
+ * TRAI: commercial voice calls must come from the 140 (promotional) or 160 (service/transactional)
+ * number series. True only if every configured caller ID is +91140... or +91160...
+ */
+export function callerIdsAreDltSeries(env: { SARVAM_AGENT_PHONE_NUMBERS?: string }): boolean {
+  const numbers = (env.SARVAM_AGENT_PHONE_NUMBERS || '').split(',')
+    .map((n) => n.replace(/[\s()-]/g, '')).filter(Boolean);
+  return numbers.length > 0 && numbers.every((n) => /^\+91(140|160)\d+$/.test(n));
+}
+
+/** Production only: one warning per cron run while the caller IDs are not 140/160 series. */
+export function warnIfCallerIdsNotDlt(env: { ENVIRONMENT?: string; SARVAM_AGENT_PHONE_NUMBERS?: string }): boolean {
+  if (env.ENVIRONMENT !== 'production' || callerIdsAreDltSeries(env)) return false;
+  console.warn(JSON.stringify({
+    msg: 'caller_ids_not_dlt_series',
+    detail: 'SARVAM_AGENT_PHONE_NUMBERS should all be TRAI 140/160-series numbers (COMPLIANCE.md)',
+  }));
+  return true;
 }
 
 /**
@@ -91,6 +115,12 @@ export async function checkCallCompliance(
     skipTraiClamp?: boolean;
     /** Injectable clock for tests. */
     now?: Date;
+    /**
+     * HMAC key for the platform-wide /stop list (globalDncSecret(env)). Every dial path must pass
+     * it. null = no usable key: fail closed (nothing is dialled). Omitted = list not checked
+     * (unit tests of the other rules only).
+     */
+    globalDncSecret?: string | null;
   }
 ): Promise<ComplianceCheckResult> {
   const storedStart = params.hoursStart ?? 10;
@@ -116,8 +146,8 @@ export async function checkCallCompliance(
 
   // 2. Fetch Lead DNC status
   const lead = await db.prepare(
-    'SELECT do_not_call, consent FROM leads WHERE id = ? AND business_id = ?'
-  ).bind(params.leadId, params.businessId).first<{ do_not_call: number; consent: string }>();
+    'SELECT do_not_call, consent, phone FROM leads WHERE id = ? AND business_id = ?'
+  ).bind(params.leadId, params.businessId).first<{ do_not_call: number; consent: string; phone: string }>();
 
   if (!lead || lead.do_not_call === 1 || lead.consent === 'opt_out') {
     return {
@@ -125,6 +155,17 @@ export async function checkCallCompliance(
       reason: 'do_not_call',
       reschedule: false,
     };
+  }
+
+  // 2b. Platform-wide opt-out list (public /stop page): blocks every business.
+  if (params.globalDncSecret !== undefined) {
+    if (params.globalDncSecret === null) {
+      console.error(JSON.stringify({ msg: 'global_dnc_secret_missing', businessId: params.businessId }));
+      return { allowed: false, reason: 'do_not_call', reschedule: false };
+    }
+    if (await isInGlobalDnc(db, params.globalDncSecret, lead.phone)) {
+      return { allowed: false, reason: 'do_not_call', reschedule: false };
+    }
   }
 
   // 3. Max Attempts per day check (max 3 calls per day). A dial the provider rejected
@@ -142,6 +183,30 @@ export async function checkCallCompliance(
       reschedule: true,
       rescheduleDelaySeconds: 24 * 3600, // Try tomorrow
     };
+  }
+
+  // 3b. Platform-wide frequency cap: at most PLATFORM_MAX_BUSINESSES_PER_PHONE distinct businesses
+  // may ring the same number in a rolling 24h, whoever the lead "belongs" to.
+  const otherBusinesses = await db.prepare(
+    `SELECT COUNT(DISTINCT business_id) AS cnt FROM calls
+     WHERE lead_phone = ? AND business_id != ? AND started_at > datetime('now', '-1 day')
+       AND NOT (status = 'failed' AND interaction_id IS NULL)`
+  ).bind(lead.phone, params.businessId).first<{ cnt: number }>();
+  if ((otherBusinesses?.cnt ?? 0) >= PLATFORM_MAX_BUSINESSES_PER_PHONE) {
+    return { allowed: false, reason: 'platform_frequency_cap', reschedule: true, rescheduleDelaySeconds: 24 * 3600 };
+  }
+
+  // 3c. Campaign calls: one call per business per number per rolling 24h (any earlier call today,
+  // manual or campaign, counts). No-answer retries therefore wait for the next day.
+  if (params.campaignId) {
+    const businessToday = await db.prepare(
+      `SELECT COUNT(*) AS cnt FROM calls
+       WHERE lead_phone = ? AND business_id = ? AND started_at > datetime('now', '-1 day')
+         AND NOT (status = 'failed' AND interaction_id IS NULL)`
+    ).bind(lead.phone, params.businessId).first<{ cnt: number }>();
+    if ((businessToday?.cnt ?? 0) >= 1) {
+      return { allowed: false, reason: 'platform_frequency_cap', reschedule: true, rescheduleDelaySeconds: 24 * 3600 };
+    }
   }
 
   // 4. Max Attempts per campaign check (max 3 attempts per campaign)

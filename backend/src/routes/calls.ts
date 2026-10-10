@@ -8,6 +8,8 @@ import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS, hasMinutesHeadroom } fro
 import { parseLimit } from '../utils/pagination';
 import { isPlanBlocked, PLAN_BLOCKED_BODY } from '../services/plans';
 import { buildCallAgentVariables } from '../services/call_variables';
+import { buildDisclosureOverrides } from '../services/disclosure';
+import { globalDncSecret } from '../services/global_dnc';
 
 const callsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -47,7 +49,7 @@ async function formatCall(row: any, secret?: string) {
     lead_phone: row.lead_phone,
     status: row.status,
     duration_seconds: row.duration_seconds || 0,
-    recording_url: row.recording_url,
+    recording_url: await decryptAtRest(row.recording_url ?? null, secret).catch(() => null),
     transcript: transcriptObj,
     lead_score: leadScoreObj,
     summary: row.summary,
@@ -150,6 +152,7 @@ const BLOCKED_CALL_MESSAGES: Record<string, string> = {
   outside_hours: 'This lead can only be called during calling hours.',
   do_not_call: 'This lead has opted out of calls.',
   max_daily_attempts: 'This lead has already been called 3 times today.',
+  platform_frequency_cap: 'This number has already been called by several businesses today. Try again tomorrow.',
 };
 
 callsApp.post('/leads/:id/call', async (c) => {
@@ -169,6 +172,7 @@ callsApp.post('/leads/:id/call', async (c) => {
     hoursEnd: agent?.calling_hours_end,
     timezone: lead.timezone || 'Asia/Kolkata',
     skipTraiClamp: allowAnyCallingHours(c.env),
+    globalDncSecret: globalDncSecret(c.env),
   });
   if (!compliance.allowed) {
     return c.json({
@@ -217,6 +221,7 @@ callsApp.post('/leads/:id/call', async (c) => {
         businessId: user.business_id, business, agent, lead, callId,
       }),
       webhookBaseUrl: c.env.PUBLIC_API_BASE_URL || new URL(c.req.url).origin,
+      appOverrides: buildDisclosureOverrides(c.env, { agent, business, lead }),
     });
 
     if (dial.ok) {

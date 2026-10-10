@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/app_card.dart';
+import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 
 class LeadDetailRow extends StatelessWidget {
@@ -83,6 +87,69 @@ class LeadSignalChip extends StatelessWidget {
               ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The lead's consent evidence trail (newest first). Quiet on errors: it is
+/// supporting information, not something the owner needs to act on.
+class ConsentHistoryCard extends ConsumerWidget {
+  const ConsentHistoryCard({super.key, required this.leadId});
+  final String leadId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
+    final t = Theme.of(context).textTheme;
+    final events =
+        ref.watch(leadConsentHistoryProvider(leadId)).value ??
+        const <ConsentEvent>[];
+    if (events.isEmpty) {
+      return AppCard(child: Text(s.consentHistoryEmpty, style: t.bodyMedium));
+    }
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: Column(
+        children: [
+          for (var i = 0; i < events.length; i++)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                border: i == events.length - 1
+                    ? null
+                    : Border(bottom: BorderSide(color: AppColors.border)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          s.consentValue(events[i].consentValue),
+                          style: t.titleSmall,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          s.consentSource(events[i].source),
+                          style: t.bodySmall?.copyWith(
+                            color: AppColors.inkSoft,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    s.date(events[i].createdAt),
+                    style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

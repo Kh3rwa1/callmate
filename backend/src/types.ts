@@ -19,6 +19,13 @@ export interface Env {
    * Unset = the 8 the Sarvam agent declares. Every name must be declared in the agent version.
    */
   SARVAM_AGENT_VARIABLES?: string;
+  /**
+   * 'true' = every dial sends app_overrides.initial_bot_message with the AI + recording disclosure
+   * (services/disclosure.ts). Unset/anything else = off.
+   */
+  SARVAM_DISCLOSURE_OVERRIDE?: string;
+  /** Days to keep call transcripts, recordings and summaries (default 180). */
+  RETENTION_DAYS?: string;
   /** Secret: incoming-webhook URL (Slack/Discord/Google Chat) for ops alerts. */
   ALERT_WEBHOOK_URL?: string;
   SARVAM_PROXY_BASE?: string;
