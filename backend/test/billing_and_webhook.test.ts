@@ -53,7 +53,10 @@ describe('Phase 2 Webhook Idempotency & Billing Integrity Tests', () => {
 
     it('accurately computes ceil minutes for valid connected calls', () => {
       expect(billableMinutes('completed', 0)).toEqual({ minutes: 0, seconds: 0, flagged: false });
-      expect(billableMinutes('completed', 1)).toEqual({ minutes: 1, seconds: 1, flagged: false });
+      // Connected calls under 10 s are free for the owner (MIN_BILLABLE_SECONDS).
+      expect(billableMinutes('completed', 1)).toEqual({ minutes: 0, seconds: 1, flagged: false });
+      expect(billableMinutes('completed', 9.9)).toEqual({ minutes: 0, seconds: 9, flagged: false });
+      expect(billableMinutes('completed', 10)).toEqual({ minutes: 1, seconds: 10, flagged: false });
       expect(billableMinutes('completed', 60)).toEqual({ minutes: 1, seconds: 60, flagged: false });
       expect(billableMinutes('completed', 61)).toEqual({ minutes: 2, seconds: 61, flagged: false });
       expect(billableMinutes('answered', 125.7)).toEqual({ minutes: 3, seconds: 125, flagged: false });

@@ -17,11 +17,17 @@ String? planBannerMessage(S s, Usage u) {
     if (u.trialLow) return s.bannerTrialLow(Fmt.number(u.minutesRemaining));
     return null;
   }
-  if (u.exhausted && u.subscription.includedMinutes > 0) {
+  if (u.exhausted && u.subscription.totalMinutes > 0) {
     return s.bannerMinutesUsedUp;
   }
+  if (u.paidLow) return s.bannerPaidLow(Fmt.number(u.minutesRemaining));
   return null;
 }
+
+/// The banner offers a top-up (instead of "View plan") when minutes are low
+/// or used up on an active plan.
+bool planBannerOffersTopup(Usage u) =>
+    u.canBuyTopup && (u.exhausted || u.paidLow);
 
 /// Payment due / trial running low banner. Taps through to Plan & usage.
 class PlanBanner extends ConsumerWidget {
@@ -39,6 +45,7 @@ class PlanBanner extends ConsumerWidget {
       return const SizedBox(width: double.infinity);
     }
     final urgent = u.subscription.status.blocksCalling || u.exhausted;
+    final topup = planBannerOffersTopup(u);
     final fg = urgent ? AppColors.hot : AppColors.warmInk;
     final t = Theme.of(context).textTheme;
     return Padding(
@@ -49,7 +56,7 @@ class PlanBanner extends ConsumerWidget {
         border: Border.all(color: Colors.transparent),
         shadow: false,
         padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-        onTap: () => context.push('/usage'),
+        onTap: () => context.push(topup ? '/usage?topup=1' : '/usage'),
         semanticLabel: message,
         child: Row(
           children: [
@@ -70,7 +77,9 @@ class PlanBanner extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              u.subscription.isTrial ? s.upgrade : s.viewPlan,
+              topup
+                  ? s.buyMinutes
+                  : (u.subscription.isTrial ? s.upgrade : s.viewPlan),
               style: t.labelLarge?.copyWith(
                 color: fg,
                 fontWeight: FontWeight.w700,

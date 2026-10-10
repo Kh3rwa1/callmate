@@ -20,6 +20,9 @@ enum CheckoutOutcome {
 
   /// Online payments are not set up; show the "we'll contact you" message.
   notConfigured,
+
+  /// A top-up needs an active plan (`plan_not_active`).
+  notActive,
   failed,
 }
 
@@ -43,6 +46,7 @@ Future<(CheckoutOutcome, String?)> startCheckout(
     if (e.code == 'billing_not_configured') {
       return (CheckoutOutcome.notConfigured, null);
     }
+    if (e.code == 'plan_not_active') return (CheckoutOutcome.notActive, null);
     return (CheckoutOutcome.failed, e.message);
   } catch (_) {
     return (CheckoutOutcome.failed, null);

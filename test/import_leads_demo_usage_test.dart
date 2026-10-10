@@ -178,7 +178,8 @@ void main() {
       expect(find.text('minutes remaining'), findsOneWidget);
 
       // Mock backend "pays" instantly: plan renewed, minutes reset.
-      await _tapListItem(h, find.text('Renew plan'));
+      await _tapListItem(h, find.text('Change plan'));
+      await h.tap(find.text('Pay ₹5,899'));
       expect(
         find.text('Payment received. Your plan is active ✓'),
         findsOneWidget,

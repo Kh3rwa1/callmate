@@ -40,6 +40,7 @@ function formatLead(row: any) {
     callback_at: row.callback_at,
     attributes: safeJsonParse(row.attributes, {}),
     do_not_call: row.do_not_call === 1,
+    phone_invalid: row.phone_invalid === 1,
     consent: row.consent || 'unknown',
     timezone: row.timezone || 'Asia/Kolkata',
     created_at: row.created_at,
@@ -308,13 +309,14 @@ leadsApp.patch('/leads/:id', async (c) => {
         name = ?, phone = ?, interest = ?, status = ?,
         temperature = ?, score = ?, summary = ?, next_action = ?,
         callback_at = ?, attributes = ?, do_not_call = ?, consent = ?,
-        timezone = ?, updated_at = datetime('now')
+        timezone = ?, phone_invalid = CASE WHEN phone = ? THEN phone_invalid ELSE 0 END,
+        updated_at = datetime('now')
        WHERE id = ? AND business_id = ?`
     ).bind(
       name, phone, interest, status,
       temperature, score, summary, nextAction,
       callbackAt, attributes, doNotCall, consent,
-      timezone, id, user.business_id
+      timezone, phone, id, user.business_id
     ).run();
   } catch (err) {
     // Phone changed to one another lead of this business already has

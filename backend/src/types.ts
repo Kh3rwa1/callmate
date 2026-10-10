@@ -47,6 +47,13 @@ export interface Env {
   RAZORPAY_WEBHOOK_SECRET?: string;
   /** Optional URL Razorpay redirects to after payment. */
   BILLING_RETURN_URL?: string;
+  /** GST charged on top of every catalogue price (fraction, default "0.18"). */
+  GST_RATE?: string;
+  /** Our cost per call minute in INR, for the margin report (defaults "2" and "0.6"). */
+  COST_PER_MIN_SARVAM_INR?: string;
+  COST_PER_MIN_TELEPHONY_INR?: string;
+  /** Calls still 'calling' after this many minutes are logged by the cron watchdog (default 8). */
+  MAX_CALL_MINUTES?: string;
   /** Dev/test only: 'true' skips the TRAI 09:00-21:00 clamp so tests can dial at any time of day. */
   DEV_ALLOW_ANY_CALLING_HOURS?: string;
   /** Contact address shown on the public legal pages. */

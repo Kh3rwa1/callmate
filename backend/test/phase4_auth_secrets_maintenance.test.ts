@@ -258,7 +258,7 @@ describe('Phase 4: Auth, Secrets Hardening, Rate Limits, Maintenance Cron', () =
       expect(cl.status).toBe('retry_pending');
       expect(mockSent.length).toBe(1);
       expect(mockSent[0].msg.campaign_id).toBe(campId);
-      expect(mockSent[0].opts.delaySeconds).toBe(1800);
+      expect(mockSent[0].opts.delaySeconds).toBe(3 * 60 * 60); // RETRY_SPACING_SECONDS
     });
 
     it('scheduled worker handler triggers runMaintenance via ctx.waitUntil', async () => {

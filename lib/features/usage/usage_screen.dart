@@ -11,6 +11,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import 'billing_actions.dart';
+import 'billing_sheets.dart';
 
 /// Label for a plan's billing status.
 String planStatusLabel(S s, PlanStatus status) => switch (status) {
@@ -21,7 +22,11 @@ String planStatusLabel(S s, PlanStatus status) => switch (status) {
 };
 
 class UsageScreen extends ConsumerStatefulWidget {
-  const UsageScreen({super.key});
+  const UsageScreen({super.key, this.openTopup = false});
+
+  /// Opens "Buy more minutes" once the plan loads (from the low-minutes
+  /// banner: `/usage?topup=1`).
+  final bool openTopup;
 
   @override
   ConsumerState<UsageScreen> createState() => _UsageScreenState();
@@ -59,28 +64,36 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
     }
   }
 
-  Future<void> _checkout(Usage u) async {
+  bool _autoOpened = false;
+
+  /// Plan picker or top-up sheet; errors are shown inside the sheet, so only
+  /// success needs handling here.
+  Future<void> _checkout(Usage u, {bool topup = false}) async {
     if (_busy) return;
     setState(() => _busy = true);
-    final (outcome, message) = await startCheckout(
-      ref,
-      planId: u.checkoutPlan.planId,
-    );
+    final outcome = topup
+        ? await showTopupSheet(context, u)
+        : await showPlanPickerSheet(context, u);
     if (!mounted) return;
     setState(() => _busy = false);
-    final s = context.s;
-    final text = switch (outcome) {
-      CheckoutOutcome.opened => null,
-      CheckoutOutcome.paid => s.paymentReceived,
-      CheckoutOutcome.notConfigured => s.upgradeContact,
-      CheckoutOutcome.failed => message ?? s.paymentPageFailed,
-    };
     if (outcome == CheckoutOutcome.opened) _awaitingReturn = true;
-    if (text != null) {
+    if (outcome == CheckoutOutcome.paid) {
+      final s = context.s;
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text(text)));
+        ..showSnackBar(
+          SnackBar(content: Text(topup ? s.topupAdded : s.paymentReceived)),
+        );
     }
+  }
+
+  void _maybeAutoOpenTopup(Usage u) {
+    if (_autoOpened || !widget.openTopup) return;
+    _autoOpened = true;
+    if (!u.canBuyTopup) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _checkout(u, topup: true);
+    });
   }
 
   @override
@@ -94,6 +107,8 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
         value: usage,
         onRetry: () => ref.invalidate(usageProvider),
         data: (u) {
+          _maybeAutoOpenTopup(u);
+          final sub = u.subscription;
           final periodEnd = u.subscription.currentPeriodEnd;
           final paidPlan = !u.subscription.isTrial;
           return ListView(
@@ -174,9 +189,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
                             ),
                           ),
                           Text(
-                            s.ofTotal(
-                              Fmt.number(u.subscription.includedMinutes),
-                            ),
+                            s.ofTotal(Fmt.number(sub.totalMinutes)),
                             style: t.bodySmall?.copyWith(color: Colors.white70),
                           ),
                         ],
@@ -207,6 +220,23 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
                               : s.renewsOn,
                           s.date(periodEnd.toLocal()),
                         ),
+                      if (sub.annual && sub.annualUntil != null)
+                        _Kv(
+                          s.yearlyPlanUntil,
+                          s.date(sub.annualUntil!.toLocal()),
+                        ),
+                      if (sub.topupMinutes > 0)
+                        _Kv(
+                          s.addedMinutes,
+                          s.minutes(sub.topupMinutes),
+                          last: !paidPlan && sub.bonusMinutes == 0,
+                        ),
+                      if (sub.bonusMinutes > 0)
+                        _Kv(
+                          s.bonusMinutesLabel,
+                          s.minutes(sub.bonusMinutes),
+                          last: !paidPlan,
+                        ),
                       if (paidPlan)
                         _Kv(
                           s.extraMinutes,
@@ -221,18 +251,33 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
               Reveal(
                 index: 2,
                 child: PrimaryButton(
-                  label: u.subscription.isTrial ? s.upgrade : s.renewPlan,
+                  label: switch (sub.status) {
+                    PlanStatus.trial => s.upgrade,
+                    PlanStatus.active => s.changePlan,
+                    _ => s.renewPlan,
+                  },
                   icon: Icons.workspace_premium_outlined,
                   color: AppColors.brandFill,
                   loading: _busy,
                   onPressed: _busy ? null : () => _checkout(u),
                 ),
               ),
+              if (u.canBuyTopup) ...[
+                const SizedBox(height: 10),
+                SecondaryButton(
+                  label: s.buyMoreMinutes,
+                  icon: Icons.add_circle_outline_rounded,
+                  onPressed: _busy ? null : () => _checkout(u, topup: true),
+                ),
+              ],
               const SizedBox(height: 10),
               Text(
                 s.planOffer(
                   s.data(u.checkoutPlan.name),
-                  Fmt.inr(u.checkoutPlan.priceInr),
+                  s.priceWithGst(
+                    Fmt.inr(u.checkoutPlan.priceInr),
+                    Fmt.inr(u.checkoutPlan.gstInr),
+                  ),
                   Fmt.number(u.checkoutPlan.includedMinutes),
                 ),
                 style: t.bodySmall?.copyWith(color: AppColors.inkSoft),

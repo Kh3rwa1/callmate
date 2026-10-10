@@ -4,7 +4,7 @@ import { safeJsonParse } from '../utils/json';
 import { parseJsonBody, createCampaignSchema } from '../schemas/validation';
 import { enqueueCampaignJobs, maybeCompleteCampaign } from '../services/campaign_queue';
 import { parseLimit, MAX_LIST_LIMIT } from '../utils/pagination';
-import { isPlanBlocked, PLAN_BLOCKED_BODY } from '../services/plans';
+import { isPlanBlocked, PLAN_BLOCKED_BODY, MinuteBalances, minutesRemaining, MINUTE_BALANCE_COLUMNS } from '../services/plans';
 
 const campaignsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -133,11 +133,11 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
 
   if (await isPlanBlocked(c.env.DB, user.business_id)) return c.json(PLAN_BLOCKED_BODY, 402);
   const usage = await c.env.DB.prepare(
-    'SELECT included_minutes, minutes_used FROM usage WHERE business_id = ?'
-  ).bind(user.business_id).first<{ included_minutes: number; minutes_used: number }>();
+    `SELECT ${MINUTE_BALANCE_COLUMNS} FROM usage WHERE business_id = ?`
+  ).bind(user.business_id).first<MinuteBalances>();
 
   if (usage) {
-    const remainingMinutes = Math.max(0, (usage.included_minutes || 0) - (usage.minutes_used || 0));
+    const remainingMinutes = minutesRemaining(usage);
     if (remainingMinutes < estimatedMinutes) {
       return c.json({
         message: `Insufficient minutes remaining on your plan. Required estimate: ${estimatedMinutes} min, Remaining: ${remainingMinutes} min. Please top up your plan.`,
@@ -172,16 +172,19 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
   }
 
   const { results } = await c.env.DB.prepare(`
-    SELECT l.id, l.do_not_call, l.consent, cl.status AS cl_status
+    SELECT l.id, l.do_not_call, l.consent, l.phone_invalid, cl.status AS cl_status
     FROM campaign_leads cl JOIN leads l ON cl.lead_id = l.id
     WHERE cl.campaign_id = ? AND l.business_id = ?
-  `).bind(id, user.business_id).all<{ id: string; do_not_call: number; consent: string; cl_status: string }>();
+  `).bind(id, user.business_id).all<{ id: string; do_not_call: number; consent: string; phone_invalid: number; cl_status: string }>();
 
   const toQueue: string[] = [];
   const skipStmts: D1PreparedStatement[] = [];
   for (const l of results ?? []) {
     if (l.do_not_call === 1 || l.consent === 'opt_out') {
       skipStmts.push(c.env.DB.prepare(`UPDATE campaign_leads SET status = 'skipped_dnc' WHERE campaign_id = ? AND lead_id = ?`).bind(id, l.id));
+    } else if (l.phone_invalid === 1 && ['pending', 'rescheduled', 'retry_pending'].includes(l.cl_status)) {
+      // Sarvam reported the number invalid / unreachable earlier; edit the phone to call it again.
+      skipStmts.push(c.env.DB.prepare(`UPDATE campaign_leads SET status = 'skipped_invalid' WHERE campaign_id = ? AND lead_id = ?`).bind(id, l.id));
     } else if (l.consent === 'unknown' && !consentAttestation) {
       skipStmts.push(c.env.DB.prepare(`UPDATE campaign_leads SET status = 'skipped_no_consent' WHERE campaign_id = ? AND lead_id = ?`).bind(id, l.id));
     } else if (['pending', 'rescheduled', 'retry_pending'].includes(l.cl_status)) {
