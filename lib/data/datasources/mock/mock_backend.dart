@@ -38,6 +38,7 @@ class MockBackend implements BackendEvents {
   final List<AppNotification> notifications = [];
   final Map<String, Campaign> campaigns = {};
   final List<KnowledgeSource> knowledge = [];
+  final List<LeadSource> leadSources = [];
   late Usage usage;
 
   /// Demo referral stats: two businesses joined, one has paid.
@@ -814,6 +815,14 @@ class MockBackend implements BackendEvents {
         route: '/followups',
         createdAt: DateTime.now(),
       ),
+      NotificationType.newLead => AppNotification(
+        id: _nextId('n'),
+        type: type,
+        title: 'New enquiry from $first',
+        body: 'Your AI employee is calling them now.',
+        route: '/leads',
+        createdAt: DateTime.now(),
+      ),
     };
     notifications.insert(0, n);
     _events.add(NotificationEvent(n));
@@ -821,6 +830,110 @@ class MockBackend implements BackendEvents {
   }
 
   void emitChanged(String scope) => _events.add(DataChangedEvent(scope));
+
+  // --------------------------------------------------------- speed-to-lead
+
+  static const _demoBase = 'https://demo.callpilot.app';
+  Timer? _enquiryTimer;
+
+  String _token(int n) {
+    const chars =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return List.generate(n, (_) => chars[_rnd.nextInt(chars.length)]).join();
+  }
+
+  /// Like POST /lead-sources: one form per business; webhooks carry their
+  /// token only in this result.
+  LeadSource createLeadSource(LeadSourceKind kind) {
+    if (kind == LeadSourceKind.form) {
+      final existing = leadSources.where((s) => s.isForm).firstOrNull;
+      if (existing != null) return existing;
+    }
+    final slug = _token(12);
+    final source = LeadSource(
+      id: _nextId('lsrc'),
+      kind: kind,
+      slug: slug,
+      url: kind == LeadSourceKind.form
+          ? '$_demoBase/f/$slug'
+          : '$_demoBase/hooks/leads/$slug',
+      autoCall: true,
+      createdAt: DateTime.now(),
+    );
+    leadSources.add(source);
+    emitChanged('lead-sources');
+    return kind == LeadSourceKind.webhook
+        ? LeadSource(
+            id: source.id,
+            kind: source.kind,
+            slug: source.slug,
+            url: source.url,
+            autoCall: source.autoCall,
+            createdAt: source.createdAt,
+            token: 'cplh_${_token(40)}',
+          )
+        : source;
+  }
+
+  LeadSource setLeadSourceAutoCall(String id, bool autoCall) {
+    final i = leadSources.indexWhere((s) => s.id == id);
+    if (i < 0) throw StateError('Lead source not found.');
+    leadSources[i] = leadSources[i].copyWith(autoCall: autoCall);
+    emitChanged('lead-sources');
+    return leadSources[i];
+  }
+
+  void revokeLeadSource(String id) {
+    leadSources.removeWhere((s) => s.id == id);
+    emitChanged('lead-sources');
+  }
+
+  /// Demo: someone fills in the hosted form. Like the backend, the lead is
+  /// opted in, the owner is told, and with auto-call on the AI calls right
+  /// away (the call completes [callAfter] later).
+  Lead simulateFormEnquiry({Duration callAfter = const Duration(seconds: 3)}) {
+    final form =
+        leadSources.where((s) => s.isForm).firstOrNull ??
+        createLeadSource(LeadSourceKind.form);
+    var lead = _makeLead(
+      _randomName(),
+      _randomPhone(),
+      brain.pick(verticalFor(business.category).offerings).name,
+      null,
+      DateTime.now(),
+      source: 'form',
+    ).copyWith(consent: 'explicit_opt_in');
+    if (form.autoCall) lead = lead.copyWith(status: LeadStatus.calling);
+    leads[lead.id] = lead;
+    final i = leadSources.indexWhere((s) => s.id == form.id);
+    leadSources[i] = form.copyWith(leadsCount: form.leadsCount + 1);
+
+    final n = AppNotification(
+      id: _nextId('n'),
+      type: NotificationType.newLead,
+      title: 'New enquiry from ${lead.firstName}',
+      body: form.autoCall
+          ? 'Your AI employee is calling them now.'
+          : 'Auto-call is off. Open the lead to call them.',
+      route: '/leads/${lead.id}',
+      createdAt: DateTime.now(),
+    );
+    notifications.insert(0, n);
+    _events.add(NotificationEvent(n));
+    _events.add(const DataChangedEvent('leads'));
+
+    if (form.autoCall) {
+      final id = lead.id;
+      _enquiryTimer?.cancel();
+      _enquiryTimer = Timer(callAfter, () {
+        final current = leads[id];
+        if (current == null) return;
+        final call = _runCall(current, temperature: LeadTemperature.hot);
+        _emitCallCompleted(call);
+      });
+    }
+    return lead;
+  }
 
   /// Demo: what the Razorpay webhook does on a verified payment – plan
   /// active, minutes reset, one more month.
@@ -863,6 +976,7 @@ class MockBackend implements BackendEvents {
 
   void dispose() {
     _campaignTimer?.cancel();
+    _enquiryTimer?.cancel();
     _events.close();
   }
 }

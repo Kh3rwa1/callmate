@@ -32,7 +32,8 @@ extension SGrowth on S {
   String get yourReferralCode =>
       pick('Your referral code', 'आपका रेफ़रल कोड', 'আপনার রেফারেল কোড');
   String get copyCode => pick('Copy code', 'कोड कॉपी करें', 'কোড কপি করুন');
-  String get copyLink => pick('Copy link', 'लिंक कॉपी करें', 'লিংক কপি করুন');
+  String get copyInviteLink =>
+      pick('Copy link', 'लिंक कॉपी करें', 'লিংক কপি করুন');
   String get copiedToClipboard => pick('Copied', 'कॉपी हो गया', 'কপি হয়েছে');
   String get shareOnWhatsApp => pick(
     'Share on WhatsApp',

@@ -41,9 +41,11 @@ All requests require `Authorization: Bearer <access_token>` and are scoped stric
 | Method | Path | Request Body | Response |
 |---|---|---|---|
 | `GET` | `/business` | - | `Business` object |
-| `PATCH` | `/business` | `{"name"?, "category"?, "address"?, "offerings"?, "pricing"?, "opening_hours"?, "location"?, "whatsapp_number"?, "human_number"?, "owner_name"?}` | Updated `Business` object |
+| `PATCH` | `/business` | `{"name"?, "category"?, "address"?, "offerings"?, "pricing"?, "opening_hours"?, "location"?, "whatsapp_number"?, "human_number"?, "owner_name"?, "digest_enabled"? (bool, 7 PM daily summary push, default true), "avg_deal_value_inr"? (int ≥ 1 or null to clear)}` | Updated `Business` object |
 | `GET` | `/agent` | - | `Agent` object (name, role, role_kind, skills, voice, goal, languages, formality, calling_hours_start, calling_hours_end, transfer_number, status, template_id) |
 | `PATCH` | `/agent` | Partial `Agent` updates | Updated `Agent` object |
+| `GET` | `/agent/test-call` | - | `{phone, remaining_today, limit}`: the signed-in owner's number (normalised, may be null) and owner test calls left in the rolling 24 h (limit 3). |
+| `POST` | `/agent/test-call` | `{"phone": "..."}` | "Hear your AI now": the AI calls the owner's own number through the same dial path and guards as `POST /leads/:id/call`. The number is kept as a hidden lead (`is_owner_test = 1`) that never appears in customers, stats, results, the digest or campaigns. Returns `{call, sarvam_dispatched, lead_id, remaining_today}`. Errors: `400 invalid_phone`, `409 phone_is_customer`, `429 test_call_limit`, plus every `/leads/:id/call` error (a failed dial does not use up a test call). |
 
 ---
 
@@ -134,6 +136,7 @@ Receives post-call telemetry from Sarvam telephony.
 | Method | Path | Response |
 |---|---|---|
 | `GET` | `/dashboard/today` | `DailySummary`: leads count, connected calls, hot leads, follow-ups ready, callbacks scheduled, recent activity feed. |
+| `GET` | `/dashboard/results?range=today\|week\|month` | Home results card (default `week`). `{range, since, enquiries, calls, calls_connected, interested, ready_to_buy, followups_sent, estimated_value_inr, avg_deal_value_inr, has_calls, previous: {...same counts}}`. Periods start at local (Asia/Kolkata) midnight; `previous` is the same-length period just before. `estimated_value_inr` = `ready_to_buy × avg_deal_value_inr`, null until that is set. Owner test calls never count. |
 | `GET` | `/usage` | `Usage`: subscription (`plan_name`, `plan_id` `trial`/`starter`, `plan_status` `trial`/`active`/`past_due`/`cancelled`, `current_period_end` UTC or null, included minutes, price), minutes used, calls made, `checkout_plan`. |
 | `GET` | `/billing` | `{plan_id, plan_name, plan_status, current_period_end, price_inr, included_minutes, minutes_used, minutes_left, checkout_plan}`. |
 | `POST` | `/billing/checkout` | Body `{"plan_id": "starter"}` (optional). Creates a Razorpay Payment Link and returns `{url, id}`. `503 billing_not_configured` when Razorpay keys are not set; `502 billing_unavailable` if Razorpay fails. |
@@ -148,6 +151,53 @@ Receives post-call telemetry from Sarvam telephony.
 - `referral_code` (optional; omit or `null`) on `POST /auth/register` and new-account `POST /auth/google`. Case, spaces and dashes are ignored. An unknown/malformed code, self-referral (the referrer's own phone or email) or a phone that was already referred once (even before an account deletion) is silently ignored: signup never fails because of a code.
 - Reward: when the referred business's first Razorpay payment is applied (`payment_link.paid`), both businesses get `REFERRAL_BONUS_MINUTES` (default 200) added to `included_minutes`, once, with a `referral_credits` ledger row each. Webhook redeliveries and later payments don't credit again.
 - Bonus minutes are added to the current period's `included_minutes`; a later renewal resets `included_minutes` to the plan amount.
+
+---
+
+## 10b. Speed-to-lead: lead capture & instant AI call
+
+Every new enquiry from a business's hosted form or webhook becomes a lead (`consent: "explicit_opt_in"`, `source: "form"` / `"webhook"`) and, with `auto_call` on, gets an AI call within about a minute. The call goes through a queue message (`kind: "instant_call"` on the campaign dispatch queue) and the **same guards and dial as `POST /leads/:id/call`** (`backend/src/services/dial.ts`): calling hours clamped to TRAI 09:00–21:00 in the lead's timezone, do-not-call/opt-out, max 3 calls per lead per day, concurrency cap, plan status and minutes headroom. Outside calling hours the call is delayed until the window opens (re-queued in hops of at most 12 h). The owner gets a `new_lead` notification + push ("New enquiry from Ravi" / "Your AI employee is calling them now.", or why it was not called).
+
+Dedupe: one lead per phone per business. The same phone again within 24 h of its last enquiry (or creation) changes nothing and is not called again. After 24 h it is a new enquiry: the lead's interest and consent are refreshed (an opt-out or do-not-call is never overridden) and it is called again.
+
+**Owner APIs** (Bearer access token, scoped to the caller's business):
+
+| Method | Path | Request Body | Response |
+|---|---|---|---|
+| `GET` | `/lead-sources` | - | `{"items": [LeadSource]}` (active only). `LeadSource` = `{id, kind: "form"\|"webhook", slug, url, auto_call, leads_count, created_at}` |
+| `POST` | `/lead-sources` | `{"kind": "form"\|"webhook", "auto_call"?: bool}` | Form: the business's active form (`200`) or a new one (`201`). Webhook: `201` `LeadSource` **plus `token`, shown only once** (only its SHA-256 is stored). Max 5 active webhooks (`409 too_many_sources`). |
+| `PATCH` | `/lead-sources/:id` | `{"auto_call": bool}` | Updated `LeadSource`. Turning it off also cancels instant calls still waiting for calling hours. |
+| `POST` | `/lead-sources/:id/revoke` | - | `{"success": true}`. The form link then 404s and the webhook token 401s. |
+
+**Public endpoints** (no owner auth):
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/f/:slug` | Mobile-first enquiry form branded with the business name: name, mobile (`+91` prefilled), interest (optional) and a required consent box *"I agree to receive a call from &lt;business&gt; about my enquiry (may be an automated AI call)."* No scripts, strict CSP. |
+| `POST` | `/f/:slug` | `application/x-www-form-urlencoded`: `name`, `phone`, `interest?`, `consent=yes`. Thank-you page (also for duplicates and honeypot hits). `400` re-renders the form with the error; `429` after 5 submissions / 10 min per IP per form (300 / h per form). |
+| `POST` | `/hooks/leads/:slug` | `Authorization: Bearer <token>`, JSON `{"name", "phone", "interest"?, "consent": true}`. `201 {"lead_id", "status": "created", "auto_call"}`; `200` with `status` `duplicate` (not called) or `updated` (repeat enquiry after 24 h). `401` wrong/revoked token or unknown slug, `400` `validation_error` (e.g. `consent` not `true`) / `invalid_phone`, `429` `rate_limited`. |
+
+```bash
+curl -X POST https://callpilot-backend.dulalkisku0.workers.dev/hooks/leads/<slug> \
+  -H "Authorization: Bearer cplh_<token>" -H "Content-Type: application/json" \
+  -d '{"name":"Ravi Kumar","phone":"+91 98300 12345","interest":"NEET coaching","consent":true}'
+```
+
+Google Forms (Extensions → Apps Script, trigger *On form submit*; the form must ask for consent):
+
+```js
+function onFormSubmit(e) {
+  const a = e.namedValues; // question title -> answers
+  UrlFetchApp.fetch('https://callpilot-backend.dulalkisku0.workers.dev/hooks/leads/<slug>', {
+    method: 'post', contentType: 'application/json',
+    headers: { Authorization: 'Bearer cplh_<token>' },
+    payload: JSON.stringify({ name: a['Name'][0], phone: a['Phone'][0], interest: (a['Interest'] || [''])[0], consent: true }),
+    muteHttpExceptions: true,
+  });
+}
+```
+
+Website: post from **your server** (never put the token in browser JavaScript), or link to / embed the hosted form `https://…/f/<slug>`.
 
 ---
 

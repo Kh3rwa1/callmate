@@ -25,6 +25,11 @@ import { runBillingRenewals } from './services/plans';
 import { legalApp } from './routes/legal';
 import { landingApp } from './routes/landing';
 import { referralsApp } from './routes/referrals';
+import { resultsApp } from './routes/results';
+import { runDailyDigests } from './services/digest';
+import { leadSourcesApp } from './routes/lead_sources';
+import { leadCapturePublicApp } from './routes/lead_capture_public';
+import { handleInstantCallMessages, isInstantCallMessage } from './services/lead_capture';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -148,6 +153,8 @@ app.route('/legal', legalApp);
 
 // Public marketing landing page (GET / stays the JSON service info above)
 app.route('/get', landingApp);
+// Speed-to-lead: hosted enquiry form (/f/:slug) and lead webhook (/hooks/leads/:slug, bearer token)
+app.route('/', leadCapturePublicApp);
 
 // Public Sarvam completed call webhook
 app.post('/webhooks/sarvam', async (c) => {
@@ -183,6 +190,8 @@ protectedApp.route('/', knowledgeApp);
 protectedApp.route('/', dashApp);
 protectedApp.route('/', billingApp);
 protectedApp.route('/', referralsApp);
+protectedApp.route('/', resultsApp);
+protectedApp.route('/', leadSourcesApp);
 protectedApp.route('/voice', voiceApp);
 
 app.route('/', protectedApp);
@@ -211,12 +220,17 @@ export default {
       await handleCampaignDlqBatch(batch, env);
       return;
     }
-    await handleCampaignQueueBatch(batch, env);
+    // Speed-to-lead instant calls share the campaign dispatch queue as their own message kind.
+    const instant = batch.messages.filter((m) => isInstantCallMessage(m.body));
+    const campaign = batch.messages.filter((m) => !isInstantCallMessage(m.body));
+    if (instant.length) await handleInstantCallMessages(instant, env);
+    if (campaign.length) await handleCampaignQueueBatch({ ...batch, messages: campaign } as MessageBatch<any>, env);
   },
   async scheduled(_ctrl: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(runMaintenance(env));
     ctx.waitUntil(runBillingRenewals(env));
     ctx.waitUntil(runAlertChecks(env));
+    ctx.waitUntil(runDailyDigests(env));
   },
 };
 

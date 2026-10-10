@@ -147,7 +147,7 @@ class _Body extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: SecondaryButton(
-                      label: s.copyLink,
+                      label: s.copyInviteLink,
                       icon: Icons.link_rounded,
                       onPressed: () => _copy(context, r.link),
                     ),

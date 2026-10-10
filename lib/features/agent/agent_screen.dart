@@ -19,6 +19,7 @@ import '../../data/templates/templates.dart';
 import '../../l10n/l10n.dart';
 import '../../services/voice/voice_persona.dart';
 import '../../core/widgets/brand_widgets.dart';
+import 'owner_test_call_sheet.dart';
 
 /// AI Employee – "What can my AI employee do?" plus the app's settings.
 class AgentScreen extends ConsumerWidget {
@@ -219,6 +220,11 @@ class _Body extends ConsumerWidget {
           CardGroup(
             children: [
               _NavRow(
+                icon: Icons.ring_volume_outlined,
+                title: s.hearYourAiShort,
+                onTap: () => showOwnerTestCallSheet(context),
+              ),
+              _NavRow(
                 icon: Icons.card_giftcard_outlined,
                 title: s.inviteAndEarn,
                 value: referralBonus == null
@@ -241,6 +247,7 @@ class _Body extends ConsumerWidget {
                 title: s.allowAlerts,
                 onTap: () => _allowAlerts(context, ref),
               ),
+              const _DigestRow(),
               if (AppEnv.showDemoTools)
                 _NavRow(
                   icon: Icons.science_outlined,
@@ -526,6 +533,53 @@ class _NavRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The 7 PM daily summary push on/off (`businesses.digest_enabled`).
+class _DigestRow extends ConsumerStatefulWidget {
+  const _DigestRow();
+  @override
+  ConsumerState<_DigestRow> createState() => _DigestRowState();
+}
+
+class _DigestRowState extends ConsumerState<_DigestRow> {
+  /// Optimistic value while the save is in flight.
+  bool? _pending;
+
+  Future<void> _set(Business biz, bool on) async {
+    final s = context.s;
+    final messenger = ScaffoldMessenger.of(context);
+    Haptics.tap();
+    setState(() => _pending = on);
+    try {
+      await ref
+          .read(businessRepoProvider)
+          .saveBusiness(biz.copyWith(digestEnabled: on));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(friendlyError(e, s))));
+    } finally {
+      if (mounted) setState(() => _pending = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    final t = Theme.of(context).textTheme;
+    final biz = ref.watch(businessProvider).value;
+    final on = _pending ?? biz?.digestEnabled ?? true;
+    return SwitchListTile(
+      value: on,
+      onChanged: biz == null || _pending != null ? null : (v) => _set(biz, v),
+      secondary: Icon(Icons.summarize_outlined, size: 22, color: AppColors.ink),
+      title: Text(s.dailySummaryTitle, style: t.titleSmall),
+      subtitle: Text(
+        s.dailySummarySubtitle,
+        style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
     );
   }
 }
