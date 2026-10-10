@@ -233,7 +233,7 @@ describe('Compliance polish', () => {
         expect(html).not.toMatch(/<script/i);
         expect(html).not.toMatch(/(src|href)="https?:\/\//i);
         expect(html).toContain('Last updated:');
-        expect(html).toContain('support@callpilot.app');
+        expect(html).toContain('founder@olitun.in');
       });
     }
 
@@ -259,7 +259,7 @@ describe('Compliance polish', () => {
       const html = await (await app.fetch(new Request('http://localhost/legal/delete-account'), env)).text();
       expect(html).toContain('<strong>Agent</strong> tab');
       expect(html).toContain('<strong>Delete account</strong>');
-      expect(html).toContain('mailto:support@callpilot.app');
+      expect(html).toContain('mailto:founder@olitun.in');
     });
   });
 });

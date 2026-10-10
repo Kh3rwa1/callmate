@@ -13,6 +13,7 @@ import '../../core/widgets/app_card.dart';
 import '../../l10n/l10n.dart';
 import '../../services/voice/voice_agent_service.dart';
 import '../../services/voice/voice_persona.dart';
+import '../agent/owner_test_call_sheet.dart' show heardAiProvider;
 import '../calls/transcript_view.dart';
 import 'voice_test_composer.dart';
 import 'voice_test_status.dart';
@@ -51,6 +52,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
         if (!mounted) return;
         setState(() => _state = s);
         if (s == VoiceConnectionState.disconnected) Haptics.press();
+        if (s == VoiceConnectionState.speaking) _markHeard();
       }),
     );
     _subs.add(
@@ -176,6 +178,20 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
       await ref.read(notificationServiceProvider).requestPermission();
     }
     if (mounted) context.go('/home');
+  }
+
+  /// The owner heard the AI: ticks "Hear your AI" on the Home checklist.
+  bool _heard = false;
+  void _markHeard() {
+    if (_heard) return;
+    _heard = true;
+    ref
+        .read(localPrefsProvider)
+        .setHeardAi(true)
+        .then((_) {
+          if (mounted) ref.invalidate(heardAiProvider);
+        })
+        .catchError((_) {});
   }
 
   bool get _live => isLiveVoiceState(_state);

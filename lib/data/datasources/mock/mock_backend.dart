@@ -96,7 +96,7 @@ class MockBackend implements BackendEvents {
     final now = DateTime.now();
     usage = Usage(
       subscription: Subscription(
-        planName: 'Founding Plan',
+        planName: 'Starter',
         includedMinutes: 1000,
         renewsAt: DateTime(now.year, now.month + 1, 1),
         priceInr: 4999,
@@ -1066,6 +1066,30 @@ class MockBackend implements BackendEvents {
       ),
     );
     emitChanged('usage');
+  }
+
+  /// Demo: a brand-new owner who only signed up – a business name and
+  /// nothing else (no customers, calls, messages, lead sources or teaching),
+  /// so the short first run and Home's "Getting started" card show.
+  void resetToNewAccount() {
+    _campaignTimer?.cancel();
+    _enquiryTimer?.cancel();
+    leads.clear();
+    calls.clear();
+    followUps.clear();
+    callbacks.clear();
+    notifications.clear();
+    campaigns.clear();
+    knowledge.clear();
+    leadSources.clear();
+    activity.clear();
+    business = Business(
+      id: business.id,
+      name: business.name,
+      category: BusinessCategory.other,
+      ownerName: business.ownerName,
+    );
+    emitChanged('all');
   }
 
   void dispose() {

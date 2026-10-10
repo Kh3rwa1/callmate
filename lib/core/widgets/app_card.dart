@@ -163,7 +163,7 @@ class Pill extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: fg,
-                fontSize: dense ? 11.5 : 12.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -603,14 +603,16 @@ class AppFilterChip extends StatelessWidget {
         onTap: selected ? () {} : onSelected,
         haptic: !selected,
         scale: 0.93,
-        child: SizedBox(
-          height: 44,
+        // At least 44 high (easy to hit), and taller with large text.
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
           child: Center(
             child: AnimatedContainer(
               duration: dur,
               curve: AppMotion.standard,
-              height: 36,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              constraints: const BoxConstraints(minHeight: 44),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
                 color: selected ? AppColors.inverse : AppColors.surface,
                 borderRadius: BorderRadius.circular(99),
@@ -681,7 +683,13 @@ class FilterChipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 56,
+    // Grows with the text size so chip labels are never clipped.
+    height:
+        56 +
+        ((MediaQuery.textScalerOf(context).scale(14) - 14) * 1.4).clamp(
+          0.0,
+          double.infinity,
+        ),
     child: ListView.separated(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(

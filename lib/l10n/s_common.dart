@@ -64,14 +64,14 @@ extension SCommon on S {
     'অনেকবার চেষ্টা হয়েছে। নতুন কোড চাওয়ার আগে 10 মিনিট অপেক্ষা করুন।',
   );
   String get errInvalidOtp => pick(
-    'Invalid or expired OTP. Please check the code and try again.',
-    'OTP गलत है या उसकी मियाद खत्म हो गई। कोड देखकर फिर डालें।',
-    'OTP ভুল বা মেয়াদ শেষ। কোডটি দেখে আবার দিন।',
+    'That code is wrong or too old. Please check it and try again.',
+    'कोड गलत है या पुराना हो गया। कोड देखकर फिर डालें।',
+    'কোডটি ভুল বা পুরোনো। কোডটি দেখে আবার দিন।',
   );
   String get errOtpLocked => pick(
-    'Too many failed attempts. Please request a new OTP.',
-    'कई बार गलत कोड डाला गया। नया OTP माँगें।',
-    'অনেকবার ভুল কোড দেওয়া হয়েছে। নতুন OTP চান।',
+    'Too many wrong tries. Please ask for a new code.',
+    'कई बार गलत कोड डाला गया। नया कोड माँगें।',
+    'অনেকবার ভুল কোড দেওয়া হয়েছে। নতুন কোড চান।',
   );
   String get errPhoneRegistered => pick(
     'This phone number is already registered. Please sign in instead.',
@@ -131,7 +131,11 @@ extension SCommon on S {
     LeadStatus.called => pick('Called', 'कॉल हो चुकी', 'কল হয়েছে'),
     LeadStatus.callback => pick('Call back', 'कॉल बैक', 'কল ব্যাক'),
     LeadStatus.noAnswer => pick('No answer', 'जवाब नहीं', 'উত্তর নেই'),
-    LeadStatus.converted => pick('Converted', 'ग्राहक बने', 'গ্রাহক হয়েছেন'),
+    LeadStatus.converted => pick(
+      'Became a customer',
+      'ग्राहक बन गए',
+      'গ্রাহক হয়েছেন',
+    ),
     LeadStatus.notInterested => pick(
       'Not interested',
       'रुचि नहीं',

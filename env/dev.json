@@ -2,5 +2,9 @@
   "APP_FLAVOR": "dev",
   "API_BASE_URL": "",
   "USE_MOCK": true,
-  "DEMO_TOOLS": true
+  "DEMO_TOOLS": true,
+  "HELP_VIDEO_URL_EN": "",
+  "HELP_VIDEO_URL_HI": "",
+  "HELP_VIDEO_URL_BN": "",
+  "SUPPORT_EMAIL": "founder@olitun.in"
 }

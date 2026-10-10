@@ -93,7 +93,7 @@ class FollowUpMessageCard extends StatelessWidget {
                   child: Text(
                     editing ? s.editing : s.draft,
                     key: ValueKey(editing),
-                    style: t.bodySmall?.copyWith(fontSize: 11.5),
+                    style: t.bodySmall?.copyWith(fontSize: 13),
                   ),
                 ),
                 const SizedBox(width: 4),

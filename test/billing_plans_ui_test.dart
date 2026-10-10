@@ -174,7 +174,7 @@ void main() {
           find.byKey(const ValueKey('checkout-option-growth_annual')),
           findsOneWidget,
         );
-        expect(_inSheet(find.text('₹1,19,990 / year')), findsOneWidget);
+        expect(_inSheet(find.text('₹1,41,588 / year')), findsOneWidget);
         await h.tap(find.text('Pay ₹1,41,588'));
 
         expect(find.byType(BottomSheet), findsNothing);

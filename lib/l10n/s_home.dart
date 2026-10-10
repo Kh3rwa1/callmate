@@ -7,7 +7,7 @@ extension SHome on S {
   String get navLeads => pick('Customers', 'ग्राहक', 'গ্রাহক');
   String get navCalls => pick('Calls', 'कॉल्स', 'কল');
   String get navFollowUps => pick('Messages', 'मैसेज', 'মেসেজ');
-  String get navAgent => pick('Agent', 'एजेंट', 'এজেন্ট');
+  String get navAgent => pick('My employee', 'मेरा कर्मचारी', 'আমার কর্মী');
   String navPending(String tab, int n) =>
       pick('$tab, $n pending', '$tab, $n बाकी', '$tab, $n বাকি');
 

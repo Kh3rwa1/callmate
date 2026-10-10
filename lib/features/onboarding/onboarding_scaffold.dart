@@ -22,7 +22,8 @@ class OnboardingScaffold extends StatelessWidget {
     this.subtitle,
     required this.children,
     required this.cta,
-    this.total = 6,
+    this.total = 3,
+    this.trailing,
     this.secondary,
     this.revealChildren = true,
   });
@@ -35,6 +36,9 @@ class OnboardingScaffold extends StatelessWidget {
   final Widget cta;
   final Widget? secondary;
 
+  /// Top-right corner (the language chip on the first step).
+  final Widget? trailing;
+
   /// Wrap each child in its own [Reveal]. Turn off when a screen staggers
   /// its own pieces (a form's fields, a grid's cards).
   final bool revealChildren;
@@ -43,14 +47,14 @@ class OnboardingScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.s;
     final t = Theme.of(context).textTheme;
-    final canPop = context.canPop();
+    final canPop = GoRouter.maybeOf(context)?.canPop() ?? false;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
               child: Row(
                 children: [
                   SizedBox(
@@ -68,6 +72,7 @@ class OnboardingScaffold extends StatelessWidget {
                   Expanded(
                     child: OnboardingProgress(step: step, total: total),
                   ),
+                  trailing ?? const SizedBox(width: 48),
                 ],
               ),
             ),
@@ -140,10 +145,8 @@ class OnboardingScaffold extends StatelessWidget {
   }
 }
 
-const _progressHeroTag = 'onboarding-progress';
-
-/// "▬▬▬▭▭▭ 3/6". Shared between steps as a [Hero]: during a step change
-/// the flight interpolates the fill with a springy overshoot.
+/// Three dots, one per first-run step: done steps filled, the current one
+/// a wide pill. Read out as "Step 2 of 3".
 class OnboardingProgress extends StatelessWidget {
   const OnboardingProgress({
     super.key,
@@ -155,134 +158,27 @@ class OnboardingProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The very first show (arriving from Welcome, no hero to fly from)
-    // fills from empty; afterwards the hero flight does the animating.
-    const introId = 'onboarding-progress-intro';
-    final intro = step == 1 && !RevealMemory.seen(introId);
-    if (intro) RevealMemory.mark(introId);
+    final d = AppMotion.of(context, AppMotion.base);
     return Semantics(
       label: context.s.obStepOf(step, total),
       child: ExcludeSemantics(
-        child: Hero(
-          tag: _progressHeroTag,
-          flightShuttleBuilder: _shuttle,
-          child: _ProgressBar(
-            value: step.toDouble(),
-            total: total,
-            intro: intro,
-          ),
-        ),
-      ),
-    );
-  }
-
-  static Widget _shuttle(
-    BuildContext context,
-    Animation<double> animation,
-    HeroFlightDirection direction,
-    BuildContext fromContext,
-    BuildContext toContext,
-  ) {
-    final from = (fromContext.widget as Hero).child as _ProgressBar;
-    final to = (toContext.widget as Hero).child as _ProgressBar;
-    // The flight animation runs 0→1 on push and 1→0 on pop; at 1 the later
-    // (pushed) step is showing.
-    final push = direction == HeroFlightDirection.push;
-    final lo = push ? from : to;
-    final hi = push ? to : from;
-    return Material(
-      type: MaterialType.transparency,
-      child: AnimatedBuilder(
-        animation: animation,
-        builder: (_, _) {
-          final raw = animation.value.clamp(0.0, 1.0);
-          final t = AppMotion.pop.transform(raw);
-          return _ProgressBar(
-            value: lo.value + (hi.value - lo.value) * t,
-            total: hi.total,
-            label: (raw > 0.5 ? hi : lo).value.round(),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _ProgressBar extends StatelessWidget {
-  const _ProgressBar({
-    required this.value,
-    required this.total,
-    this.intro = false,
-    this.label,
-  });
-
-  /// Steps completed; fractional mid-flight.
-  final double value;
-  final int total;
-  final bool intro;
-
-  /// Step number shown; defaults to [value].
-  final int? label;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    Widget track(double v) => _Track(fraction: v / total);
-    return Row(
-      children: [
-        Expanded(
-          child: intro && !AppMotion.reduced(context)
-              ? TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.0, end: value),
-                  duration: const Duration(milliseconds: 620),
-                  curve: AppMotion.pop,
-                  builder: (_, v, _) => track(v),
-                )
-              : track(value),
-        ),
-        const SizedBox(width: 12),
-        SizedBox(
-          width: 30,
-          child: Text(
-            '${label ?? value.round()}/$total',
-            textAlign: TextAlign.right,
-            style: t.labelMedium?.copyWith(
-              color: AppColors.inkSoft,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Track extends StatelessWidget {
-  const _Track({required this.fraction});
-  final double fraction;
-
-  @override
-  Widget build(BuildContext context) {
-    // Overshoot reads as stretch: let the fill run a little past its
-    // slot, but never outside the track.
-    final f = math.max(0.0, math.min(1.0, fraction));
-    return Container(
-      height: 6,
-      decoration: BoxDecoration(
-        color: AppColors.border,
-        borderRadius: BorderRadius.circular(99),
-      ),
-      alignment: Alignment.centerLeft,
-      child: FractionallySizedBox(
-        widthFactor: f,
-        heightFactor: 1,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(99),
-            gradient: LinearGradient(
-              colors: [AppColors.brandFill, AppColors.brand],
-            ),
-          ),
+        child: Row(
+          key: const Key('onboarding-dots'),
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var i = 1; i <= total; i++)
+              AnimatedContainer(
+                duration: d,
+                curve: AppMotion.standard,
+                margin: const EdgeInsets.symmetric(horizontal: 5),
+                width: i == step ? 30 : 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: i <= step ? AppColors.brand : AppColors.border,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -351,7 +247,7 @@ class FieldLabel extends StatelessWidget {
               child: Text(
                 context.s.optional,
                 style: t.bodySmall?.copyWith(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: AppColors.inkFaint,
                 ),
               ),

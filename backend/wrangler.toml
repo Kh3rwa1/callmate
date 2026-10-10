@@ -36,7 +36,7 @@ SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
 # Ops alerts: set the chat webhook as a secret, not here: `wrangler secret put ALERT_WEBHOOK_URL`.
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
 # Shown on the public /legal pages. TODO(owner): set a monitored inbox and the registered company name.
-SUPPORT_EMAIL = "support@callpilot.app"
+SUPPORT_EMAIL = "founder@olitun.in"
 LEGAL_ENTITY_NAME = "CallPilot"
 
 # Migrations: `npm run db:migrate:prod` (wrangler d1 migrations apply).
@@ -109,7 +109,7 @@ SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
 # Ops alerts: set the chat webhook as a secret, not here: `wrangler secret put ALERT_WEBHOOK_URL`.
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
 # Shown on the public /legal pages. TODO(owner): set a monitored inbox and the registered company name.
-SUPPORT_EMAIL = "support@callpilot.app"
+SUPPORT_EMAIL = "founder@olitun.in"
 LEGAL_ENTITY_NAME = "CallPilot"
 ALLOWED_ORIGINS = "http://localhost:8080,http://127.0.0.1:8080"
 

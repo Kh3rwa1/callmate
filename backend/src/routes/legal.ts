@@ -13,7 +13,7 @@ import type { PageLang } from '../services/page_lang';
 import { LEGAL_CHROME } from '../services/public_page_strings';
 
 export const LEGAL_LAST_UPDATED = '10 October 2026';
-const DEFAULT_SUPPORT_EMAIL = 'support@callpilot.app';
+const DEFAULT_SUPPORT_EMAIL = 'founder@olitun.in';
 const DEFAULT_ENTITY = 'CallPilot';
 
 // Strict: these pages run no script and load nothing from elsewhere.

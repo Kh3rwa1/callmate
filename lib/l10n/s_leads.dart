@@ -1,14 +1,12 @@
 import 's.dart';
+import 's_data.dart';
 
 /// Leads list, lead detail, calling a lead and adding/importing leads.
 extension SLeads on S {
   // ------------------------------------------------------------ List
   String get leadsTitle => pick('Customers', 'ग्राहक', 'গ্রাহক');
-  String get addOrImportLeads => pick(
-    'Add or import customers',
-    'ग्राहक जोड़ें या इम्पोर्ट करें',
-    'গ্রাহক যোগ বা ইমপোর্ট করুন',
-  );
+  String get addOrImportLeads =>
+      pick('Add customers', 'ग्राहक जोड़ें', 'গ্রাহক যোগ করুন');
   String get searchLeadsHint => pick(
     'Search name, phone or interest',
     'नाम, फ़ोन या रुचि से खोजें',
@@ -72,7 +70,8 @@ extension SLeads on S {
   String get callbackLabel => pick('Call back', 'कॉल बैक', 'কল ব্যাক');
   String get notScheduled => pick('Not scheduled', 'तय नहीं', 'ঠিক করা হয়নি');
   String get added => pick('Added', 'जोड़ी गई', 'যোগ হয়েছে');
-  String get signals => pick('Signals', 'संकेत', 'সংকেত');
+  String get signals =>
+      pick('What they said', 'उन्होंने क्या कहा', 'ওঁরা কী বললেন');
   String get positive => pick('Positive', 'अच्छा संकेत', 'ভালো সংকেত');
   String get concern => pick('Concern', 'चिंता', 'আপত্তি');
   String get followUpSection => pick('Message', 'मैसेज', 'মেসেজ');
@@ -90,7 +89,36 @@ extension SLeads on S {
     'बात हुई · $duration',
     'কথা হয়েছে · $duration',
   );
-  String get transcript => pick('Transcript', 'बातचीत', 'কথোপকথন');
+  String get transcript =>
+      pick('Full conversation', 'पूरी बातचीत', 'পুরো কথোপকথন');
+
+  /// Label for a lead's extra detail (`attributes` key), e.g. `city` → "City".
+  /// Keys added by the enquiry form and ad integrations are translated;
+  /// anything else is humanised ("preferred_time" → "Preferred time").
+  String attributeLabel(String key) => switch (key) {
+    'email' => pick('Email', 'ईमेल', 'ইমেল'),
+    'city' => pick('City', 'शहर', 'শহর'),
+    'company' => pick('Company', 'कंपनी', 'কোম্পানি'),
+    'google_campaign_id' => pick(
+      'Google ad number',
+      'Google विज्ञापन नंबर',
+      'Google বিজ্ঞাপন নম্বর',
+    ),
+    'message' => pick('Their message', 'उनका संदेश', 'ওঁদের মেসেজ'),
+    'notes' || 'note' => pick('Notes', 'नोट्स', 'নোট'),
+    'budget' => pick('Budget', 'बजट', 'বাজেট'),
+    'location' || 'area' => pick('Area', 'इलाक़ा', 'এলাকা'),
+    'slot' ||
+    'preferred_time' => pick('Preferred time', 'पसंद का समय', 'পছন্দের সময়'),
+    'batch' => pick('Batch', 'बैच', 'ব্যাচ'),
+    _ => _humanize(key),
+  };
+
+  String _humanize(String key) {
+    final words = key.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
+    if (words.isEmpty) return key;
+    return data(words[0].toUpperCase() + words.substring(1));
+  }
 
   // ------------------------------------------------------------ Call sheet
   String callName(String name) =>
@@ -126,8 +154,11 @@ extension SLeads on S {
   // ------------------------------------------------------------ Add / import
   String get addLeadsTitle =>
       pick('Add customers', 'ग्राहक जोड़ें', 'গ্রাহক যোগ করুন');
-  String get importCsv =>
-      pick('Import CSV', 'CSV इम्पोर्ट करें', 'CSV ইমপোর্ট');
+  String get importCsv => pick(
+    'Add from Excel / file',
+    'Excel / फ़ाइल से जोड़ें',
+    'Excel / ফাইল থেকে যোগ করুন',
+  );
   String get csvColumns => pick(
     'Name, Phone, Interest, Source',
     'नाम, फ़ोन, रुचि, स्रोत',
@@ -173,9 +204,9 @@ extension SLeads on S {
     'ফাইলটি 2 MB-র বেশি। ভাগ করে আবার চেষ্টা করুন।',
   );
   String get csvUnreadable => pick(
-    'Couldn\'t read that file. Make sure it\'s a CSV.',
-    'फ़ाइल पढ़ी नहीं जा सकी। देखें कि यह CSV है।',
-    'ফাইলটি পড়া গেল না। এটি CSV কিনা দেখুন।',
+    'Couldn\'t read that file. In Excel, use "Save as" → CSV and try again.',
+    'फ़ाइल पढ़ी नहीं जा सकी। Excel में "Save as" → CSV चुनकर फिर कोशिश करें।',
+    'ফাইলটি পড়া গেল না। Excel-এ "Save as" → CSV বেছে আবার চেষ্টা করুন।',
   );
   String get csvEmpty =>
       pick('The file is empty.', 'फ़ाइल खाली है।', 'ফাইলটি খালি।');
@@ -234,8 +265,11 @@ extension SLeads on S {
     'মোবাইল নম্বর সহ কোনো কন্টাক্ট নেই',
   );
   String get ctNoMatch => pick('No one matches', 'कोई नहीं मिला', 'কেউ মেলেনি');
-  String get ctHaveFile =>
-      pick('Have a file (CSV)?', 'फ़ाइल (CSV) है?', 'ফাইল (CSV) আছে?');
+  String get ctHaveFile => pick(
+    'Add from Excel / file',
+    'Excel / फ़ाइल से जोड़ें',
+    'Excel / ফাইল থেকে যোগ করুন',
+  );
 
   // Prominent disclosure, shown before Android's contacts permission prompt.
   String get ctDiscTitle => pick(
@@ -267,11 +301,11 @@ extension SLeads on S {
 
   // ------------------------------------------------------------ Consent history
   String get consentHistory =>
-      pick('Consent history', 'सहमति का रिकॉर्ड', 'সম্মতির রেকর্ড');
+      pick('Permission to call', 'कॉल करने की अनुमति', 'কল করার অনুমতি');
   String get consentHistoryEmpty => pick(
-    'No consent changes recorded yet.',
-    'अभी तक सहमति का कोई बदलाव दर्ज नहीं हुआ।',
-    'এখনও সম্মতির কোনো পরিবর্তন রেকর্ড হয়নি।',
+    'Nothing noted yet about whether they agreed to calls.',
+    'अभी तक कॉल की अनुमति के बारे में कुछ दर्ज नहीं।',
+    'কলের অনুমতি নিয়ে এখনও কিছু লেখা নেই।',
   );
 
   /// What the consent was set to.
@@ -288,9 +322,9 @@ extension SLeads on S {
       'বর্তমান গ্রাহক',
     ),
     'owner_attested' => pick(
-      'You confirmed consent',
-      'आपने सहमति की पुष्टि की',
-      'আপনি সম্মতি নিশ্চিত করেছেন',
+      'You confirmed they agreed to a call',
+      'आपने बताया कि वे कॉल के लिए राज़ी हैं',
+      'আপনি জানিয়েছেন ওঁরা কলে রাজি',
     ),
     'opt_out' => pick(
       'Asked not to be called',
@@ -307,17 +341,21 @@ extension SLeads on S {
       '“कॉल न करें” हटाया',
       '“কল করবেন না” সরানো হয়েছে',
     ),
-    _ => pick('Consent not known', 'सहमति पता नहीं', 'সম্মতি জানা নেই'),
+    _ => pick(
+      'Not known if they agreed to calls',
+      'पता नहीं कि वे कॉल के लिए राज़ी हैं',
+      'ওঁরা কলে রাজি কিনা জানা নেই',
+    ),
   };
 
   /// Where the consent change came from.
   String consentSource(String v) => switch (v) {
     'form' => pick('Enquiry form', 'पूछताछ फ़ॉर्म', 'জিজ্ঞাসার ফর্ম'),
-    'webhook' => pick('Lead source', 'लीड स्रोत', 'লিড সোর্স'),
+    'webhook' => pick('Your website', 'आपकी वेबसाइट', 'আপনার ওয়েবসাইট'),
     'google_ads' => pick(
-      'Google Ads lead form',
-      'Google Ads लीड फ़ॉर्म',
-      'Google Ads লিড ফর্ম',
+      'Google Ads form',
+      'Google Ads फ़ॉर्म',
+      'Google Ads ফর্ম',
     ),
     'indiamart' => pick(
       'IndiaMART enquiry',
@@ -325,14 +363,14 @@ extension SLeads on S {
       'IndiaMART খোঁজ',
     ),
     'meta_lead_ads' => pick(
-      'Facebook / Instagram lead form',
-      'Facebook / Instagram लीड फ़ॉर्म',
-      'Facebook / Instagram লিড ফর্ম',
+      'Facebook / Instagram form',
+      'Facebook / Instagram फ़ॉर्म',
+      'Facebook / Instagram ফর্ম',
     ),
     'import_attestation' => pick(
-      'Your import / confirmation',
-      'आपका इम्पोर्ट / पुष्टि',
-      'আপনার ইমপোর্ট / নিশ্চিতকরণ',
+      'You added them and confirmed',
+      'आपने जोड़ा और पुष्टि की',
+      'আপনি যোগ করে নিশ্চিত করেছেন',
     ),
     'in_call_opt_out' => pick('Said so on a call', 'कॉल पर कहा', 'কলে বলেছেন'),
     _ => pick(

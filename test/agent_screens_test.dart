@@ -1,4 +1,5 @@
 import 'package:callpilot/core/providers.dart';
+import 'package:callpilot/core/settings.dart';
 import 'package:callpilot/data/datasources/mock/mock_backend.dart';
 import 'package:callpilot/data/models/models.dart';
 import 'package:callpilot/features/agent/agent_screen.dart';
@@ -41,7 +42,7 @@ void main() {
       expect(find.text('Active'), findsOneWidget);
 
       expect(find.text('Talk to ${a.name}'), findsOneWidget);
-      await h.tap(find.byTooltip('Edit AI Employee'));
+      await h.tap(find.byKey(const Key('agent-edit')));
       expect(h.location, '/agent/edit');
       expect(find.byType(EditAgentScreen), findsOneWidget);
     }, location: '/agent');
@@ -57,12 +58,37 @@ void main() {
       expect(find.byType(UsageScreen), findsOneWidget);
     }, location: '/agent');
 
-    appTest('"More" links open callbacks and notifications', (h) async {
-      await _tapListItem(h, find.text('Call backs'));
-      expect(h.location, '/callbacks');
-      await h.go('/agent');
-      await _tapListItem(h, find.text('Notifications'));
-      expect(h.location, '/notifications');
+    appTest('rows are grouped under three plain headings', (h) async {
+      expect(find.text('My employee'), findsWidgets);
+      // "Your employee" comes first, right under the profile card.
+      final employee = find.byKey(const Key('section-employee'));
+      expect(employee, findsOneWidget);
+      expect(
+        h.tester.getTopLeft(employee).dy,
+        lessThan(h.tester.getTopLeft(find.text('Hear your AI on a call')).dy),
+      );
+      for (final k in const [Key('section-plan'), Key('section-settings')]) {
+        await _scrollTo(h, find.byKey(k));
+        expect(find.byKey(k), findsOneWidget);
+      }
+      await _scrollTo(h, find.text('Delete account'));
+      // Call backs and notifications moved to Home (routes kept).
+      expect(find.text('Call backs'), findsNothing);
+      expect(find.text('Notifications'), findsNothing);
+    }, location: '/agent');
+
+    appTest('playbook row opens the playbook', (h) async {
+      await _tapListItem(h, find.text('Your call playbook'));
+      expect(h.location, '/agent/playbook');
+    }, location: '/agent');
+
+    appTest('text size setting is saved and scales the app', (h) async {
+      await _tapListItem(h, find.byKey(const Key('text-size-row')));
+      await h.tapText('Extra large');
+      expect(h.container.read(textSizeProvider), TextSize.extraLarge);
+      expect(h.prefs.textSize, 'xlarge');
+      final ctx = h.tester.element(find.byType(AgentScreen));
+      expect(MediaQuery.textScalerOf(ctx).scale(10), closeTo(14, 0.01));
     }, location: '/agent');
 
     appTest('sign out asks first, then ends the session', (h) async {

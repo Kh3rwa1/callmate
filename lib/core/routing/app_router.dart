@@ -106,39 +106,31 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, s) => _arrive(s, const LoginScreen()),
       ),
 
-      // ---------------- Onboarding
+      // ---------------- Onboarding (3 steps)
       GoRoute(
         path: '/onboarding',
-        pageBuilder: (_, s) => _arrive(s, const WelcomeScreen()),
+        pageBuilder: (_, s) => _arrive(s, const BusinessTypeScreen()),
         routes: [
           GoRoute(
-            path: 'business-type',
-            pageBuilder: (_, s) => _page(s, const BusinessTypeScreen()),
+            path: 'name',
+            pageBuilder: (_, s) => _page(s, const NameVoiceScreen()),
           ),
           GoRoute(
-            path: 'skills',
-            pageBuilder: (_, s) => _page(s, const EmployeeSkillsScreen()),
+            path: 'hear',
+            pageBuilder: (_, s) => _page(s, const HearAiScreen()),
           ),
-          GoRoute(
-            path: 'details',
-            pageBuilder: (_, s) => _page(s, const BusinessDetailsScreen()),
-          ),
-          GoRoute(
-            path: 'offer',
-            pageBuilder: (_, s) => _page(s, const OfferDetailsScreen()),
-          ),
-          GoRoute(
-            path: 'teach',
-            pageBuilder: (_, s) => _page(s, const TeachAiOnboardingScreen()),
-          ),
-          GoRoute(
-            path: 'create',
-            pageBuilder: (_, s) => _page(s, const CreateAgentScreen()),
-          ),
-          GoRoute(
-            path: 'test',
-            pageBuilder: (_, s) => _page(s, const FirstCallScreen()),
-          ),
+          // Steps of the old 7-step flow (old links, notifications).
+          for (final old in const ['business-type'])
+            GoRoute(path: old, redirect: (_, _) => '/onboarding'),
+          for (final old in const [
+            'skills',
+            'details',
+            'offer',
+            'teach',
+            'create',
+          ])
+            GoRoute(path: old, redirect: (_, _) => '/onboarding/name'),
+          GoRoute(path: 'test', redirect: (_, _) => '/onboarding/hear'),
         ],
       ),
 

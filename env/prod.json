@@ -7,5 +7,8 @@
   "TERMS_URL": "https://callpilot-backend.dulalkisku0.workers.dev/legal/terms",
   "PRIVACY_URL": "https://callpilot-backend.dulalkisku0.workers.dev/legal/privacy",
   "DELETE_ACCOUNT_URL": "https://callpilot-backend.dulalkisku0.workers.dev/legal/delete-account",
-  "SUPPORT_EMAIL": "support@callpilot.app"
+  "SUPPORT_EMAIL": "founder@olitun.in",
+  "HELP_VIDEO_URL_EN": "",
+  "HELP_VIDEO_URL_HI": "",
+  "HELP_VIDEO_URL_BN": ""
 }

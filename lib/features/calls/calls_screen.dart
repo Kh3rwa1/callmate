@@ -374,7 +374,7 @@ class CallCard extends StatelessWidget {
                                     softWrap: false,
                                     style: t.bodySmall?.copyWith(
                                       color: AppColors.inkFaint,
-                                      fontSize: 12,
+                                      fontSize: 13,
                                     ),
                                   ),
                                 ],

@@ -59,7 +59,10 @@ void main() {
       expect(find.text('Call $newLeads New Customers'), findsOneWidget);
 
       final unread = b.notifications.where((n) => !n.read).length;
-      expect(find.byTooltip('$unread new notifications'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('$unread new notifications'),
+        findsOneWidget,
+      );
     });
 
     appTest('hot leads action opens leads filtered to hot', (h) async {

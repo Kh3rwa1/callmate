@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/motion/motion.dart';
 import '../../core/network/api_client.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/calling_hours.dart';
+import '../../core/utils/format.dart';
 import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
@@ -14,28 +17,73 @@ import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 
 /// "Hear your AI now": the AI employee calls the owner's own phone
-/// (`POST /agent/test-call`), so they hear what customers hear.
+/// (`POST /agent/test-call`), so they hear what customers hear. Outside
+/// calling hours it offers the in-app voice test instead.
 Future<void> showOwnerTestCallSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
-    builder: (_) => const _OwnerTestCallSheet(),
+    builder: (ctx) => SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          AppSpace.page,
+          0,
+          AppSpace.page,
+          16 + MediaQuery.viewInsetsOf(ctx).bottom,
+        ),
+        child: OwnerTestCallPanel(
+          onDone: () => Navigator.pop(ctx),
+          onTalkInApp: () {
+            Navigator.pop(ctx);
+            context.push('/voice-test');
+          },
+        ),
+      ),
+    ),
   );
 }
 
-class _OwnerTestCallSheet extends ConsumerStatefulWidget {
-  const _OwnerTestCallSheet();
+/// Owner heard the AI (test call placed or in-app voice test done). Ticks
+/// "Hear your AI" on the Home checklist.
+final heardAiProvider = Provider<bool>((ref) {
+  try {
+    return ref.watch(localPrefsProvider).heardAi;
+  } catch (_) {
+    return false;
+  }
+});
+
+/// The body of "Hear your AI": number (prefilled), "Call me now", and the
+/// result. Used in the sheet and on the last first-run step. Errors show
+/// inside the panel (a snackbar would sit behind a sheet).
+class OwnerTestCallPanel extends ConsumerStatefulWidget {
+  const OwnerTestCallPanel({
+    super.key,
+    required this.onDone,
+    required this.onTalkInApp,
+    this.showTitle = true,
+    this.doneLabel,
+  });
+
+  /// After the call was placed and the owner taps Done.
+  final VoidCallback onDone;
+
+  /// Opens the in-app voice test (outside calling hours).
+  final VoidCallback onTalkInApp;
+  final bool showTitle;
+  final String? doneLabel;
+
   @override
-  ConsumerState<_OwnerTestCallSheet> createState() =>
-      _OwnerTestCallSheetState();
+  ConsumerState<OwnerTestCallPanel> createState() => _OwnerTestCallPanelState();
 }
 
-class _OwnerTestCallSheetState extends ConsumerState<_OwnerTestCallSheet> {
+class _OwnerTestCallPanelState extends ConsumerState<OwnerTestCallPanel> {
   final _phone = TextEditingController();
   OwnerTestCallInfo? _info;
   bool _busy = false;
   bool _placed = false;
+  bool _outsideHours = false;
   String? _error;
 
   @override
@@ -79,8 +127,27 @@ class _OwnerTestCallSheetState extends ConsumerState<_OwnerTestCallSheet> {
     return friendlyError(e, s);
   }
 
+  /// The agent's calling window, clamped to TRAI (backend default 10–19).
+  RangeValues get _hours {
+    final a = ref.read(agentProvider).value;
+    return traiCallingHours(
+      a?.callingHoursStart ?? 10,
+      a?.callingHoursEnd ?? 19,
+    );
+  }
+
+  bool get _inHours => isIndiaCallingHour(
+    ref.read(clockProvider)(),
+    start: _hours.start.round(),
+    end: _hours.end.round(),
+  );
+
   Future<void> _call() async {
     final s = context.s;
+    if (!_inHours) {
+      setState(() => _outsideHours = true);
+      return;
+    }
     final phone = PhoneUtils.normalize(_phone.text);
     if (phone == null) {
       setState(() => _error = s.validPhone);
@@ -90,10 +157,13 @@ class _OwnerTestCallSheetState extends ConsumerState<_OwnerTestCallSheet> {
       _busy = true;
       _error = null;
     });
+    final prefs = ref.read(localPrefsProvider);
     try {
       final info = await ref.read(callRepoProvider).callOwner(phone);
+      await prefs.setHeardAi(true);
       Haptics.success();
       if (!mounted) return;
+      ref.invalidate(heardAiProvider);
       setState(() {
         _busy = false;
         _placed = true;
@@ -101,10 +171,13 @@ class _OwnerTestCallSheetState extends ConsumerState<_OwnerTestCallSheet> {
       });
     } catch (e) {
       if (!mounted) return;
-      // A snackbar would sit behind this sheet; show the error in it.
       setState(() {
         _busy = false;
-        _error = _errorText(e, s);
+        if (e is ApiException && e.code == 'outside_hours') {
+          _outsideHours = true;
+        } else {
+          _error = _errorText(e, s);
+        }
       });
     }
   }
@@ -114,98 +187,128 @@ class _OwnerTestCallSheetState extends ConsumerState<_OwnerTestCallSheet> {
     final s = context.s;
     final t = Theme.of(context).textTheme;
     final name = ref.watch(employeeNameProvider);
+    ref.watch(agentProvider);
     final info = _info;
     final noneLeft = info != null && info.remainingToday == 0;
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          AppSpace.page,
-          0,
-          AppSpace.page,
-          16 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(s.hearYourAiTitle, style: t.headlineSmall),
-            const SizedBox(height: 6),
-            Text(
-              s.hearYourAiBody(name),
-              style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
+    final outside = !_placed && (_outsideHours || !_inHours);
+    final hours = _hours;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (widget.showTitle) ...[
+          Text(s.hearYourAiTitle, style: t.headlineSmall),
+          const SizedBox(height: 6),
+          Text(
+            s.hearYourAiBody(name),
+            style: t.bodyLarge?.copyWith(color: AppColors.inkSoft),
+          ),
+          const SizedBox(height: 18),
+        ],
+        if (outside) ...[
+          Container(
+            key: const Key('outside-hours'),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.infoSoft,
+              borderRadius: BorderRadius.circular(14),
             ),
-            const SizedBox(height: 18),
-            TextField(
-              controller: _phone,
-              enabled: !_busy && !_placed,
-              keyboardType: TextInputType.phone,
-              autofillHints: const [AutofillHints.telephoneNumber],
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9+ -]')),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.nightlight_round, color: AppColors.info),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    s.outsideCallingHours(
+                      name,
+                      Fmt.hour(hours.start.round()),
+                      Fmt.hour(hours.end.round()),
+                    ),
+                    style: t.bodyLarge,
+                  ),
+                ),
               ],
-              decoration: InputDecoration(
-                labelText: s.yourMobileNumber,
-                prefixIcon: const Icon(Icons.phone_iphone_rounded),
-              ),
-              onSubmitted: (_) => _call(),
             ),
-            const SizedBox(height: 10),
-            Text(
-              [
-                s.testCallUsesMinutes,
-                if (info != null) s.testCallsLeft(info.remainingToday),
-              ].join(' '),
-              style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
+          ),
+          const SizedBox(height: 16),
+          PrimaryButton(
+            label: s.talkInApp(name),
+            icon: Icons.mic_rounded,
+            onPressed: widget.onTalkInApp,
+          ),
+        ] else ...[
+          TextField(
+            controller: _phone,
+            enabled: !_busy && !_placed,
+            keyboardType: TextInputType.phone,
+            autofillHints: const [AutofillHints.telephoneNumber],
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9+ -]')),
+            ],
+            style: t.titleMedium,
+            decoration: InputDecoration(
+              labelText: s.yourMobileNumber,
+              prefixIcon: const Icon(Icons.phone_iphone_rounded),
             ),
-            const SizedBox(height: 16),
-            AnimatedSize(
-              duration: AppMotion.of(context, AppMotion.base),
-              alignment: Alignment.topCenter,
-              child: _error != null
-                  ? Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Text(
-                        _error!,
-                        style: t.bodyMedium?.copyWith(color: AppColors.hot),
-                      ),
-                    )
-                  : _placed
-                  ? Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.ring_volume_rounded,
-                            color: AppColors.success,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              s.testCallPlaced,
-                              style: t.titleSmall?.copyWith(
-                                color: AppColors.success,
-                              ),
+            onSubmitted: (_) => _call(),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            [
+              s.testCallUsesMinutes,
+              if (info != null) s.testCallsLeft(info.remainingToday),
+            ].join(' '),
+            style: t.bodyMedium?.copyWith(color: AppColors.inkFaint),
+          ),
+          const SizedBox(height: 16),
+          AnimatedSize(
+            duration: AppMotion.of(context, AppMotion.base),
+            alignment: Alignment.topCenter,
+            child: _error != null
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      _error!,
+                      style: t.bodyLarge?.copyWith(color: AppColors.hot),
+                    ),
+                  )
+                : _placed
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.ring_volume_rounded,
+                          color: AppColors.success,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            s.testCallPlaced,
+                            style: t.titleMedium?.copyWith(
+                              color: AppColors.success,
                             ),
                           ),
-                        ],
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-            _placed
-                ? PrimaryButton(
-                    label: s.done,
-                    onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
                   )
-                : PrimaryButton(
-                    label: s.callMeNow,
-                    icon: Icons.call_rounded,
-                    loading: _busy,
-                    onPressed: noneLeft ? null : _call,
-                  ),
-          ],
-        ),
-      ),
+                : const SizedBox(width: double.infinity),
+          ),
+          _placed
+              ? PrimaryButton(
+                  label: widget.doneLabel ?? s.done,
+                  onPressed: widget.onDone,
+                )
+              : PrimaryButton(
+                  label: s.callMeNow,
+                  icon: Icons.call_rounded,
+                  loading: _busy,
+                  onPressed: noneLeft ? null : _call,
+                ),
+        ],
+      ],
     );
   }
 }

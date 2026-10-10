@@ -14,3 +14,12 @@ RangeValues traiCallingHours(int start, int end) {
   final e = end.clamp(s + 1, kTraiLatestHour);
   return RangeValues(s.toDouble(), e.toDouble());
 }
+
+/// Whether [now] is inside the agent's calling window ([start]–[end], hours
+/// in India time, clamped to the TRAI window), when the backend lets a call
+/// to the owner's own phone through.
+bool isIndiaCallingHour(DateTime now, {int start = 10, int end = 19}) {
+  final w = traiCallingHours(start, end);
+  final ist = now.toUtc().add(const Duration(hours: 5, minutes: 30));
+  return ist.hour >= w.start && ist.hour < w.end;
+}

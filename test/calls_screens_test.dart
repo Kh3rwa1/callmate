@@ -69,7 +69,7 @@ void main() {
         find.text('What ${h.backend.agent.name} understood'),
         findsOneWidget,
       );
-      expect(find.text('Customer score'), findsOneWidget);
+      expect(find.text('How likely to buy'), findsOneWidget);
     }, location: '/calls');
 
     appTest('unanswered call opens the detail view', (h) async {
@@ -190,11 +190,11 @@ void main() {
       expect(find.byType(TranscriptBubble), findsNWidgets(2));
       expect(find.text('Yes please'), findsNothing);
 
-      await tester.tap(find.text('Show full transcript (4 lines)'));
+      await tester.tap(find.text('Show full conversation (4 lines)'));
       await tester.pump();
       expect(find.byType(TranscriptBubble), findsNWidgets(4));
       expect(find.text('Yes please'), findsOneWidget);
-      expect(find.textContaining('Show full transcript'), findsNothing);
+      expect(find.textContaining('Show full conversation'), findsNothing);
     });
 
     testWidgets('labels speakers and offsets', (tester) async {

@@ -17,6 +17,9 @@ class LocalPrefs {
   static const _themeMode = 'ui.theme_mode';
   static const _language = 'ui.language';
   static const _contactsConsent = 'privacy.contacts_disclosure_accepted';
+  static const _textSize = 'ui.text_size';
+  static const _checklistDismissed = 'home.checklist_dismissed';
+  static const _heardAi = 'home.heard_ai';
 
   /// Older builds could store a Sarvam API key here in plain text. The app
   /// now only talks to Sarvam through the backend proxy, so it is purged.
@@ -32,6 +35,21 @@ class LocalPrefs {
 
   bool get agentTested => _p.getBool(_agentTested) ?? false;
   Future<void> setAgentTested(bool v) => _p.setBool(_agentTested, v);
+
+  /// The owner heard the AI employee: a test call to their own phone or an
+  /// in-app voice test (ticks "Hear your AI" on the Home checklist).
+  bool get heardAi => (_p.getBool(_heardAi) ?? false) || agentTested;
+  Future<void> setHeardAi(bool v) => _p.setBool(_heardAi, v);
+
+  /// The owner closed the "Getting started" card on Home.
+  bool get checklistDismissed => _p.getBool(_checklistDismissed) ?? false;
+  Future<void> setChecklistDismissed(bool v) =>
+      _p.setBool(_checklistDismissed, v);
+
+  /// In-app text size on top of the phone's: 'large' / 'xlarge', or null.
+  String? get textSize => _p.getString(_textSize);
+  Future<void> setTextSize(String? v) =>
+      v == null ? _p.remove(_textSize) : _p.setString(_textSize, v);
 
   String? get serverUrl => _p.getString(_serverUrl);
   Future<void> setServerUrl(String? v) =>
@@ -73,5 +91,7 @@ class LocalPrefs {
   Future<void> reset() async {
     await _p.remove(_onboarded);
     await _p.remove(_agentTested);
+    await _p.remove(_heardAi);
+    await _p.remove(_checklistDismissed);
   }
 }

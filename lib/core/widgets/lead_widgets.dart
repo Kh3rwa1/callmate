@@ -100,7 +100,7 @@ class ScoreBadge extends StatelessWidget {
                   style: TextStyle(
                     color: style.fg,
                     fontWeight: FontWeight.w600,
-                    fontSize: large ? 15 : 12.5,
+                    fontSize: large ? 15 : 13,
                     letterSpacing: 0.1,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),

@@ -244,7 +244,7 @@ void main() {
         ('Customers', '/leads'),
         ('Calls', '/calls'),
         ('Messages', '/followups'),
-        ('Agent', '/agent'),
+        ('My employee', '/agent'),
         ('Home', '/home'),
       ]) {
         await h.tap(_navItem(label));

@@ -7,7 +7,8 @@ import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../l10n/l10n.dart';
 
-/// Bottom navigation: exactly Home · Leads · Calls · Follow-ups · Agent.
+/// Bottom navigation: exactly Home · Customers · Calls · Messages ·
+/// My employee.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
   final StatefulNavigationShell shell;
@@ -74,6 +75,18 @@ class AppNavBar extends StatelessWidget {
   static const _pillWidth = 60.0;
   static const _pillHeight = 32.0;
 
+  /// Tab labels stop growing here so five tabs still fit side by side.
+  static const _maxLabelScale = 1.3;
+  static const labelFontSize = 12.5;
+
+  /// The text scaler for tab labels.
+  static TextScaler labelScaler(BuildContext context) =>
+      MediaQuery.textScalerOf(context).clamp(maxScaleFactor: _maxLabelScale);
+
+  /// Height of one line of tab label.
+  static double labelLine(BuildContext context) =>
+      labelScaler(context).scale(labelFontSize) * 1.25;
+
   @override
   Widget build(BuildContext context) {
     final reduced = AppMotion.reduced(context);
@@ -84,8 +97,10 @@ class AppNavBar extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
+        // Labels may wrap to two lines ("मेरा कर्मचारी") and grow with the
+        // owner's text size, up to [_maxLabelScale]; the bar grows with them.
         child: SizedBox(
-          height: 66,
+          height: 32 + 4 + 12 + 2 * labelLine(context),
           child: LayoutBuilder(
             builder: (context, c) {
               final w = c.maxWidth / items.length;
@@ -201,15 +216,18 @@ class _NavItem extends StatelessWidget {
               duration: dur,
               curve: AppMotion.standard,
               style: (t.labelSmall ?? const TextStyle()).copyWith(
-                fontSize: 11.5,
+                fontSize: AppNavBar.labelFontSize,
+                height: 1.2,
                 letterSpacing: 0,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                 color: selected ? AppColors.brand : AppColors.inkFaint,
               ),
               child: Text(
                 data.label,
-                maxLines: 1,
+                maxLines: 2,
+                textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
+                textScaler: AppNavBar.labelScaler(context),
               ),
             ),
           ],
@@ -236,9 +254,10 @@ class _Badge extends StatelessWidget {
     ),
     child: Text(
       text,
+      textScaler: TextScaler.noScaling,
       style: const TextStyle(
         color: Colors.white,
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: FontWeight.w600,
         height: 1.1,
         fontFeatures: [FontFeature.tabularFigures()],

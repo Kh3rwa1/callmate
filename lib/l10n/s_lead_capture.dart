@@ -4,9 +4,9 @@ import 's.dart';
 /// source integrations) and lead source chips.
 extension SLeadCapture on S {
   String get getLeadsAutomatically => pick(
-    'Get leads automatically',
-    'अपने-आप ग्राहक पाएँ',
-    'নিজে থেকে গ্রাহক পান',
+    'Get new customers automatically',
+    'अपने-आप नए ग्राहक पाएँ',
+    'নিজে থেকে নতুন গ্রাহক পান',
   );
   String get leadCaptureIntro => pick(
     'Share your enquiry form. Every new enquiry gets a call from your AI employee in about a minute.',
@@ -14,9 +14,9 @@ extension SLeadCapture on S {
     'আপনার খোঁজের ফর্ম শেয়ার করুন। প্রতিটি নতুন খোঁজে আপনার AI কর্মী প্রায় এক মিনিটে কল করবে।',
   );
   String get leadCaptureEntrySubtitle => pick(
-    'Form link, QR code and website connection',
-    'फ़ॉर्म लिंक, QR कोड और वेबसाइट कनेक्शन',
-    'ফর্ম লিংক, QR কোড আর ওয়েবসাইট সংযোগ',
+    'Form link, QR code and your website',
+    'फ़ॉर्म लिंक, QR कोड और आपकी वेबसाइट',
+    'ফর্ম লিংক, QR কোড আর আপনার ওয়েবসাইট',
   );
   String get enquiryForm =>
       pick('Enquiry form', 'पूछताछ फ़ॉर्म', 'খোঁজের ফর্ম');
@@ -64,28 +64,36 @@ extension SLeadCapture on S {
     'ওয়েবসাইট ও Google Forms',
   );
   String get websiteConnectionsHint => pick(
-    'For your web developer: a secure link your website or Google Form can send enquiries to.',
-    'आपके वेब डेवलपर के लिए: एक सुरक्षित लिंक जिस पर आपकी वेबसाइट या Google Form पूछताछ भेज सके।',
-    'আপনার ওয়েব ডেভেলপারের জন্য: একটি নিরাপদ লিংক যেখানে আপনার ওয়েবসাইট বা Google Form খোঁজ পাঠাতে পারে।',
+    'Enquiries from your website or Google Form come straight here. The person who made your website sets it up once.',
+    'आपकी वेबसाइट या Google Form की पूछताछ सीधे यहाँ आएगी। जिसने आपकी वेबसाइट बनाई है, वह इसे एक बार सेट कर दे।',
+    'আপনার ওয়েবসাইট বা Google Form-এর খোঁজ সোজা এখানে আসবে। যিনি আপনার ওয়েবসাইট বানিয়েছেন, তিনি একবার এটা সেট করে দেবেন।',
   );
   String get addWebsiteConnection => pick(
-    'Add website connection',
-    'वेबसाइट कनेक्शन जोड़ें',
-    'ওয়েবসাইট সংযোগ যোগ করুন',
+    'Connect your website',
+    'अपनी वेबसाइट जोड़ें',
+    'আপনার ওয়েবসাইট যুক্ত করুন',
   );
-  String get websiteConnection =>
-      pick('Website connection', 'वेबसाइट कनेक्शन', 'ওয়েবসাইট সংযোগ');
-  String get secretKey => pick('Secret key', 'सीक्रेट की', 'সিক্রেট কী');
-  String get webhookUrl => pick('Address (URL)', 'पता (URL)', 'ঠিকানা (URL)');
+  String get websiteConnection => pick(
+    'Connect your website',
+    'अपनी वेबसाइट जोड़ें',
+    'আপনার ওয়েবসাইট যুক্ত করুন',
+  );
+  String get secretKey => pick(
+    'Password for your website',
+    'आपकी वेबसाइट का पासवर्ड',
+    'আপনার ওয়েবসাইটের পাসওয়ার্ড',
+  );
+  String get webhookUrl =>
+      pick('Website link', 'वेबसाइट लिंक', 'ওয়েবসাইট লিংক');
   String get tokenShownOnce => pick(
-    'Copy the secret key now and send it to your web developer. For your safety it is shown only once.',
-    'सीक्रेट की अभी कॉपी करके अपने वेब डेवलपर को भेजें। सुरक्षा के लिए यह सिर्फ़ एक बार दिखेगी।',
-    'সিক্রেট কী এখনই কপি করে আপনার ওয়েব ডেভেলপারকে পাঠান। নিরাপত্তার জন্য এটি একবারই দেখানো হবে।',
+    'Copy this password now and send it to the person who made your website. For your safety it is shown only once.',
+    'यह पासवर्ड अभी कॉपी करके उसे भेजें जिसने आपकी वेबसाइट बनाई है। सुरक्षा के लिए यह सिर्फ़ एक बार दिखेगा।',
+    'এই পাসওয়ার্ড এখনই কপি করে যিনি আপনার ওয়েবসাইট বানিয়েছেন তাঁকে পাঠান। নিরাপত্তার জন্য এটি একবারই দেখানো হবে।',
   );
   String get copyForDeveloper => pick(
-    'Copy setup for developer',
-    'डेवलपर के लिए सेटअप कॉपी करें',
-    'ডেভেলপারের জন্য সেটআপ কপি করুন',
+    'Copy and send to the person who made your website',
+    'कॉपी करके उसे भेजें जिसने आपकी वेबसाइट बनाई',
+    'কপি করে তাঁকে পাঠান যিনি আপনার ওয়েবসাইট বানিয়েছেন',
   );
   String get turnOff => pick('Turn off', 'बंद करें', 'বন্ধ করুন');
   String get turnOffLinkTitle =>
@@ -123,14 +131,14 @@ extension SLeadCapture on S {
 
   // Lead-source integrations (Google Ads, IndiaMART, Meta Lead Ads)
   String get connectLeadSource => pick(
-    'Connect a lead source',
-    'लीड का स्रोत जोड़ें',
-    'লিডের উৎস যুক্ত করুন',
+    'Get customers from your ads',
+    'अपने विज्ञापनों से ग्राहक पाएँ',
+    'আপনার বিজ্ঞাপন থেকে গ্রাহক পান',
   );
   String get connectLeadSourceHint => pick(
-    'Leads from your ads and IndiaMART come in by themselves and get an AI call in about a minute.',
-    'आपके विज्ञापनों और IndiaMART की लीड अपने-आप आएँगी और लगभग एक मिनट में AI कॉल करेगा।',
-    'আপনার বিজ্ঞাপন আর IndiaMART-এর লিড নিজে থেকে আসবে, AI প্রায় এক মিনিটে কল করবে।',
+    'Customers from your ads and IndiaMART come in by themselves and get an AI call in about a minute.',
+    'आपके विज्ञापनों और IndiaMART के ग्राहक अपने-आप आएँगे और लगभग एक मिनट में AI कॉल करेगा।',
+    'আপনার বিজ্ঞাপন আর IndiaMART-এর গ্রাহক নিজে থেকে আসবেন, AI প্রায় এক মিনিটে কল করবে।',
   );
   String get googleAdsName => 'Google Ads';
   String get indiaMartName => 'IndiaMART';
@@ -140,7 +148,7 @@ extension SLeadCapture on S {
     'Facebook ও Instagram',
   );
   String get googleAdsTileHint =>
-      pick('Lead form ads', 'लीड फ़ॉर्म वाले विज्ञापन', 'লিড ফর্ম বিজ্ঞাপন');
+      pick('Ads with a form', 'फ़ॉर्म वाले विज्ञापन', 'ফর্মসহ বিজ্ঞাপন');
   String get indiaMartTileHint => pick(
     'Buyer enquiries from Lead Manager',
     'Lead Manager से खरीदारों की पूछताछ',
@@ -159,19 +167,19 @@ extension SLeadCapture on S {
 
   List<String> get googleAdsSteps => [
     pick(
-      'Tap Connect below. You get a webhook URL and a key.',
-      'नीचे "जोड़ें" दबाएँ। आपको एक वेबहुक URL और एक की मिलेगी।',
-      'নিচে "যুক্ত করুন" চাপুন। একটি ওয়েবহুক URL আর একটি কী পাবেন।',
+      'Tap Connect below. You get a link and a password.',
+      'नीचे "जोड़ें" दबाएँ। आपको एक लिंक और एक पासवर्ड मिलेगा।',
+      'নিচে "যুক্ত করুন" চাপুন। একটি লিংক আর একটি পাসওয়ার্ড পাবেন।',
     ),
     pick(
       'In Google Ads, open your lead form, go to "Lead delivery options" → "Webhook integration" and paste both.',
-      'Google Ads में अपना लीड फ़ॉर्म खोलें, "Lead delivery options" → "Webhook integration" में दोनों पेस्ट करें।',
-      'Google Ads-এ আপনার লিড ফর্ম খুলুন, "Lead delivery options" → "Webhook integration"-এ দুটোই পেস্ট করুন।',
+      'Google Ads में अपना फ़ॉर्म खोलें, "Lead delivery options" → "Webhook integration" में दोनों पेस्ट करें।',
+      'Google Ads-এ আপনার ফর্ম খুলুন, "Lead delivery options" → "Webhook integration"-এ দুটোই পেস্ট করুন।',
     ),
     pick(
-      'Tap "Send test data" in Google Ads to check. Test leads are never called.',
-      'जाँचने के लिए Google Ads में "Send test data" दबाएँ। टेस्ट लीड को कभी कॉल नहीं होता।',
-      'যাচাই করতে Google Ads-এ "Send test data" চাপুন। টেস্ট লিডে কখনো কল হয় না।',
+      'Tap "Send test data" in Google Ads to check. Test enquiries are never called.',
+      'जाँचने के लिए Google Ads में "Send test data" दबाएँ। टेस्ट पूछताछ पर कभी कॉल नहीं होता।',
+      'যাচাই করতে Google Ads-এ "Send test data" চাপুন। টেস্ট খোঁজে কখনো কল হয় না।',
     ),
   ];
 
@@ -187,9 +195,9 @@ extension SLeadCapture on S {
       'কী এখানে পেস্ট করে "যুক্ত করুন" চাপুন। আমরা কয়েক মিনিট পরপর IndiaMART-এ নতুন খোঁজ দেখি।',
     ),
     pick(
-      'Optional, for instant leads: paste the push URL into IndiaMART\'s Push API (choose "Other").',
-      'वैकल्पिक, तुरंत लीड के लिए: push URL को IndiaMART के Push API में पेस्ट करें ("Other" चुनें)।',
-      'ঐচ্ছিক, সঙ্গে সঙ্গে লিডের জন্য: push URL IndiaMART-এর Push API-তে পেস্ট করুন ("Other" বেছে নিন)।',
+      'Optional, to get enquiries instantly: paste the push link into IndiaMART\'s "Push API" page (choose "Other").',
+      'वैकल्पिक, पूछताछ तुरंत पाने के लिए: push लिंक को IndiaMART के "Push API" पेज में पेस्ट करें ("Other" चुनें)।',
+      'ঐচ্ছিক, সঙ্গে সঙ্গে খোঁজ পেতে: push লিংক IndiaMART-এর "Push API" পেজে পেস্ট করুন ("Other" বেছে নিন)।',
     ),
   ];
 
@@ -212,13 +220,13 @@ extension SLeadCapture on S {
   ];
 
   String get crmKeyLabel =>
-      pick('IndiaMART CRM key', 'IndiaMART CRM की', 'IndiaMART CRM কী');
+      pick('IndiaMART password', 'IndiaMART पासवर्ड', 'IndiaMART পাসওয়ার্ড');
   String get appSecretLabel => 'App Secret';
   String get pageTokenLabel => 'Page access token';
   String get crmKeyMissing => pick(
-    'Paste the full IndiaMART CRM key.',
-    'पूरी IndiaMART CRM की पेस्ट करें।',
-    'পুরো IndiaMART CRM কী পেস্ট করুন।',
+    'Paste the full IndiaMART key.',
+    'पूरी IndiaMART की पेस्ट करें।',
+    'পুরো IndiaMART কী পেস্ট করুন।',
   );
   String get metaSecretsInvalid => pick(
     'Paste the App Secret (letters and numbers only) and the full page access token.',
@@ -226,20 +234,23 @@ extension SLeadCapture on S {
     'App Secret (শুধু অক্ষর আর সংখ্যা) আর পুরো page access token পেস্ট করুন।',
   );
   String get integrationShownOnce => pick(
-    'Copy these now. For your safety the key is shown only once.',
-    'इन्हें अभी कॉपी करें। सुरक्षा के लिए की सिर्फ़ एक बार दिखेगी।',
-    'এগুলো এখনই কপি করুন। নিরাপত্তার জন্য কী একবারই দেখানো হবে।',
+    'Copy these now. For your safety the password is shown only once.',
+    'इन्हें अभी कॉपी करें। सुरक्षा के लिए पासवर्ड सिर्फ़ एक बार दिखेगा।',
+    'এগুলো এখনই কপি করুন। নিরাপত্তার জন্য পাসওয়ার্ড একবারই দেখানো হবে।',
   );
   String get secretsStoredSafely => pick(
-    'Your keys are stored encrypted and never shown again.',
-    'आपकी की एन्क्रिप्ट करके रखी जाती हैं और दोबारा नहीं दिखतीं।',
-    'আপনার কী এনক্রিপ্ট করে রাখা হয়, আর কখনো দেখানো হয় না।',
+    'Your passwords are kept safely locked and never shown again.',
+    'आपके पासवर्ड सुरक्षित रखे जाते हैं और दोबारा नहीं दिखते।',
+    'আপনার পাসওয়ার্ড নিরাপদে রাখা হয়, আর কখনো দেখানো হয় না।',
   );
-  String get googleKeyLabel => pick('Key', 'की', 'কী');
+  String get googleKeyLabel => pick('Password', 'पासवर्ड', 'পাসওয়ার্ড');
   String get callbackUrlLabel => 'Callback URL';
   String get verifyTokenLabel => 'Verify token';
-  String get pushUrlLabel =>
-      pick('Push URL (optional)', 'Push URL (वैकल्पिक)', 'Push URL (ঐচ্ছিক)');
+  String get pushUrlLabel => pick(
+    'Push link (optional)',
+    'Push लिंक (वैकल्पिक)',
+    'Push লিংক (ঐচ্ছিক)',
+  );
   String lastChecked(String when) => pick(
     'Last checked $when',
     'आख़िरी बार देखा: $when',
@@ -254,9 +265,9 @@ extension SLeadCapture on S {
       'আপনার IndiaMART কী কাজ করছে না। নতুন কী বানিয়ে আবার যুক্ত করুন।',
     ),
     'meta_token_invalid' => pick(
-      'Facebook stopped sharing leads. Connect again with a new page access token.',
-      'Facebook ने लीड भेजना बंद कर दिया। नए page access token से फिर से जोड़ें।',
-      'Facebook লিড পাঠানো বন্ধ করেছে। নতুন page access token দিয়ে আবার যুক্ত করুন।',
+      'Facebook stopped sending enquiries. Connect again with a new page access token.',
+      'Facebook ने पूछताछ भेजना बंद कर दिया। नए page access token से फिर से जोड़ें।',
+      'Facebook খোঁজ পাঠানো বন্ধ করেছে। নতুন page access token দিয়ে আবার যুক্ত করুন।',
     ),
     'rate_limited' => pick(
       'IndiaMART asked us to slow down. We will try again in a few minutes.',

@@ -152,14 +152,106 @@ Future<void> showSupportSheet(BuildContext context) {
         Uri.parse(AppEnv.deleteAccountUrl),
       ),
   ];
+  return _showLinkSheet(context, s.helpSupport, options);
+}
+
+/// The options on the Help sheet for [s]'s language: the 1-minute video
+/// only when configured for this build, email always.
+List<(String, String?, IconData, Uri)> helpOptions(S s) {
+  final video = AppEnv.helpVideoUrl(s.lang.code);
+  return [
+    if (video != null)
+      (
+        s.helpWatchVideo,
+        null,
+        Icons.play_circle_outline_rounded,
+        Uri.parse(video),
+      ),
+    (
+      s.helpEmail,
+      AppEnv.supportEmail,
+      Icons.mail_outline_rounded,
+      Uri(
+        scheme: 'mailto',
+        path: AppEnv.supportEmail,
+        query: 'subject=${Uri.encodeComponent(s.supportEmailSubject)}',
+      ),
+    ),
+  ];
+}
+
+/// "Help" from the Home top bar: a 1-minute video and email.
+Future<void> showHelpSheet(BuildContext context) =>
+    _showLinkSheet(context, context.s.help, helpOptions(context.s));
+
+/// "Text size": Normal / Large / Extra large, on top of the phone's size.
+Future<void> showTextSizeSheet(BuildContext context, WidgetRef ref) {
+  final s = context.s;
   return showModalBottomSheet<void>(
     context: context,
     useSafeArea: true,
+    isScrollControlled: true,
+    builder: (ctx) {
+      final current = ref.read(textSizeProvider);
+      final options = [
+        (TextSize.normal, s.textNormal),
+        (TextSize.large, s.textLarge),
+        (TextSize.extraLarge, s.textExtraLarge),
+      ];
+      return SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.page,
+            0,
+            AppSpace.page,
+            16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(s.textSize, style: Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              for (final (i, (size, label)) in options.indexed)
+                Reveal(
+                  index: i,
+                  offset: 8,
+                  child: _ChoiceRow(
+                    label: label,
+                    icon: Icons.format_size_rounded,
+                    selected: current == size,
+                    onTap: () {
+                      Haptics.tap();
+                      ref.read(textSizeProvider.notifier).set(size);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// A sheet of rows that each open a link. Errors stay inside the sheet: a
+/// snackbar would render behind it.
+Future<void> _showLinkSheet(
+  BuildContext context,
+  String title,
+  List<(String, String?, IconData, Uri)> options,
+) {
+  final s = context.s;
+  return showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    isScrollControlled: true,
     builder: (ctx) {
       String? error;
       return StatefulBuilder(
         builder: (ctx, setSheetState) => SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
               AppSpace.page,
               0,
@@ -170,7 +262,7 @@ Future<void> showSupportSheet(BuildContext context) {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(s.helpSupport, style: Theme.of(ctx).textTheme.titleLarge),
+                Text(title, style: Theme.of(ctx).textTheme.titleLarge),
                 const SizedBox(height: 12),
                 for (final (i, (label, hint, icon, uri)) in options.indexed)
                   Reveal(
@@ -190,8 +282,6 @@ Future<void> showSupportSheet(BuildContext context) {
                             mode: LaunchMode.externalApplication,
                           );
                         } catch (_) {}
-                        // Errors stay inside the sheet: a snackbar would
-                        // render behind it.
                         if (!ok && ctx.mounted) {
                           setSheetState(() => error = s.couldNotOpen(label));
                         }
@@ -203,9 +293,10 @@ Future<void> showSupportSheet(BuildContext context) {
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       error!,
+                      key: const Key('link-sheet-error'),
                       style: Theme.of(
                         ctx,
-                      ).textTheme.bodySmall?.copyWith(color: AppColors.hot),
+                      ).textTheme.bodyLarge?.copyWith(color: AppColors.hot),
                     ),
                   ),
               ],
@@ -263,7 +354,7 @@ class _ChoiceRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(label, style: t.titleSmall),
-                    if (hint != null) Text(hint!, style: t.bodySmall),
+                    if (hint != null) Text(hint!, style: t.bodyMedium),
                   ],
                 ),
               ),

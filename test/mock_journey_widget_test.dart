@@ -34,14 +34,14 @@ void main() {
         );
       }
 
-      testWidgets('1. Onboarding WelcomeScreen renders brand and Get Started', (
+      testWidgets('1. Onboarding starts with the type of business', (
         tester,
       ) async {
-        await tester.pumpWidget(wrap(const WelcomeScreen()));
+        await tester.pumpWidget(wrap(const BusinessTypeScreen()));
         await tester.pump(const Duration(milliseconds: 800));
 
-        expect(find.text('Let\'s set up your AI employee'), findsOneWidget);
-        expect(find.text('Create My AI Employee'), findsOneWidget);
+        expect(find.text('What is your business?'), findsOneWidget);
+        expect(find.text('Clinic'), findsOneWidget);
       });
 
       testWidgets('2. LeadsScreen renders in mock mode with search and tabs', (
@@ -80,7 +80,7 @@ void main() {
 
         expect(find.textContaining(call.leadName), findsWidgets);
         expect(find.textContaining('understood'), findsOneWidget);
-        expect(find.text('Customer score'), findsOneWidget);
+        expect(find.text('How likely to buy'), findsOneWidget);
       });
 
       testWidgets(

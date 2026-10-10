@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../data/models/models.dart';
 import '../../data/templates/templates.dart';
+import '../../services/voice/voice_persona.dart';
 
 class OnboardingDraft {
   const OnboardingDraft({
@@ -45,6 +46,25 @@ class OnboardingDraft {
 
   /// Suggested employee for the chosen business type + skills.
   AgentTemplate get suggestedAgent => agentForSkills(template, skills);
+
+  /// The owner picked a man's voice (template default until they choose).
+  bool get maleVoiceChosen =>
+      isMaleVoice(employeeVoice ?? suggestedAgent.voice);
+
+  /// The employee's name: the owner's, else the template's when its voice
+  /// matches the chosen one, else a default name for that voice (so "Maya"
+  /// never speaks in a man's voice).
+  String get resolvedEmployeeName {
+    final own = (employeeName ?? '').trim();
+    if (own.isNotEmpty) return own;
+    final at = suggestedAgent;
+    final male = maleVoiceChosen;
+    if (isMaleVoice(at.voice) == male) return at.defaultName;
+    return male ? defaultMaleName : defaultFemaleName;
+  }
+
+  static const defaultMaleName = 'Arjun';
+  static const defaultFemaleName = 'Maya';
 
   OnboardingDraft copyWith({
     BusinessCategory? category,
@@ -159,9 +179,7 @@ class OnboardingController extends Notifier<OnboardingDraft> {
     final role = (d.employeeRole ?? '').trim().isEmpty
         ? at.role
         : d.employeeRole!.trim();
-    final name = (d.employeeName ?? '').trim().isEmpty
-        ? at.defaultName
-        : d.employeeName!.trim();
+    final name = d.resolvedEmployeeName;
     final skills = (d.skills.isEmpty ? at.defaultSkills.toSet() : d.skills)
         .map((e) => e.wire)
         .toList();
@@ -188,6 +206,14 @@ class OnboardingController extends Notifier<OnboardingDraft> {
       callsToday: current == null ? 0 : null,
     );
     return repo.saveAgent(agent);
+  }
+
+  /// The short first run's "Continue" on step 2: saves the business (name
+  /// and type; everything else stays optional) and creates the employee
+  /// with the business type's defaults.
+  Future<Agent> finishSetup() async {
+    await saveBusiness();
+    return activateEmployee();
   }
 
   static List<String> _capabilitiesFor(List<String> skills, AgentTemplate at) {
