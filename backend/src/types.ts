@@ -38,6 +38,15 @@ export interface Env {
   FIREBASE_PROJECT_ID?: string;
   /** Public origin of this worker (e.g. https://api.example.com), used for Sarvam webhook_config on queued dials. */
   PUBLIC_API_BASE_URL?: string;
+  /** Free-trial minutes for a first-time signup (default 30). */
+  TRIAL_MINUTES?: string;
+  /** Razorpay API key id/secret (secrets). Missing = checkout returns 503 billing_not_configured. */
+  RAZORPAY_KEY_ID?: string;
+  RAZORPAY_KEY_SECRET?: string;
+  /** Secret configured on the Razorpay dashboard webhook; verifies X-Razorpay-Signature. */
+  RAZORPAY_WEBHOOK_SECRET?: string;
+  /** Optional URL Razorpay redirects to after payment. */
+  BILLING_RETURN_URL?: string;
   /** Dev/test only: 'true' skips the TRAI 09:00-21:00 clamp so tests can dial at any time of day. */
   DEV_ALLOW_ANY_CALLING_HOURS?: string;
   /** Contact address shown on the public legal pages. */

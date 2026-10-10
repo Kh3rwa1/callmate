@@ -103,6 +103,12 @@ abstract class CallbackRepository {
 
 abstract class UsageRepository {
   Future<Usage> get();
+
+  /// Starts a payment for [planId]. Returns the payment page URL to open, or
+  /// null when no page is needed (the mock backend "pays" instantly).
+  /// Throws `ApiException(code: 'billing_not_configured')` when online
+  /// payments are not set up.
+  Future<String?> checkout({String planId = 'starter'});
 }
 
 abstract class NotificationRepository {

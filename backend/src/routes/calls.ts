@@ -6,6 +6,7 @@ import { requireSecret, isMockSarvam } from '../utils/secrets';
 import { checkCallCompliance, allowAnyCallingHours } from '../services/compliance';
 import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS, hasMinutesHeadroom } from '../services/campaign_queue';
 import { parseLimit } from '../utils/pagination';
+import { isPlanBlocked, PLAN_BLOCKED_BODY } from '../services/plans';
 import { buildCallAgentVariables } from '../services/call_variables';
 
 const callsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -184,6 +185,7 @@ callsApp.post('/leads/:id/call', async (c) => {
     return c.json({ message: 'Too many calls in progress. Try again in a minute.', code: 'concurrency_limit' }, 429);
   }
 
+  if (await isPlanBlocked(c.env.DB, user.business_id)) return c.json(PLAN_BLOCKED_BODY, 402);
   const usage = await c.env.DB.prepare('SELECT included_minutes, minutes_used FROM usage WHERE business_id = ?')
     .bind(user.business_id).first<{ included_minutes: number; minutes_used: number }>();
   if (usage && !hasMinutesHeadroom(usage, active?.cnt ?? 0)) {

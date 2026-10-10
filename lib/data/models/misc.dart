@@ -47,23 +47,94 @@ class AppNotification {
   );
 }
 
+/// Billing state of the plan (server `plan_status`).
+enum PlanStatus {
+  trial,
+  active,
+  pastDue,
+  cancelled;
+
+  static PlanStatus parse(String? v) => switch (v) {
+    'trial' => trial,
+    'past_due' => pastDue,
+    'cancelled' => cancelled,
+    _ => active,
+  };
+
+  /// Calls and campaigns are blocked until the owner pays.
+  bool get blocksCalling => this == pastDue || this == cancelled;
+}
+
 class Subscription {
   const Subscription({
     required this.planName,
     required this.includedMinutes,
     required this.renewsAt,
     this.priceInr = 0,
+    this.planId = 'starter',
+    this.status = PlanStatus.active,
+    this.currentPeriodEnd,
   });
   final String planName;
   final int includedMinutes;
   final DateTime renewsAt;
   final int priceInr;
 
+  /// `trial` or a paid plan id (`starter`).
+  final String planId;
+  final PlanStatus status;
+
+  /// End of the paid period (UTC); null for trials and legacy plans.
+  final DateTime? currentPeriodEnd;
+
+  bool get isTrial => status == PlanStatus.trial;
+
+  Subscription copyWith({
+    String? planName,
+    int? includedMinutes,
+    int? priceInr,
+    String? planId,
+    PlanStatus? status,
+    DateTime? currentPeriodEnd,
+  }) => Subscription(
+    planName: planName ?? this.planName,
+    includedMinutes: includedMinutes ?? this.includedMinutes,
+    renewsAt: currentPeriodEnd ?? renewsAt,
+    priceInr: priceInr ?? this.priceInr,
+    planId: planId ?? this.planId,
+    status: status ?? this.status,
+    currentPeriodEnd: currentPeriodEnd ?? this.currentPeriodEnd,
+  );
+
   factory Subscription.fromJson(Json j) => Subscription(
     planName: jStr(j, 'plan_name', 'Founding Plan'),
     includedMinutes: jInt(j, 'included_minutes'),
     renewsAt: jDate(j, 'renews_at') ?? DateTime.now(),
     priceInr: jInt(j, 'price_inr'),
+    planId: jStr(j, 'plan_id', 'starter'),
+    status: PlanStatus.parse(jStrN(j, 'plan_status')),
+    currentPeriodEnd: jDate(j, 'current_period_end'),
+  );
+}
+
+/// What "Upgrade" / "Renew" buys.
+class CheckoutPlan {
+  const CheckoutPlan({
+    this.planId = 'starter',
+    this.name = 'Starter',
+    this.priceInr = 4999,
+    this.includedMinutes = 1000,
+  });
+  final String planId;
+  final String name;
+  final int priceInr;
+  final int includedMinutes;
+
+  factory CheckoutPlan.fromJson(Json j) => CheckoutPlan(
+    planId: jStr(j, 'plan_id', 'starter'),
+    name: jStr(j, 'name', 'Starter'),
+    priceInr: jInt(j, 'price_inr', 4999),
+    includedMinutes: jInt(j, 'included_minutes', 1000),
   );
 }
 
@@ -73,23 +144,40 @@ class Usage {
     required this.minutesUsed,
     required this.callsMade,
     this.ratePerMinuteInr = 6,
+    this.checkoutPlan = const CheckoutPlan(),
   });
   final Subscription subscription;
   final int minutesUsed;
   final int callsMade;
   final int ratePerMinuteInr;
+  final CheckoutPlan checkoutPlan;
 
   int get minutesRemaining => (subscription.includedMinutes - minutesUsed)
       .clamp(0, subscription.includedMinutes);
   double get ratio => subscription.includedMinutes == 0
-      ? 0
+      ? (subscription.isTrial ? 1 : 0)
       : minutesUsed / subscription.includedMinutes;
 
-  Usage copyWith({int? minutesUsed, int? callsMade}) => Usage(
-    subscription: subscription,
+  /// Trial with at most 20% (or 5 minutes) left, but not yet used up.
+  bool get trialLow =>
+      subscription.isTrial &&
+      minutesRemaining > 0 &&
+      (minutesRemaining <= 5 ||
+          minutesRemaining <= subscription.includedMinutes * 0.2);
+
+  /// No minutes left to call with.
+  bool get exhausted => minutesRemaining <= 0;
+
+  Usage copyWith({
+    int? minutesUsed,
+    int? callsMade,
+    Subscription? subscription,
+  }) => Usage(
+    subscription: subscription ?? this.subscription,
     minutesUsed: minutesUsed ?? this.minutesUsed,
     callsMade: callsMade ?? this.callsMade,
     ratePerMinuteInr: ratePerMinuteInr,
+    checkoutPlan: checkoutPlan,
   );
 
   factory Usage.fromJson(Json j) => Usage(
@@ -97,6 +185,7 @@ class Usage {
     minutesUsed: jInt(j, 'minutes_used'),
     callsMade: jInt(j, 'calls_made'),
     ratePerMinuteInr: jInt(j, 'rate_per_minute_inr', 6),
+    checkoutPlan: CheckoutPlan.fromJson(jObj(j, 'checkout_plan') ?? const {}),
   );
 }
 

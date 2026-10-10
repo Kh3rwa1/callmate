@@ -395,6 +395,12 @@ class ApiUsageRepository implements UsageRepository {
   final ApiClient api;
   @override
   Future<Usage> get() => api.get('/usage', (d) => Usage.fromJson(_j(d)));
+  @override
+  Future<String?> checkout({String planId = 'starter'}) => api.post(
+    '/billing/checkout',
+    (d) => jStrN(_j(d), 'url'),
+    data: {'plan_id': planId},
+  );
 }
 
 class ApiNotificationRepository implements NotificationRepository {

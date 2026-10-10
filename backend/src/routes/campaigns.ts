@@ -4,6 +4,7 @@ import { safeJsonParse } from '../utils/json';
 import { parseJsonBody, createCampaignSchema } from '../schemas/validation';
 import { enqueueCampaignJobs, maybeCompleteCampaign } from '../services/campaign_queue';
 import { parseLimit, MAX_LIST_LIMIT } from '../utils/pagination';
+import { isPlanBlocked, PLAN_BLOCKED_BODY } from '../services/plans';
 
 const campaignsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -130,6 +131,7 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
   const totalLeads = existing.total_leads || 0;
   const estimatedMinutes = Math.max(1, Math.ceil(totalLeads * 2.2));
 
+  if (await isPlanBlocked(c.env.DB, user.business_id)) return c.json(PLAN_BLOCKED_BODY, 402);
   const usage = await c.env.DB.prepare(
     'SELECT included_minutes, minutes_used FROM usage WHERE business_id = ?'
   ).bind(user.business_id).first<{ included_minutes: number; minutes_used: number }>();

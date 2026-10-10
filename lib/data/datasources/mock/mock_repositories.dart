@@ -440,6 +440,11 @@ class MockUsageRepository implements UsageRepository {
   final MockBackend b;
   @override
   Future<Usage> get() => _lag(() => b.usage);
+  @override
+  Future<String?> checkout({String planId = 'starter'}) => _lag(() {
+    b.simulatePlanPayment();
+    return null;
+  });
 }
 
 class MockNotificationRepository implements NotificationRepository {

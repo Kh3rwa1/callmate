@@ -20,6 +20,8 @@ import { fcApp } from './routes/followups_callbacks';
 import { knowledgeApp } from './routes/knowledge';
 import { dashApp } from './routes/dashboard';
 import { voiceApp, handleSarvamWebhook } from './routes/voice';
+import { billingApp, handleRazorpayWebhook } from './routes/billing';
+import { runBillingRenewals } from './services/plans';
 import { legalApp } from './routes/legal';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -150,6 +152,9 @@ app.post('/webhooks/sarvam', async (c) => {
   return res;
 });
 
+// Public Razorpay webhook (verified by X-Razorpay-Signature)
+app.post('/webhooks/razorpay', handleRazorpayWebhook);
+
 // Voice proxy (has its own session token verification in route)
 app.all('/voice/sarvam-proxy/*', (c) => {
   let ctx: any;
@@ -171,6 +176,7 @@ protectedApp.route('/', campaignsApp);
 protectedApp.route('/', fcApp);
 protectedApp.route('/', knowledgeApp);
 protectedApp.route('/', dashApp);
+protectedApp.route('/', billingApp);
 protectedApp.route('/voice', voiceApp);
 
 app.route('/', protectedApp);
@@ -203,6 +209,7 @@ export default {
   },
   async scheduled(_ctrl: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(runMaintenance(env));
+    ctx.waitUntil(runBillingRenewals(env));
     ctx.waitUntil(runAlertChecks(env));
   },
 };

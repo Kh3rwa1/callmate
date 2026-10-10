@@ -133,7 +133,10 @@ Receives post-call telemetry from Sarvam telephony.
 | Method | Path | Response |
 |---|---|---|
 | `GET` | `/dashboard/today` | `DailySummary`: leads count, connected calls, hot leads, follow-ups ready, callbacks scheduled, recent activity feed. |
-| `GET` | `/usage` | `Usage`: subscription plan, included minutes, minutes used, calls made, renewal date. |
+| `GET` | `/usage` | `Usage`: subscription (`plan_name`, `plan_id` `trial`/`starter`, `plan_status` `trial`/`active`/`past_due`/`cancelled`, `current_period_end` UTC or null, included minutes, price), minutes used, calls made, `checkout_plan`. |
+| `GET` | `/billing` | `{plan_id, plan_name, plan_status, current_period_end, price_inr, included_minutes, minutes_used, minutes_left, checkout_plan}`. |
+| `POST` | `/billing/checkout` | Body `{"plan_id": "starter"}` (optional). Creates a Razorpay Payment Link and returns `{url, id}`. `503 billing_not_configured` when Razorpay keys are not set; `502 billing_unavailable` if Razorpay fails. |
+| `POST` | `/webhooks/razorpay` | Public. Razorpay `payment_link.paid` webhook, verified with `X-Razorpay-Signature` = hex HMAC-SHA256(raw body, `RAZORPAY_WEBHOOK_SECRET`). Idempotent per Razorpay payment id: activates the paid plan, resets `minutes_used`, extends `current_period_end` by one month. |
 | `GET` | `/notifications` | List of in-app notifications. |
 | `PATCH` | `/notifications/:id` | `{"read": true}` |
 | `POST` | `/notifications/device` | `{"token": "...", "platform": "android"}` registers FCM push token for business. |
@@ -156,6 +159,7 @@ All errors return a consistent JSON schema:
 | `400` | `validation_error` | Request payload failed schema validation (Zod). Details provided in `errors`. |
 | `400` | `phone_registered` | Phone number is already registered in `users` table. |
 | `400` | `insufficient_minutes` | Business minute quota is insufficient to start campaign. |
+| `402` | `plan_inactive` | Plan is `past_due`/`cancelled`; calls and campaigns are blocked until a payment is received. |
 | `401` | `missing_auth` | Authorization header or Bearer token is missing. |
 | `401` | `invalid_token` | JWT token expired, malformed, or wrong claim type. |
 | `401` | `invalid_otp` | Submitted OTP does not match SHA-256 hash or is expired (>5 min). |

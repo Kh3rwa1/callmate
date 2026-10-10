@@ -97,6 +97,8 @@ const _data = <String, (String, String)>{
 
   // Plans
   'Founding Plan': ('फ़ाउंडिंग प्लान', 'ফাউন্ডিং প্ল্যান'),
+  'Free trial': ('फ़्री ट्रायल', 'ফ্রি ট্রায়াল'),
+  'Starter': ('स्टार्टर प्लान', 'স্টার্টার প্ল্যান'),
 
   // Voices and personality
   'Warm · Female': ('गर्मजोशी · महिला', 'আন্তরিক · মহিলা'),
