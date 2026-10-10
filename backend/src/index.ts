@@ -8,6 +8,8 @@ import { jsonErrorHandler } from './utils/errors';
 import { timingSafeEqual } from './utils/compare';
 import { isDevEnv } from './utils/secrets';
 import { runMaintenance } from './services/maintenance';
+import { recordOpsEvent, runAlertChecks } from './services/alerts';
+import { allowedAgentVariables } from './services/call_variables';
 
 import { authApp } from './routes/auth';
 import { businessApp } from './routes/business';
@@ -20,6 +22,7 @@ import { dashApp } from './routes/dashboard';
 import { voiceApp, handleSarvamWebhook } from './routes/voice';
 import { billingApp, handleRazorpayWebhook } from './routes/billing';
 import { runBillingRenewals } from './services/plans';
+import { legalApp } from './routes/legal';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -117,10 +120,18 @@ app.get('/health/deep', async (c) => {
   const status = healthy ? 'healthy' : 'unhealthy';
   const statusCode = healthy ? 200 : 503;
 
+  // Which dial settings are present (never their values) and which agent_variables a dial sends.
+  const sarvam = Object.fromEntries(([
+    'SARVAM_API_KEY', 'SARVAM_ORG_ID', 'SARVAM_WORKSPACE_ID', 'SARVAM_ADMISSIONS_APP_ID', 'SARVAM_APP_VERSION',
+    'SARVAM_CONNECTION_ID', 'SARVAM_AGENT_PHONE_NUMBERS', 'SARVAM_WEBHOOK_SECRET', 'PUBLIC_API_BASE_URL',
+  ] as const).map((k) => [k, Boolean(c.env[k])]));
+
   return c.json(
     {
       status,
       checks,
+      sarvam,
+      agent_variables: allowedAgentVariables(c.env),
       time: new Date().toISOString(),
     },
     statusCode
@@ -130,8 +141,16 @@ app.get('/health/deep', async (c) => {
 // ------------------------------------------------------------- Public Routes
 app.route('/auth', authApp);
 
+// Privacy policy, terms and account-deletion pages (linked from the app and Play Store listing)
+app.route('/legal', legalApp);
+
 // Public Sarvam completed call webhook
-app.post('/webhooks/sarvam', handleSarvamWebhook);
+app.post('/webhooks/sarvam', async (c) => {
+  const res = await handleSarvamWebhook(c);
+  // Rejected webhooks feed the webhook_auth_failures alert (services/alerts.ts).
+  if (res.status === 401) await recordOpsEvent(c.env.DB, 'webhook_auth_failure', `http_401${c.req.query('call_id') ? ' url_token' : ''}`);
+  return res;
+});
 
 // Public Razorpay webhook (verified by X-Razorpay-Signature)
 app.post('/webhooks/razorpay', handleRazorpayWebhook);
@@ -179,6 +198,10 @@ export default {
   fetch: app.fetch,
   async queue(batch: MessageBatch<any>, env: Env): Promise<void> {
     if (isDeadLetterQueue(batch.queue)) {
+      // Recorded for the queue_dead_letters alert (services/alerts.ts).
+      for (const m of batch.messages) {
+        await recordOpsEvent(env.DB, 'queue_dead_letter', m.body?.idempotency_key ?? null);
+      }
       await handleCampaignDlqBatch(batch, env);
       return;
     }
@@ -187,6 +210,7 @@ export default {
   async scheduled(_ctrl: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(runMaintenance(env));
     ctx.waitUntil(runBillingRenewals(env));
+    ctx.waitUntil(runAlertChecks(env));
   },
 };
 

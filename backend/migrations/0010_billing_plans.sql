@@ -1,4 +1,4 @@
--- Migration 0009: plans, free trial, Razorpay payments.
+-- Migration 0010: plans, free trial, Razorpay payments.
 --
 -- Existing usage rows default to plan_id='starter', plan_status='active' with their current
 -- included_minutes/minutes_used, and current_period_end NULL. NULL means "never expires via the

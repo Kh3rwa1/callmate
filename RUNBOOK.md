@@ -94,6 +94,8 @@ Firebase config is missing.
 Cloudflare D1 is SQLite at the edge. To roll back an accidental or failing migration:
 
 ### 2.1 Export Current Database Backup
+Every **Deploy Production** run exports the database before migrating and keeps it
+for 30 days as the workflow artifact `d1-backup-<run id>` (`backup-<sha>.sql`).
 Always capture an immediate snapshot before any rollback operations:
 ```bash
 npx wrangler d1 export callpilot-db --remote --output=./backup_$(date +%Y%m%d_%H%M%S).sql
@@ -134,26 +136,48 @@ echo "$NEW_KEY" | npx wrangler secret put JWT_SIGNING_KEY
 3. **Impact & Recovery:** Existing access tokens will be rejected with 401 on their next request. The Flutter client's `ApiClient` automatically intercepts the 401 and uses the valid refresh token (stored as a SHA-256 hash in D1) to silently obtain a new access token signed with the new key. Users will not be logged out.
 
 ### 3.2 Rotating Sarvam AI API Key (`SARVAM_API_KEY`)
-1. Log into Sarvam AI Dashboard and generate a new API key.
-2. Update production secret:
+See also `docs/SARVAM_SETUP.md`. The API is served on workers.dev:
+production `https://callpilot-backend.dulalkisku0.workers.dev`, staging
+`https://callpilot-backend-staging.dulalkisku0.workers.dev`.
+
+1. In the Sarvam dashboard (**Settings → API Key**) create a new key. Keep the old one for now.
+2. Update the secret in both environments:
 ```bash
-npx wrangler secret put SARVAM_API_KEY
+npx wrangler secret put SARVAM_API_KEY                 # production
+npx wrangler secret put SARVAM_API_KEY --env staging   # staging
 ```
-3. Test connectivity immediately:
+3. Confirm it works: on staging, open the app → Agent → talk to your AI employee (or
+   `POST /voice/test-session` with an owner's access token), then place one test call to
+   **your own number** and check it rings and the result arrives.
 ```bash
-curl -X POST https://api.callpilot.app/voice/test-session \
-  -H "Authorization: Bearer <ADMIN_TEST_TOKEN>"
+curl -X POST https://callpilot-backend-staging.dulalkisku0.workers.dev/voice/test-session \
+  -H "Authorization: Bearer <OWNER_ACCESS_TOKEN>"
 ```
-4. Verify voice test session generates successfully, then revoke the old key in the Sarvam dashboard.
+4. Repeat the check on production, then revoke the old key in the Sarvam dashboard.
 
 ### 3.3 Rotating Sarvam Webhook Secret (`SARVAM_WEBHOOK_SECRET`)
-1. Generate new webhook secret or retrieve from Sarvam dashboard.
-2. Update Cloudflare secret:
+Sarvam does **not** sign webhooks and this secret is **not** entered in Sarvam.
+Each dial puts a per-call token in its webhook URL:
+`{PUBLIC_API_BASE_URL}/webhooks/sarvam?call_id=…&token=HMAC-SHA256(SARVAM_WEBHOOK_SECRET, call_id)`,
+and `/webhooks/sarvam` recomputes it. Rotating the secret therefore invalidates the
+tokens of calls still in progress: their results are rejected (401) and the
+maintenance sweeper later marks those calls failed.
+
+1. Pick a quiet moment: pause running campaigns and check nothing is in progress:
 ```bash
-npx wrangler secret put SARVAM_WEBHOOK_SECRET
+npx wrangler d1 execute callpilot-db --remote --command="
+  SELECT COUNT(*) FROM calls WHERE status = 'calling';
+"
 ```
-3. Update the webhook configuration in the Sarvam AI portal to match the new secret.
-4. Send a test webhook to `/webhooks/sarvam` and confirm HTTP 200 response.
+2. Generate and set a new secret (32+ chars):
+```bash
+openssl rand -hex 32
+npx wrangler secret put SARVAM_WEBHOOK_SECRET                 # production
+npx wrangler secret put SARVAM_WEBHOOK_SECRET --env staging   # staging (use a different value)
+```
+3. Nothing to change in the Sarvam portal: the next dial carries a token made with the new secret.
+4. Place one test call to your own number and confirm the call completes in the app
+   (`npx wrangler tail` shows the `/webhooks/sarvam` request with status 200). Resume campaigns.
 
 ---
 
@@ -185,7 +209,7 @@ npx wrangler d1 execute callpilot-db --remote --command="
 ### 4.3 Force Stop the Campaign
 Halting the campaign transitions `campaigns.status` to `stopped`, causing the queue consumer to immediately acknowledge and drop remaining tasks:
 ```bash
-curl -X POST https://api.callpilot.app/campaigns/<CAMPAIGN_ID>/stop \
+curl -X POST https://callpilot-backend.dulalkisku0.workers.dev/campaigns/<CAMPAIGN_ID>/stop \
   -H "Authorization: Bearer <TOKEN>"
 ```
 Alternatively, update database directly:
@@ -220,6 +244,75 @@ business) re-sends a delayed message and does **not** use up retries.
   ```
 - **Phone Privacy:** Phone numbers appear only in masked format (`91XXXXXX345`) in compliance with PII privacy rules.
 
+### 5.1 Alerts & monitoring
+
+The 10-minute cron (`scheduled` in `backend/src/index.ts`) runs
+`runAlertChecks` (`backend/src/services/alerts.ts`). It looks at the **last
+hour** and raises at most **one alert per type per hour** (deduped in the D1
+table `alert_state`). Nothing is sent while everything is healthy.
+
+| Alert type | Fires when (last hour) | Source |
+|---|---|---|
+| `sarvam_dial_failures` | ≥ 3 calls `status='failed'` with `failure_reason LIKE 'sarvam_%'` | `calls` |
+| `stuck_calls` | ≥ 3 calls still `calling` after 45 min, or swept to `timed_out` | `calls` |
+| `queue_dead_letters` | ≥ 1 campaign job reached the dead-letter queue | `ops_events` (written by the DLQ consumer) |
+| `webhook_auth_failures` | ≥ 10 `/webhooks/sarvam` requests rejected with 401 | `ops_events` (written by the webhook route) |
+
+Thresholds live in `ALERT_THRESHOLDS` in `alerts.ts`.
+
+Every alert goes to:
+1. **Logs, always:** a `console.error` JSON line with `"msg":"ops_alert"`,
+   `type`, `count`, `env` and `text`.
+2. **Chat, if configured:** a POST to `ALERT_WEBHOOK_URL`. It is sent as
+   `{"text": …}`, which Slack and Google Chat incoming webhooks accept
+   (`{"content": …}` for Discord URLs). Set it as a secret:
+   ```bash
+   cd backend
+   env -u CLOUDFLARE_API_TOKEN npx wrangler secret put ALERT_WEBHOOK_URL --env staging
+   env -u CLOUDFLARE_API_TOKEN npx wrangler secret put ALERT_WEBHOOK_URL          # production
+   ```
+
+**Tail logs:**
+```bash
+cd backend
+env -u CLOUDFLARE_API_TOKEN npx wrangler tail --env staging
+env -u CLOUDFLARE_API_TOKEN npx wrangler tail --env staging --format=json | jq 'select(.logs[]?.message[]? | tostring | contains("ops_alert"))'
+```
+
+**Deep health check:** `GET /health/deep` with header `x-health-key: $HEALTH_CHECK_SECRET`
+returns D1/R2 reachability, `sarvam_config`, a `sarvam` map of which dial
+settings are set (true/false, never the values) and the `agent_variables`
+names each dial sends.
+
+**What to do per alert**
+
+- `sarvam_dial_failures` — read the reasons; `failure_reason` holds Sarvam's
+  HTTP status and error body:
+  ```bash
+  npx wrangler d1 execute callpilot-db-staging --env staging --remote --command="
+    SELECT id, started_at, failure_reason FROM calls
+    WHERE status='failed' AND failure_reason LIKE 'sarvam_%' ORDER BY started_at DESC LIMIT 20;"
+  ```
+  - `sarvam_http_422: … Agent variables … not found` → the backend sent a
+    variable the agent version doesn't declare. Remove it from
+    `SARVAM_AGENT_VARIABLES` (or declare it in the agent and bump
+    `SARVAM_APP_VERSION`); see `docs/SARVAM_SETUP.md` → Agent variables.
+  - `sarvam_http_422/404` otherwise → agent version not committed or caller
+    ID not onboarded on the connection.
+  - `sarvam_http_401/403` → API key wrong or revoked (§3.2).
+  - `sarvam_http_429/5xx`, `sarvam_network` → Sarvam outage/rate limit; campaign
+    dials retry on their own. Check Sarvam status.
+  - `sarvam_not_configured` → a `[vars]` value or `SARVAM_API_KEY` is missing
+    (`/health/deep` shows which).
+- `stuck_calls` — Sarvam isn't reaching `/webhooks/sarvam`. Check
+  `PUBLIC_API_BASE_URL`, the Sarvam webhook delivery log, and look for
+  `webhook_auth_failures` at the same time (a rotated `SARVAM_WEBHOOK_SECRET`
+  invalidates tokens of calls already in flight).
+- `queue_dead_letters` — see §4.4. The `ops_events.detail` column has the
+  job's `campaign:lead` key; correlate with `sarvam_dial_failures`.
+- `webhook_auth_failures` — after a secret rotation a burst is expected for
+  in-flight calls. A sustained stream from unknown sources is probing; no
+  action needed beyond watching, since bad tokens are rejected.
 ---
 
 ## 6. Billing, Plans & Trials
@@ -235,7 +328,7 @@ business) re-sends a delayed message and does **not** use up retries.
 - **Renewal:** the 10-minute cron marks `active` plans whose
   `current_period_end` has passed as `past_due`; calls and campaigns then return
   `402 plan_inactive` until the owner pays again (the same checkout renews).
-- **Accounts that existed before migration 0009** are `starter`/`active` with
+- **Accounts that existed before migration 0010** are `starter`/`active` with
   their current minutes and `current_period_end = NULL`, so they never expire
   via the cron; their first payment starts a normal monthly period.
 - **Manual adjustments** (e.g. paid by bank transfer):

@@ -57,6 +57,19 @@ class AppEnv {
     defaultValue: '',
   );
 
+  /// Public "how to delete your account" page (Play Console data-deletion
+  /// URL). Empty hides the link.
+  static const String deleteAccountUrl = String.fromEnvironment(
+    'DELETE_ACCOUNT_URL',
+    defaultValue: '',
+  );
+
+  /// Where "Help & support" emails go.
+  static const String supportEmail = String.fromEnvironment(
+    'SUPPORT_EMAIL',
+    defaultValue: 'support@callpilot.app',
+  );
+
   static AppFlavor get flavor => switch (_flavorRaw) {
     'prod' => AppFlavor.prod,
     'staging' => AppFlavor.staging,

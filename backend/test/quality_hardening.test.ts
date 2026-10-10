@@ -295,14 +295,15 @@ describe('Quality hardening regressions', () => {
         env
       );
 
-    it('accepts 24 as an exclusive end hour (until midnight)', async () => {
-      const res = await patchAgent({ calling_hours_start: 9, calling_hours_end: 24 });
+    it('accepts 21 as an exclusive end hour (TRAI: calls until 21:00)', async () => {
+      const res = await patchAgent({ calling_hours_start: 9, calling_hours_end: 21 });
       expect(res.status).toBe(200);
       const row = await env.DB.prepare('SELECT calling_hours_end FROM agents WHERE business_id = ?').bind(bizId).first<any>();
-      expect(row.calling_hours_end).toBe(24);
+      expect(row.calling_hours_end).toBe(21);
     });
 
-    it('rejects end hours outside 1-24', async () => {
+    it('rejects end hours outside the TRAI window', async () => {
+      expect((await patchAgent({ calling_hours_end: 24 })).status).toBe(400);
       expect((await patchAgent({ calling_hours_end: 25 })).status).toBe(400);
       expect((await patchAgent({ calling_hours_end: 0 })).status).toBe(400);
     });

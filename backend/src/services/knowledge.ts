@@ -97,6 +97,33 @@ export async function retrieveKnowledge(
   return (rows.results || []).map((r) => r.content);
 }
 
+/**
+ * Best knowledge snippets when there is no user question yet (an outbound call): FTS matches for
+ * `query` (the lead's interest) if any, else the business's first indexed chunks, else the raw text
+ * of ready sources that were never chunked.
+ */
+export async function topKnowledge(
+  env: Pick<Env, 'DB'>,
+  businessId: string,
+  query: string | null | undefined,
+  k = 3
+): Promise<string[]> {
+  if (query) {
+    const hits = await retrieveKnowledge(env, businessId, query, k).catch(() => [] as string[]);
+    if (hits.length) return hits;
+  }
+  const chunks = await env.DB.prepare(
+    'SELECT content FROM knowledge_chunks WHERE business_id = ? ORDER BY chunk_index, rowid LIMIT ?'
+  ).bind(businessId, k).all<{ content: string }>();
+  if (chunks.results?.length) return chunks.results.map((r) => r.content);
+  const sources = await env.DB.prepare(
+    `SELECT content FROM knowledge_sources
+     WHERE business_id = ? AND status = 'ready' AND content IS NOT NULL AND content != ''
+     ORDER BY created_at LIMIT ?`
+  ).bind(businessId, k).all<{ content: string }>();
+  return (sources.results ?? []).map((r) => r.content);
+}
+
 export async function extractPdfText(env: Pick<Env, 'AI'>, buffer: ArrayBuffer): Promise<string> {
   try {
     const bytes = new Uint8Array(buffer);

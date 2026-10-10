@@ -10,23 +10,50 @@ export interface ComplianceCheckResult {
 }
 
 /**
+ * TRAI: promotional/commercial calls only between 09:00 and 21:00 in the recipient's local time.
+ * Whatever an owner stores, calls never go out before TRAI_EARLIEST_HOUR or from TRAI_LATEST_HOUR on.
+ */
+export const TRAI_EARLIEST_HOUR = 9;
+/** Exclusive end hour: calls allowed while hour < 21. */
+export const TRAI_LATEST_HOUR = 21;
+
+/**
+ * Narrows a stored calling window to the TRAI window. The result may be empty (start >= end),
+ * which means "never".
+ */
+export function clampToTraiWindow(startHour: number, endHour: number): { start: number; end: number } {
+  return {
+    start: Math.max(startHour, TRAI_EARLIEST_HOUR),
+    end: Math.min(endHour, TRAI_LATEST_HOUR),
+  };
+}
+
+/**
+ * Local development/test only: lets automated tests dial at any time of day by skipping the TRAI clamp
+ * (the stored window still applies). Never honoured outside ENVIRONMENT=development|test.
+ */
+export function allowAnyCallingHours(env: { ENVIRONMENT?: string; DEV_ALLOW_ANY_CALLING_HOURS?: string }): boolean {
+  return (env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'test') && env.DEV_ALLOW_ANY_CALLING_HOURS === 'true';
+}
+
+/**
  * Returns current hour (0-23) in the target timezone.
  */
-export function getHourInTimezone(tz: string = 'Asia/Kolkata'): number {
+export function getHourInTimezone(tz: string = 'Asia/Kolkata', now: Date = new Date()): number {
   try {
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: tz || 'Asia/Kolkata',
       hour: 'numeric',
       hourCycle: 'h23',
     });
-    return parseInt(formatter.format(new Date()), 10);
+    return parseInt(formatter.format(now), 10);
   } catch {
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Asia/Kolkata',
       hour: 'numeric',
       hourCycle: 'h23',
     });
-    return parseInt(formatter.format(new Date()), 10);
+    return parseInt(formatter.format(now), 10);
   }
 }
 
@@ -41,8 +68,8 @@ export function isWithinCallingHours(startHour: number = 10, endHour: number = 1
 /**
  * Calculates delay in seconds until the next calling window begins.
  */
-export function getSecondsUntilCallingWindow(tz: string = 'Asia/Kolkata', startHour: number = 10): number {
-  const currentHour = getHourInTimezone(tz);
+export function getSecondsUntilCallingWindow(tz: string = 'Asia/Kolkata', startHour: number = 10, now: Date = new Date()): number {
+  const currentHour = getHourInTimezone(tz, now);
   let hoursUntil = (startHour - currentHour + 24) % 24;
   if (hoursUntil === 0) hoursUntil = 24; // If currently passed window, delay until tomorrow
   return Math.max(60, hoursUntil * 3600);
@@ -60,16 +87,25 @@ export async function checkCallCompliance(
     hoursStart?: number;
     hoursEnd?: number;
     timezone?: string;
+    /** Dev/test only (see allowAnyCallingHours): skip the TRAI 09:00-21:00 clamp. */
+    skipTraiClamp?: boolean;
+    /** Injectable clock for tests. */
+    now?: Date;
   }
 ): Promise<ComplianceCheckResult> {
-  const hoursStart = params.hoursStart ?? 10;
-  const hoursEnd = params.hoursEnd ?? 19;
+  const storedStart = params.hoursStart ?? 10;
+  const storedEnd = params.hoursEnd ?? 19;
+  // Stored values may predate validation (or be edited directly); the TRAI window always wins.
+  const { start: hoursStart, end: hoursEnd } = params.skipTraiClamp
+    ? { start: storedStart, end: storedEnd }
+    : clampToTraiWindow(storedStart, storedEnd);
   const tz = params.timezone || 'Asia/Kolkata';
+  const now = params.now ?? new Date();
 
   // 1. Check Calling Hours in lead timezone (default Asia/Kolkata)
-  const currentHour = getHourInTimezone(tz);
+  const currentHour = getHourInTimezone(tz, now);
   if (currentHour < hoursStart || currentHour >= hoursEnd) {
-    const delay = getSecondsUntilCallingWindow(tz, hoursStart);
+    const delay = getSecondsUntilCallingWindow(tz, hoursStart, now);
     return {
       allowed: false,
       reason: 'outside_hours',

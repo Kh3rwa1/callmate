@@ -3,10 +3,11 @@ import { Env, AuthUser } from '../types';
 import { safeJsonParse } from '../utils/json';
 import { decryptAtRest, maskPhone } from '../utils/crypto_data';
 import { requireSecret, isMockSarvam } from '../utils/secrets';
-import { checkCallCompliance } from '../services/compliance';
-import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS } from '../services/campaign_queue';
+import { checkCallCompliance, allowAnyCallingHours } from '../services/compliance';
+import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS, hasMinutesHeadroom } from '../services/campaign_queue';
 import { parseLimit } from '../utils/pagination';
 import { isPlanBlocked, PLAN_BLOCKED_BODY } from '../services/plans';
+import { buildCallAgentVariables } from '../services/call_variables';
 
 const callsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -167,6 +168,7 @@ callsApp.post('/leads/:id/call', async (c) => {
     hoursStart: agent?.calling_hours_start,
     hoursEnd: agent?.calling_hours_end,
     timezone: lead.timezone || 'Asia/Kolkata',
+    skipTraiClamp: allowAnyCallingHours(c.env),
   });
   if (!compliance.allowed) {
     return c.json({
@@ -186,7 +188,7 @@ callsApp.post('/leads/:id/call', async (c) => {
   if (await isPlanBlocked(c.env.DB, user.business_id)) return c.json(PLAN_BLOCKED_BODY, 402);
   const usage = await c.env.DB.prepare('SELECT included_minutes, minutes_used FROM usage WHERE business_id = ?')
     .bind(user.business_id).first<{ included_minutes: number; minutes_used: number }>();
-  if (usage && usage.included_minutes - usage.minutes_used <= 0) {
+  if (usage && !hasMinutesHeadroom(usage, active?.cnt ?? 0)) {
     return c.json({ message: 'You have used all included calling minutes.', code: 'exhausted_minutes' }, 402);
   }
 
@@ -210,17 +212,10 @@ callsApp.post('/leads/:id/call', async (c) => {
     const dial = await dialSarvam(c.env, {
       callId,
       phone: lead.phone,
-      agentVariables: {
-        call_id: callId,
-        lead_id: lead.id,
-        lead_name: lead.name,
-        business_name: business?.name ?? 'our business',
-        agent_name: agent?.name ?? 'Riya',
-        agent_role: agent?.role ?? 'Assistant',
-        interest: lead.interest ?? lead.course_interest ?? '',
-        // No voice variables (gender, speaker, ...): Sarvam rejects the whole dial with a 422
-        // unless the agent declares every variable sent. Add them to the agent first.
-      },
+      // Only SARVAM_AGENT_VARIABLES are sent: Sarvam 422s the dial on any undeclared variable.
+      agentVariables: await buildCallAgentVariables(c.env, {
+        businessId: user.business_id, business, agent, lead, callId,
+      }),
       webhookBaseUrl: c.env.PUBLIC_API_BASE_URL || new URL(c.req.url).origin,
     });
 

@@ -14,6 +14,13 @@ export interface Env {
   SARVAM_CONNECTION_ID?: string;
   /** Comma-separated caller IDs (E.164, as onboarded in Sarvam); one is picked per dial. */
   SARVAM_AGENT_PHONE_NUMBERS?: string;
+  /**
+   * Comma-separated agent_variables to send on outbound dials (see services/call_variables.ts).
+   * Unset = the 8 the Sarvam agent declares. Every name must be declared in the agent version.
+   */
+  SARVAM_AGENT_VARIABLES?: string;
+  /** Secret: incoming-webhook URL (Slack/Discord/Google Chat) for ops alerts. */
+  ALERT_WEBHOOK_URL?: string;
   SARVAM_PROXY_BASE?: string;
   TELEPHONY_PROVIDER?: string;
   FCM_SERVICE_ACCOUNT_JSON?: string;
@@ -40,6 +47,12 @@ export interface Env {
   RAZORPAY_WEBHOOK_SECRET?: string;
   /** Optional URL Razorpay redirects to after payment. */
   BILLING_RETURN_URL?: string;
+  /** Dev/test only: 'true' skips the TRAI 09:00-21:00 clamp so tests can dial at any time of day. */
+  DEV_ALLOW_ANY_CALLING_HOURS?: string;
+  /** Contact address shown on the public legal pages. */
+  SUPPORT_EMAIL?: string;
+  /** Legal entity named on the public legal pages. */
+  LEGAL_ENTITY_NAME?: string;
 }
 
 export interface AuthUser {

@@ -20,7 +20,17 @@ SARVAM_ADMISSIONS_APP_ID = "CallPilot---cb13b1d8-b8da"
 SARVAM_APP_VERSION = "2"
 SARVAM_CONNECTION_ID = "0da745db-ed-2dd19091-839b"
 SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
+# agent_variables sent per dial. Unset = the 8 the agent declares (call_id,campaign_id,lead_id,
+# lead_name,business_name,agent_name,agent_role,interest). Optional extras: business_context,
+# call_language, gender, voice, speaker, language_code, tts_model. Sarvam rejects the WHOLE dial (422)
+# for any name the agent version doesn't declare: declare it in the agent, commit a version, bump
+# SARVAM_APP_VERSION, THEN list it here (docs/SARVAM_SETUP.md -> Agent variables). Example:
+# SARVAM_AGENT_VARIABLES = "call_id,campaign_id,lead_id,lead_name,business_name,agent_name,agent_role,interest,business_context"
+# Ops alerts: set the chat webhook as a secret, not here: `wrangler secret put ALERT_WEBHOOK_URL`.
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
+# Shown on the public /legal pages. TODO(owner): set a monitored inbox and the registered company name.
+SUPPORT_EMAIL = "support@callpilot.app"
+LEGAL_ENTITY_NAME = "CallPilot"
 
 # Migrations: `npm run db:migrate:prod` (wrangler d1 migrations apply).
 # Demo seed data lives in ./seeds and is NEVER applied by migrations.
@@ -76,7 +86,17 @@ SARVAM_ADMISSIONS_APP_ID = "CallPilot---cb13b1d8-b8da"
 SARVAM_APP_VERSION = "2"
 SARVAM_CONNECTION_ID = "0da745db-ed-2dd19091-839b"
 SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
+# agent_variables sent per dial. Unset = the 8 the agent declares (call_id,campaign_id,lead_id,
+# lead_name,business_name,agent_name,agent_role,interest). Optional extras: business_context,
+# call_language, gender, voice, speaker, language_code, tts_model. Sarvam rejects the WHOLE dial (422)
+# for any name the agent version doesn't declare: declare it in the agent, commit a version, bump
+# SARVAM_APP_VERSION, THEN list it here (docs/SARVAM_SETUP.md -> Agent variables). Example:
+# SARVAM_AGENT_VARIABLES = "call_id,campaign_id,lead_id,lead_name,business_name,agent_name,agent_role,interest,business_context"
+# Ops alerts: set the chat webhook as a secret, not here: `wrangler secret put ALERT_WEBHOOK_URL`.
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
+# Shown on the public /legal pages. TODO(owner): set a monitored inbox and the registered company name.
+SUPPORT_EMAIL = "support@callpilot.app"
+LEGAL_ENTITY_NAME = "CallPilot"
 ALLOWED_ORIGINS = "http://localhost:8080,http://127.0.0.1:8080"
 
 # Migrations: `npm run db:migrate:staging`.
