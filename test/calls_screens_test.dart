@@ -115,12 +115,15 @@ void main() {
       expect(find.byType(FollowUpDetailScreen), findsOneWidget);
     });
 
-    appTest('without a follow-up Prepare WhatsApp opens the lead', (h) async {
+    appTest('without a follow-up the result offers to open the lead', (
+      h,
+    ) async {
       final call = h.backend.calls.firstWhere(
         (c) => c.status.isConnected && c.followUpId == null,
       );
       await h.push('/calls/${call.id}/result');
-      await h.tapText('Prepare WhatsApp');
+      expect(find.text('Prepare WhatsApp'), findsNothing);
+      await h.tapText('Open lead');
       expect(h.location, '/leads/${call.leadId}');
     });
 
@@ -202,7 +205,7 @@ void main() {
       expect(find.byType(TranscriptBubble), findsNWidgets(4));
       expect(find.text('Riya'), findsNWidgets(2));
       expect(find.text('Rahul'), findsNWidgets(2));
-      expect(find.text('  00:01'), findsOneWidget);
+      expect(find.text('00:01'), findsOneWidget);
       expect(find.bySemanticsLabel('Riya said: Hello!'), findsOneWidget);
     });
   });

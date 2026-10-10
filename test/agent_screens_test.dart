@@ -251,6 +251,14 @@ void main() {
     appTest('a ready source can be removed', (h) async {
       final first = h.backend.knowledge.first;
       await h.tap(find.byTooltip('Remove').first);
+      // Removing asks first.
+      expect(find.text('Remove “${first.title}”?'), findsOneWidget);
+      await h.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('Remove'),
+        ),
+      );
       expect(h.backend.knowledge.any((k) => k.id == first.id), isFalse);
       expect(find.text('Removed “${first.title}”'), findsOneWidget);
     }, location: '/agent/teach');

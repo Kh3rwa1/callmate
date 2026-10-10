@@ -6,12 +6,12 @@ import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/lead_widgets.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
 import 'whatsapp_handoff.dart';
 
 /// Follow-ups – "Who needs a message?"
@@ -20,6 +20,7 @@ class FollowUpsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final fus = ref.watch(followUpsProvider);
     return Scaffold(
@@ -32,6 +33,8 @@ class FollowUpsScreen extends ConsumerWidget {
             final pending = all.where((f) => f.isPending).toList();
             final opened = all.where((f) => !f.isPending).take(20).toList();
             return RefreshIndicator(
+              color: AppColors.brand,
+              backgroundColor: AppColors.surface,
               onRefresh: () async => ref.invalidate(followUpsProvider),
               child: CustomScrollView(
                 slivers: [
@@ -43,18 +46,33 @@ class FollowUpsScreen extends ConsumerWidget {
                       0,
                     ),
                     sliver: SliverToBoxAdapter(
-                      child: Semantics(
-                        header: true,
-                        child: Text('Follow-ups', style: t.headlineMedium),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Semantics(
+                            header: true,
+                            child: Text(
+                              s.followUpsTitle,
+                              style: t.headlineMedium,
+                            ),
+                          ),
+                          if (pending.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              s.nDraftedFromCalls(pending.length),
+                              style: t.bodyMedium,
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
                   if (pending.isEmpty)
-                    const SliverFillRemaining(
+                    SliverFillRemaining(
                       hasScrollBody: false,
                       child: EmptyState(
-                        title: 'All caught up',
-                        message: 'New drafts appear here after calls.',
+                        title: s.allCaughtUp,
+                        message: s.newDraftsAppear,
                         mascot: MascotState.success,
                       ),
                     )
@@ -65,13 +83,15 @@ class FollowUpsScreen extends ConsumerWidget {
                       ),
                       sliver: SliverToBoxAdapter(
                         child: SectionLabel(
-                          'Ready to send',
+                          s.readyToSend,
                           padding: const EdgeInsets.fromLTRB(2, 20, 2, 12),
-                          trailing: Pill(
-                            key: const Key('followups-pending-count'),
-                            label: '${pending.length}',
-                            color: AppColors.ink,
-                            background: AppColors.surfaceMuted,
+                          trailing: PopSwitcher(
+                            child: Pill(
+                              key: const Key('followups-pending-count'),
+                              label: '${pending.length}',
+                              color: AppColors.ink,
+                              background: AppColors.surfaceMuted,
+                            ),
                           ),
                         ),
                       ),
@@ -83,6 +103,8 @@ class FollowUpsScreen extends ConsumerWidget {
                       sliver: SliverList.builder(
                         itemCount: pending.length,
                         itemBuilder: (_, i) => Reveal(
+                          key: ValueKey(pending[i].id),
+                          id: 'fu-${pending[i].id}',
                           index: i < 8 ? i : 0,
                           child: _FollowUpRow(
                             fu: pending[i],
@@ -93,11 +115,25 @@ class FollowUpsScreen extends ConsumerWidget {
                       ),
                     ),
                   ],
+                  if (pending.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpace.page + 2,
+                          8,
+                          AppSpace.page,
+                          0,
+                        ),
+                        child: Text(s.swipeToOpenHint, style: t.bodySmall),
+                      ),
+                    ),
                   if (opened.isNotEmpty) ...[
-                    const SliverPadding(
-                      padding: EdgeInsets.symmetric(horizontal: AppSpace.page),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpace.page,
+                      ),
                       sliver: SliverToBoxAdapter(
-                        child: SectionLabel('WhatsApp opened'),
+                        child: SectionLabel(s.whatsappOpened),
                       ),
                     ),
                     SliverPadding(
@@ -134,12 +170,12 @@ class FollowUpsScreen extends ConsumerWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               subtitle: Text(
-                                '${f.status.label}${f.openedAt != null ? ' · ${Fmt.relative(f.openedAt!)}' : ''}',
+                                '${s.followUpStatus(f.status)}${f.openedAt != null ? ' · ${s.relative(f.openedAt!)}' : ''}',
                                 style: t.bodySmall,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              trailing: const Icon(
+                              trailing: Icon(
                                 Icons.chevron_right_rounded,
                                 color: AppColors.inkFaint,
                               ),
@@ -215,16 +251,18 @@ class _FollowUpRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final temp = LeadTemperature.fromScore(fu.scoreValue);
     return Dismissible(
       key: ValueKey(fu.id),
       direction: DismissDirection.endToStart,
+      dismissThresholds: const {DismissDirection.endToStart: 0.3},
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),
         decoration: BoxDecoration(
-          color: AppColors.whatsapp,
+          color: AppColors.whatsappFill,
           borderRadius: _Segment.radius(first, last),
         ),
         child: const Row(
@@ -243,6 +281,7 @@ class _FollowUpRow extends ConsumerWidget {
         ),
       ),
       confirmDismiss: (_) async {
+        Haptics.press();
         await _handoff(context, ref);
         return false; // list refreshes from backend state
       },
@@ -255,7 +294,14 @@ class _FollowUpRow extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
             child: Row(
               children: [
-                LeadAvatar(name: fu.leadName, temperature: temp, size: 40),
+                Hero(
+                  tag: 'fu-avatar-${fu.id}',
+                  child: LeadAvatar(
+                    name: fu.leadName,
+                    temperature: temp,
+                    size: 40,
+                  ),
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -282,7 +328,7 @@ class _FollowUpRow extends ConsumerWidget {
                           ],
                           Flexible(
                             child: Text(
-                              Fmt.relative(fu.createdAt),
+                              s.relative(fu.createdAt),
                               style: t.bodySmall?.copyWith(
                                 color: AppColors.inkFaint,
                               ),
@@ -296,22 +342,28 @@ class _FollowUpRow extends ConsumerWidget {
                       Text(
                         fu.message.replaceAll(RegExp(r'\s+'), ' ').trim(),
                         style: t.bodySmall?.copyWith(color: AppColors.inkSoft),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton.filled(
-                  tooltip: 'Open in WhatsApp',
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.whatsapp,
-                    foregroundColor: Colors.white,
-                    fixedSize: const Size(44, 44),
+                Pressable(
+                  scale: 0.9,
+                  child: IconButton.filled(
+                    tooltip: s.openInWhatsapp,
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.whatsappFill,
+                      foregroundColor: Colors.white,
+                      fixedSize: const Size(46, 46),
+                    ),
+                    onPressed: () {
+                      Haptics.press();
+                      _handoff(context, ref);
+                    },
+                    icon: const Icon(Icons.chat_rounded, size: 20),
                   ),
-                  onPressed: () => _handoff(context, ref),
-                  icon: const Icon(Icons.chat_rounded, size: 20),
                 ),
               ],
             ),

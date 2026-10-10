@@ -13,10 +13,15 @@ import '../../core/widgets/lead_widgets.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
 import '../callbacks/callback_sheet.dart';
 import 'transcript_view.dart';
 
 /// Post-call result – the "AI understood" moment.
+///
+/// Choreography: the name lands, the summary appears word by word, the
+/// score ring sweeps and counts up (confetti for a hot lead), then the next
+/// step and the transcript follow.
 class CallResultScreen extends ConsumerWidget {
   const CallResultScreen({
     super.key,
@@ -28,9 +33,10 @@ class CallResultScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
     final call = ref.watch(callProvider(callId));
     return Scaffold(
-      appBar: AppBar(title: Text(detailOnly ? 'Call details' : '')),
+      appBar: AppBar(title: Text(detailOnly ? s.callDetails : '')),
       body: AsyncView<Call>(
         value: call,
         onRetry: () => ref.invalidate(callProvider(callId)),
@@ -48,11 +54,13 @@ class _Result extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final c = call;
     final score = c.leadScore;
     final hot = c.isHot;
     final fuId = c.followUpId;
+    final agentName = ref.watch(employeeNameProvider);
 
     return Column(
       children: [
@@ -66,188 +74,222 @@ class _Result extends ConsumerWidget {
             ),
             children: [
               const SizedBox(height: 4),
-              Semantics(
-                header: true,
-                child: Text(
-                  c.leadName,
-                  style: t.headlineMedium,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+              Reveal(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    c.leadName,
+                    style: t.headlineMedium,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
               const SizedBox(height: 6),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.check_circle_outline_rounded,
-                    size: 16,
-                    color: AppColors.success,
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      '${Fmt.friendlyFuture(c.startedAt)} · ${Fmt.duration(c.duration)}',
-                      style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Reveal(
+                index: 1,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.auto_awesome_rounded,
-                          size: 16,
-                          color: AppColors.brand,
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            'What ${ref.watch(employeeNameProvider)} understood',
-                            style: t.labelMedium?.copyWith(
-                              color: AppColors.brand,
-                            ),
-                          ),
-                        ),
-                      ],
+                    Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 16,
+                      color: AppColors.success,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '“${c.summary ?? 'No summary available.'}”',
-                      style: t.bodyLarge?.copyWith(height: 1.45),
-                    ),
-                    if ((c.interest ?? '').isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          Pill(
-                            label: c.interest!,
-                            color: AppColors.ink,
-                            background: AppColors.surfaceMuted,
-                            icon: const Icon(
-                              Icons.push_pin_outlined,
-                              size: 14,
-                              color: AppColors.inkSoft,
-                            ),
-                          ),
-                          if (c.transcript.language != null)
-                            Pill(
-                              label: c.transcript.language!,
-                              color: AppColors.ink,
-                              background: AppColors.surfaceMuted,
-                              icon: const Icon(
-                                Icons.translate_rounded,
-                                size: 14,
-                                color: AppColors.inkSoft,
-                              ),
-                            ),
-                        ],
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        '${s.friendlyFuture(c.startedAt)} · ${Fmt.duration(c.duration)}',
+                        style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
-              if (score != null) ...[
-                const SectionLabel('Lead score'),
-                AppCard(
+              const SizedBox(height: 24),
+              Reveal(
+                index: 2,
+                child: AppCard(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Stack(
-                            alignment: Alignment.center,
-                            clipBehavior: Clip.none,
-                            children: [
-                              ScoreRing(score: score, size: 112),
-                              if (hot)
-                                const Positioned(
-                                  left: -54,
-                                  top: -54,
-                                  child: ConfettiBurst(size: 220),
-                                ),
-                            ],
+                          Icon(
+                            Icons.auto_awesome_rounded,
+                            size: 16,
+                            color: AppColors.brand,
                           ),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${TempStyle.of(score.temperature).word} lead',
-                                  style: t.headlineSmall,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  score.intent.label,
-                                  style: t.bodyMedium?.copyWith(
-                                    color: AppColors.inkSoft,
-                                  ),
-                                ),
-                              ],
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              s.whatUnderstood(agentName),
+                              style: t.labelMedium?.copyWith(
+                                color: AppColors.brand,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      if (score.positiveSignals.isNotEmpty ||
-                          score.concerns.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        const Divider(height: 1),
+                      const SizedBox(height: 8),
+                      WordReveal(
+                        '“${c.summary ?? s.noSummary}”',
+                        style: t.bodyLarge?.copyWith(height: 1.45),
+                      ),
+                      if ((c.interest ?? '').isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        for (final p in score.positiveSignals)
-                          _Reason(text: p, positive: true),
-                        for (final o in score.concerns)
-                          _Reason(text: o, positive: false),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            PopIn(
+                              delay: const Duration(milliseconds: 500),
+                              child: Pill(
+                                label: s.data(c.interest!),
+                                color: AppColors.ink,
+                                background: AppColors.surfaceMuted,
+                                icon: Icon(
+                                  Icons.push_pin_outlined,
+                                  size: 14,
+                                  color: AppColors.inkSoft,
+                                ),
+                              ),
+                            ),
+                            if (c.transcript.language != null)
+                              PopIn(
+                                delay: const Duration(milliseconds: 580),
+                                child: Pill(
+                                  label: s.data(c.transcript.language!),
+                                  color: AppColors.ink,
+                                  background: AppColors.surfaceMuted,
+                                  icon: Icon(
+                                    Icons.translate_rounded,
+                                    size: 14,
+                                    color: AppColors.inkSoft,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ],
                     ],
                   ),
                 ),
-              ],
-              const SectionLabel('Next step'),
-              AppCard(
-                child: Row(
-                  children: [
-                    const IconBubble(
-                      color: AppColors.surfaceMuted,
-                      size: 44,
-                      child: Emoji('🤝', size: 21),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _actionTitle(c.nextAction),
-                            style: t.titleMedium,
-                          ),
-                          if (c.callbackAt != null) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              'Call back ${Fmt.callbackPhrase(c.callbackAt!)}',
-                              style: t.bodySmall,
+              ),
+              if (score != null) ...[
+                Reveal(index: 3, child: SectionLabel(s.leadScoreTitle)),
+                Reveal(
+                  index: 4,
+                  child: AppCard(
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Stack(
+                              alignment: Alignment.center,
+                              clipBehavior: Clip.none,
+                              children: [
+                                ScoreRing(score: score, size: 112),
+                                if (hot)
+                                  const Positioned(
+                                    left: -54,
+                                    top: -54,
+                                    child: ConfettiBurst(size: 220),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    s.tempLead(
+                                      s.temperature(score.temperature),
+                                    ),
+                                    style: t.headlineSmall,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    s.intent(score.intent),
+                                    style: t.bodyMedium?.copyWith(
+                                      color: AppColors.inkSoft,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
+                        ),
+                        if (score.positiveSignals.isNotEmpty ||
+                            score.concerns.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          const Divider(height: 1),
+                          const SizedBox(height: 12),
+                          for (final (i, p) in score.positiveSignals.indexed)
+                            Reveal(
+                              index: 6 + i,
+                              offset: 6,
+                              child: _Reason(text: p, positive: true),
+                            ),
+                          for (final (i, o) in score.concerns.indexed)
+                            Reveal(
+                              index: 6 + score.positiveSignals.length + i,
+                              offset: 6,
+                              child: _Reason(text: o, positive: false),
+                            ),
                         ],
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
+                ),
+              ],
+              Reveal(index: 5, child: SectionLabel(s.nextStep)),
+              Reveal(
+                index: 6,
+                child: AppCard(
+                  child: Row(
+                    children: [
+                      IconBubble(
+                        color: AppColors.brandSoft,
+                        size: 44,
+                        child: Icon(
+                          _actionIcon(c.nextAction),
+                          size: 21,
+                          color: AppColors.brand,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              s.nextAction(c.nextAction),
+                              style: t.titleMedium,
+                            ),
+                            if (c.callbackAt != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                s.callBackAt(s.callbackPhrase(c.callbackAt!)),
+                                style: t.bodySmall,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               if (!c.transcript.isEmpty) ...[
-                const SectionLabel('Transcript'),
+                SectionLabel(s.transcript),
                 AppCard(
                   child: TranscriptView(
                     transcript: c.transcript,
                     leadName: c.leadName.split(' ').first,
-                    agentName: ref.watch(employeeNameProvider),
+                    agentName: agentName,
                     maxLines: 4,
                   ),
                 ),
@@ -264,16 +306,16 @@ class _Result extends ConsumerWidget {
               AppSpace.page,
               12,
             ),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.background,
-              border: Border(top: BorderSide(color: AppColors.border)),
+              border: Border(top: BorderSide(color: AppColors.hairline)),
             ),
             child: Row(
               children: [
                 Expanded(
                   flex: 5,
                   child: SecondaryButton(
-                    label: 'Schedule Callback',
+                    label: s.scheduleCallback,
                     onPressed: () async {
                       final lead = await ref
                           .read(leadRepoProvider)
@@ -292,13 +334,18 @@ class _Result extends ConsumerWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   flex: 6,
-                  child: PrimaryButton(
-                    label: 'Prepare WhatsApp',
-                    icon: Icons.chat_bubble_outline_rounded,
-                    onPressed: fuId == null
-                        ? () => context.push('/leads/${c.leadId}')
-                        : () => context.push('/followups/$fuId'),
-                  ),
+                  child: fuId == null
+                      ? PrimaryButton(
+                          label: s.openLead,
+                          icon: Icons.person_outline_rounded,
+                          onPressed: () => context.push('/leads/${c.leadId}'),
+                        )
+                      : PrimaryButton(
+                          label: s.prepareWhatsapp,
+                          icon: Icons.chat_bubble_outline_rounded,
+                          color: AppColors.whatsappFill,
+                          onPressed: () => context.push('/followups/$fuId'),
+                        ),
                 ),
               ],
             ),
@@ -309,14 +356,13 @@ class _Result extends ConsumerWidget {
   }
 }
 
-/// Owner-facing phrasing of the AI's structured next action.
-String _actionTitle(NextAction a) => switch (a) {
-  NextAction.whatsappAndCallback ||
-  NextAction.humanFollowUp => 'Human follow-up',
-  NextAction.sendWhatsapp => 'Send a WhatsApp follow-up',
-  NextAction.bookAppointment => 'Book an appointment / visit',
-  NextAction.retryCall => 'Try calling again',
-  NextAction.none => 'No action needed',
+IconData _actionIcon(NextAction a) => switch (a) {
+  NextAction.humanFollowUp => Icons.support_agent_rounded,
+  NextAction.sendWhatsapp => Icons.chat_bubble_outline_rounded,
+  NextAction.whatsappAndCallback => Icons.forum_outlined,
+  NextAction.bookAppointment => Icons.event_available_outlined,
+  NextAction.retryCall => Icons.replay_rounded,
+  NextAction.none => Icons.check_rounded,
 };
 
 class _Reason extends StatelessWidget {
@@ -327,6 +373,7 @@ class _Reason extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 4),
     child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
           positive
@@ -355,24 +402,27 @@ class _Detail extends StatelessWidget {
   final Call call;
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final c = call;
     final rows = <(String, String)>[
-      ('Status', c.status.label),
-      ('When', Fmt.friendlyFuture(c.startedAt)),
-      if (c.status.isConnected) ('Duration', Fmt.duration(c.duration)),
-      ('Outcome', c.outcome ?? '—'),
-      ('Next', c.nextAction.label),
+      (s.status, s.callStatus(c.status)),
+      (s.when, s.friendlyFuture(c.startedAt)),
+      if (c.status.isConnected) (s.durationLabel, Fmt.duration(c.duration)),
+      (s.outcome, c.outcome ?? '—'),
+      (s.nextLabel, s.nextAction(c.nextAction)),
     ];
     return ListView(
       padding: const EdgeInsets.fromLTRB(AppSpace.page, 8, AppSpace.page, 32),
       children: [
         Center(
-          child: Mascot(
-            state: c.status.isConnected
-                ? MascotState.success
-                : MascotState.error,
-            size: 96,
+          child: PopIn(
+            child: Mascot(
+              state: c.status.isConnected
+                  ? MascotState.success
+                  : MascotState.error,
+              size: 96,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -391,28 +441,30 @@ class _Detail extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        AppCard(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-          child: Column(
-            children: [
-              for (var i = 0; i < rows.length; i++) ...[
-                if (i > 0) const Divider(height: 1),
-                _kv(t, rows[i].$1, rows[i].$2),
+        Reveal(
+          child: AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+            child: Column(
+              children: [
+                for (var i = 0; i < rows.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  _kv(t, rows[i].$1, rows[i].$2),
+                ],
               ],
-            ],
+            ),
           ),
         ),
         if (!c.status.isConnected) ...[
           const SizedBox(height: 16),
           Text(
-            'Your AI employee will try again in the next campaign.',
+            s.willRetryNextCampaign,
             style: t.bodySmall,
             textAlign: TextAlign.center,
           ),
         ],
         const SizedBox(height: 24),
         SecondaryButton(
-          label: 'Open lead',
+          label: s.openLead,
           onPressed: () => context.push('/leads/${c.leadId}'),
         ),
       ],

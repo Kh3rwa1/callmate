@@ -24,7 +24,7 @@ class BrandMark extends StatelessWidget {
       errorBuilder: (_, _, _) => Container(
         width: size,
         height: size,
-        color: AppColors.brand,
+        color: AppColors.brandFill,
         child: Icon(Icons.call_rounded, color: Colors.white, size: size * 0.55),
       ),
     ),
@@ -37,11 +37,13 @@ class BrandWordmark extends StatelessWidget {
     super.key,
     this.size = 18,
     this.showMark = true,
-    this.color = AppColors.ink,
+    this.color,
   });
   final double size;
   final bool showMark;
-  final Color color;
+
+  /// Defaults to [AppColors.ink].
+  final Color? color;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -56,7 +58,7 @@ class BrandWordmark extends StatelessWidget {
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
           fontSize: size,
           fontWeight: FontWeight.w800,
-          color: color,
+          color: color ?? AppColors.ink,
           letterSpacing: -0.3,
         ),
       ),

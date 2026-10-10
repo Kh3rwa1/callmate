@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -11,11 +12,12 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/lead_widgets.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
 import '../calls/transcript_view.dart';
 import '../callbacks/callback_sheet.dart';
 import '../followups/whatsapp_handoff.dart';
-import 'lead_detail_widgets.dart';
 import 'lead_call_action.dart';
+import 'lead_detail_widgets.dart';
 
 class LeadDetailScreen extends ConsumerWidget {
   const LeadDetailScreen({super.key, required this.leadId});
@@ -41,6 +43,7 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final l = lead;
     final calls = ref.watch(leadCallsProvider(l.id)).value ?? const <Call>[];
@@ -54,6 +57,14 @@ class _Body extends ConsumerWidget {
     final fu = fus.firstOrNull;
     final lastCall = calls.where((c) => c.status.isConnected).firstOrNull;
     final wf = ref.watch(workflowProvider);
+    final agentName = ref.watch(employeeNameProvider);
+
+    var section = 0;
+    Widget reveal(Widget child) => Reveal(
+      id: 'lead-detail-${l.id}-${section++}',
+      index: section,
+      child: child,
+    );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 36),
@@ -80,169 +91,214 @@ class _Body extends ConsumerWidget {
                     style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
                   ),
                   const SizedBox(height: 8),
-                  ScoreBadge(score: l.score),
+                  PopIn(
+                    delay: const Duration(milliseconds: 180),
+                    child: ScoreBadge(score: l.score),
+                  ),
                 ],
               ),
             ),
           ],
         ),
         const SizedBox(height: 22),
-        Row(
-          children: [
-            Expanded(
-              child: WhatsAppButton(
-                compact: true,
-                onPressed: () {
-                  if (fu != null && fu.isPending) {
-                    context.push('/followups/${fu.id}');
-                  } else {
-                    openWhatsAppHandoff(
-                      context,
-                      ref,
-                      phone: l.phone,
-                      message: fu?.message ?? 'Hi ${l.firstName} 👋\n\n',
-                      followUp: fu,
-                    );
-                  }
-                },
+        reveal(
+          Row(
+            children: [
+              Expanded(
+                child: WhatsAppButton(
+                  compact: true,
+                  onPressed: () {
+                    if (fu != null && fu.isPending) {
+                      context.push('/followups/${fu.id}');
+                    } else {
+                      openWhatsAppHandoff(
+                        context,
+                        ref,
+                        phone: l.phone,
+                        message: fu?.message ?? s.waGreeting(l.firstName, ''),
+                        followUp: fu,
+                      );
+                    }
+                  },
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            _ActionIcon(
-              tooltip: 'AI Call',
-              icon: Icons.call_outlined,
-              onPressed: () => handleLeadCall(
-                context,
-                ref,
-                l,
-                ref.read(agentProvider).value?.name ?? 'Riya',
+              const SizedBox(width: 10),
+              _ActionIcon(
+                tooltip: s.aiCallTooltip,
+                icon: Icons.call_outlined,
+                onPressed: () => handleLeadCall(context, ref, l, agentName),
               ),
-            ),
-            const SizedBox(width: 10),
-            _ActionIcon(
-              tooltip: 'Callback',
-              icon: Icons.event_outlined,
-              onPressed: () => showCallbackSheet(context, ref, lead: l),
-            ),
-          ],
+              const SizedBox(width: 10),
+              _ActionIcon(
+                tooltip: s.callbackTooltip,
+                icon: Icons.event_outlined,
+                onPressed: () => showCallbackSheet(context, ref, lead: l),
+              ),
+            ],
+          ),
         ),
         if (l.summary != null) ...[
-          const SectionLabel('AI summary'),
-          AppCard(
-            onTap: lastCall == null
-                ? null
-                : () => context.push('/calls/${lastCall.id}/result'),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l.summary!,
-                  style: t.bodyLarge,
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (lastCall != null) ...[
-                  const SizedBox(height: 12),
+          SectionLabel(s.aiSummary),
+          reveal(
+            AppCard(
+              onTap: lastCall == null
+                  ? null
+                  : () => context.push('/calls/${lastCall.id}/result'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Full call result',
-                        style: t.labelMedium?.copyWith(
-                          color: AppColors.ink,
-                          fontSize: 14,
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3, right: 10),
+                        child: Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 18,
+                          color: AppColors.brand,
                         ),
                       ),
-                      const Icon(
-                        Icons.chevron_right_rounded,
-                        size: 18,
-                        color: AppColors.inkSoft,
+                      Expanded(
+                        child: Text(
+                          l.summary!,
+                          style: t.bodyLarge,
+                          maxLines: 4,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
+                  if (lastCall != null) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Text(
+                          s.fullCallResult,
+                          style: t.labelMedium?.copyWith(
+                            color: AppColors.brand,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 18,
+                          color: AppColors.brand,
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ],
-        const SectionLabel('Details'),
-        AppCard(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          child: Column(
-            children: [
-              LeadDetailRow(wf.interestLabel, l.interest ?? 'Not known yet'),
-              for (final a in wf.attributes)
-                if (l.attributes[a.key] != null)
-                  LeadDetailRow(a.label, _fmtAttr(a.key, l.attributes[a.key]!)),
-              for (final e in l.attributes.entries)
-                if (!wf.attributes.any((a) => a.key == e.key))
-                  LeadDetailRow(_titleCase(e.key), _fmtAttr(e.key, e.value)),
-              if (l.language != null) LeadDetailRow('Language', l.language!),
-              LeadDetailRow(
-                'Next action',
-                l.nextAction.label,
-                highlight: l.nextAction != NextAction.none,
-              ),
-              LeadDetailRow(
-                'Callback',
-                l.callbackAt == null
-                    ? 'Not scheduled'
-                    : Fmt.friendlyFuture(l.callbackAt!),
-                highlight: l.callbackAt != null,
-              ),
-              LeadDetailRow('Added', Fmt.relative(l.createdAt), last: true),
-            ],
+        SectionLabel(s.details),
+        reveal(
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            child: Column(
+              children: [
+                LeadDetailRow(
+                  s.data(wf.interestLabel),
+                  l.interest == null ? s.notKnownYet : s.data(l.interest!),
+                ),
+                for (final a in wf.attributes)
+                  if (l.attributes[a.key] != null)
+                    LeadDetailRow(
+                      s.data(a.label),
+                      _fmtAttr(a.key, l.attributes[a.key]!),
+                    ),
+                for (final e in l.attributes.entries)
+                  if (!wf.attributes.any((a) => a.key == e.key))
+                    LeadDetailRow(
+                      s.data(_titleCase(e.key)),
+                      _fmtAttr(e.key, e.value),
+                    ),
+                if (l.language != null)
+                  LeadDetailRow(s.language, s.data(l.language!)),
+                LeadDetailRow(
+                  s.nextActionLabel,
+                  s.nextAction(l.nextAction),
+                  highlight: l.nextAction != NextAction.none,
+                ),
+                LeadDetailRow(
+                  s.callbackLabel,
+                  l.callbackAt == null
+                      ? s.notScheduled
+                      : s.friendlyFuture(l.callbackAt!),
+                  highlight: l.callbackAt != null,
+                ),
+                LeadDetailRow(s.added, s.relative(l.createdAt), last: true),
+              ],
+            ),
           ),
         ),
         if (l.score != null &&
             (l.score!.positiveSignals.isNotEmpty ||
                 l.objections.isNotEmpty)) ...[
-          const SectionLabel('Signals'),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final p in l.score!.positiveSignals)
-                  LeadSignalChip(text: p, positive: true),
-                for (final o in l.objections)
-                  LeadSignalChip(text: o, positive: false),
-              ],
+          SectionLabel(s.signals),
+          reveal(
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final p in l.score!.positiveSignals)
+                    LeadSignalChip(text: p, positive: true),
+                  for (final o in l.objections)
+                    LeadSignalChip(text: o, positive: false),
+                ],
+              ),
             ),
           ),
         ],
         if (fu != null) ...[
           SectionLabel(
-            'Follow-up',
+            s.followUpSection,
             trailing: Pill(
-              label: fu.status.label,
+              label: s.followUpStatus(fu.status),
               color: fu.isPending ? AppColors.whatsapp : AppColors.inkSoft,
               dense: true,
             ),
           ),
-          AppCard(
-            onTap: () => context.push('/followups/${fu.id}'),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fu.message,
-                  style: t.bodyMedium?.copyWith(color: AppColors.ink),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  fu.isPending ? 'Review & send' : 'Open again',
-                  style: t.labelMedium?.copyWith(
-                    color: AppColors.whatsapp,
-                    fontSize: 14,
+          reveal(
+            AppCard(
+              onTap: () => context.push('/followups/${fu.id}'),
+              color: AppColors.bubble,
+              border: Border.all(color: AppColors.bubbleBorder),
+              shadow: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fu.message,
+                    style: t.bodyMedium?.copyWith(color: AppColors.ink),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Text(
+                        fu.isPending ? s.reviewAndSend : s.openAgain,
+                        style: t.labelMedium?.copyWith(
+                          color: AppColors.whatsapp,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: AppColors.whatsapp,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
         SectionLabel(
-          'Call history',
+          s.callHistory,
           trailing: Text(
             '${calls.length}',
             style: t.labelMedium?.copyWith(color: AppColors.inkFaint),
@@ -251,7 +307,7 @@ class _Body extends ConsumerWidget {
         if (calls.isEmpty)
           AppCard(
             child: Text(
-              '${ref.watch(employeeNameProvider)} hasn\'t called ${l.firstName} yet.',
+              s.notCalledYet(agentName, l.firstName),
               style: t.bodyMedium,
             ),
           )
@@ -279,15 +335,15 @@ class _Body extends ConsumerWidget {
                     ),
                     title: Text(
                       calls[i].status.isConnected
-                          ? 'Connected · ${Fmt.duration(calls[i].duration)}'
-                          : calls[i].status.label,
+                          ? s.connectedFor(Fmt.duration(calls[i].duration))
+                          : s.callStatus(calls[i].status),
                       style: t.titleSmall,
                     ),
                     subtitle: Text(
-                      Fmt.friendlyFuture(calls[i].startedAt),
+                      s.friendlyFuture(calls[i].startedAt),
                       style: t.bodySmall,
                     ),
-                    trailing: const Icon(
+                    trailing: Icon(
                       Icons.chevron_right_rounded,
                       color: AppColors.inkFaint,
                     ),
@@ -297,12 +353,12 @@ class _Body extends ConsumerWidget {
             ),
           ),
         if (lastCall != null && !lastCall.transcript.isEmpty) ...[
-          const SectionLabel('Transcript'),
+          SectionLabel(s.transcript),
           AppCard(
             child: TranscriptView(
               transcript: lastCall.transcript,
               leadName: l.firstName,
-              agentName: ref.watch(employeeNameProvider),
+              agentName: agentName,
               maxLines: 6,
             ),
           ),
@@ -329,17 +385,24 @@ class _ActionIcon extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => IconButton.outlined(
-    tooltip: tooltip,
-    onPressed: onPressed,
-    style: IconButton.styleFrom(
-      fixedSize: const Size(48, 44),
-      foregroundColor: AppColors.ink,
-      side: const BorderSide(color: AppColors.border, width: 1.2),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.button),
+  Widget build(BuildContext context) => Pressable(
+    scale: 0.92,
+    child: IconButton.outlined(
+      tooltip: tooltip,
+      onPressed: () {
+        Haptics.tap();
+        onPressed();
+      },
+      style: IconButton.styleFrom(
+        fixedSize: const Size(52, 48),
+        foregroundColor: AppColors.ink,
+        backgroundColor: AppColors.surface,
+        side: BorderSide(color: AppColors.border, width: 1.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.button),
+        ),
       ),
+      icon: Icon(icon, size: 21),
     ),
-    icon: Icon(icon, size: 21),
   );
 }

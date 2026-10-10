@@ -1,16 +1,18 @@
 import 'dart:async';
 
-import '../../core/utils/file_pick.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_icons.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/utils/format.dart';
+import '../../core/utils/file_pick.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
 import 'knowledge_sheets.dart';
 
 class TeachAiScreen extends ConsumerStatefulWidget {
@@ -59,6 +61,7 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
   }
 
   Future<void> _add(KnowledgeType type) async {
+    final s = context.s;
     KnowledgeInput? input;
     if (type == KnowledgeType.pdf) {
       try {
@@ -74,10 +77,10 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
           bytes: f.bytes,
         );
       } on FileTooLargeException {
-        _snack('That PDF is over 15 MB. Try a smaller file.');
+        _snack(s.pdfTooLarge);
         return;
       } catch (_) {
-        _snack('Couldn\'t open that file. Try another PDF.');
+        _snack(s.pdfUnreadable);
         return;
       }
     } else {
@@ -86,6 +89,7 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
     }
     if (input == null) return;
     final key = 'tmp_${DateTime.now().microsecondsSinceEpoch}';
+    final strings = s;
     ref
         .read(knowledgeRepoProvider)
         .add(input)
@@ -96,9 +100,8 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
             if (s.status == KnowledgeStatus.ready) {
               setState(() => _inFlight.remove(key));
               ref.invalidate(knowledgeProvider);
-              _snack(
-                '${ref.read(employeeNameProvider)} learned “${s.title}” ✓',
-              );
+              Haptics.success();
+              _snack(strings.learned(ref.read(employeeNameProvider), s.title));
             }
           },
           onError: (_) {
@@ -120,6 +123,7 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
     ..showSnackBar(SnackBar(content: Text(m)));
 
   void _openAddSheet() {
+    final s = context.s;
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
@@ -138,34 +142,46 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
               Padding(
                 padding: const EdgeInsets.only(left: 4),
                 child: Text(
-                  'Add information',
+                  s.addInformation,
                   style: Theme.of(ctx).textTheme.titleLarge,
                 ),
               ),
               const SizedBox(height: 8),
-              for (final (type, emoji, label) in const [
-                (KnowledgeType.pdf, '📄', 'Upload PDF'),
-                (KnowledgeType.website, '🌐', 'Add website'),
-                (KnowledgeType.text, '📝', 'Paste text'),
-                (KnowledgeType.faq, '❓', 'Add FAQ'),
-              ])
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                  minTileHeight: 56,
-                  leading: IconBubble(
-                    color: AppColors.surfaceMuted,
-                    size: 40,
-                    child: Emoji(emoji, size: 20),
+              for (final (i, (type, label)) in [
+                (KnowledgeType.pdf, s.uploadPdf),
+                (KnowledgeType.website, s.addWebsite),
+                (KnowledgeType.text, s.pasteText),
+                (KnowledgeType.faq, s.addFaq),
+              ].indexed)
+                Reveal(
+                  index: i,
+                  offset: 8,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                    minTileHeight: 56,
+                    leading: IconBubble(
+                      color: AppColors.surfaceMuted,
+                      size: 40,
+                      child: Icon(
+                        AppIcons.knowledge(type),
+                        size: 20,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    title: Text(
+                      label,
+                      style: Theme.of(ctx).textTheme.titleSmall,
+                    ),
+                    trailing: Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.inkFaint,
+                    ),
+                    onTap: () {
+                      Haptics.tap();
+                      Navigator.pop(ctx);
+                      _add(type);
+                    },
                   ),
-                  title: Text(label, style: Theme.of(ctx).textTheme.titleSmall),
-                  trailing: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.inkFaint,
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _add(type);
-                  },
                 ),
             ],
           ),
@@ -174,28 +190,47 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
     );
   }
 
-  static String _emoji(KnowledgeType t) => switch (t) {
-    KnowledgeType.pdf => '📄',
-    KnowledgeType.website => '🌐',
-    KnowledgeType.faq => '❓',
-    KnowledgeType.businessInfo => '📍',
-    KnowledgeType.text => '📝',
-  };
+  Future<void> _remove(KnowledgeSource src) async {
+    final s = context.s;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.removeSourceQ(src.title)),
+        content: Text(s.removeSourceBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.cancel),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.hot),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(s.remove),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ref.read(knowledgeRepoProvider).remove(src.id);
+    if (mounted) _snack(s.removedSource(src.title));
+  }
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final k = ref.watch(knowledgeProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Teach Your AI')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openAddSheet,
-        backgroundColor: AppColors.ink,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'Add information',
-          style: TextStyle(fontWeight: FontWeight.w700),
+      appBar: AppBar(title: Text(s.teachYourAi)),
+      floatingActionButton: PopIn(
+        delay: const Duration(milliseconds: 200),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            Haptics.press();
+            _openAddSheet();
+          },
+          icon: const Icon(Icons.add_rounded),
+          label: Text(s.addInformation),
         ),
       ),
       body: AsyncView<List<KnowledgeSource>>(
@@ -213,13 +248,15 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
           final all = [..._inFlight.values, ...items];
           if (all.isEmpty) {
             return EmptyState(
-              title: 'Your AI employee hasn\'t learned anything yet',
-              message: 'Add services, pricing or FAQs.',
-              actionLabel: '+ Add information',
+              title: s.nothingLearnedYet,
+              message: s.addServicesPricingFaqs,
+              actionLabel: s.plusAddInformation,
               onAction: _openAddSheet,
             );
           }
           return RefreshIndicator(
+            color: AppColors.brand,
+            backgroundColor: AppColors.surface,
             onRefresh: () async => ref.invalidate(knowledgeProvider),
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
@@ -233,42 +270,43 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(2, 4, 2, 14),
                     child: Text(
-                      'Last updated ${Fmt.relative(latest)}',
+                      s.lastUpdated(s.relative(latest)),
                       style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
                     ),
                   ),
                 AppCard(
                   padding: EdgeInsets.zero,
-                  child: Column(
-                    children: [
-                      for (final (i, s) in all.indexed) ...[
-                        if (i > 0)
-                          const Divider(
-                            height: 1,
-                            thickness: 1,
-                            indent: 70,
-                            color: AppColors.border,
+                  child: AnimatedSize(
+                    duration: AppMotion.of(context, AppMotion.base),
+                    curve: AppMotion.standard,
+                    alignment: Alignment.topCenter,
+                    child: Column(
+                      children: [
+                        for (final (i, src) in all.indexed) ...[
+                          if (i > 0)
+                            const Divider(height: 1, thickness: 1, indent: 70),
+                          Reveal(
+                            key: ValueKey('ks-${src.id}'),
+                            id: 'ks-${src.id}',
+                            index: i < 8 ? i : 0,
+                            child: _SourceTile(
+                              source: src,
+                              onRemove:
+                                  src.status == KnowledgeStatus.ready &&
+                                      items.contains(src)
+                                  ? () => _remove(src)
+                                  : src.status == KnowledgeStatus.failed
+                                  ? () => setState(
+                                      () => _inFlight.removeWhere(
+                                        (_, v) => v == src,
+                                      ),
+                                    )
+                                  : null,
+                            ),
                           ),
-                        _SourceTile(
-                          source: s,
-                          emoji: _emoji(s.type),
-                          onRemove:
-                              s.status == KnowledgeStatus.ready &&
-                                  items.contains(s)
-                              ? () async {
-                                  await ref
-                                      .read(knowledgeRepoProvider)
-                                      .remove(s.id);
-                                  _snack('Removed “${s.title}”');
-                                }
-                              : s.status == KnowledgeStatus.failed
-                              ? () => setState(
-                                  () => _inFlight.removeWhere((_, v) => v == s),
-                                )
-                              : null,
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -281,23 +319,23 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
 }
 
 class _SourceTile extends StatelessWidget {
-  const _SourceTile({required this.source, required this.emoji, this.onRemove});
+  const _SourceTile({required this.source, this.onRemove});
   final KnowledgeSource source;
-  final String emoji;
   final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.s;
     final t = Theme.of(context).textTheme;
     final s = source;
     final (label, color) = switch (s.status) {
       KnowledgeStatus.uploading => (
-        'Uploading ${(s.progress * 100).round()}%',
+        strings.uploadingPct((s.progress * 100).round()),
         AppColors.info,
       ),
-      KnowledgeStatus.processing => ('Learning…', AppColors.warmInk),
-      KnowledgeStatus.ready => ('Learned', AppColors.success),
-      KnowledgeStatus.failed => ('Couldn\'t read this', AppColors.hot),
+      KnowledgeStatus.processing => (strings.learning, AppColors.warmInk),
+      KnowledgeStatus.ready => (strings.learnedLabel, AppColors.success),
+      KnowledgeStatus.failed => (strings.couldntRead, AppColors.hot),
     };
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 6, 14),
@@ -308,7 +346,11 @@ class _SourceTile extends StatelessWidget {
               IconBubble(
                 color: AppColors.surfaceMuted,
                 size: 40,
-                child: Emoji(emoji, size: 20),
+                child: Icon(
+                  AppIcons.knowledge(s.type),
+                  size: 20,
+                  color: AppColors.ink,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -324,13 +366,15 @@ class _SourceTile extends StatelessWidget {
                     Row(
                       children: [
                         if (s.status == KnowledgeStatus.ready)
-                          const Icon(
-                            Icons.check_circle_rounded,
-                            size: 15,
-                            color: AppColors.success,
+                          PopIn(
+                            child: Icon(
+                              Icons.check_circle_rounded,
+                              size: 15,
+                              color: AppColors.success,
+                            ),
                           ),
                         if (s.status == KnowledgeStatus.failed)
-                          const Icon(
+                          Icon(
                             Icons.error_outline_rounded,
                             size: 15,
                             color: AppColors.hot,
@@ -360,9 +404,9 @@ class _SourceTile extends StatelessWidget {
               ),
               if (onRemove != null)
                 IconButton(
-                  tooltip: 'Remove',
+                  tooltip: strings.remove,
                   onPressed: onRemove,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close_rounded,
                     size: 20,
                     color: AppColors.inkFaint,
@@ -375,13 +419,15 @@ class _SourceTile extends StatelessWidget {
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.only(left: 54, right: 10),
-              child: LinearProgressIndicator(
-                value: s.status == KnowledgeStatus.uploading
-                    ? s.progress
-                    : null,
-                minHeight: 5,
-                borderRadius: BorderRadius.circular(9),
-                backgroundColor: AppColors.surfaceMuted,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(end: s.progress),
+                duration: AppMotion.of(context, AppMotion.base),
+                builder: (_, v, _) => LinearProgressIndicator(
+                  value: s.status == KnowledgeStatus.uploading ? v : null,
+                  minHeight: 5,
+                  borderRadius: BorderRadius.circular(9),
+                  backgroundColor: AppColors.surfaceMuted,
+                ),
               ),
             ),
           ],

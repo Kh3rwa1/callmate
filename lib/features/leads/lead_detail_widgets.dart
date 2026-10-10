@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/app_colors.dart';
+import '../../l10n/l10n.dart';
 
 class LeadDetailRow extends StatelessWidget {
   const LeadDetailRow(
@@ -21,26 +23,25 @@ class LeadDetailRow extends StatelessWidget {
       decoration: BoxDecoration(
         border: last
             ? null
-            : const Border(bottom: BorderSide(color: AppColors.border)),
+            : Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 104,
+          Expanded(
+            flex: 2,
             child: Text(
               k,
               style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
+            flex: 3,
             child: Text(
               v,
               textAlign: TextAlign.right,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: t.titleSmall?.copyWith(
                 color: highlight ? AppColors.brand : AppColors.ink,
@@ -58,28 +59,32 @@ class LeadSignalChip extends StatelessWidget {
   final String text;
   final bool positive;
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 5),
-    child: Row(
-      children: [
-        Icon(
-          positive
-              ? Icons.add_circle_outline_rounded
-              : Icons.remove_circle_outline_rounded,
-          size: 19,
-          color: positive ? AppColors.success : AppColors.inkFaint,
-          semanticLabel: positive ? 'Positive' : 'Concern',
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+  Widget build(BuildContext context) {
+    final s = context.s;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            positive
+                ? Icons.add_circle_outline_rounded
+                : Icons.remove_circle_outline_rounded,
+            size: 19,
+            color: positive ? AppColors.success : AppColors.warmInk,
+            semanticLabel: positive ? s.positive : s.concern,
           ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

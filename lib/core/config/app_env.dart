@@ -46,6 +46,17 @@ class AppEnv {
     defaultValue: false,
   );
 
+  /// Public Terms of Service and Privacy Policy pages. Empty until they're
+  /// published: the sign-in footer then shows plain text instead of links.
+  static const String termsUrl = String.fromEnvironment(
+    'TERMS_URL',
+    defaultValue: '',
+  );
+  static const String privacyUrl = String.fromEnvironment(
+    'PRIVACY_URL',
+    defaultValue: '',
+  );
+
   static AppFlavor get flavor => switch (_flavorRaw) {
     'prod' => AppFlavor.prod,
     'staging' => AppFlavor.staging,

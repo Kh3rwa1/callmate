@@ -3,7 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../data/templates/templates.dart';
+import '../motion/motion.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
 /// The CallPilot AI-workforce mascot.
 ///
@@ -11,6 +13,7 @@ import '../theme/app_colors.dart';
 /// employee. Each employee adapts it through a role badge/accessory
 /// ([EmployeeRoleKind]: sales 💼, appointments 📅, support 💬, admissions 📚…),
 /// so the visual identity stays consistent across every industry.
+/// The badge is a line icon from [AppIcons.role], matching the rest of the UI.
 ///
 /// Asset files live in `assets/mascot/<state>.png`. Swap files to restyle –
 /// layouts never change.
@@ -65,8 +68,12 @@ class Mascot extends StatefulWidget {
 class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
   late final AnimationController _c;
 
+  bool _reduced = false;
+  bool _started = false;
+
   bool get _moves =>
       widget.animate &&
+      !_reduced &&
       const {
         MascotState.listening,
         MascotState.speaking,
@@ -79,7 +86,17 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _c = AnimationController(vsync: this, duration: _duration);
-    _sync();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduced = AppMotion.reduced(context);
+    if (!_started || reduced != _reduced) {
+      _started = true;
+      _reduced = reduced;
+      _sync();
+    }
   }
 
   Duration get _duration => switch (widget.state) {
@@ -233,7 +250,7 @@ class RoleBadge extends StatelessWidget {
     height: size,
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: AppColors.surface,
       shape: BoxShape.circle,
       border: Border.all(color: AppColors.brandSoft, width: 2),
       boxShadow: const [
@@ -244,7 +261,7 @@ class RoleBadge extends StatelessWidget {
         ),
       ],
     ),
-    child: Text(role.badge, style: TextStyle(fontSize: size * 0.5, height: 1)),
+    child: Icon(AppIcons.role(role), size: size * 0.5, color: AppColors.brand),
   );
 }
 

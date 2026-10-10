@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/l10n.dart';
 import 'voice_test_status.dart';
 import 'voice_test_widgets.dart';
 
@@ -23,6 +25,7 @@ class VoiceTestComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     OutlineInputBorder border(Color color, [double width = 1]) =>
         OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
@@ -36,10 +39,17 @@ class VoiceTestComposer extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              for (final (i, (label, message))
-                  in voiceTestSuggestions.indexed) ...[
+              for (final (i, (label, message)) in voiceTestSuggestions(
+                s,
+              ).indexed) ...[
                 if (i > 0) const SizedBox(width: 8),
-                VoiceSuggestionChip(label: label, onTap: () => onSend(message)),
+                PopIn(
+                  delay: Duration(milliseconds: 60 * i),
+                  child: VoiceSuggestionChip(
+                    label: label,
+                    onTap: () => onSend(message),
+                  ),
+                ),
               ],
             ],
           ),
@@ -53,9 +63,9 @@ class VoiceTestComposer extends StatelessWidget {
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => onSend(),
                 decoration: InputDecoration(
-                  hintText: 'Message $employeeName',
+                  hintText: s.messageTo(employeeName),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: AppColors.surface,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 12,
@@ -67,9 +77,18 @@ class VoiceTestComposer extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(
-              icon: const Icon(Icons.send_rounded, size: 20),
-              onPressed: () => onSend(),
+            Pressable(
+              scale: 0.88,
+              child: IconButton.filled(
+                tooltip: s.send,
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.brandFill,
+                  foregroundColor: Colors.white,
+                  fixedSize: const Size(48, 48),
+                ),
+                icon: const Icon(Icons.send_rounded, size: 20),
+                onPressed: () => onSend(),
+              ),
             ),
           ],
         ),

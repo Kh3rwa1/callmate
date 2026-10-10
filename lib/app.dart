@@ -2,13 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/config/brand.dart';
 import 'core/providers.dart';
 import 'core/routing/app_router.dart';
 import 'core/routing/deep_link.dart';
+import 'core/settings.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/palette_scope.dart';
+import 'l10n/s.dart';
 import 'data/models/misc.dart';
 import 'data/repositories/repositories.dart' show NotificationEvent;
 import 'features/notifications/notifications_screen.dart';
@@ -21,6 +25,8 @@ class CallPilotApp extends ConsumerStatefulWidget {
 
 class _CallPilotAppState extends ConsumerState<CallPilotApp> {
   final _subs = <StreamSubscription<dynamic>>[];
+  final _light = AppTheme.light();
+  final _dark = AppTheme.dark();
   AppNotification? _banner;
   Timer? _bannerTimer;
 
@@ -84,7 +90,20 @@ class _CallPilotAppState extends ConsumerState<CallPilotApp> {
     return MaterialApp.router(
       title: Brand.appName,
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
+      theme: _light,
+      darkTheme: _dark,
+      themeMode: ref.watch(themeModeProvider),
+      themeAnimationDuration: const Duration(milliseconds: 260),
+      locale: ref.watch(languageProvider)?.locale,
+      supportedLocales: AppLang.locales,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      // Any other phone language falls back to English.
+      localeResolutionCallback: (device, _) =>
+          AppLang.fromCode(device?.languageCode).locale,
       routerConfig: router,
       builder: (context, child) {
         // Respect user font scaling up to 1.5x for accessibility.
@@ -95,29 +114,33 @@ class _CallPilotAppState extends ConsumerState<CallPilotApp> {
             maxScaleFactor: 1.5,
           ),
         );
-        return MediaQuery(
-          data: scaled,
-          child: Stack(
-            children: [
-              child ?? const SizedBox.shrink(),
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeOutCubic,
-                left: 0,
-                right: 0,
-                top: _banner == null ? -140 : mq.padding.top + 8,
-                child: _banner == null
-                    ? const SizedBox.shrink()
-                    : Semantics(
-                        liveRegion: true,
-                        child: InAppNotificationBanner(
-                          n: _banner!,
-                          onOpen: () => _open(_banner!.route),
-                          onClose: () => setState(() => _banner = null),
+        return PaletteScope(
+          child: MediaQuery(
+            data: scaled,
+            child: Stack(
+              children: [
+                child ?? const SizedBox.shrink(),
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 420),
+                  curve: _banner == null
+                      ? Curves.easeInCubic
+                      : Curves.easeOutBack,
+                  left: 0,
+                  right: 0,
+                  top: _banner == null ? -160 : mq.padding.top + 8,
+                  child: _banner == null
+                      ? const SizedBox.shrink()
+                      : Semantics(
+                          liveRegion: true,
+                          child: InAppNotificationBanner(
+                            n: _banner!,
+                            onOpen: () => _open(_banner!.route),
+                            onClose: () => setState(() => _banner = null),
+                          ),
                         ),
-                      ),
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         );
       },

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
 
-/// Label/value row in the campaign setup summary.
+/// Label/value row in the campaign setup summary. Long values wrap under
+/// their own column instead of breaking mid-word on the right edge.
 class CampaignSummaryRow extends StatelessWidget {
   const CampaignSummaryRow({
     super.key,
@@ -20,20 +21,27 @@ class CampaignSummaryRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 15),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: t.bodyMedium?.copyWith(color: AppColors.inkSoft)),
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
+            ),
+          ),
           const SizedBox(width: 16),
           Expanded(
+            flex: 3,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (leading != null) ...[leading!, const SizedBox(width: 8)],
                 Flexible(
                   child: Text(
                     value,
                     style: t.titleSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.right,
                   ),
                 ),
@@ -61,7 +69,7 @@ class CampaignChecklistItem extends StatelessWidget {
   Widget build(BuildContext context) => CheckboxListTile(
     value: value,
     onChanged: (v) {
-      HapticFeedback.selectionClick();
+      Haptics.tap();
       onChanged(v ?? false);
     },
     title: Text(
@@ -72,6 +80,5 @@ class CampaignChecklistItem extends StatelessWidget {
     ),
     controlAffinity: ListTileControlAffinity.leading,
     contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-    dense: true,
   );
 }

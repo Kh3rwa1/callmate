@@ -11,8 +11,8 @@ import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
+import '../../l10n/l10n.dart';
 import '../campaign/campaign_widgets.dart';
-import '../../core/config/brand.dart';
 import 'home_widgets.dart';
 
 /// Home – "What happened today?"
@@ -21,6 +21,7 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final biz = ref.watch(businessProvider).value;
     final agent = ref.watch(agentProvider).value;
@@ -29,11 +30,14 @@ class HomeScreen extends ConsumerWidget {
     final unread =
         ref.watch(notificationsProvider).value?.where((n) => !n.read).length ??
         0;
+    final live = (campaign != null && campaign.isActive) ? campaign : null;
 
     return Scaffold(
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
+          color: AppColors.brand,
+          backgroundColor: AppColors.surface,
           onRefresh: () async {
             ref.read(dataVersionProvider.notifier).bump();
             await ref.read(dashboardProvider.future);
@@ -50,48 +54,52 @@ class HomeScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              Fmt.greeting(),
+                              s.greeting(),
                               style: t.bodyMedium?.copyWith(
                                 color: AppColors.inkFaint,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Text(
-                              biz?.name ?? 'Welcome',
-                              style: t.headlineSmall?.copyWith(
-                                fontSize: 26,
-                                letterSpacing: -0.6,
-                                height: 1.15,
+                            SwapFade(
+                              child: Text(
+                                biz?.name ?? s.homeWelcome,
+                                key: ValueKey(biz?.name),
+                                style: t.headlineSmall?.copyWith(
+                                  fontSize: 26,
+                                  letterSpacing: -0.6,
+                                  height: 1.15,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
                       ),
                       if (AppEnv.showDemoTools)
                         IconButton(
-                          tooltip: 'Demo controls',
+                          tooltip: s.demoControls,
                           color: AppColors.inkFaint,
                           onPressed: () => context.push('/demo'),
                           icon: const Icon(Icons.science_outlined, size: 22),
                         ),
                       IconButton(
                         tooltip: unread > 0
-                            ? '$unread new notifications'
-                            : 'Notifications',
+                            ? s.newNotifications(unread)
+                            : s.notifications,
                         color: AppColors.ink,
                         onPressed: () => context.push('/notifications'),
                         icon: Badge(
                           isLabelVisible: unread > 0,
                           label: Text('$unread'),
-                          backgroundColor: AppColors.hot,
+                          backgroundColor: AppColors.hotFill,
                           largeSize: 16,
                           padding: const EdgeInsets.symmetric(horizontal: 5),
                           textStyle: t.labelSmall?.copyWith(
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
+                            letterSpacing: 0,
                           ),
                           offset: const Offset(5, -4),
                           child: const Icon(
@@ -113,6 +121,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 sliver: SliverToBoxAdapter(
                   child: Reveal(
+                    id: 'home-hero',
                     index: 1,
                     child: HomeAgentCard(
                       agent: agent,
@@ -121,18 +130,27 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              if (campaign != null && campaign.isActive)
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpace.page,
-                    14,
-                    AppSpace.page,
-                    0,
-                  ),
-                  sliver: SliverToBoxAdapter(
-                    child: CampaignLiveBanner(campaign: campaign),
-                  ),
+              // The live banner grows in and out instead of popping.
+              SliverToBoxAdapter(
+                child: AnimatedSize(
+                  duration: AppMotion.of(context, AppMotion.slow),
+                  curve: AppMotion.emphasized,
+                  alignment: Alignment.topCenter,
+                  child: live != null
+                      ? Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpace.page,
+                            14,
+                            AppSpace.page,
+                            0,
+                          ),
+                          child: PopIn(
+                            child: CampaignLiveBanner(campaign: live),
+                          ),
+                        )
+                      : const SizedBox(width: double.infinity),
                 ),
+              ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpace.page,
@@ -145,10 +163,7 @@ class HomeScreen extends ConsumerWidget {
                     value: dash,
                     onRetry: () => ref.invalidate(dashboardProvider),
                     loading: const HomeSkeleton(),
-                    data: (d) => _HomeBody(
-                      d: d,
-                      agentName: agent?.name ?? Brand.employeeFallbackName,
-                    ),
+                    data: (d) => _HomeBody(d: d),
                   ),
                 ),
               ),
@@ -160,34 +175,53 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _HomeBody extends StatelessWidget {
-  const _HomeBody({required this.d, required this.agentName});
+class _HomeBody extends ConsumerWidget {
+  const _HomeBody({required this.d});
   final DailySummary d;
-  final String agentName;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
+    final next = ref
+        .watch(callbacksProvider)
+        .value
+        ?.where(
+          (c) =>
+              c.status == CallbackStatus.scheduled &&
+              c.scheduledAt.isAfter(
+                DateTime.now().subtract(const Duration(hours: 1)),
+              ),
+        )
+        .fold<Callback?>(
+          null,
+          (a, b) => a == null || b.scheduledAt.isBefore(a.scheduledAt) ? b : a,
+        );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: _stagger([
-        const SectionLabel("Today's results"),
+        SectionLabel(s.todaysResults),
         HomeStatStrip(
           stats: [
-            HomeStat(d.callsToday, 'Calls', () => context.go('/calls')),
+            HomeStat(d.callsToday, s.statCalls, () => context.go('/calls')),
             HomeStat(
               d.connected,
-              'Connected',
+              s.statConnected,
               () => context.go('/calls?filter=connected'),
             ),
             HomeStat(
               d.interested,
-              'Interested',
+              s.statInterested,
               () => context.go('/leads?filter=warm'),
             ),
-            HomeStat(d.hot, 'Hot', () => context.go('/leads?filter=hot')),
+            HomeStat(
+              d.hot,
+              s.statHot,
+              () => context.go('/leads?filter=hot'),
+              accent: AppColors.hot,
+            ),
           ],
         ),
-        const SectionLabel('Needs your attention'),
+        SectionLabel(s.needsAttention),
         HomeActionGroup(
           rows: [
             if (d.hot > 0)
@@ -196,7 +230,7 @@ class _HomeBody extends StatelessWidget {
                 color: AppColors.hot,
                 tint: AppColors.hotSoft,
                 count: d.hot,
-                label: 'hot leads',
+                label: s.hotLeadsLabel,
                 onTap: () => context.go('/leads?filter=hot'),
               )
             else
@@ -204,8 +238,8 @@ class _HomeBody extends StatelessWidget {
                 icon: Icons.local_fire_department_outlined,
                 color: AppColors.inkFaint,
                 tint: AppColors.surfaceMuted,
-                label: 'No hot leads yet',
-                trailing: 'Call new leads',
+                label: s.noHotLeadsYet,
+                trailing: s.callNewLeadsShort,
                 onTap: () => context.push('/campaign/new'),
               ),
             HomeActionRow(
@@ -214,17 +248,25 @@ class _HomeBody extends StatelessWidget {
               tint: AppColors.whatsappSoft,
               count: d.followUpsReady == 0 ? null : d.followUpsReady,
               label: d.followUpsReady == 0
-                  ? 'All caught up'
-                  : 'follow-ups ready',
+                  ? s.allCaughtUp
+                  : s.followUpsReadyLabel,
               onTap: () => context.go('/followups'),
             ),
-            if (d.callbacksToday > 0)
+            if (d.callbacksToday > 0 || next != null)
               HomeActionRow(
                 icon: Icons.event_outlined,
                 color: AppColors.info,
                 tint: AppColors.infoSoft,
-                count: d.callbacksToday,
-                label: d.callbacksToday == 1 ? 'callback' : 'callbacks',
+                count: d.callbacksToday > 0 ? d.callbacksToday : null,
+                label: d.callbacksToday > 0
+                    ? s.callbacksLabel(d.callbacksToday)
+                    : s.upcomingCallback,
+                detail: next == null
+                    ? null
+                    : s.nextCallback(
+                        next.leadName.split(' ').first,
+                        Fmt.time(next.scheduledAt),
+                      ),
                 onTap: () => context.push('/callbacks'),
               ),
           ],
@@ -233,18 +275,19 @@ class _HomeBody extends StatelessWidget {
           const SizedBox(height: 20),
           CallNewLeadsButton(count: d.newLeadsReady),
         ],
-        const SectionLabel("Today's AI activity"),
+        SectionLabel(s.todaysActivity),
         HomeActivityList(
           items: d.activity.take(3).toList(),
-          emptyText: 'No calls yet',
+          emptyText: s.noCallsYet,
         ),
-      ], from: 2),
+      ]),
     );
   }
 }
 
-/// Wraps page sections in a staggered fade-and-lift entrance.
-List<Widget> _stagger(List<Widget> children, {int from = 0}) => [
+/// Wraps page sections in a staggered fade-and-lift entrance that plays
+/// once per app session (not on every refresh or tab switch).
+List<Widget> _stagger(List<Widget> children) => [
   for (var i = 0; i < children.length; i++)
-    Reveal(index: from + i, child: children[i]),
+    Reveal(id: 'home-section-$i', index: 2 + i, child: children[i]),
 ];

@@ -4,23 +4,28 @@ import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/config/app_env.dart';
+import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
+import '../../core/settings.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/brand_widgets.dart';
 import '../../core/widgets/mascot.dart';
+import '../../core/widgets/settings_sheets.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../data/templates/templates.dart';
+import '../../l10n/l10n.dart';
 
-/// AI Employee – "What can my AI employee do?"
+/// AI Employee – "What can my AI employee do?" plus the app's settings.
 class AgentScreen extends ConsumerWidget {
   const AgentScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
     final agent = ref.watch(agentProvider);
     return Scaffold(
       body: SafeArea(
@@ -30,8 +35,8 @@ class AgentScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(agentProvider),
           data: (a) => a == null
               ? EmptyState(
-                  title: 'No AI employee yet',
-                  actionLabel: 'Create My AI Employee',
+                  title: s.noAgentYet,
+                  actionLabel: s.createMyAiEmployee,
                   onAction: () => context.go('/onboarding'),
                 )
               : _Body(agent: a),
@@ -46,6 +51,8 @@ class _Body extends ConsumerWidget {
   final Agent agent;
 
   Future<void> _allowAlerts(BuildContext context, WidgetRef ref) async {
+    final s = context.s;
+    final messenger = ScaffoldMessenger.of(context);
     final granted = await ref
         .read(notificationServiceProvider)
         .requestPermission();
@@ -53,30 +60,28 @@ class _Body extends ConsumerWidget {
     // from system settings.
     if (!granted) {
       await openAppSettings();
-    } else if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Alerts are on')));
+    } else {
+      Haptics.success();
+      messenger.showSnackBar(SnackBar(content: Text(s.alertsOn)));
     }
   }
 
   Future<void> _signOut(BuildContext context, WidgetRef ref) async {
+    final s = context.s;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign out?'),
-        content: const Text('You will need to sign in again.'),
+        title: Text(s.signOutQ),
+        content: Text(s.signInAgainNeeded),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(s.cancel),
           ),
           TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.hot),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Sign out',
-              style: TextStyle(color: AppColors.hot),
-            ),
+            child: Text(s.signOut),
           ),
         ],
       ),
@@ -88,27 +93,27 @@ class _Body extends ConsumerWidget {
   }
 
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    final s = context.s;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete account?'),
-        content: const Text(
-          'This cannot be undone. All leads, calls, transcripts and AI settings will be permanently deleted.',
-        ),
+        title: Text(s.deleteAccountQ),
+        content: Text(s.deleteAccountBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(s.cancel),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Delete permanently',
-              style: TextStyle(
-                color: AppColors.hot,
-                fontWeight: FontWeight.bold,
-              ),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.hot,
+              textStyle: const TextStyle(fontWeight: FontWeight.w800),
             ),
+            onPressed: () {
+              Haptics.warn();
+              Navigator.pop(ctx, true);
+            },
+            child: Text(s.deletePermanently),
           ),
         ],
       ),
@@ -120,7 +125,7 @@ class _Body extends ConsumerWidget {
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Account not deleted: ${friendlyError(e)}")),
+            SnackBar(content: Text(s.accountNotDeleted(friendlyError(e, s)))),
           );
         }
       }
@@ -129,106 +134,152 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final a = agent;
     final usage = ref.watch(usageProvider).value;
     final knowledge = ref.watch(knowledgeProvider).value;
     final caps = a.capabilities.isEmpty ? genericCapabilities : a.capabilities;
+    final lang = ref.watch(languageProvider);
+    final mode = ref.watch(themeModeProvider);
+
+    var i = 0;
+    Widget reveal(Widget child) =>
+        Reveal(id: 'agent-section-${i++}', index: i, child: child);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(AppSpace.page, 12, AppSpace.page, 40),
       children: [
         Semantics(
           header: true,
-          child: Text('AI Employee', style: t.headlineMedium),
+          child: Text(s.aiEmployeeTitle, style: t.headlineMedium),
         ),
         const SizedBox(height: 18),
-        _Hero(agent: a),
-        const SectionLabel('Profile'),
-        _Group(
-          children: [
-            _InfoRow(label: 'Languages', value: a.languages.join(' · ')),
-            _InfoRow(label: 'Voice', value: a.voice),
-            _InfoRow(label: 'Personality', value: a.personalityLabel),
-            _InfoRow(label: 'Goal', value: a.goal, stacked: true),
-          ],
+        reveal(_Hero(agent: a)),
+        SectionLabel(s.profile),
+        reveal(
+          CardGroup(
+            children: [
+              _InfoRow(label: s.languagesLabel, value: s.dataList(a.languages)),
+              _InfoRow(label: s.voice, value: s.data(a.voice)),
+              _InfoRow(label: s.personality, value: s.data(a.personalityLabel)),
+              _InfoRow(label: s.goal, value: s.data(a.goal), stacked: true),
+            ],
+          ),
         ),
-        const SectionLabel('Capabilities'),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [for (final c in caps) _CapabilityPill(c)],
+        SectionLabel(s.capabilities),
+        reveal(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (j, c) in caps.indexed)
+                PopIn(
+                  delay: Duration(milliseconds: 40 * j),
+                  child: _CapabilityPill(s.data(c)),
+                ),
+            ],
+          ),
         ),
         const SizedBox(height: 28),
-        _Group(
-          children: [
-            _NavRow(
-              icon: Icons.menu_book_outlined,
-              title: 'Teach Your AI',
-              value: knowledge == null ? null : '${knowledge.length} sources',
-              onTap: () => context.push('/agent/teach'),
-            ),
-            usage == null
-                ? const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Skeleton(height: 28),
-                  )
-                : _NavRow(
-                    icon: Icons.timelapse_rounded,
-                    title: '${Fmt.number(usage.minutesRemaining)} min left',
-                    value: usage.subscription.planName,
-                    progress: usage.ratio,
-                    progressColor: usage.ratio > 0.85
-                        ? AppColors.hot
-                        : AppColors.ink,
-                    onTap: () => context.push('/usage'),
-                  ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _Group(
-          children: [
-            _NavRow(
-              icon: Icons.event_outlined,
-              title: 'Callbacks',
-              onTap: () => context.push('/callbacks'),
-            ),
-            _NavRow(
-              icon: Icons.notifications_none_rounded,
-              title: 'Notifications',
-              onTap: () => context.push('/notifications'),
-            ),
-            _NavRow(
-              icon: Icons.notifications_active_outlined,
-              title: 'Allow alerts',
-              onTap: () => _allowAlerts(context, ref),
-            ),
-            if (AppEnv.showDemoTools)
+        reveal(
+          CardGroup(
+            children: [
               _NavRow(
-                icon: Icons.science_outlined,
-                title: 'Demo controls',
-                onTap: () => context.push('/demo'),
+                icon: Icons.menu_book_outlined,
+                title: s.teachYourAi,
+                value: knowledge == null ? null : s.nSources(knowledge.length),
+                onTap: () => context.push('/agent/teach'),
               ),
-          ],
+              usage == null
+                  ? const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Skeleton(height: 28),
+                    )
+                  : _NavRow(
+                      icon: Icons.timelapse_rounded,
+                      title: s.minLeft(Fmt.number(usage.minutesRemaining)),
+                      value: s.data(usage.subscription.planName),
+                      progress: usage.ratio,
+                      progressColor: usage.ratio > 0.85
+                          ? AppColors.hot
+                          : AppColors.brand,
+                      onTap: () => context.push('/usage'),
+                    ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
-        _Group(
-          children: [
-            _NavRow(
-              icon: Icons.logout_rounded,
-              title: 'Sign out',
-              color: AppColors.hot,
-              chevron: false,
-              onTap: () => _signOut(context, ref),
-            ),
-            _NavRow(
-              icon: Icons.delete_outline_rounded,
-              title: 'Delete account',
-              color: AppColors.inkFaint,
-              chevron: false,
-              onTap: () => _deleteAccount(context, ref),
-            ),
-          ],
+        reveal(
+          CardGroup(
+            children: [
+              _NavRow(
+                icon: Icons.event_outlined,
+                title: s.callbacksTitle,
+                onTap: () => context.push('/callbacks'),
+              ),
+              _NavRow(
+                icon: Icons.notifications_none_rounded,
+                title: s.notifications,
+                onTap: () => context.push('/notifications'),
+              ),
+              _NavRow(
+                icon: Icons.notifications_active_outlined,
+                title: s.allowAlerts,
+                onTap: () => _allowAlerts(context, ref),
+              ),
+              if (AppEnv.showDemoTools)
+                _NavRow(
+                  icon: Icons.science_outlined,
+                  title: s.demoControls,
+                  onTap: () => context.push('/demo'),
+                ),
+            ],
+          ),
+        ),
+        SectionLabel(s.settings),
+        reveal(
+          CardGroup(
+            children: [
+              _NavRow(
+                icon: Icons.translate_rounded,
+                title: s.appLanguage,
+                value: lang?.nativeName ?? s.phoneDefault,
+                onTap: () => showLanguageSheet(context, ref),
+              ),
+              _NavRow(
+                icon: Icons.contrast_rounded,
+                title: s.appearance,
+                value: switch (mode) {
+                  ThemeMode.light => s.themeLight,
+                  ThemeMode.dark => s.themeDark,
+                  ThemeMode.system => s.themeSystem,
+                },
+                onTap: () => showAppearanceSheet(context, ref),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        reveal(
+          CardGroup(
+            children: [
+              _NavRow(
+                icon: Icons.logout_rounded,
+                title: s.signOut,
+                color: AppColors.hot,
+                chevron: false,
+                onTap: () => _signOut(context, ref),
+              ),
+              _NavRow(
+                icon: Icons.delete_outline_rounded,
+                title: s.deleteAccount,
+                color: AppColors.inkFaint,
+                chevron: false,
+                onTap: () => _deleteAccount(context, ref),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -242,6 +293,7 @@ class _Hero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final t = Theme.of(context).textTheme;
     final a = agent;
     final active = a.status == AgentStatus.active;
@@ -271,14 +323,14 @@ class _Hero extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      a.role,
+                      s.data(a.role),
                       style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
                     StatusDot(
-                      label: active ? 'Active' : a.status.label,
+                      label: s.agentStatus(a.status),
                       color: active ? AppColors.success : AppColors.cold,
                       pulse: active,
                     ),
@@ -292,22 +344,26 @@ class _Hero extends StatelessWidget {
             children: [
               Expanded(
                 child: PrimaryButton(
-                  label: 'Talk to ${a.name}',
+                  label: s.talkTo(a.name),
                   icon: Icons.mic_rounded,
                   onPressed: () => context.push('/voice-test'),
                 ),
               ),
               const SizedBox(width: 10),
-              IconButton.outlined(
-                tooltip: 'Edit AI Employee',
-                onPressed: () => context.push('/agent/edit'),
-                icon: const Icon(Icons.tune_rounded),
-                style: IconButton.styleFrom(
-                  fixedSize: const Size(54, 54),
-                  foregroundColor: AppColors.ink,
-                  side: const BorderSide(color: AppColors.border, width: 1.2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.button),
+              Pressable(
+                scale: 0.92,
+                child: IconButton.outlined(
+                  tooltip: s.editAiEmployee,
+                  onPressed: () => context.push('/agent/edit'),
+                  icon: const Icon(Icons.tune_rounded),
+                  style: IconButton.styleFrom(
+                    fixedSize: const Size(54, 54),
+                    foregroundColor: AppColors.ink,
+                    backgroundColor: AppColors.surface,
+                    side: BorderSide(color: AppColors.border, width: 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.button),
+                    ),
                   ),
                 ),
               ),
@@ -317,31 +373,6 @@ class _Hero extends StatelessWidget {
       ),
     );
   }
-}
-
-/// One white card holding rows separated by hairline dividers.
-class _Group extends StatelessWidget {
-  const _Group({required this.children});
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) => AppCard(
-    padding: EdgeInsets.zero,
-    child: Column(
-      children: [
-        for (final (i, c) in children.indexed) ...[
-          if (i > 0)
-            const Divider(
-              height: 1,
-              thickness: 1,
-              indent: 16,
-              color: AppColors.border,
-            ),
-          c,
-        ],
-      ],
-    ),
-  );
 }
 
 /// Settings-style label/value row. Long values stack under the label.
@@ -372,6 +403,7 @@ class _InfoRow extends StatelessWidget {
               ],
             )
           : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: labelStyle),
                 const SizedBox(width: 16),
@@ -380,7 +412,7 @@ class _InfoRow extends StatelessWidget {
                     value,
                     style: valueStyle,
                     textAlign: TextAlign.end,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -400,7 +432,7 @@ class _NavRow extends StatelessWidget {
     this.color,
     this.chevron = true,
     this.progress,
-    this.progressColor = AppColors.ink,
+    this.progressColor,
   });
   final IconData icon;
   final String title;
@@ -409,7 +441,7 @@ class _NavRow extends StatelessWidget {
   final Color? color;
   final bool chevron;
   final double? progress;
-  final Color progressColor;
+  final Color? progressColor;
 
   @override
   Widget build(BuildContext context) {
@@ -418,7 +450,10 @@ class _NavRow extends StatelessWidget {
     return Semantics(
       button: true,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          Haptics.tap();
+          onTap();
+        },
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 56),
           child: Padding(
@@ -435,17 +470,22 @@ class _NavRow extends StatelessWidget {
                       Text(
                         title,
                         style: t.titleSmall?.copyWith(color: fg),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (progress != null) ...[
                         const SizedBox(height: 8),
-                        LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 4,
-                          borderRadius: BorderRadius.circular(9),
-                          backgroundColor: AppColors.surfaceMuted,
-                          color: progressColor,
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: progress!),
+                          duration: AppMotion.of(context, AppMotion.slow),
+                          curve: AppMotion.emphasized,
+                          builder: (_, v, _) => LinearProgressIndicator(
+                            value: v,
+                            minHeight: 4,
+                            borderRadius: BorderRadius.circular(9),
+                            backgroundColor: AppColors.surfaceMuted,
+                            color: progressColor ?? AppColors.ink,
+                          ),
                         ),
                       ],
                     ],
@@ -453,17 +493,19 @@ class _NavRow extends StatelessWidget {
                 ),
                 if (value != null) ...[
                   const SizedBox(width: 12),
-                  Text(
-                    value!,
-                    style: t.bodyMedium?.copyWith(color: AppColors.inkFaint),
+                  Flexible(
+                    child: Text(
+                      value!,
+                      textAlign: TextAlign.end,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodyMedium?.copyWith(color: AppColors.inkFaint),
+                    ),
                   ),
                 ],
                 if (chevron) ...[
                   const SizedBox(width: 4),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.inkFaint,
-                  ),
+                  Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
                 ],
               ],
             ),
@@ -474,7 +516,7 @@ class _NavRow extends StatelessWidget {
   }
 }
 
-/// Small white pill with a check, used for capabilities.
+/// Small pill with a check, used for capabilities.
 class _CapabilityPill extends StatelessWidget {
   const _CapabilityPill(this.label);
   final String label;
@@ -490,13 +532,16 @@ class _CapabilityPill extends StatelessWidget {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.check_rounded, size: 16, color: AppColors.success),
+        Icon(Icons.check_rounded, size: 16, color: AppColors.success),
         const SizedBox(width: 6),
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(color: AppColors.ink, fontSize: 13),
+        Flexible(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: AppColors.ink,
+              fontSize: 13,
+            ),
+          ),
         ),
       ],
     ),

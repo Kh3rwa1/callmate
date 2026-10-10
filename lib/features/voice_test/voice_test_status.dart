@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/mascot.dart';
+import '../../l10n/l10n.dart';
 import '../../services/voice/voice_agent_service.dart';
 
 /// Pure presentation mapping for the voice test screen, kept separate from the
@@ -22,17 +23,18 @@ MascotState mascotForVoiceState(VoiceConnectionState state) => switch (state) {
 (String, Color) voiceStatusFor(
   VoiceConnectionState state, {
   bool muted = false,
+  S s = S.en,
 }) => switch (state) {
-  VoiceConnectionState.connecting => ('Connecting…', AppColors.warmInk),
+  VoiceConnectionState.connecting => (s.vConnecting, AppColors.warmInk),
   VoiceConnectionState.listening => (
-    muted ? 'Muted' : 'Listening',
+    muted ? s.vMuted : s.vListening,
     AppColors.success,
   ),
-  VoiceConnectionState.speaking => ('Speaking', AppColors.brand),
-  VoiceConnectionState.thinking => ('Thinking…', AppColors.warmInk),
-  VoiceConnectionState.disconnected => ('Disconnected', AppColors.cold),
-  VoiceConnectionState.error => ('Couldn\'t connect', AppColors.hot),
-  VoiceConnectionState.idle => ('Ready', AppColors.cold),
+  VoiceConnectionState.speaking => (s.vSpeaking, AppColors.brand),
+  VoiceConnectionState.thinking => (s.vThinking, AppColors.warmInk),
+  VoiceConnectionState.disconnected => (s.vDisconnected, AppColors.cold),
+  VoiceConnectionState.error => (s.vCouldntConnect, AppColors.hot),
+  VoiceConnectionState.idle => (s.vReady, AppColors.cold),
 };
 
 /// Whether a session is active (or being established) in [state].
@@ -44,9 +46,4 @@ bool isLiveVoiceState(VoiceConnectionState state) => const {
 }.contains(state);
 
 /// Canned questions offered as chips: (chip label, message sent).
-const voiceTestSuggestions = <(String, String)>[
-  ('“What do you do?”', 'What do you do?'),
-  ('“How do you handle fees?”', 'How do you handle fees and pricing?'),
-  ('“Can I book a visit?”', 'Can I book an appointment or visit?'),
-  ('“What are your hours?”', 'What are your calling hours?'),
-];
+List<(String, String)> voiceTestSuggestions([S s = S.en]) => s.voiceSuggestions;
