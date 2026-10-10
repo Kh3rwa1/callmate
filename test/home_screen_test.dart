@@ -62,7 +62,7 @@ void main() {
       final hotCount = h.backend.leads.values.where((l) => l.isHot).length;
       await h.tapText('$hotCount ready to buy');
       expect(h.location, '/leads');
-      expect(_chipSelected('Hot'), isTrue);
+      expect(_chipSelected('Wants to buy'), isTrue);
     });
 
     appTest('metric tiles deep link into filtered lists', (h) async {
@@ -73,7 +73,7 @@ void main() {
       await h.go('/home');
       await h.tapText('Interested');
       expect(h.location, '/leads');
-      expect(_chipSelected('Warm'), isTrue);
+      expect(_chipSelected('Thinking'), isTrue);
     });
 
     appTest('agent card, notifications and follow-ups navigate', (h) async {

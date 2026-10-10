@@ -58,7 +58,7 @@ class LeadCard extends ConsumerWidget {
       child: Semantics(
         button: true,
         label:
-            '${l.name}. ${l.score == null ? s.leadStatus(l.status) : '${l.score!.value}, ${s.temperature(l.temperature)}'}',
+            '${l.name}. ${l.score == null ? s.leadStatus(l.status) : s.temperature(l.temperature)}',
         child: Material(
           color: AppColors.surface,
           borderRadius: radius,

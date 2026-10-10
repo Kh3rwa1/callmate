@@ -45,7 +45,7 @@ void main() {
         isTrue,
       );
 
-      await h.tapText('Hot');
+      await h.tapText('Wants to buy');
       shown = _visibleCalls(h.tester);
       expect(shown, isNotEmpty);
       expect(shown.every((c) => c.isHot), isTrue);

@@ -36,30 +36,45 @@ class TempStyle {
   };
 }
 
-/// "🔥 87 · Hot" badge (icon + number + word: never colour alone).
+/// "🔥 Wants to buy" badge (icon + plain words: never colour alone, never a
+/// bare number). [showNumber] adds the score for screens that explain it.
 class ScoreBadge extends StatelessWidget {
-  const ScoreBadge({super.key, required this.score, this.large = false});
+  const ScoreBadge({
+    super.key,
+    required this.score,
+    this.large = false,
+    this.showNumber = false,
+  });
   final LeadScore? score;
   final bool large;
+  final bool showNumber;
 
   @override
   Widget build(BuildContext context) {
     final s = context.s;
     final t = score?.temperature ?? LeadTemperature.unknown;
     final style = TempStyle.of(t);
+    final word = s.temperature(t);
     final text = score == null
         ? s.notScoredYet
-        : '${score!.value} · ${s.temperature(t)}';
+        : showNumber
+        ? '$word · ${score!.value}'
+        : word;
     return Semantics(
       label: score == null
           ? s.notScoredYet
-          : s.pick(
-              'Lead score ${score!.value}, ${s.temperature(t).toLowerCase()}',
-              'लीड स्कोर ${score!.value}, ${s.temperature(t)}',
-              'লিড স্কোর ${score!.value}, ${s.temperature(t)}',
-            ),
+          : showNumber
+          ? s.pick(
+              '$word, score ${score!.value} out of 100',
+              '$word, 100 में से ${score!.value}',
+              '$word, 100-এর মধ্যে ${score!.value}',
+            )
+          : word,
       child: ExcludeSemantics(
         child: AnimatedContainer(
+          // Words are longer than "87 · Hot"; cap the width so a long
+          // translation ellipsizes instead of pushing the row over.
+          constraints: BoxConstraints(maxWidth: large ? 260 : 156),
           duration: AppMotion.of(context, AppMotion.base),
           padding: EdgeInsets.symmetric(
             horizontal: large ? 14 : 10,
@@ -76,14 +91,18 @@ class ScoreBadge extends StatelessWidget {
                 Icon(style.icon, size: large ? 17 : 14, color: style.fg),
                 const SizedBox(width: 4),
               ],
-              Text(
-                text,
-                style: TextStyle(
-                  color: style.fg,
-                  fontWeight: FontWeight.w800,
-                  fontSize: large ? 15 : 12.5,
-                  letterSpacing: 0.1,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+              Flexible(
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: style.fg,
+                    fontWeight: FontWeight.w800,
+                    fontSize: large ? 15 : 12.5,
+                    letterSpacing: 0.1,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ],
@@ -107,9 +126,9 @@ class ScoreRing extends StatelessWidget {
     final s = context.s;
     return Semantics(
       label: s.pick(
-        'Lead score ${score.value} out of 100',
-        'लीड स्कोर 100 में से ${score.value}',
-        'লিড স্কোর 100-এর মধ্যে ${score.value}',
+        'Buying chance ${score.value} out of 100',
+        'खरीदने की संभावना 100 में से ${score.value}',
+        'কেনার সম্ভাবনা 100-এর মধ্যে ${score.value}',
       ),
       child: ExcludeSemantics(
         child: TweenAnimationBuilder<double>(
