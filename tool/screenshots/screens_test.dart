@@ -158,6 +158,7 @@ final List<_Shot> _shots = [
     signedOut: true,
     settle: 14,
   ),
+  _onboarding('onboarding_0_language', '/language'),
   _onboarding('onboarding_1_welcome', '/onboarding'),
   _onboarding('onboarding_2_type', '/onboarding/business-type'),
   _onboarding('onboarding_3_skills', '/onboarding/skills'),

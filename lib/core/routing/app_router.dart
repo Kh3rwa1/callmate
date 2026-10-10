@@ -14,6 +14,7 @@ import '../../features/followups/followup_detail_screen.dart';
 import '../../features/followups/followups_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/knowledge/teach_ai_screen.dart';
+import '../../features/language/language_pick_screen.dart';
 import '../../features/leads/contacts_picker_screen.dart';
 import '../../features/leads/import_leads_screen.dart';
 import '../../features/leads/lead_detail_screen.dart';
@@ -74,7 +75,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           !hasSession &&
           !inAuth &&
           loc != '/demo' &&
-          loc != '/splash') {
+          loc != '/splash' &&
+          loc != '/language') {
         return '/login';
       }
       if (hasSession && inAuth) {
@@ -84,6 +86,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           !inOnboarding &&
           loc != '/demo' &&
           loc != '/splash' &&
+          loc != '/language' &&
           !inAuth) {
         return '/onboarding';
       }
@@ -91,6 +94,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
+      GoRoute(
+        path: '/language',
+        pageBuilder: (_, s) => _arrive(s, const LanguagePickScreen()),
+      ),
       GoRoute(
         path: '/login',
         pageBuilder: (_, s) => _arrive(s, const LoginScreen()),

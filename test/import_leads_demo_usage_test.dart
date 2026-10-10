@@ -197,6 +197,7 @@ void main() {
     });
 
     appTest('continues to onboarding when not onboarded', (h) async {
+      await h.prefs.setLanguage('en');
       h.router.go('/splash');
       await h.tester.pump(const Duration(milliseconds: 50));
       await h.tester.pump(const Duration(milliseconds: 50));
@@ -205,6 +206,32 @@ void main() {
       await h.settle(4);
       expect(h.location, '/onboarding');
     }, onboarded: false);
+
+    appTest('first launch asks for the language before any English', (h) async {
+      h.router.go('/splash');
+      await h.tester.pump(const Duration(milliseconds: 50));
+      await h.tester.pump(const Duration(milliseconds: 1500));
+      await h.settle(14);
+      expect(h.location, '/language');
+      expect(find.text('अपनी भाषा चुनें'), findsOneWidget);
+      expect(find.text('বাংলা'), findsOneWidget);
+      expect(find.text('English'), findsOneWidget);
+
+      await h.tapText('हिन्दी');
+      await h.settle(4);
+      expect(h.prefs.language, 'hi');
+      expect(h.location, '/onboarding');
+    }, onboarded: false);
+
+    appTest('the language screen is shown once, not to set-up owners', (
+      h,
+    ) async {
+      h.router.go('/splash');
+      await h.tester.pump(const Duration(milliseconds: 50));
+      await h.tester.pump(const Duration(milliseconds: 1500));
+      await h.settle(4);
+      expect(h.location, '/home');
+    });
   });
 
   group('AppShell', () {
