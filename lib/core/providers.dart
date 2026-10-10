@@ -377,6 +377,12 @@ final dashboardProvider = FutureProvider<DailySummary>((ref) {
   return ref.watch(dashboardRepoProvider).today();
 });
 
+/// The home results card: this week vs last week.
+final weekResultsProvider = FutureProvider<ResultsSummary>((ref) {
+  ref.watch(dataVersionProvider);
+  return ref.watch(dashboardRepoProvider).results(ResultsRange.week);
+});
+
 final followUpsProvider = FutureProvider<List<FollowUp>>((ref) {
   ref.watch(dataVersionProvider);
   return ref.watch(followUpRepoProvider).list();

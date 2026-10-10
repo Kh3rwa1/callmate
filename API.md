@@ -40,9 +40,11 @@ All requests require `Authorization: Bearer <access_token>` and are scoped stric
 | Method | Path | Request Body | Response |
 |---|---|---|---|
 | `GET` | `/business` | - | `Business` object |
-| `PATCH` | `/business` | `{"name"?, "category"?, "address"?, "offerings"?, "pricing"?, "opening_hours"?, "location"?, "whatsapp_number"?, "human_number"?, "owner_name"?}` | Updated `Business` object |
+| `PATCH` | `/business` | `{"name"?, "category"?, "address"?, "offerings"?, "pricing"?, "opening_hours"?, "location"?, "whatsapp_number"?, "human_number"?, "owner_name"?, "digest_enabled"? (bool, 7 PM daily summary push, default true), "avg_deal_value_inr"? (int ≥ 1 or null to clear)}` | Updated `Business` object |
 | `GET` | `/agent` | - | `Agent` object (name, role, role_kind, skills, voice, goal, languages, formality, calling_hours_start, calling_hours_end, transfer_number, status, template_id) |
 | `PATCH` | `/agent` | Partial `Agent` updates | Updated `Agent` object |
+| `GET` | `/agent/test-call` | - | `{phone, remaining_today, limit}`: the signed-in owner's number (normalised, may be null) and owner test calls left in the rolling 24 h (limit 3). |
+| `POST` | `/agent/test-call` | `{"phone": "..."}` | "Hear your AI now": the AI calls the owner's own number through the same dial path and guards as `POST /leads/:id/call`. The number is kept as a hidden lead (`is_owner_test = 1`) that never appears in customers, stats, results, the digest or campaigns. Returns `{call, sarvam_dispatched, lead_id, remaining_today}`. Errors: `400 invalid_phone`, `409 phone_is_customer`, `429 test_call_limit`, plus every `/leads/:id/call` error (a failed dial does not use up a test call). |
 
 ---
 
@@ -133,6 +135,7 @@ Receives post-call telemetry from Sarvam telephony.
 | Method | Path | Response |
 |---|---|---|
 | `GET` | `/dashboard/today` | `DailySummary`: leads count, connected calls, hot leads, follow-ups ready, callbacks scheduled, recent activity feed. |
+| `GET` | `/dashboard/results?range=today\|week\|month` | Home results card (default `week`). `{range, since, enquiries, calls, calls_connected, interested, ready_to_buy, followups_sent, estimated_value_inr, avg_deal_value_inr, has_calls, previous: {...same counts}}`. Periods start at local (Asia/Kolkata) midnight; `previous` is the same-length period just before. `estimated_value_inr` = `ready_to_buy × avg_deal_value_inr`, null until that is set. Owner test calls never count. |
 | `GET` | `/usage` | `Usage`: subscription (`plan_name`, `plan_id` `trial`/`starter`, `plan_status` `trial`/`active`/`past_due`/`cancelled`, `current_period_end` UTC or null, included minutes, price), minutes used, calls made, `checkout_plan`. |
 | `GET` | `/billing` | `{plan_id, plan_name, plan_status, current_period_end, price_inr, included_minutes, minutes_used, minutes_left, checkout_plan}`. |
 | `POST` | `/billing/checkout` | Body `{"plan_id": "starter"}` (optional). Creates a Razorpay Payment Link and returns `{url, id}`. `503 billing_not_configured` when Razorpay keys are not set; `502 billing_unavailable` if Razorpay fails. |

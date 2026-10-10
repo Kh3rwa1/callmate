@@ -47,7 +47,7 @@ function formatLead(row: any) {
   };
 }
 
-function normalizePhone(p: string): string | null {
+export function normalizePhone(p: string): string | null {
   const digits = p.replace(/\D/g, '');
   if (digits.length === 10) return `91${digits}`;
   if (digits.length === 11 && digits.startsWith('0')) return `91${digits.slice(1)}`;
@@ -67,7 +67,8 @@ leadsApp.get('/leads', async (c) => {
   const limit = parseLimit(c.req.query('limit'), 20, 100);
   const fields = c.req.query('fields');
 
-  let sql = 'SELECT * FROM leads WHERE business_id = ?';
+  // The owner's own test lead (POST /agent/test-call) is not a customer.
+  let sql = 'SELECT * FROM leads WHERE business_id = ? AND is_owner_test = 0';
   const params: any[] = [user.business_id];
 
   if (filter === 'new') {

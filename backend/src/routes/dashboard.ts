@@ -2,6 +2,9 @@ import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { billingView, getPlan, RATE_PER_MINUTE_INR } from '../services/plans';
 
+// Calls to the owner's own test lead (POST /agent/test-call) are not results.
+const NOT_OWNER_TEST = 'lead_id NOT IN (SELECT id FROM leads WHERE business_id = ? AND is_owner_test = 1)';
+
 const dashApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
 // GET /dashboard/today
@@ -9,18 +12,18 @@ dashApp.get('/dashboard/today', async (c) => {
   const user = c.get('user');
 
   // Query counts from D1
-  const leadsCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM leads WHERE business_id = ?').bind(user.business_id).first<{ count: number }>();
-  const newLeadsCount = await c.env.DB.prepare("SELECT COUNT(*) as count FROM leads WHERE business_id = ? AND status = 'new'").bind(user.business_id).first<{ count: number }>();
-  const hotLeadsCount = await c.env.DB.prepare("SELECT COUNT(*) as count FROM leads WHERE business_id = ? AND temperature = 'hot'").bind(user.business_id).first<{ count: number }>();
-  const interestedCount = await c.env.DB.prepare("SELECT COUNT(*) as count FROM leads WHERE business_id = ? AND (temperature = 'hot' OR temperature = 'warm')").bind(user.business_id).first<{ count: number }>();
+  const leadsCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM leads WHERE business_id = ? AND is_owner_test = 0').bind(user.business_id).first<{ count: number }>();
+  const newLeadsCount = await c.env.DB.prepare("SELECT COUNT(*) as count FROM leads WHERE business_id = ? AND is_owner_test = 0 AND status = 'new'").bind(user.business_id).first<{ count: number }>();
+  const hotLeadsCount = await c.env.DB.prepare("SELECT COUNT(*) as count FROM leads WHERE business_id = ? AND is_owner_test = 0 AND temperature = 'hot'").bind(user.business_id).first<{ count: number }>();
+  const interestedCount = await c.env.DB.prepare("SELECT COUNT(*) as count FROM leads WHERE business_id = ? AND is_owner_test = 0 AND (temperature = 'hot' OR temperature = 'warm')").bind(user.business_id).first<{ count: number }>();
 
   const callsTodayCount = await c.env.DB.prepare(
-    "SELECT COUNT(*) as count FROM calls WHERE business_id = ? AND date(started_at) = date('now')"
-  ).bind(user.business_id).first<{ count: number }>();
+    `SELECT COUNT(*) as count FROM calls WHERE business_id = ? AND date(started_at) = date('now') AND ${NOT_OWNER_TEST}`
+  ).bind(user.business_id, user.business_id).first<{ count: number }>();
 
   const connectedCallsCount = await c.env.DB.prepare(
-    "SELECT COUNT(*) as count FROM calls WHERE business_id = ? AND status = 'completed' AND date(started_at) = date('now')"
-  ).bind(user.business_id).first<{ count: number }>();
+    `SELECT COUNT(*) as count FROM calls WHERE business_id = ? AND status = 'completed' AND date(started_at) = date('now') AND ${NOT_OWNER_TEST}`
+  ).bind(user.business_id, user.business_id).first<{ count: number }>();
 
   const followupsReadyCount = await c.env.DB.prepare(
     "SELECT COUNT(*) as count FROM followups WHERE business_id = ? AND status = 'ready'"

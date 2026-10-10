@@ -8,6 +8,7 @@ export 's_common.dart';
 export 's_data.dart';
 export 's_campaign.dart';
 export 's_home.dart';
+export 's_results.dart';
 export 's_leads.dart';
 export 's_calls.dart';
 export 's_followups.dart';

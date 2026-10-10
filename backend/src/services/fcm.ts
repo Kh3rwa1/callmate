@@ -93,7 +93,7 @@ function isUnregistered(status: number, body: any): boolean {
 }
 
 export interface PushPayload {
-  type: 'hot_lead' | 'campaign' | 'callback' | 'follow_up_ready';
+  type: 'hot_lead' | 'campaign' | 'callback' | 'follow_up_ready' | 'daily_digest';
   title: string;
   body: string;
   route: string;

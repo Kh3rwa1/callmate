@@ -23,6 +23,8 @@ import { voiceApp, handleSarvamWebhook } from './routes/voice';
 import { billingApp, handleRazorpayWebhook } from './routes/billing';
 import { runBillingRenewals } from './services/plans';
 import { legalApp } from './routes/legal';
+import { resultsApp } from './routes/results';
+import { runDailyDigests } from './services/digest';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -177,6 +179,7 @@ protectedApp.route('/', fcApp);
 protectedApp.route('/', knowledgeApp);
 protectedApp.route('/', dashApp);
 protectedApp.route('/', billingApp);
+protectedApp.route('/', resultsApp);
 protectedApp.route('/voice', voiceApp);
 
 app.route('/', protectedApp);
@@ -211,6 +214,7 @@ export default {
     ctx.waitUntil(runMaintenance(env));
     ctx.waitUntil(runBillingRenewals(env));
     ctx.waitUntil(runAlertChecks(env));
+    ctx.waitUntil(runDailyDigests(env));
   },
 };
 
