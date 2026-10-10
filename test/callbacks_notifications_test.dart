@@ -70,15 +70,11 @@ void main() {
       expect(find.text(first.leadName), findsWidgets);
     });
 
-    appTest(
-      'no callbacks shows an empty state',
-      (h) async {
-        await h.push('/callbacks');
-        expect(find.byType(CallbacksScreen), findsOneWidget);
-        expect(find.text('No call backs yet'), findsOneWidget);
-      },
-      backend: () => MockBackend()..callbacks.clear(),
-    );
+    appTest('no callbacks shows an empty state', (h) async {
+      await h.push('/callbacks');
+      expect(find.byType(CallbacksScreen), findsOneWidget);
+      expect(find.text('No call backs yet'), findsOneWidget);
+    }, backend: () => MockBackend()..callbacks.clear());
   });
 
   group('Callback sheet', () {
@@ -157,14 +153,10 @@ void main() {
       );
     });
 
-    appTest(
-      'empty list says all caught up',
-      (h) async {
-        await h.push('/notifications');
-        expect(find.text('All caught up'), findsOneWidget);
-      },
-      backend: () => MockBackend()..notifications.clear(),
-    );
+    appTest('empty list says all caught up', (h) async {
+      await h.push('/notifications');
+      expect(find.text('All caught up'), findsOneWidget);
+    }, backend: () => MockBackend()..notifications.clear());
   });
 
   group('In-app notification banner', () {
