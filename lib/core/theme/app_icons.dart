@@ -18,6 +18,7 @@ class AppIcons {
     BusinessCategory.diagnostic => Icons.science_outlined,
     BusinessCategory.automobile => Icons.directions_car_outlined,
     BusinessCategory.salon => Icons.content_cut_rounded,
+    BusinessCategory.gym => Icons.fitness_center_rounded,
     BusinessCategory.restaurant => Icons.restaurant_outlined,
     BusinessCategory.retail => Icons.shopping_bag_outlined,
     BusinessCategory.localServices => Icons.handyman_outlined,

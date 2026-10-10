@@ -3,7 +3,7 @@
  *
  * Anyone can enter a phone number to stop calls from EVERY business on CallPilot (global_dnc).
  * Same look and rules as the legal pages: server-rendered HTML, no scripts, strict CSP (the form
- * may only post back here). Rate limited per IP. The response never says whether the number was
+ * may only post back here). English, Hindi or Bengali (?lang, else Accept-Language). Rate limited per IP. The response never says whether the number was
  * already on the list.
  */
 import { Hono } from 'hono';
@@ -13,6 +13,8 @@ import { page, legalVars, escapeHtml, LegalVars } from './legal';
 import { hitRateLimit } from '../utils/rate_limit';
 import { addToGlobalDnc, canonicalPhone, globalDncSecret } from '../services/global_dnc';
 import { hashIp, clientIp } from '../services/consent';
+import { PageLang, resolvePageLang, withLang, languageSwitcher } from '../services/page_lang';
+import { STOP_STRINGS } from '../services/public_page_strings';
 
 /** Like LEGAL_CSP, but the form may post to this origin. */
 export const STOP_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
@@ -24,39 +26,48 @@ const MAX_PHONE_INPUT = 32;
 
 type StopState = { kind: 'form'; error?: string; value?: string } | { kind: 'done' } | { kind: 'limited' } | { kind: 'unavailable' };
 
-export function stopPage(v: LegalVars, state: StopState): string {
+/** The opt-out page in `lang` (English by default). The form posts back with the same language. */
+export function stopPage(v: LegalVars, state: StopState, lang: PageLang = 'en'): string {
+  const t = STOP_STRINGS[lang];
   let body: string;
   if (state.kind === 'done') {
-    body = `<p class="notice" role="status"><strong>Done.</strong> This number is on the CallPilot do-not-call list. No business using CallPilot will place AI calls to it from now on. Calls already in progress may still finish.</p>
-<p>If a business keeps calling you, write to <a href="mailto:${v.email}">${v.email}</a> with the business name and the time of the call.</p>`;
+    body = t.doneHtml(v.email);
   } else if (state.kind === 'limited') {
-    body = `<p class="notice" role="alert">Too many requests from your connection. Please try again in an hour, or email <a href="mailto:${v.email}">${v.email}</a>.</p>`;
+    body = `<p class="notice" role="alert">${t.limitedHtml(v.email)}</p>`;
   } else if (state.kind === 'unavailable') {
-    body = `<p class="notice" role="alert">This page is temporarily unavailable. Please email <a href="mailto:${v.email}">${v.email}</a> with your number and we will add it for you.</p>`;
+    body = `<p class="notice" role="alert">${t.unavailableHtml(v.email)}</p>`;
   } else {
     body = `${state.error ? `<p class="notice" role="alert">${escapeHtml(state.error)}</p>` : ''}
-<form method="post" action="/stop">
-  <label for="phone">Your mobile number</label>
+<form method="post" action="${withLang('/stop', lang)}">
+  <label for="phone">${t.phoneLabel}</label>
   <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="${MAX_PHONE_INPUT}" required placeholder="98765 43210" value="${escapeHtml(state.value ?? '')}">
-  <button type="submit">Stop calls to this number</button>
+  <button type="submit">${t.submit}</button>
 </form>
-<p>Indian numbers can be entered with or without +91. We store only a one-way hash of the number, used for nothing except blocking calls.</p>`;
+<p>${t.hint}</p>`;
   }
-  return page('Stop calls to my number', v, `
-<h1>Stop AI calls to my number</h1>
-<p class="lede">CallPilot is a service that businesses use to make AI phone calls to people who asked about their products. Enter your number below and <strong>no business using CallPilot</strong> will call it again.</p>
+  return page(t.title, v, `
+${languageSwitcher('/stop', lang, t.languageLabel)}
+<h1>${t.heading}</h1>
+<p class="lede">${t.ledeHtml}</p>
 ${body}
-<h2>Other ways to stop calls</h2>
+<h2>${t.otherWays}</h2>
 <ul>
-  <li>During a call, say “don’t call me again”; that business will stop calling you.</li>
-  <li>Register on the National Customer Preference Register (DND) by sending <strong>START 0</strong> to 1909, or through your mobile operator’s app.</li>
+  <li>${t.inCallTip}</li>
+  <li>${t.dndTipHtml}</li>
 </ul>
-<p>See our <a href="/legal/privacy">Privacy Policy</a> for how we handle personal data.</p>
-`);
+<p>${t.privacyHtml}</p>
+`, lang);
 }
 
-function send(c: Context<{ Bindings: Env }>, html: string, status: 200 | 400 | 429 | 503 = 200) {
+/** ?lang, then the browser's Accept-Language, then English (no business default on this page). */
+export function stopLang(c: Context): PageLang {
+  return resolvePageLang({ query: c.req.query('lang'), acceptLanguage: c.req.header('accept-language') });
+}
+
+function send(c: Context<{ Bindings: Env }>, html: string, status: 200 | 400 | 429 | 503 = 200, lang: PageLang = 'en') {
   c.header('Content-Security-Policy', STOP_CSP);
+  c.header('Content-Language', lang);
+  c.header('Vary', 'Accept-Language');
   c.header('Cache-Control', 'no-store');
   c.header('X-Robots-Tag', 'noindex');
   return c.html(html, status);
@@ -64,14 +75,18 @@ function send(c: Context<{ Bindings: Env }>, html: string, status: 200 | 400 | 4
 
 const stopApp = new Hono<{ Bindings: Env }>();
 
-stopApp.get('/', (c) => send(c, stopPage(legalVars(c.env), { kind: 'form' })));
+stopApp.get('/', (c) => {
+  const lang = stopLang(c);
+  return send(c, stopPage(legalVars(c.env), { kind: 'form' }, lang), 200, lang);
+});
 
 stopApp.post('/', async (c) => {
   const v = legalVars(c.env);
+  const lang = stopLang(c);
   const secret = globalDncSecret(c.env);
   if (!secret) {
     console.error(JSON.stringify({ msg: 'global_dnc_secret_missing', where: 'stop_page' }));
-    return send(c, stopPage(v, { kind: 'unavailable' }), 503);
+    return send(c, stopPage(v, { kind: 'unavailable' }, lang), 503, lang);
   }
 
   // Rate limit before parsing: bucket keyed by a hash of the IP, never the IP itself.
@@ -79,7 +94,7 @@ stopApp.post('/', async (c) => {
   const limit = await hitRateLimit(c.env.DB, `stop:ip:${ipKey}`, STOP_RATE_LIMIT, STOP_RATE_WINDOW_SECONDS);
   if (!limit.allowed) {
     c.header('Retry-After', String(limit.retryAfter));
-    return send(c, stopPage(v, { kind: 'limited' }), 429);
+    return send(c, stopPage(v, { kind: 'limited' }, lang), 429, lang);
   }
 
   let raw = '';
@@ -91,11 +106,11 @@ stopApp.post('/', async (c) => {
   }
   raw = raw.slice(0, MAX_PHONE_INPUT);
   if (!canonicalPhone(raw)) {
-    return send(c, stopPage(v, { kind: 'form', error: 'Please enter a valid mobile number, e.g. 98765 43210.', value: raw }), 400);
+    return send(c, stopPage(v, { kind: 'form', error: STOP_STRINGS[lang].errPhone, value: raw }, lang), 400, lang);
   }
   await addToGlobalDnc(c.env.DB, secret, raw, 'web');
   console.log(JSON.stringify({ msg: 'global_dnc_added', source: 'web' }));
-  return send(c, stopPage(v, { kind: 'done' }));
+  return send(c, stopPage(v, { kind: 'done' }, lang), 200, lang);
 });
 
 export { stopApp };

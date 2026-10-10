@@ -281,6 +281,9 @@ final notificationRepoProvider = Provider<NotificationRepository>(
 final referralRepoProvider = Provider<ReferralRepository>(
   (ref) => _pick(ref, MockReferralRepository.new, ApiReferralRepository.new),
 );
+final playbookRepoProvider = Provider<PlaybookRepository>(
+  (ref) => _pick(ref, MockPlaybookRepository.new, ApiPlaybookRepository.new),
+);
 final dashboardRepoProvider = Provider<DashboardRepository>(
   (ref) => _pick(ref, MockDashboardRepository.new, ApiDashboardRepository.new),
 );
@@ -447,6 +450,15 @@ final usageProvider = FutureProvider<Usage>((ref) {
 final referralsProvider = FutureProvider<ReferralSummary>((ref) {
   ref.watch(dataVersionProvider);
   return ref.watch(referralRepoProvider).get();
+});
+
+/// The business's call playbook in [lang] (`en` / `hi` / `bn`).
+final playbookProvider = FutureProvider.family<CallPlaybook, String>((
+  ref,
+  lang,
+) {
+  ref.watch(dataVersionProvider);
+  return ref.watch(playbookRepoProvider).current(lang: lang);
 });
 
 /// Reads the Play install referrer (once, then cached in prefs).

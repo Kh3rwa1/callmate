@@ -36,6 +36,7 @@ import { resultsApp } from './routes/results';
 import { runDailyDigests } from './services/digest';
 import { leadSourcesApp } from './routes/lead_sources';
 import { leadCapturePublicApp } from './routes/lead_capture_public';
+import { playbooksApp } from './routes/playbooks';
 import { leadIntegrationsPublicApp } from './routes/lead_integrations_public';
 import { runIndiaMartPulls } from './services/lead_integrations';
 import { handleInstantCallMessages, isInstantCallMessage } from './services/lead_capture';
@@ -222,6 +223,7 @@ protectedApp.route('/', dashApp);
 protectedApp.route('/', billingApp);
 protectedApp.route('/', referralsApp);
 protectedApp.route('/', resultsApp);
+protectedApp.route('/', playbooksApp);
 protectedApp.route('/', leadSourcesApp);
 protectedApp.route('/voice', voiceApp);
 

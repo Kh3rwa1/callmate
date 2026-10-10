@@ -349,6 +349,29 @@ const salonWorkflow = WorkflowTemplate(
   attributes: [LeadAttributeDef('slot', 'Preferred slot', emoji: '🕒')],
 );
 
+const gymWorkflow = WorkflowTemplate(
+  id: 'gym_memberships_v1',
+  customerNoun: 'member',
+  interestLabel: 'Goal',
+  interestOptions: [
+    'Weight loss',
+    'Muscle gain',
+    'General fitness',
+    'Personal training',
+    'Yoga',
+  ],
+  offeringsLabel: 'Plans / classes',
+  offeringsHint: 'e.g. Monthly plan, Personal training, Zumba, Yoga',
+  humanLabel: 'Trainer',
+  knowledgeHint: 'Membership plans, fees, timings, trainers, classes, location',
+  sampleLeadName: 'Rahul Kumar',
+  sampleLeadInterest: 'Weight loss · Trial',
+  sampleLeadQuote:
+      '“How much is a monthly membership? Can I try a session first?”',
+  testCallerHint: 'Pretend you\'re someone asking about joining the gym.',
+  attributes: [LeadAttributeDef('slot', 'Preferred slot', emoji: '🕒')],
+);
+
 // ================================================================= Templates
 
 const businessTemplates = <BusinessTemplate>[
@@ -382,6 +405,11 @@ const businessTemplates = <BusinessTemplate>[
     category: BusinessCategory.salon,
     agent: appointmentAgentTemplate,
     workflow: salonWorkflow,
+  ),
+  BusinessTemplate(
+    category: BusinessCategory.gym,
+    agent: appointmentAgentTemplate,
+    workflow: gymWorkflow,
   ),
   BusinessTemplate(
     category: BusinessCategory.restaurant,

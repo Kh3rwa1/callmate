@@ -119,7 +119,7 @@ Optional (only sent once listed in `SARVAM_AGENT_VARIABLES`):
 
 | Variable | Meaning / example |
 |---|---|
-| `business_context` | plain-text summary (≤ 1500 chars) of the business profile — name, category, offerings, pricing, hours, location, goal — plus the top knowledge-base snippets (matched to the lead's interest). Use it in the prompt as `{{business_context}}` so the agent can answer questions about the business. |
+| `business_context` | plain-text summary (≤ 1500 chars) of the business profile — name, category, offerings, pricing, hours, location, goal — the vertical playbook's qualifying questions and "ready to buy" definition (`backend/src/services/playbooks.ts`, picked from the business category), plus the top knowledge-base snippets (matched to the lead's interest; cut first when over the limit). Use it in the prompt as `{{business_context}}` so the agent can answer questions about the business. |
 | `call_language` | the employee's first language as the owner named it, e.g. `Hindi`, `English` |
 | `gender`, `voice` | `female` / `male`, from the employee's voice |
 | `speaker` | Bulbul v4 speaker id, e.g. `ishita_enhi_customer`, `shubh_hi_customer` |

@@ -167,7 +167,11 @@ export async function captureLead(
   env: Env,
   source: LeadSourceRow,
   input: CaptureInput,
-  opts: { fallbackBaseUrl?: string; waitUntil?: (p: Promise<unknown>) => void; ipHash?: string | null } = {},
+  opts: {
+    fallbackBaseUrl?: string; waitUntil?: (p: Promise<unknown>) => void; ipHash?: string | null;
+    /** Wording version the person agreed to (e.g. the form page language); default by source kind. */
+    consentTextVersion?: string;
+  } = {},
 ): Promise<CaptureResult> {
   const phone = normalizePhone(input.phone);
   if (!phone) return { status: 'invalid_phone' };
@@ -217,7 +221,8 @@ export async function captureLead(
   // Evidence of the opt-in this enquiry carried (shown in the lead's consent history).
   // Records the lead's stored value: a repeat enquiry never overrides an earlier opt-out.
   await recordConsentEventsForLeads(env.DB, businessId, [leadId], {
-    source: consentSourceFor(source.kind), textVersion: CONSENT_TEXT_VERSIONS[consentSourceFor(source.kind) as keyof typeof CONSENT_TEXT_VERSIONS],
+    source: consentSourceFor(source.kind),
+    textVersion: opts.consentTextVersion ?? CONSENT_TEXT_VERSIONS[consentSourceFor(source.kind) as keyof typeof CONSENT_TEXT_VERSIONS],
     ipHash: opts.ipHash ?? null,
   });
 

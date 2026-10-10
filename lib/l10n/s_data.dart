@@ -116,6 +116,10 @@ const _data = <String, (String, String)>{
   'patient': ('मरीज़', 'রোগী'),
   'buyer': ('खरीदार', 'ক্রেতা'),
   'client': ('क्लाइंट', 'ক্লায়েন্ট'),
+  'member': ('मेंबर', 'মেম্বার'),
+  'Goal': ('लक्ष्य', 'লক্ষ্য'),
+  'Plans / classes': ('प्लान / क्लास', 'প্ল্যান / ক্লাস'),
+  'Trainer': ('ट्रेनर', 'ট্রেনার'),
   'Interest': ('रुचि', 'আগ্রহ'),
   'Course': ('कोर्स', 'কোর্স'),
   'Property': ('प्रॉपर्टी', 'প্রপার্টি'),
@@ -154,6 +158,11 @@ const _data = <String, (String, String)>{
   'Facial': ('फ़ेशियल', 'ফেসিয়াল'),
   'Bridal': ('ब्राइडल', 'ব্রাইডাল'),
   'Spa': ('स्पा', 'স্পা'),
+  'Weight loss': ('वज़न घटाना', 'ওজন কমানো'),
+  'Muscle gain': ('मसल बनाना', 'পেশি বাড়ানো'),
+  'General fitness': ('फ़िट रहना', 'সাধারণ ফিটনেস'),
+  'Personal training': ('पर्सनल ट्रेनिंग', 'পার্সোনাল ট্রেনিং'),
+  'Yoga': ('योग', 'যোগব্যায়াম'),
 
   // Hints
   'e.g. Home cleaning, AC repair, Pest control': (
@@ -200,6 +209,14 @@ const _data = <String, (String, String)>{
     'मॉडल, ऑन-रोड कीमत, ऑफ़र, टेस्ट ड्राइव, सर्विस प्लान',
     'মডেল, অন-রোড দাম, অফার, টেস্ট ড্রাইভ, সার্ভিস প্ল্যান',
   ),
+  'e.g. Monthly plan, Personal training, Zumba, Yoga': (
+    'जैसे मंथली प्लान, पर्सनल ट्रेनिंग, ज़ुम्बा, योग',
+    'যেমন মাসিক প্ল্যান, পার্সোনাল ট্রেনিং, জুম্বা, যোগব্যায়াম',
+  ),
+  'Membership plans, fees, timings, trainers, classes, location': (
+    'मेंबरशिप प्लान, फ़ीस, समय, ट्रेनर, क्लास, पता',
+    'মেম্বারশিপ প্ল্যান, ফি, সময়, ট্রেনার, ক্লাস, ঠিকানা',
+  ),
   'Services, price list, timings, offers, location': (
     'सेवाएँ, रेट लिस्ट, समय, ऑफ़र, पता',
     'পরিষেবা, রেট লিস্ট, সময়, অফার, ঠিকানা',
@@ -212,6 +229,7 @@ const _data = <String, (String, String)>{
   'Consultation · Evening': ('परामर्श · शाम', 'পরামর্শ · সন্ধ্যা'),
   'SUV · Test drive': ('SUV · टेस्ट ड्राइव', 'SUV · টেস্ট ড্রাইভ'),
   'Haircut · Saturday': ('हेयरकट · शनिवार', 'হেয়ারকাট · শনিবার'),
+  'Weight loss · Trial': ('वज़न घटाना · ट्रायल', 'ওজন কমানো · ট্রায়াল'),
   '“Hi, I saw your ad. Can you tell me the price and how soon you can start?”': (
     '“नमस्ते, मैंने आपका विज्ञापन देखा। कीमत क्या है और कब से शुरू कर सकते हैं?”',
     '“নমস্কার, আপনাদের বিজ্ঞাপন দেখলাম। দাম কত আর কবে থেকে শুরু করতে পারবেন?”',
@@ -231,6 +249,10 @@ const _data = <String, (String, String)>{
   '“What\'s the on-road price of the SUV? Can I book a test drive?”': (
     '“SUV की ऑन-रोड कीमत क्या है? क्या टेस्ट ड्राइव बुक हो सकती है?”',
     '“SUV-র অন-রোড দাম কত? টেস্ট ড্রাইভ বুক করা যাবে?”',
+  ),
+  '“How much is a monthly membership? Can I try a session first?”': (
+    '“मंथली मेंबरशिप कितने की है? क्या पहले एक सेशन ट्राई कर सकता हूँ?”',
+    '“মাসিক মেম্বারশিপ কত? আগে একটা সেশন করে দেখতে পারি?”',
   ),
   '“Do you have a slot on Saturday for a haircut?”': (
     '“क्या शनिवार को हेयरकट का समय मिलेगा?”',

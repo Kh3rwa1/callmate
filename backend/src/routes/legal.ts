@@ -9,6 +9,8 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { Env } from '../types';
 import { retentionDays } from '../services/retention';
+import type { PageLang } from '../services/page_lang';
+import { LEGAL_CHROME } from '../services/public_page_strings';
 
 export const LEGAL_LAST_UPDATED = '10 October 2026';
 const DEFAULT_SUPPORT_EMAIL = 'support@callpilot.app';
@@ -41,7 +43,9 @@ export function legalVars(env: Env): LegalVars {
   };
 }
 
-export function page(title: string, v: LegalVars, body: string): string {
+/** Legal-page layout. `lang` sets <html lang> and the nav/footer language (the policies themselves are English). */
+export function page(title: string, v: LegalVars, body: string, lang: PageLang = 'en'): string {
+  const t = LEGAL_CHROME[lang];
   return `<!doctype html>
 <!--
   TODO(owner): DRAFT, pending legal review. Before relying on this page:
@@ -52,7 +56,7 @@ export function page(title: string, v: LegalVars, body: string): string {
   - confirm the live Sarvam agent says, at the start of every call, that it is an AI and that the call is recorded;
   - bump LEGAL_LAST_UPDATED in backend/src/routes/legal.ts whenever the text changes.
 -->
-<html lang="en">
+<html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -77,21 +81,22 @@ export function page(title: string, v: LegalVars, body: string): string {
   button { margin-top: 12px; font: inherit; font-weight: 600; padding: 10px 18px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
   .notice { padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line); }
   nav { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.95rem; margin-bottom: 24px; }
+  nav.langs { gap: 8px; font-size: 0.9rem; margin: -8px 0 16px; color: var(--soft); }
   footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--soft); font-size: 0.9rem; }
 </style>
 </head>
 <body>
 <main>
-<nav aria-label="Legal pages">
-  <a href="/legal/privacy">Privacy Policy</a>
-  <a href="/legal/terms">Terms of Service</a>
-  <a href="/legal/delete-account">Delete your account</a>
-  <a href="/stop">Stop calls to my number</a>
+<nav aria-label="${t.navLabel}">
+  <a href="/legal/privacy">${t.privacy}</a>
+  <a href="/legal/terms">${t.terms}</a>
+  <a href="/legal/delete-account">${t.deleteAccount}</a>
+  <a href="/stop${lang === 'en' ? '' : `?lang=${lang}`}">${t.stopCalls}</a>
 </nav>
 ${body}
 <footer>
-  <p>Questions? Email <a href="mailto:${v.email}">${v.email}</a>.</p>
-  <p>Last updated: ${LEGAL_LAST_UPDATED}</p>
+  <p>${t.questionsHtml(v.email)}</p>
+  <p>${t.lastUpdated}: ${LEGAL_LAST_UPDATED}</p>
 </footer>
 </main>
 </body>

@@ -142,6 +142,7 @@ class _Body extends ConsumerWidget {
     final usage = ref.watch(usageProvider).value;
     final knowledge = ref.watch(knowledgeProvider).value;
     final referralBonus = ref.watch(referralsProvider).value?.bonusMinutes;
+    final category = ref.watch(businessProvider).value?.category;
     final caps = a.capabilities.isEmpty ? genericCapabilities : a.capabilities;
     final lang = ref.watch(languageProvider);
     final mode = ref.watch(themeModeProvider);
@@ -196,6 +197,14 @@ class _Body extends ConsumerWidget {
                 title: s.teachYourAi,
                 value: knowledge == null ? null : s.nSources(knowledge.length),
                 onTap: () => context.push('/agent/teach'),
+              ),
+              _NavRow(
+                icon: Icons.checklist_rounded,
+                title: s.playbookTitle,
+                value: category == null
+                    ? null
+                    : s.playbookName(playbookVerticalFor(category)),
+                onTap: () => context.push('/agent/playbook'),
               ),
               usage == null
                   ? const Padding(

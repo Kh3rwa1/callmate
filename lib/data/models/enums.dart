@@ -215,6 +215,7 @@ enum BusinessCategory {
   diagnostic('diagnostic', 'Diagnostic Centre', '🧪'),
   automobile('automobile', 'Automobile', '🚗'),
   salon('salon', 'Salon', '💇'),
+  gym('gym', 'Gym & Fitness', '🏋️'),
   restaurant('restaurant', 'Restaurant', '🍽️'),
   retail('retail', 'Retail', '🛍️'),
   localServices('local_services', 'Local Services', '🛠️'),

@@ -4,11 +4,15 @@
  *   POST /f/:slug             form submit -> lead (consent 'explicit_opt_in', source 'form') + instant AI call
  *   POST /hooks/leads/:slug   JSON webhook, `Authorization: Bearer <token>` -> same, source 'webhook'
  *
+ * Pages are in English, Hindi or Bengali (?lang, else the employee's first language, else
+ * Accept-Language; services/page_lang.ts), with small language links.
  * The form page runs no script and loads nothing external (strict CSP, like routes/legal.ts).
  * Spam: hidden honeypot field, per-IP and per-form rate limits, phone validation, 24h phone dedupe.
  */
 import { ensureReferralCode, referralLink } from '../services/referrals';
-import { hashIp } from '../services/consent';
+import { hashIp, formConsentTextVersion } from '../services/consent';
+import { PageLang, resolvePageLang, businessPageLang, languageSwitcher, withLang } from '../services/page_lang';
+import { FORM_STRINGS } from '../services/public_page_strings';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { Env } from '../types';
@@ -57,9 +61,10 @@ async function businessName(db: D1Database, businessId: string): Promise<string 
 
 // ------------------------------------------------------------------ HTML
 
-function shell(title: string, body: string, poweredHref = '/get'): string {
+function shell(title: string, body: string, poweredHref = '/get', lang: PageLang = 'en'): string {
+  const t = FORM_STRINGS[lang];
   return `<!doctype html>
-<html lang="en">
+<html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -70,7 +75,7 @@ function shell(title: string, body: string, poweredHref = '/get'): string {
   :root { color-scheme: light dark; --ink: #1d1d1f; --soft: #5c5c66; --bg: #f6f6f9; --card: #ffffff; --line: #dcdce3; --accent: #3a5bd9; --on-accent: #ffffff; --error: #b3261e; --error-bg: #fdecea; }
   @media (prefers-color-scheme: dark) { :root { --ink: #f2f2f5; --soft: #a8a8b3; --bg: #121214; --card: #1c1c20; --line: #34343b; --accent: #8fa6ff; --on-accent: #0d1430; --error: #ffb4ab; --error-bg: #3a1714; } }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali", sans-serif; }
   main { max-width: 480px; margin: 0 auto; padding: 24px 16px 40px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 16px; }
   h1 { font-size: 1.4rem; line-height: 1.3; margin: 0 0 4px; overflow-wrap: anywhere; }
@@ -85,6 +90,8 @@ function shell(title: string, body: string, poweredHref = '/get'): string {
   button { width: 100%; margin-top: 22px; font: inherit; font-weight: 600; color: var(--on-accent); background: var(--accent); border: 0; border-radius: 12px; padding: 14px; cursor: pointer; }
   .error { color: var(--error); background: var(--error-bg); border-radius: 10px; padding: 10px 12px; margin: 0 0 8px; }
   .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+  .langs { color: var(--soft); font-size: 0.9rem; text-align: right; margin: 0 0 12px; }
+  .langs a { color: var(--accent); padding: 4px 2px; }
   footer { color: var(--soft); font-size: 0.85rem; margin-top: 20px; text-align: center; }
   footer a { color: var(--soft); }
 </style>
@@ -92,72 +99,76 @@ function shell(title: string, body: string, poweredHref = '/get'): string {
 <body>
 <main>
 ${body}
-<footer><a href="${escapeHtml(poweredHref)}">Powered by CallPilot</a> · <a href="/legal/privacy">Privacy</a></footer>
+<footer><a href="${escapeHtml(poweredHref)}">${t.poweredBy}</a> · <a href="/legal/privacy">${t.privacy}</a></footer>
 </main>
 </body>
 </html>`;
 }
 
-export function consentText(business: string): string {
-  return `I agree to receive a call from ${business} about my enquiry (may be an automated AI call).`;
+/** The consent sentence shown next to the checkbox, in the page language (plain text, not escaped). */
+export function consentText(business: string, lang: PageLang = 'en'): string {
+  return FORM_STRINGS[lang].consent(business);
 }
 
 export interface FormValues { name?: string; phone?: string; interest?: string; consent?: boolean }
 
-export function formPage(business: string, slug: string, values: FormValues = {}, error?: string, poweredHref?: string): string {
+export function formPage(business: string, slug: string, values: FormValues = {}, error?: string, poweredHref?: string, lang: PageLang = 'en'): string {
+  const t = FORM_STRINGS[lang];
   const b = escapeHtml(business);
   const v = (s?: string) => escapeHtml(s ?? '');
-  return shell(`Enquire · ${b}`, `
+  const path = `/f/${slug}`;
+  return shell(`${t.enquireTitle} · ${b}`, `
+${languageSwitcher(path, lang, t.languageLabel)}
 <div class="card">
   <h1>${b}</h1>
-  <p class="lede">Leave your details and we’ll call you back in about a minute.</p>
+  <p class="lede">${t.lede}</p>
   ${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ''}
-  <form method="post" action="/f/${escapeHtml(slug)}" accept-charset="utf-8">
-    <label for="name">Your name</label>
+  <form method="post" action="${escapeHtml(withLang(path, lang))}" accept-charset="utf-8">
+    <label for="name">${t.nameLabel}</label>
     <input id="name" name="name" type="text" autocomplete="name" maxlength="${LEAD_NAME_MAX}" required value="${v(values.name)}">
-    <label for="phone">Mobile number</label>
+    <label for="phone">${t.phoneLabel}</label>
     <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" required value="${v(values.phone ?? '+91 ')}">
-    <label for="interest">What are you interested in? <span class="opt">(optional)</span></label>
+    <label for="interest">${t.interestLabel} <span class="opt">${t.optional}</span></label>
     <textarea id="interest" name="interest" maxlength="${LEAD_INTEREST_MAX}">${v(values.interest)}</textarea>
     <div class="hp" aria-hidden="true">
-      <label for="${HONEYPOT_FIELD}">Leave this empty</label>
+      <label for="${HONEYPOT_FIELD}">${t.honeypotLabel}</label>
       <input id="${HONEYPOT_FIELD}" name="${HONEYPOT_FIELD}" type="text" tabindex="-1" autocomplete="off">
     </div>
-    <label class="consent"><input type="checkbox" name="consent" value="yes" required${values.consent ? ' checked' : ''}><span>${escapeHtml(consentText(business))}</span></label>
-    <button type="submit">Request a call</button>
+    <label class="consent"><input type="checkbox" name="consent" value="yes" required${values.consent ? ' checked' : ''}><span>${escapeHtml(consentText(business, lang))}</span></label>
+    <button type="submit">${t.submit}</button>
   </form>
-</div>`, poweredHref);
+</div>`, poweredHref, lang);
 }
 
-export function thankYouPage(business: string, name: string, autoCall: boolean, poweredHref?: string): string {
+export function thankYouPage(business: string, name: string, autoCall: boolean, poweredHref?: string, lang: PageLang = 'en'): string {
+  const t = FORM_STRINGS[lang];
   const b = escapeHtml(business);
   const first = escapeHtml(name.trim().split(/\s+/)[0] || '');
-  return shell(`Thank you · ${b}`, `
+  return shell(`${t.thankYouTitle} · ${b}`, `
 <div class="card">
-  <h1>Thank you${first ? `, ${first}` : ''}!</h1>
-  <p class="lede">${autoCall
-    ? `${b} will call you in about a minute, or when their calling hours start. The call may be from an AI assistant.`
-    : `${b} has your enquiry and will get in touch soon.`}</p>
-</div>`, poweredHref);
+  <h1>${t.thankYou(first)}</h1>
+  <p class="lede">${autoCall ? t.willCall(b) : t.willContact(b)}</p>
+</div>`, poweredHref, lang);
 }
 
-export function messagePage(title: string, message: string): string {
+/** Plain message page. With `switcherPath`, also shows the language links for that path. */
+export function messagePage(title: string, message: string, lang: PageLang = 'en', switcherPath?: string): string {
   return shell(escapeHtml(title), `
+${switcherPath ? languageSwitcher(switcherPath, lang, FORM_STRINGS[lang].languageLabel) : ''}
 <div class="card">
   <h1>${escapeHtml(title)}</h1>
   <p class="lede">${escapeHtml(message)}</p>
-</div>`);
+</div>`, undefined, lang);
 }
 
-function sendHtml(c: Context, html: string, status: 200 | 400 | 404 | 413 | 429 = 200) {
+function sendHtml(c: Context, html: string, status: 200 | 400 | 404 | 413 | 429 = 200, lang: PageLang = 'en') {
   c.header('Content-Security-Policy', FORM_CSP);
   c.header('Cache-Control', 'no-store');
   c.header('X-Robots-Tag', 'noindex, nofollow');
+  c.header('Content-Language', lang);
+  c.header('Vary', 'Accept-Language');
   return c.html(html, status);
 }
-
-const NOT_FOUND_TITLE = 'Form not available';
-const NOT_FOUND_MESSAGE = 'This enquiry form is no longer available. Please contact the business directly.';
 
 /** "Powered by CallPilot" link carrying the business's referral code; plain landing link on any error. */
 async function poweredHrefFor(env: Env, businessId: string): Promise<string> {
@@ -168,28 +179,54 @@ async function poweredHrefFor(env: Env, businessId: string): Promise<string> {
   }
 }
 
-async function formContext(c: Context<{ Bindings: Env }>): Promise<{ source: LeadSourceRow; business: string } | null> {
+/** The business's default page language: its AI employee's first language, if we render it. */
+async function businessDefaultLang(db: D1Database, businessId: string): Promise<PageLang | null> {
+  const row = await db.prepare('SELECT languages FROM agents WHERE business_id = ? ORDER BY created_at LIMIT 1')
+    .bind(businessId).first<{ languages: string | null }>();
+  return businessPageLang(row?.languages);
+}
+
+interface FormContext { source: LeadSourceRow; business: string; lang: PageLang }
+
+/** The active form, its business and the page language; `lang` alone when the form is not available. */
+async function formContext(c: Context<{ Bindings: Env }>): Promise<FormContext | { lang: PageLang }> {
+  const fallback = () => resolvePageLang({ query: c.req.query('lang'), acceptLanguage: c.req.header('accept-language') });
   const source = await findActiveSource(c.env.DB, c.req.param('slug') ?? '', 'form');
-  if (!source) return null;
+  if (!source) return { lang: fallback() };
   const business = await businessName(c.env.DB, source.business_id);
-  return business ? { source, business } : null;
+  if (!business) return { lang: fallback() };
+  const lang = resolvePageLang({
+    query: c.req.query('lang'),
+    businessDefault: await businessDefaultLang(c.env.DB, source.business_id),
+    acceptLanguage: c.req.header('accept-language'),
+  });
+  return { source, business, lang };
+}
+
+function notFound(c: Context, lang: PageLang) {
+  const t = FORM_STRINGS[lang];
+  // Language links only when the slug looks like one of ours (never echo arbitrary paths).
+  const slug = c.req.param('slug') ?? '';
+  const path = /^[A-Za-z0-9]{8,64}$/.test(slug) ? `/f/${slug}` : undefined;
+  return sendHtml(c, messagePage(t.notFoundTitle, t.notFoundMessage, lang, path), 404, lang);
 }
 
 // ------------------------------------------------------------------ form
 
 leadCapturePublicApp.get('/f/:slug', async (c) => {
   const ctx = await formContext(c);
-  if (!ctx) return sendHtml(c, messagePage(NOT_FOUND_TITLE, NOT_FOUND_MESSAGE), 404);
-  return sendHtml(c, formPage(ctx.business, ctx.source.public_slug, {}, undefined, await poweredHrefFor(c.env, ctx.source.business_id)));
+  if (!('source' in ctx)) return notFound(c, ctx.lang);
+  return sendHtml(c, formPage(ctx.business, ctx.source.public_slug, {}, undefined, await poweredHrefFor(c.env, ctx.source.business_id), ctx.lang), 200, ctx.lang);
 });
 
 leadCapturePublicApp.post('/f/:slug', async (c) => {
   const ctx = await formContext(c);
-  if (!ctx) return sendHtml(c, messagePage(NOT_FOUND_TITLE, NOT_FOUND_MESSAGE), 404);
-  const { source, business } = ctx;
+  if (!('source' in ctx)) return notFound(c, ctx.lang);
+  const { source, business, lang } = ctx;
+  const t = FORM_STRINGS[lang];
 
   if (Number(c.req.header('content-length') ?? 0) > MAX_FORM_BYTES) {
-    return sendHtml(c, messagePage('Too long', 'Please shorten your message and try again.'), 413);
+    return sendHtml(c, messagePage(t.tooLongTitle, t.tooLongMessage, lang), 413, lang);
   }
 
   const ip = await ipKey(c);
@@ -199,7 +236,7 @@ leadCapturePublicApp.post('/f/:slug', async (c) => {
     : perIp;
   if (!perIp.allowed || !perSlug.allowed) {
     c.header('Retry-After', String(perIp.allowed ? perSlug.retryAfter : perIp.retryAfter));
-    return sendHtml(c, messagePage('Please wait', 'Too many enquiries were sent from here. Please try again in a few minutes.'), 429);
+    return sendHtml(c, messagePage(t.waitTitle, t.waitMessage, lang), 429, lang);
   }
 
   let body: Record<string, unknown>;
@@ -218,21 +255,27 @@ leadCapturePublicApp.post('/f/:slug', async (c) => {
 
   // Bots fill every field: pretend it worked, create nothing.
   if (str(HONEYPOT_FIELD).trim() !== '') {
-    return sendHtml(c, thankYouPage(business, values.name ?? '', source.auto_call === 1));
+    return sendHtml(c, thankYouPage(business, values.name ?? '', source.auto_call === 1, undefined, lang), 200, lang);
   }
 
-  const invalid = (msg: string) => sendHtml(c, formPage(business, source.public_slug, values, msg), 400);
-  if (!values.name) return invalid('Please enter your name.');
-  if (!values.phone || values.phone.replace(/\D/g, '').length < 8) return invalid('Please enter a valid mobile number.');
-  if (!values.consent) return invalid('Please tick the box to agree to receive a call.');
+  const invalid = (msg: string) => sendHtml(c, formPage(business, source.public_slug, values, msg, undefined, lang), 400, lang);
+  if (!values.name) return invalid(t.errName);
+  if (!values.phone || values.phone.replace(/\D/g, '').length < 8) return invalid(t.errPhone);
+  if (!values.consent) return invalid(t.errConsent);
 
   const result = await captureLead(c.env, source, {
     name: values.name, phone: values.phone, interest: values.interest || null,
-  }, { fallbackBaseUrl: new URL(c.req.url).origin, waitUntil: waitUntilOf(c), ipHash: await hashIp(c.env, clientIp(c) === 'unknown' ? null : clientIp(c)) });
-  if (result.status === 'invalid_phone') return invalid('Please enter a valid mobile number.');
+  }, {
+    fallbackBaseUrl: new URL(c.req.url).origin,
+    waitUntil: waitUntilOf(c),
+    ipHash: await hashIp(c.env, clientIp(c) === 'unknown' ? null : clientIp(c)),
+    // Evidence names the wording the person saw: the consent sentence in this page's language.
+    consentTextVersion: formConsentTextVersion(lang),
+  });
+  if (result.status === 'invalid_phone') return invalid(t.errPhone);
 
   // Duplicates get the same page: never reveal whether a number is already known.
-  return sendHtml(c, thankYouPage(business, values.name, source.auto_call === 1, await poweredHrefFor(c.env, source.business_id)));
+  return sendHtml(c, thankYouPage(business, values.name, source.auto_call === 1, await poweredHrefFor(c.env, source.business_id), lang), 200, lang);
 });
 
 // ------------------------------------------------------------------ webhook

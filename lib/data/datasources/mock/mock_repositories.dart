@@ -7,6 +7,7 @@ import '../../models/models.dart';
 import '../../repositories/repositories.dart';
 import '../../templates/templates.dart';
 import 'mock_backend.dart';
+import 'mock_playbooks.dart';
 
 /// Simulated network latency so loading states are real in demo mode.
 Future<T> _lag<T>(T Function() f, [int ms = 280]) async {
@@ -566,6 +567,14 @@ class MockReferralRepository implements ReferralRepository {
   final MockBackend b;
   @override
   Future<ReferralSummary> get() => _lag(() => b.referrals, 150);
+}
+
+class MockPlaybookRepository implements PlaybookRepository {
+  MockPlaybookRepository(this.b);
+  final MockBackend b;
+  @override
+  Future<CallPlaybook> current({String? lang}) =>
+      _lag(() => mockPlaybookFor(b.business), 150);
 }
 
 class MockNotificationRepository implements NotificationRepository {

@@ -41,6 +41,15 @@ export const CONSENT_TEXT_VERSIONS = {
   meta_lead_ads: 'meta-lead-ads-2026-10',
 } as const;
 
+/**
+ * Version of the enquiry-form consent sentence the person saw, per page language
+ * (services/public_page_strings.ts FORM_STRINGS.consent). English keeps the original label;
+ * Hindi and Bengali carry a suffix: 'enquiry-form-2026-10-hi', 'enquiry-form-2026-10-bn'.
+ */
+export function formConsentTextVersion(lang: 'en' | 'hi' | 'bn'): string {
+  return lang === 'en' ? CONSENT_TEXT_VERSIONS.form : `${CONSENT_TEXT_VERSIONS.form}-${lang}`;
+}
+
 export interface ConsentEventInput {
   businessId: string;
   leadId: string;

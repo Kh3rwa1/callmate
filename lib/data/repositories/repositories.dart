@@ -140,6 +140,13 @@ abstract class UsageRepository {
   Future<String?> checkout({String planId = 'starter'});
 }
 
+/// The business's call playbook (`GET /playbooks/current`), read-only.
+abstract class PlaybookRepository {
+  /// [lang] is `en`, `hi` or `bn`; null lets the backend pick the
+  /// employee's first language.
+  Future<CallPlaybook> current({String? lang});
+}
+
 /// Referral program (`GET /referrals`).
 abstract class ReferralRepository {
   Future<ReferralSummary> get();
