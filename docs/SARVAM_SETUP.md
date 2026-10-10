@@ -85,20 +85,68 @@ and a secret with the same name clashes.
 **commit a new version**, then bump `SARVAM_APP_VERSION` in `wrangler.toml`
 and redeploy. Calls keep using the old version until you bump it.
 
-The agent must keep these variables, because the backend sends or reads them:
-
-- In (sent per call): `call_id`, `campaign_id`, `lead_id`, `lead_name`,
-  `business_name`, `agent_name`, `agent_role`, `interest`
-- Out (filled after the call, read by the webhook): `lead_score` (0–100),
-  `intent`, `temperature`, `summary`, `next_action`,
-  `whatsapp_followup_required`, `whatsapp_message`, `callback_at`.
-  Allowed values: `backend/schemas/call_output.schema.json`.
-
 **Add or remove a caller number** — onboard it on the connection in Sarvam
 Telephony, then edit `SARVAM_AGENT_PHONE_NUMBERS` and redeploy.
 
 **Rotate the API key** — create a new key in Sarvam, `wrangler secret put
 SARVAM_API_KEY` (both envs), confirm a test call, revoke the old key.
+
+## Agent variables
+
+> **Sarvam rejects the whole dial** (HTTP 422 `Agent variables … not found in
+> agent variables of app`) if the backend sends a variable the agent version
+> does not declare. That is why every variable beyond the default set is
+> **opt-in** through the Worker var `SARVAM_AGENT_VARIABLES`.
+
+**In (sent per call).** Built in `backend/src/services/call_variables.ts`
+(`buildCallAgentVariables`) for both manual calls and campaigns, then filtered
+to `SARVAM_AGENT_VARIABLES` (comma separated). Unset = the default 8 below.
+Unknown names are ignored with a `unknown_agent_variables_ignored` warning.
+`GET /health/deep` lists the names currently sent.
+
+Default (declared in the agent today; keep them):
+
+| Variable | Meaning |
+|---|---|
+| `call_id` | our call id (also in the webhook URL) |
+| `campaign_id` | campaign id; empty string for a manual call |
+| `lead_id`, `lead_name` | the lead |
+| `business_name` | business display name |
+| `agent_name`, `agent_role` | the AI employee's name and role |
+| `interest` | what the lead asked about (may be empty) |
+
+Optional (only sent once listed in `SARVAM_AGENT_VARIABLES`):
+
+| Variable | Meaning / example |
+|---|---|
+| `business_context` | plain-text summary (≤ 1500 chars) of the business profile — name, category, offerings, pricing, hours, location, goal — plus the top knowledge-base snippets (matched to the lead's interest). Use it in the prompt as `{{business_context}}` so the agent can answer questions about the business. |
+| `call_language` | the employee's first language as the owner named it, e.g. `Hindi`, `English` |
+| `gender`, `voice` | `female` / `male`, from the employee's voice |
+| `speaker` | Bulbul v4 speaker id, e.g. `ishita_enhi_customer`, `shubh_hi_customer` |
+| `language_code` | `en-IN`, `hi-IN` or `bn-IN` |
+| `tts_model` | `bulbul:v4-flash` |
+
+**To turn on an optional variable** (in this order, or real calls break):
+
+1. Sarvam dashboard → Agents → **CallPilot - Outbound Lead Qualifier** →
+   add the variable(s) under the agent's variables with exactly the names
+   above (and use them in the prompt, e.g. `{{business_context}}`).
+2. **Commit a new version** of the agent and note its number.
+3. Set `SARVAM_APP_VERSION` to that number in `backend/wrangler.toml`
+   (`[vars]` and/or `[env.staging.vars]`).
+4. In the same block, set `SARVAM_AGENT_VARIABLES` to the default 8 **plus**
+   the new names, e.g.
+   `SARVAM_AGENT_VARIABLES = "call_id,campaign_id,lead_id,lead_name,business_name,agent_name,agent_role,interest,business_context,call_language"`.
+5. Deploy staging, place one test call to your own number, check
+   `calls.failure_reason` is empty, then do the same for production.
+
+To roll back, remove the names from `SARVAM_AGENT_VARIABLES` (or unset it) and
+redeploy; the older agent version keeps working.
+
+**Out (filled after the call, read by the webhook):** `lead_score` (0–100),
+`intent`, `temperature`, `summary`, `next_action`,
+`whatsapp_followup_required`, `whatsapp_message`, `callback_at`.
+Allowed values: `backend/schemas/call_output.schema.json`.
 
 ## Checking it works
 
@@ -111,6 +159,7 @@ npx wrangler tail --format=json | jq 'select(.level=="error")'   # live errors
 |---|---|
 | `sarvam_not_configured` | API key, a `[vars]` value or the caller IDs missing |
 | `sarvam_http_401/403` | wrong or revoked `SARVAM_API_KEY` |
+| `sarvam_http_422: … Agent variables … not found` | `SARVAM_AGENT_VARIABLES` lists a name the agent version doesn't declare (see Agent variables) |
 | `sarvam_http_404/422` | agent version not committed, or caller ID not onboarded on the connection |
 | Call rings but lead stays "calling" | webhook not reaching the Worker: check `PUBLIC_API_BASE_URL` and the Sarvam webhook delivery log |
 | Call `flagged_for_review`, score 0 | the agent's output variables don't match the schema above |

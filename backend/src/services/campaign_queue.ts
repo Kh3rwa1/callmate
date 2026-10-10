@@ -14,6 +14,7 @@ import { Env } from '../types';
 import { checkCallCompliance } from './compliance';
 import { maskPhone } from '../utils/crypto_data';
 import { isMockSarvam } from '../utils/secrets';
+import { buildCallAgentVariables } from './call_variables';
 
 export interface CampaignJobMessage {
   campaign_id: string;
@@ -277,18 +278,10 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
   const dial = await dialSarvam(env, {
     callId,
     phone: lead.phone,
-    agentVariables: {
-      call_id: callId,
-      campaign_id,
-      lead_id: lead.id,
-      lead_name: lead.name,
-      business_name: business?.name ?? 'our business',
-      agent_name: agent?.name ?? 'Riya',
-      agent_role: agent?.role ?? 'Assistant',
-      interest: lead.interest ?? '',
-      // No voice variables (gender, speaker, ...): Sarvam rejects the whole dial with a 422
-      // unless the agent declares every variable sent. Add them to the agent first.
-    },
+    // Only SARVAM_AGENT_VARIABLES are sent: Sarvam 422s the dial on any undeclared variable.
+    agentVariables: await buildCallAgentVariables(env, {
+      businessId: business_id, business, agent, lead, callId, campaignId: campaign_id,
+    }),
     webhookBaseUrl: env.PUBLIC_API_BASE_URL || job.webhook_base_url,
   });
 
