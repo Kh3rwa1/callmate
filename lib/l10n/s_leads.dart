@@ -264,4 +264,66 @@ extension SLeads on S {
     'আমি রাজি, এগিয়ে যান',
   );
   String get ctDiscNo => pick('Not now', 'अभी नहीं', 'এখন না');
+
+  // ------------------------------------------------------------ Consent history
+  String get consentHistory =>
+      pick('Consent history', 'सहमति का रिकॉर्ड', 'সম্মতির রেকর্ড');
+  String get consentHistoryEmpty => pick(
+    'No consent changes recorded yet.',
+    'अभी तक सहमति का कोई बदलाव दर्ज नहीं हुआ।',
+    'এখনও সম্মতির কোনো পরিবর্তন রেকর্ড হয়নি।',
+  );
+
+  /// What the consent was set to.
+  String consentValue(String v) => switch (v) {
+    'explicit_opt_in' => pick(
+      'Agreed to be called',
+      'कॉल के लिए सहमति दी',
+      'কলের জন্য সম্মতি দিয়েছেন',
+    ),
+    'inquiry' => pick('Made an enquiry', 'पूछताछ की थी', 'জিজ্ঞাসা করেছিলেন'),
+    'existing_customer' => pick(
+      'Existing customer',
+      'मौजूदा ग्राहक',
+      'বর্তমান গ্রাহক',
+    ),
+    'owner_attested' => pick(
+      'You confirmed consent',
+      'आपने सहमति की पुष्टि की',
+      'আপনি সম্মতি নিশ্চিত করেছেন',
+    ),
+    'opt_out' => pick(
+      'Asked not to be called',
+      'कॉल न करने को कहा',
+      'কল না করতে বলেছেন',
+    ),
+    'do_not_call' => pick(
+      'Marked do not call',
+      '“कॉल न करें” लगाया',
+      '“কল করবেন না” দেওয়া হয়েছে',
+    ),
+    'do_not_call_removed' => pick(
+      'Do not call removed',
+      '“कॉल न करें” हटाया',
+      '“কল করবেন না” সরানো হয়েছে',
+    ),
+    _ => pick('Consent not known', 'सहमति पता नहीं', 'সম্মতি জানা নেই'),
+  };
+
+  /// Where the consent change came from.
+  String consentSource(String v) => switch (v) {
+    'form' => pick('Enquiry form', 'पूछताछ फ़ॉर्म', 'জিজ্ঞাসার ফর্ম'),
+    'webhook' => pick('Lead source', 'लीड स्रोत', 'লিড সোর্স'),
+    'import_attestation' => pick(
+      'Your import / confirmation',
+      'आपका इम्पोर्ट / पुष्टि',
+      'আপনার ইমপোর্ট / নিশ্চিতকরণ',
+    ),
+    'in_call_opt_out' => pick('Said so on a call', 'कॉल पर कहा', 'কলে বলেছেন'),
+    _ => pick(
+      'Added or edited by you',
+      'आपने जोड़ा या बदला',
+      'আপনি যোগ বা বদল করেছেন',
+    ),
+  };
 }

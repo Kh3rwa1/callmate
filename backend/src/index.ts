@@ -10,6 +10,9 @@ import { isDevEnv } from './utils/secrets';
 import { runMaintenance } from './services/maintenance';
 import { recordOpsEvent, runAlertChecks } from './services/alerts';
 import { allowedAgentVariables } from './services/call_variables';
+import { callerIdsAreDltSeries } from './services/compliance';
+import { disclosureEnabled } from './services/disclosure';
+import { runComplianceCron } from './services/retention';
 
 import { authApp } from './routes/auth';
 import { businessApp } from './routes/business';
@@ -23,6 +26,8 @@ import { voiceApp, handleSarvamWebhook } from './routes/voice';
 import { billingApp, handleRazorpayWebhook } from './routes/billing';
 import { runBillingRenewals } from './services/plans';
 import { legalApp } from './routes/legal';
+import { stopApp } from './routes/stop';
+import { consentApp } from './routes/consent';
 import { resultsApp } from './routes/results';
 import { runDailyDigests } from './services/digest';
 import { leadSourcesApp } from './routes/lead_sources';
@@ -137,6 +142,12 @@ app.get('/health/deep', async (c) => {
       checks,
       sarvam,
       agent_variables: allowedAgentVariables(c.env),
+      // Regulatory posture (informational; does not affect status). TRAI wants commercial calls
+      // from 140/160-series numbers; see COMPLIANCE.md.
+      compliance: {
+        caller_ids_dlt_series: callerIdsAreDltSeries(c.env),
+        disclosure_override: disclosureEnabled(c.env),
+      },
       time: new Date().toISOString(),
     },
     statusCode
@@ -149,6 +160,8 @@ app.route('/auth', authApp);
 // Privacy policy, terms and account-deletion pages (linked from the app and Play Store listing)
 app.route('/legal', legalApp);
 
+// Public opt-out: anyone can stop calls to their number from every business (global_dnc).
+app.route('/stop', stopApp);
 // Speed-to-lead: hosted enquiry form (/f/:slug) and lead webhook (/hooks/leads/:slug, bearer token)
 app.route('/', leadCapturePublicApp);
 
@@ -179,6 +192,7 @@ protectedApp.use('*', authMiddleware);
 // Mount all protected resource routes
 protectedApp.route('/', businessApp);
 protectedApp.route('/', leadsApp);
+protectedApp.route('/', consentApp);
 protectedApp.route('/', callsApp);
 protectedApp.route('/', campaignsApp);
 protectedApp.route('/', fcApp);
@@ -225,6 +239,7 @@ export default {
     ctx.waitUntil(runMaintenance(env));
     ctx.waitUntil(runBillingRenewals(env));
     ctx.waitUntil(runAlertChecks(env));
+    ctx.waitUntil(runComplianceCron(env));
     ctx.waitUntil(runDailyDigests(env));
   },
 };

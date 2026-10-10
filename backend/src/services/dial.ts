@@ -14,6 +14,8 @@ import { checkCallCompliance, allowAnyCallingHours, ComplianceCheckResult } from
 import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS, hasMinutesHeadroom } from './campaign_queue';
 import { isPlanBlocked } from './plans';
 import { buildCallAgentVariables } from './call_variables';
+import { buildDisclosureOverrides } from './disclosure';
+import { globalDncSecret } from './global_dnc';
 
 export type PlaceCallOutcome =
   | { ok: true; callId: string; dispatched: boolean; lead: any }
@@ -59,6 +61,7 @@ export async function placeLeadCall(env: Env, p: PlaceCallParams): Promise<Place
     hoursEnd: agent?.calling_hours_end,
     timezone: lead.timezone || 'Asia/Kolkata',
     skipTraiClamp: allowAnyCallingHours(env),
+    globalDncSecret: globalDncSecret(env),
     now: p.now,
   });
   if (!compliance.allowed) {
@@ -108,6 +111,7 @@ export async function placeLeadCall(env: Env, p: PlaceCallParams): Promise<Place
       businessId, business, agent, lead, callId,
     }),
     webhookBaseUrl: env.PUBLIC_API_BASE_URL || p.fallbackBaseUrl,
+    appOverrides: buildDisclosureOverrides(env, { agent, business, lead }),
   });
 
   if (dial.ok) {

@@ -402,6 +402,12 @@ final leadProvider = FutureProvider.family<Lead, String>((ref, id) {
   return ref.watch(leadRepoProvider).get(id);
 });
 
+final leadConsentHistoryProvider =
+    FutureProvider.family<List<ConsentEvent>, String>((ref, id) {
+      ref.watch(dataVersionProvider);
+      return ref.watch(leadRepoProvider).consentHistory(id);
+    });
+
 final leadCallsProvider = FutureProvider.family<List<Call>, String>((ref, id) {
   ref.watch(dataVersionProvider);
   return ref.watch(callRepoProvider).forLead(id);

@@ -26,6 +26,13 @@ SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
 # for any name the agent version doesn't declare: declare it in the agent, commit a version, bump
 # SARVAM_APP_VERSION, THEN list it here (docs/SARVAM_SETUP.md -> Agent variables). Example:
 # SARVAM_AGENT_VARIABLES = "call_id,campaign_id,lead_id,lead_name,business_name,agent_name,agent_role,interest,business_context"
+# AI + recording disclosure: 'true' makes every dial open with a fixed sentence ("this is <agent>, an AI
+# assistant calling from <business>... this call may be recorded") in the employee's first language,
+# via Sarvam app_overrides.initial_bot_message (services/disclosure.ts). Leave unset until one staging
+# test call to your own number confirms the agent accepts it (docs/SARVAM_SETUP.md -> Disclosure override).
+# SARVAM_DISCLOSURE_OVERRIDE = "true"
+# Days to keep call transcripts, recordings and summaries before the cron clears them (default 180).
+# RETENTION_DAYS = "180"
 # Ops alerts: set the chat webhook as a secret, not here: `wrangler secret put ALERT_WEBHOOK_URL`.
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
 # Shown on the public /legal pages. TODO(owner): set a monitored inbox and the registered company name.
@@ -92,6 +99,13 @@ SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
 # for any name the agent version doesn't declare: declare it in the agent, commit a version, bump
 # SARVAM_APP_VERSION, THEN list it here (docs/SARVAM_SETUP.md -> Agent variables). Example:
 # SARVAM_AGENT_VARIABLES = "call_id,campaign_id,lead_id,lead_name,business_name,agent_name,agent_role,interest,business_context"
+# AI + recording disclosure: 'true' makes every dial open with a fixed sentence ("this is <agent>, an AI
+# assistant calling from <business>... this call may be recorded") in the employee's first language,
+# via Sarvam app_overrides.initial_bot_message (services/disclosure.ts). Leave unset until one staging
+# test call to your own number confirms the agent accepts it (docs/SARVAM_SETUP.md -> Disclosure override).
+# SARVAM_DISCLOSURE_OVERRIDE = "true"
+# Days to keep call transcripts, recordings and summaries before the cron clears them (default 180).
+# RETENTION_DAYS = "180"
 # Ops alerts: set the chat webhook as a secret, not here: `wrangler secret put ALERT_WEBHOOK_URL`.
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
 # Shown on the public /legal pages. TODO(owner): set a monitored inbox and the registered company name.

@@ -68,7 +68,8 @@ Tenant-isolated documents stored in Cloudflare R2 and indexed into Sarvam AI.
 | `POST` | `/leads/import` | `{"leads": [{"name": "...", "phone": "..."}, ...]}` | `{"imported": number, "skipped": number, "errors": [...]}`. Max 1000 per batch. Unique constraint on `(business_id, phone)` prevents duplicates. |
 | `GET` | `/leads/:id` | - | `Lead` object |
 | `PATCH` | `/leads/:id` | Partial `Lead` updates (`name`, `status`, `interest`, `do_not_call`, `consent`, etc.) | Updated `Lead` |
-| `POST` | `/leads/:id/call` | - | Initiates outbound call to lead via Sarvam, with the same guardrails as campaigns: agent calling hours, DNC/opt-out, max 3 calls per lead per day, concurrent-call cap and remaining minutes. Errors: `409` `outside_hours` / `do_not_call` / `max_daily_attempts`, `429` `concurrency_limit`, `402` `exhausted_minutes`, `502`/`503` `dial_failed` (503 = retryable). Returns `{ call, sarvam_dispatched }`. |
+| `GET` | `/leads/:id/consent-history` | - | `{"items": [{"id", "consent_value", "source", "text_version", "created_at"}]}` newest first (max 100). `source` is `form` / `webhook` / `import_attestation` / `manual` / `in_call_opt_out`. `404` if the lead is not in your business. |
+| `POST` | `/leads/:id/call` | - | Initiates outbound call to lead via Sarvam, with the same guardrails as campaigns: agent calling hours, DNC/opt-out (per business and the platform-wide `/stop` list), max 3 calls per lead per day, at most 3 different businesses per phone number per 24h, concurrent-call cap and remaining minutes. Errors: `409` `outside_hours` / `do_not_call` / `max_daily_attempts` / `platform_frequency_cap`, `429` `concurrency_limit`, `402` `exhausted_minutes`, `502`/`503` `dial_failed` (503 = retryable). Returns `{ call, sarvam_dispatched }`. |
 
 ---
 
@@ -77,7 +78,7 @@ Tenant-isolated documents stored in Cloudflare R2 and indexed into Sarvam AI.
 | Method | Path | Response |
 |---|---|---|
 | `GET` | `/calls?filter=all|connected|noAnswer|hot&lead_id=&cursor=&limit=20` | Paginated `Call` items. Scoped by `business_id`. |
-| `GET` | `/calls/:id` | Full `Call` detail. `raw_metadata` and `transcript` are decrypted on retrieval using AES-256-GCM. |
+| `GET` | `/calls/:id` | Full `Call` detail. `transcript` and `recording_url` are stored encrypted (AES-256-GCM) and decrypted on retrieval (legacy plaintext rows are returned as-is). After `RETENTION_DAYS` (default 180) `transcript`, `recording_url` and `summary` are cleared (null / empty). |
 
 ---
 
@@ -143,6 +144,14 @@ Receives post-call telemetry from Sarvam telephony.
 
 ---
 
+## 10b. Public opt-out page (`/stop`)
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| `GET` | `/stop` | - | HTML form (no scripts, strict CSP). |
+| `POST` | `/stop` | form field `phone` (`application/x-www-form-urlencoded`) | HTML. `200` number added to the platform-wide do-not-call list (`global_dnc`, HMAC only), `400` invalid number, `429` more than 10 submissions per IP per hour, `503` hashing key not configured. |
+
+Campaign dispatch additionally allows one call per business per number per 24h; a lead that hits it (or the cross-business cap) is `rescheduled`.
 ## 10b. Speed-to-lead: lead capture & instant AI call
 
 Every new enquiry from a business's hosted form or webhook becomes a lead (`consent: "explicit_opt_in"`, `source: "form"` / `"webhook"`) and, with `auto_call` on, gets an AI call within about a minute. The call goes through a queue message (`kind: "instant_call"` on the campaign dispatch queue) and the **same guards and dial as `POST /leads/:id/call`** (`backend/src/services/dial.ts`): calling hours clamped to TRAI 09:00–21:00 in the lead's timezone, do-not-call/opt-out, max 3 calls per lead per day, concurrency cap, plan status and minutes headroom. Outside calling hours the call is delayed until the window opens (re-queued in hops of at most 12 h). The owner gets a `new_lead` notification + push ("New enquiry from Ravi" / "Your AI employee is calling them now.", or why it was not called).

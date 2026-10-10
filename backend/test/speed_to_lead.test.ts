@@ -17,6 +17,8 @@ import {
   type LeadSourceRow,
 } from '../src/services/lead_capture';
 import { formPage, FORM_CSP, HONEYPOT_FIELD, FORM_LIMIT_PER_IP } from '../src/routes/lead_capture_public';
+import { placeLeadCall } from '../src/services/dial';
+import { addToGlobalDnc, globalDncSecret } from '../src/services/global_dnc';
 
 const SECRET = 'test-jwt-signing-secret-key-32chars-min-length';
 
@@ -240,6 +242,23 @@ describe('Speed-to-lead: capture sources, public form, webhook, instant call', (
       expect(sent[0].opts).toBeUndefined();
     });
 
+    it('records a form consent event for the new lead', async () => {
+      const src = await seedSource(bizA, 'form');
+      const { e } = queueEnv();
+      await postForm(src.public_slug, { name: 'Consent Kumar', phone: '+91 98111 90002', consent: 'yes' }, e);
+      const lead = await env.DB.prepare('SELECT id FROM leads WHERE business_id = ? AND phone = ?').bind(bizA, '919811190002').first<any>();
+      const ev = await env.DB.prepare('SELECT * FROM consent_events WHERE lead_id = ?').bind(lead.id).first<any>();
+      expect(ev).toMatchObject({ business_id: bizA, consent_value: 'explicit_opt_in', source: 'form', text_version: 'enquiry-form-2026-10' });
+    });
+
+    it('the shared dial path (instant call, manual call, test call) honours the public /stop list', async () => {
+      const secret = globalDncSecret(env as any)!;
+      await addToGlobalDnc(env.DB, secret, '919811190001', 'web');
+      const leadId = await seedLead(bizA, '919811190001', null);
+      const out = await placeLeadCall({ ...env, DEV_ALLOW_ANY_CALLING_HOURS: 'true' } as any, { businessId: bizA, leadId });
+      expect(out).toMatchObject({ ok: false, code: 'blocked', reason: 'do_not_call' });
+    });
+
     it('requires consent, a name and a valid phone', async () => {
       const src = await seedSource(bizA, 'form');
       const noConsent = await postForm(src.public_slug, { name: 'No Consent', phone: '9830033333' });
@@ -284,7 +303,7 @@ describe('Speed-to-lead: capture sources, public form, webhook, instant call', (
       const second = await postForm(src.public_slug, { name: 'Dup Two', phone: '09830066666', consent: 'yes' }, e);
       expect(second.status).toBe(200);
       expect(await second.text()).toContain('Thank you');
-      const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM leads WHERE business_id = ? AND phone = ?').bind(bizA, '919830066666').first<any>();
+      const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM leads WHERE business_id = ? AND phone = ?').bind(bizA, '919811190001').first<any>();
       expect(n.n).toBe(1);
       expect(sent).toHaveLength(1);
     });
@@ -305,6 +324,9 @@ describe('Speed-to-lead: capture sources, public form, webhook, instant call', (
       await env.DB.prepare("UPDATE leads SET created_at = datetime('now', '-3 days'), consent = 'opt_out' WHERE id = ?").bind(optedOut).run();
       await captureLead(e, src, { name: 'Asha', phone: '9830077778' });
       expect((await env.DB.prepare('SELECT consent FROM leads WHERE id = ?').bind(optedOut).first<any>()).consent).toBe('opt_out');
+      // The consent history must show the value actually kept, not the form's opt-in.
+      const ev = await env.DB.prepare('SELECT consent_value FROM consent_events WHERE lead_id = ? ORDER BY created_at DESC').bind(optedOut).first<any>();
+      expect(ev.consent_value).toBe('opt_out');
     });
 
     it('auto-call off: lead is created, owner is notified, nothing is enqueued', async () => {
