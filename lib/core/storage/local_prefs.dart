@@ -47,6 +47,24 @@ class LocalPrefs {
   Future<void> setLanguage(String? v) =>
       v == null ? _p.remove(_language) : _p.setString(_language, v);
 
+  static const _installRefChecked = 'attribution.install_referrer_checked';
+  static const _installRefCode = 'attribution.install_referral_code';
+
+  /// The Play install referrer was read (it is only read once).
+  bool get installReferrerChecked => _p.getBool(_installRefChecked) ?? false;
+
+  /// Referral code from the install referrer, if the install came from a
+  /// referral link.
+  String? get installReferralCode => _p.getString(_installRefCode);
+  Future<void> setInstallReferral(String? code) async {
+    await _p.setBool(_installRefChecked, true);
+    if (code == null) {
+      await _p.remove(_installRefCode);
+    } else {
+      await _p.setString(_installRefCode, code);
+    }
+  }
+
   /// Removes any secrets persisted by older app versions.
   Future<void> purgeLegacySecrets() async {
     if (_p.containsKey(_legacySarvamKey)) await _p.remove(_legacySarvamKey);

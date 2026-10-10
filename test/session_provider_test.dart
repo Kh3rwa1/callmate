@@ -25,6 +25,7 @@ class _Auth implements AuthRepository {
     required String idToken,
     String? businessName,
     String? phone,
+    String? referralCode,
   }) async => GoogleSignInOutcome.signedIn;
   @override
   Future<void> requestOtp({required String phone}) async =>
@@ -41,6 +42,7 @@ class _Auth implements AuthRepository {
     required String phone,
     required String businessName,
     required String otp,
+    String? referralCode,
   }) async {
     await _maybeFail();
     calls.add('register:$phone:$businessName:$otp');

@@ -23,6 +23,7 @@ class _SignedOut implements AuthRepository {
     required String idToken,
     String? businessName,
     String? phone,
+    String? referralCode,
   }) async => GoogleSignInOutcome.registrationRequired;
   @override
   Future<void> requestOtp({required String phone}) async {}
@@ -33,6 +34,7 @@ class _SignedOut implements AuthRepository {
     required String phone,
     required String businessName,
     required String otp,
+    String? referralCode,
   }) async {}
   @override
   Future<void> logout() async {}

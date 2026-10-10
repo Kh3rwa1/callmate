@@ -21,6 +21,7 @@ import '../../features/leads/lead_detail_screen.dart';
 import '../../features/leads/leads_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
 import '../../features/onboarding/onboarding_screens.dart';
+import '../../features/referrals/invite_screen.dart';
 import '../../features/shell/app_shell.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/usage/usage_screen.dart';
@@ -270,6 +271,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/usage',
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (_, s) => _page(s, const UsageScreen()),
+      ),
+      GoRoute(
+        path: '/invite',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, s) => _page(s, const InviteScreen()),
       ),
       GoRoute(
         path: '/demo',

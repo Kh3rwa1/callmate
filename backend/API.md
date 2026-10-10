@@ -21,7 +21,8 @@ All auth endpoints run under `/auth`. Real OTP verification is enforced; default
 |---|---|---|---|---|
 | `POST` | `/auth/otp/request` | `{"phone": "+919830012345"}` | `{"success": true, "message": "OTP sent successfully"}` | Sends 6-digit OTP via SMS (MSG91/Gupshup/Exotel or Mock in non-prod). Rate limited to 3 reqs per 10 min per phone and per IP. |
 | `POST` | `/auth/login` | `{"phone": "+919830012345", "otp": "123456"}` | `{"access_token": "...", "refresh_token": "...", "token_type": "bearer", "expires_in": 3600, "business": {...}, "agent": {...}}` | Verifies SHA-256 OTP hash. Max 5 failed attempts before lock. Issues HS256 JWT (1 hr) & Refresh Token (30 days). |
-| `POST` | `/auth/register` | `{"phone": "+919830012345", "otp": "123456", "business_name": "ABC Coaching"}` | `{"access_token": "...", "refresh_token": "...", "token_type": "bearer", "expires_in": 3600, "business": {...}, "agent": {...}}` | Requires verified OTP. Returns 400 if phone already registered. |
+| `POST` | `/auth/register` | `{"phone": "+919830012345", "otp": "123456", "business_name": "ABC Coaching", "referral_code"?: "ABC234"}` | `{"access_token": "...", "refresh_token": "...", "token_type": "bearer", "expires_in": 3600, "business": {...}, "agent": {...}}` | Requires verified OTP. Returns 400 if phone already registered. |
+| `POST` | `/auth/google` | `{"id_token": "<Firebase ID token>", "business_name"?: "...", "phone"?: "...", "referral_code"?: "ABC234"}` | `{"access_token": "...", "refresh_token": "..."}` | Google sign-in. A new account needs `business_name` + `phone` (else `404 registration_required`). |
 | `POST` | `/auth/refresh` | `{"refresh_token": "..."}` | `{"access_token": "...", "refresh_token": "...", "token_type": "bearer", "expires_in": 3600}` | Rotates refresh token on each use. If an old/revoked token is presented, revokes all tokens for that user family. |
 | `POST` | `/auth/logout` | `{"refresh_token": "..."}` | `{"success": true}` | Revokes the refresh token and clears active session. |
 | `DELETE` | `/auth/account` | *(Bearer token required)* | `{"success": true}` | Soft-deletes user account and associated business data. |
@@ -137,13 +138,32 @@ Receives post-call telemetry from Sarvam telephony.
 | `GET` | `/billing` | `{plan_id, plan_name, plan_status, current_period_end, price_inr, included_minutes, minutes_used, minutes_left, checkout_plan}`. |
 | `POST` | `/billing/checkout` | Body `{"plan_id": "starter"}` (optional). Creates a Razorpay Payment Link and returns `{url, id}`. `503 billing_not_configured` when Razorpay keys are not set; `502 billing_unavailable` if Razorpay fails. |
 | `POST` | `/webhooks/razorpay` | Public. Razorpay `payment_link.paid` webhook, verified with `X-Razorpay-Signature` = hex HMAC-SHA256(raw body, `RAZORPAY_WEBHOOK_SECRET`). Idempotent per Razorpay payment id: activates the paid plan, resets `minutes_used`, extends `current_period_end` by one month. |
+| `GET` | `/referrals` | `{code, link, bonus_minutes, signed_up, rewarded, minutes_earned}`. `code` is the business's referral code (6 chars from `23456789ABCDEFGHJKMNPQRSTUVWXYZ`, created on first call); `link` is `<PUBLIC_API_BASE_URL>/get?ref=<code>`. |
 | `GET` | `/notifications` | List of in-app notifications. |
 | `PATCH` | `/notifications/:id` | `{"read": true}` |
 | `POST` | `/notifications/device` | `{"token": "...", "platform": "android"}` registers FCM push token for business. |
 
+### Referral program
+
+- `referral_code` (optional; omit or `null`) on `POST /auth/register` and new-account `POST /auth/google`. Case, spaces and dashes are ignored. An unknown/malformed code, self-referral (the referrer's own phone or email) or a phone that was already referred once (even before an account deletion) is silently ignored: signup never fails because of a code.
+- Reward: when the referred business's first Razorpay payment is applied (`payment_link.paid`), both businesses get `REFERRAL_BONUS_MINUTES` (default 200) added to `included_minutes`, once, with a `referral_credits` ledger row each. Webhook redeliveries and later payments don't credit again.
+- Bonus minutes are added to the current period's `included_minutes`; a later renewal resets `included_minutes` to the plan amount.
+
 ---
 
-## 11. Error Responses & Status Codes
+## 11. Public pages
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | JSON service info (unchanged). `/health` stays `{"status":"ok"}`. |
+| `GET` | `/get?ref=<code>` | Mobile-first landing page (HTML, no scripts, strict CSP). Pricing is read from the plan catalogue. The Play Store CTA is `https://play.google.com/store/apps/details?id=com.callpilot.app&referrer=<urlencoded utm_source=landing&utm_campaign=<code or none>>`; the app reads it with the Play Install Referrer API and prefills the signup referral code. Invalid `ref` values are dropped. Shows an `<audio>` demo when `DEMO_AUDIO_URL` (https) is set. |
+| `GET` | `/legal/privacy`, `/legal/terms`, `/legal/delete-account` | Legal pages. |
+
+`poweredByFooterHtml(code)` in `backend/src/services/referrals.ts` returns a small "Powered by CallPilot" link to `/get?ref=<code>` for public pages a business shares (e.g. the lead form).
+
+---
+
+## 12. Error Responses & Status Codes
 
 All errors return a consistent JSON schema:
 ```json

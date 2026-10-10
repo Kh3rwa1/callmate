@@ -24,6 +24,9 @@ This runbook provides actionable procedures for deploying, managing, operating, 
    "our team will contact you" message (checkout returns 503
    `billing_not_configured`). Optional plain vars: `TRIAL_MINUTES` (default 30)
    and `BILLING_RETURN_URL`.
+   Growth (optional plain vars): `REFERRAL_BONUS_MINUTES` (default 200) and
+   `DEMO_AUDIO_URL` (https URL of a demo call recording for the `/get` landing
+   page; the player is hidden when unset).
    The Sarvam agent, org, workspace, connection and caller IDs are plain `[vars]`
    in `wrangler.toml`. After committing a new agent version in Sarvam, bump
    `SARVAM_APP_VERSION` and redeploy.
@@ -340,3 +343,29 @@ names each dial sends.
   ```
 - **Account deletion** keeps `payments` and `usage_ledger` rows for invoices/GST,
   with PII nulled and `business_id` replaced by a stable `anon_…` pseudonym.
+
+## 7. Referrals & landing page
+
+- **Referral codes** live in `businesses.referral_code` (created on the first
+  `GET /referrals`). New signups may send `referral_code`; it is recorded in
+  `referrals` (status `signed_up`).
+- **Reward:** on the referred business's first applied Razorpay payment, both
+  businesses get `REFERRAL_BONUS_MINUTES` (default 200) added to
+  `usage.included_minutes`, once (`referrals.status = 'rewarded'`, one
+  `referral_credits` row per business). Change the amount with a plain var:
+  `REFERRAL_BONUS_MINUTES = "300"` in `[vars]` / `[env.staging.vars]`, redeploy.
+  Bonus minutes count toward the current period; a renewal resets
+  `included_minutes` to the plan amount.
+- **Abuse guards:** own code, the referrer's phone/email, and a phone that was
+  ever referred before are ignored (rows survive account deletion with
+  `anon_…` ids). Rewards need a verified payment.
+- **Check a referral:**
+  ```bash
+  npx wrangler d1 execute callpilot-db --remote --command="
+    SELECT r.code, r.status, r.created_at, r.rewarded_at FROM referrals r
+    WHERE r.referrer_business_id='biz_xxx';"
+  ```
+- **Landing page:** `https://<api domain>/get` (`?ref=CODE` carries the code to
+  the Play install referrer). Set `DEMO_AUDIO_URL` to an https recording (the
+  page's CSP allows only that origin for media). Use a recording made with
+  consent and without customer personal data.

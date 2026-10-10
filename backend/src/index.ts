@@ -23,6 +23,8 @@ import { voiceApp, handleSarvamWebhook } from './routes/voice';
 import { billingApp, handleRazorpayWebhook } from './routes/billing';
 import { runBillingRenewals } from './services/plans';
 import { legalApp } from './routes/legal';
+import { landingApp } from './routes/landing';
+import { referralsApp } from './routes/referrals';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -144,6 +146,9 @@ app.route('/auth', authApp);
 // Privacy policy, terms and account-deletion pages (linked from the app and Play Store listing)
 app.route('/legal', legalApp);
 
+// Public marketing landing page (GET / stays the JSON service info above)
+app.route('/get', landingApp);
+
 // Public Sarvam completed call webhook
 app.post('/webhooks/sarvam', async (c) => {
   const res = await handleSarvamWebhook(c);
@@ -177,6 +182,7 @@ protectedApp.route('/', fcApp);
 protectedApp.route('/', knowledgeApp);
 protectedApp.route('/', dashApp);
 protectedApp.route('/', billingApp);
+protectedApp.route('/', referralsApp);
 protectedApp.route('/voice', voiceApp);
 
 app.route('/', protectedApp);

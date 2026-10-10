@@ -53,6 +53,10 @@ export interface Env {
   SUPPORT_EMAIL?: string;
   /** Legal entity named on the public legal pages. */
   LEGAL_ENTITY_NAME?: string;
+  /** Minutes both businesses get when a referred business makes its first payment (default 200). */
+  REFERRAL_BONUS_MINUTES?: string;
+  /** Optional public URL of a demo call recording played on the /get landing page (hidden if unset). */
+  DEMO_AUDIO_URL?: string;
 }
 
 export interface AuthUser {
