@@ -3,145 +3,123 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/lead_widgets.dart';
 import '../../data/models/models.dart';
 import '../followups/whatsapp_handoff.dart';
 
+/// One lead row: avatar, name, one meta line, score, and two quiet quick
+/// actions. Rows stack into a single grouped list ([first] / [last] round the
+/// outer corners and [last] drops the divider).
 class LeadCard extends ConsumerWidget {
-  const LeadCard({super.key, required this.lead});
+  const LeadCard({
+    super.key,
+    required this.lead,
+    this.first = true,
+    this.last = true,
+  });
   final Lead lead;
+  final bool first;
+  final bool last;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).textTheme;
     final l = lead;
-    final live = l.status == LeadStatus.calling;
+    const r = Radius.circular(AppRadius.card);
+    final radius = BorderRadius.vertical(
+      top: first ? r : Radius.zero,
+      bottom: last ? r : Radius.zero,
+    );
+    final meta = l.interestLine;
     return RepaintBoundary(
-      child: AppCard(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
-        onTap: () => context.push('/leads/${l.id}'),
-        semanticLabel:
+      child: Semantics(
+        button: true,
+        label:
             '${l.name}. ${l.score == null ? l.status.label : 'Score ${l.score!.value}, ${l.temperature.label}'}',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Hero(
-                  tag: 'lead-avatar-${l.id}',
-                  child: LeadAvatar(name: l.name, temperature: l.temperature),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l.name,
-                        style: t.titleMedium,
-                        overflow: TextOverflow.ellipsis,
+        child: Material(
+          color: AppColors.surface,
+          borderRadius: radius,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => context.push('/leads/${l.id}'),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 6, 8),
+              decoration: BoxDecoration(
+                border: last
+                    ? null
+                    : const Border(
+                        bottom: BorderSide(color: AppColors.border, width: 0.8),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        l.interestLine,
-                        style: t.bodySmall?.copyWith(
-                          color: AppColors.inkSoft,
-                          fontWeight: FontWeight.w600,
+              ),
+              child: Row(
+                children: [
+                  Hero(
+                    tag: 'lead-avatar-${l.id}',
+                    child: LeadAvatar(
+                      name: l.name,
+                      temperature: l.temperature,
+                      size: 42,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.name,
+                          style: t.titleMedium,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                        if (meta.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            meta,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.bodySmall?.copyWith(
+                              color: AppColors.inkSoft,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _Status(lead: l),
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _QuickAction(
+                            icon: Icons.chat_outlined,
+                            tooltip: 'WhatsApp',
+                            color: AppColors.whatsapp,
+                            onTap: () => _whatsapp(context, ref),
+                          ),
+                          _QuickAction(
+                            icon: Icons.call_outlined,
+                            tooltip: 'Call',
+                            color: AppColors.inkSoft,
+                            onTap: () => _call(context),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                if (live)
-                  const Pill(
-                    label: 'On call',
-                    color: AppColors.success,
-                    icon: Icon(
-                      Icons.call_rounded,
-                      size: 13,
-                      color: AppColors.success,
-                    ),
-                  )
-                else if (l.status == LeadStatus.queued)
-                  const Pill(label: 'Queued', color: AppColors.brand)
-                else if (l.status == LeadStatus.noAnswer)
-                  const Pill(label: 'No answer')
-                else
-                  ScoreBadge(score: l.score),
-              ],
-            ),
-            if (l.summary != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                '“${l.summary!}”',
-                style: t.bodyMedium?.copyWith(color: AppColors.ink),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                ],
               ),
-            ],
-            if (l.nextAction != NextAction.none) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
-                decoration: BoxDecoration(
-                  color: AppColors.brandSoft,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.subdirectory_arrow_right_rounded,
-                      size: 15,
-                      color: AppColors.brandDeep,
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        'Next: ${l.nextAction.label}',
-                        overflow: TextOverflow.ellipsis,
-                        style: t.labelMedium?.copyWith(
-                          color: AppColors.brandDeep,
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _LeadAction(
-                    icon: Icons.chat_rounded,
-                    label: 'WhatsApp',
-                    color: AppColors.whatsapp,
-                    tint: AppColors.whatsappSoft,
-                    onTap: () => _whatsapp(context, ref),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _LeadAction(
-                    icon: Icons.call_rounded,
-                    label: 'Call',
-                    color: AppColors.ink,
-                    tint: AppColors.surfaceMuted,
-                    onTap: () => _call(context),
-                  ),
-                ),
-              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -186,49 +164,45 @@ class LeadCard extends ConsumerWidget {
   }
 }
 
-class _LeadAction extends StatelessWidget {
-  const _LeadAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    required this.color,
-    required this.tint,
-  });
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color color;
-  final Color tint;
+/// Score badge, or the live status while the lead has no score.
+class _Status extends StatelessWidget {
+  const _Status({required this.lead});
+  final Lead lead;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: label,
-    excludeSemantics: true,
-    child: Pressable(
-      onTap: onTap,
-      scale: 0.95,
-      child: Container(
-        height: 44,
-        decoration: BoxDecoration(
-          color: tint,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 7),
-            Text(
-              label,
-              maxLines: 1,
-              style: Theme.of(
-                context,
-              ).textTheme.labelLarge?.copyWith(color: color, fontSize: 14.5),
-            ),
-          ],
-        ),
-      ),
+  Widget build(BuildContext context) => switch (lead.status) {
+    LeadStatus.calling => const Pill(
+      label: 'On call',
+      color: AppColors.success,
+      dense: true,
     ),
+    LeadStatus.queued => const Pill(label: 'Queued', dense: true),
+    LeadStatus.noAnswer => const Pill(label: 'No answer', dense: true),
+    _ when lead.score == null => Pill(label: lead.status.label, dense: true),
+    _ => ScoreBadge(score: lead.score),
+  };
+}
+
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    required this.color,
+  });
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: tooltip,
+    onPressed: onTap,
+    iconSize: 20,
+    color: color,
+    constraints: const BoxConstraints.tightFor(width: 40, height: 36),
+    padding: EdgeInsets.zero,
+    icon: Icon(icon),
   );
 }

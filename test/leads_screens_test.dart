@@ -159,7 +159,7 @@ void main() {
       final lead = _visibleLeads(h.tester).first;
       final fu = h.backend.followUpForLead(lead.id)!;
       expect(fu.isPending, isTrue);
-      await h.tap(find.text('WhatsApp').first);
+      await h.tap(find.byTooltip('WhatsApp').first);
       expect(h.location, '/followups/${fu.id}');
     }, location: '/leads');
   });
@@ -174,7 +174,7 @@ void main() {
         await h.tapText('New');
         final lead = _visibleLeads(h.tester).first;
         expect(h.backend.followUpForLead(lead.id), isNull);
-        await h.tap(find.text('WhatsApp').first);
+        await h.tap(find.byTooltip('WhatsApp').first);
         expect(wa.opened, hasLength(1));
         expect(wa.opened.single.phone, lead.phone);
         expect(wa.opened.single.message, startsWith('Hi ${lead.firstName} 👋'));
@@ -194,7 +194,7 @@ void main() {
 
       expect(find.text('Rahul Kumar'), findsOneWidget);
       expect(find.text(PhoneUtils.display(rahul.phone)), findsOneWidget);
-      expect(find.text('AI SUMMARY'), findsOneWidget);
+      expect(find.text('AI summary'), findsOneWidget);
       expect(find.text(rahul.summary!), findsOneWidget);
       expect(find.byType(LeadDetailRow), findsWidgets);
       expect(find.text('Next action'), findsOneWidget);
@@ -203,12 +203,12 @@ void main() {
       final signals =
           rahul.score!.positiveSignals.length + rahul.objections.length;
       if (signals > 0) {
-        expect(find.text('SIGNALS & OBJECTIONS'), findsOneWidget);
+        expect(find.text('Signals'), findsOneWidget);
         expect(find.byType(LeadSignalChip), findsNWidgets(signals));
       }
 
       await h.tester.scrollUntilVisible(
-        find.text('CALL HISTORY'),
+        find.text('Call history'),
         300,
         scrollable: find.byType(Scrollable).last,
       );
@@ -226,7 +226,7 @@ void main() {
 
       h.router.pop();
       await h.settle();
-      await h.tapText('Review & send →');
+      await h.tapText('Review & send');
       expect(h.location, '/followups/${fu.id}');
     });
 
@@ -236,7 +236,7 @@ void main() {
         (c) => c.leadId == rahul.id && c.status.isConnected,
       );
       await h.push('/leads/${rahul.id}');
-      await h.tapText('See full call result →');
+      await h.tapText('Full call result');
       expect(h.location, '/calls/${connected.id}/result');
     });
 
@@ -245,23 +245,18 @@ void main() {
       final before = h.backend.calls.length;
       await h.push('/leads/${rahul.id}');
 
-      await h.tapText('AI Call');
+      await h.tap(find.byTooltip('AI Call'));
       expect(find.text('Call Rahul Kumar'), findsOneWidget);
       await h.tapText('AI Call with ${h.backend.agent.name} (Sarvam AI)');
 
       expect(h.backend.calls.length, before + 1);
       expect(h.backend.calls.last.leadId, rahul.id);
-      expect(
-        find.text('Calling Rahul Kumar via Sarvam AI voice agent... 📞'),
-        findsOneWidget,
-      );
+      expect(find.text('Calling Rahul Kumar…'), findsOneWidget);
       // The confirmation is queued behind the first snackbar.
       await h.tester.pump(const Duration(seconds: 5));
       await h.settle();
       expect(
-        find.text(
-          '${h.backend.agent.name} is calling Rahul Kumar! Call logged in activity.',
-        ),
+        find.text('${h.backend.agent.name} is calling Rahul Kumar'),
         findsOneWidget,
       );
     });
@@ -269,7 +264,7 @@ void main() {
     appTest('in-app option opens the voice test', (h) async {
       final rahul = _byName(h.backend, 'Rahul Kumar');
       await h.push('/leads/${rahul.id}');
-      await h.tapText('AI Call');
+      await h.tap(find.byTooltip('AI Call'));
       await h.tapText('Talk in-app with ${h.backend.agent.name}');
       expect(h.location, '/voice-test');
       expect(find.byType(VoiceTestScreen), findsOneWidget);
@@ -279,7 +274,7 @@ void main() {
       final rahul = _byName(h.backend, 'Rahul Kumar');
       final before = h.backend.calls.length;
       await h.push('/leads/${rahul.id}');
-      await h.tapText('AI Call');
+      await h.tap(find.byTooltip('AI Call'));
       await h.tester.tapAt(const Offset(400, 20));
       await h.settle();
       expect(find.text('Call Rahul Kumar'), findsNothing);
@@ -299,7 +294,7 @@ void main() {
         findsOneWidget,
       );
 
-      await h.tapText('Callback');
+      await h.tap(find.byTooltip('Callback'));
       expect(find.text('Schedule callback'), findsOneWidget);
       await h.tapText('Tomorrow, 11 AM');
       await h.tap(find.widgetWithText(FilledButton, 'Schedule Callback'));

@@ -17,7 +17,7 @@ class LeadDetailRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.symmetric(vertical: 13),
       decoration: BoxDecoration(
         border: last
             ? null
@@ -26,10 +26,22 @@ class LeadDetailRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 130, child: Text(k, style: t.bodyMedium)),
+          SizedBox(
+            width: 104,
+            child: Text(
+              k,
+              style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               v,
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: t.titleSmall?.copyWith(
                 color: highlight ? AppColors.brand : AppColors.ink,
               ),
@@ -51,9 +63,11 @@ class LeadSignalChip extends StatelessWidget {
     child: Row(
       children: [
         Icon(
-          positive ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
-          size: 21,
-          color: positive ? AppColors.success : AppColors.warmInk,
+          positive
+              ? Icons.add_circle_outline_rounded
+              : Icons.remove_circle_outline_rounded,
+          size: 19,
+          color: positive ? AppColors.success : AppColors.inkFaint,
           semanticLabel: positive ? 'Positive' : 'Concern',
         ),
         const SizedBox(width: 10),

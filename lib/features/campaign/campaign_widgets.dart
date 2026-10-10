@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/mascot.dart';
@@ -8,17 +9,59 @@ import '../../data/models/models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 
-/// Primary "Call New Leads" CTA (Home + Leads).
+/// "Call New Leads" CTA. Full-width ink button on Home; [compact] is a small
+/// ink pill for headers (Leads).
 class CallNewLeadsButton extends StatelessWidget {
-  const CallNewLeadsButton({super.key, required this.count});
+  const CallNewLeadsButton({
+    super.key,
+    required this.count,
+    this.compact = false,
+  });
   final int count;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    if (compact) {
+      return Semantics(
+        button: true,
+        label: count > 0 ? 'Call $count new leads' : 'Call new leads',
+        excludeSemantics: true,
+        child: Pressable(
+          onTap: () => context.push('/campaign/new'),
+          scale: 0.94,
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.fromLTRB(12, 0, 14, 0),
+            decoration: BoxDecoration(
+              color: AppColors.ink,
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.phone_forwarded_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  count > 0 ? 'Call $count new' : 'Call new',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: Colors.white,
+                    fontSize: 13.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return PrimaryButton(
       label: count > 0 ? 'Call $count New Leads' : 'Call New Leads',
       icon: Icons.phone_forwarded_rounded,
-      color: AppColors.brand,
       onPressed: () => context.push('/campaign/new'),
     );
   }

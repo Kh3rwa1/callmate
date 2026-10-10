@@ -135,11 +135,14 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Add information',
-                style: Theme.of(ctx).textTheme.headlineSmall,
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Text(
+                  'Add information',
+                  style: Theme.of(ctx).textTheme.titleLarge,
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               for (final (type, emoji, label) in const [
                 (KnowledgeType.pdf, '📄', 'Upload PDF'),
                 (KnowledgeType.website, '🌐', 'Add website'),
@@ -148,14 +151,17 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
               ])
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                  minTileHeight: 60,
+                  minTileHeight: 56,
                   leading: IconBubble(
-                    color: Colors.white,
-                    size: 44,
-                    child: Emoji(emoji),
+                    color: AppColors.surfaceMuted,
+                    size: 40,
+                    child: Emoji(emoji, size: 20),
                   ),
                   title: Text(label, style: Theme.of(ctx).textTheme.titleSmall),
-                  trailing: const Icon(Icons.chevron_right_rounded),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.inkFaint,
+                  ),
                   onTap: () {
                     Navigator.pop(ctx);
                     _add(type);
@@ -208,8 +214,7 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
           if (all.isEmpty) {
             return EmptyState(
               title: 'Your AI employee hasn\'t learned anything yet',
-              message:
-                  'Add services, pricing, FAQs or business details so it can answer customer questions.',
+              message: 'Add services, pricing or FAQs.',
               actionLabel: '+ Add information',
               onAction: _openAddSheet,
             );
@@ -224,39 +229,48 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
                 100,
               ),
               children: [
-                Text(
-                  'Everything ${ref.watch(employeeNameProvider)} knows about your business – services, pricing, opening hours, location, policies and FAQs.',
-                  style: t.bodyMedium,
-                ),
-                if (latest != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Last updated ${Fmt.relative(latest)}',
-                    style: t.bodySmall?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                ],
-                const SizedBox(height: 18),
-                for (final s in all)
+                if (latest != null)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _SourceTile(
-                      source: s,
-                      emoji: _emoji(s.type),
-                      onRemove:
-                          s.status == KnowledgeStatus.ready && items.contains(s)
-                          ? () async {
-                              await ref
-                                  .read(knowledgeRepoProvider)
-                                  .remove(s.id);
-                              _snack('Removed “${s.title}”');
-                            }
-                          : s.status == KnowledgeStatus.failed
-                          ? () => setState(
-                              () => _inFlight.removeWhere((_, v) => v == s),
-                            )
-                          : null,
+                    padding: const EdgeInsets.fromLTRB(2, 4, 2, 14),
+                    child: Text(
+                      'Last updated ${Fmt.relative(latest)}',
+                      style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
                     ),
                   ),
+                AppCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      for (final (i, s) in all.indexed) ...[
+                        if (i > 0)
+                          const Divider(
+                            height: 1,
+                            thickness: 1,
+                            indent: 70,
+                            color: AppColors.border,
+                          ),
+                        _SourceTile(
+                          source: s,
+                          emoji: _emoji(s.type),
+                          onRemove:
+                              s.status == KnowledgeStatus.ready &&
+                                  items.contains(s)
+                              ? () async {
+                                  await ref
+                                      .read(knowledgeRepoProvider)
+                                      .remove(s.id);
+                                  _snack('Removed “${s.title}”');
+                                }
+                              : s.status == KnowledgeStatus.failed
+                              ? () => setState(
+                                  () => _inFlight.removeWhere((_, v) => v == s),
+                                )
+                              : null,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ],
             ),
           );
@@ -283,18 +297,19 @@ class _SourceTile extends StatelessWidget {
       ),
       KnowledgeStatus.processing => ('Learning…', AppColors.warmInk),
       KnowledgeStatus.ready => ('Learned', AppColors.success),
-      KnowledgeStatus.failed => (
-        'Couldn\'t read this – try again',
-        AppColors.hot,
-      ),
+      KnowledgeStatus.failed => ('Couldn\'t read this', AppColors.hot),
     };
-    return AppCard(
-      padding: const EdgeInsets.all(16),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 6, 14),
       child: Column(
         children: [
           Row(
             children: [
-              IconBubble(color: AppColors.surfaceMuted, child: Emoji(emoji)),
+              IconBubble(
+                color: AppColors.surfaceMuted,
+                size: 40,
+                child: Emoji(emoji, size: 20),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -305,13 +320,7 @@ class _SourceTile extends StatelessWidget {
                       style: t.titleSmall,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (s.detail != null)
-                      Text(
-                        s.detail!,
-                        style: t.bodySmall,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Row(
                       children: [
                         if (s.status == KnowledgeStatus.ready)
@@ -333,6 +342,17 @@ class _SourceTile extends StatelessWidget {
                           label,
                           style: t.labelMedium?.copyWith(color: color),
                         ),
+                        if (s.detail != null) ...[
+                          Text(' · ', style: t.bodySmall),
+                          Flexible(
+                            child: Text(
+                              s.detail!,
+                              style: t.bodySmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
@@ -344,6 +364,7 @@ class _SourceTile extends StatelessWidget {
                   onPressed: onRemove,
                   icon: const Icon(
                     Icons.close_rounded,
+                    size: 20,
                     color: AppColors.inkFaint,
                   ),
                 ),
@@ -352,11 +373,16 @@ class _SourceTile extends StatelessWidget {
           if (s.status == KnowledgeStatus.uploading ||
               s.status == KnowledgeStatus.processing) ...[
             const SizedBox(height: 12),
-            LinearProgressIndicator(
-              value: s.status == KnowledgeStatus.uploading ? s.progress : null,
-              minHeight: 5,
-              borderRadius: BorderRadius.circular(9),
-              backgroundColor: AppColors.surfaceMuted,
+            Padding(
+              padding: const EdgeInsets.only(left: 54, right: 10),
+              child: LinearProgressIndicator(
+                value: s.status == KnowledgeStatus.uploading
+                    ? s.progress
+                    : null,
+                minHeight: 5,
+                borderRadius: BorderRadius.circular(9),
+                backgroundColor: AppColors.surfaceMuted,
+              ),
             ),
           ],
         ],

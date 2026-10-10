@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_env.dart';
-import '../../core/config/brand.dart';
 import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
@@ -142,76 +141,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool get _heroMode => !_usePhone && !_googleRegistering;
 
   List<Widget> _hero(TextTheme t) => [
-    const SizedBox(height: 8),
-    Reveal(child: Center(child: const _FloatingMascot())),
-    const SizedBox(height: 22),
+    const SizedBox(height: 4),
+    const Reveal(child: Center(child: BrandWordmark(size: 20))),
+    const SizedBox(height: 28),
+    const Reveal(index: 1, child: Center(child: _FloatingMascot())),
+    const SizedBox(height: 28),
     Reveal(
-      index: 1,
-      child: Text(
-        'Your AI employee\ncalls every lead',
-        textAlign: TextAlign.center,
-        style: t.displaySmall?.copyWith(fontSize: 31, height: 1.12),
+      index: 2,
+      child: Semantics(
+        header: true,
+        child: Text(
+          'Your AI employee\ncalls every lead',
+          textAlign: TextAlign.center,
+          style: t.displaySmall?.copyWith(
+            fontSize: 31,
+            height: 1.12,
+            letterSpacing: -0.8,
+          ),
+        ),
       ),
     ),
     const SizedBox(height: 10),
     Reveal(
-      index: 2,
+      index: 3,
       child: Text(
-        'Calls, qualifies and drafts your WhatsApp follow-ups, '
-        'in Hindi, English and Bengali.',
+        'Hindi · English · Bengali',
         textAlign: TextAlign.center,
-        style: t.bodyLarge?.copyWith(color: AppColors.inkSoft),
+        style: t.bodyMedium?.copyWith(color: AppColors.inkFaint),
       ),
     ),
-    const SizedBox(height: 26),
-    for (final (i, (icon, text, tint, fg)) in const [
-      (
-        Icons.bolt_rounded,
-        'Calls new leads within minutes',
-        AppColors.brandSoft,
-        AppColors.brand,
-      ),
-      (
-        Icons.local_fire_department_rounded,
-        'Scores who is ready to buy',
-        AppColors.hotSoft,
-        AppColors.hot,
-      ),
-      (
-        Icons.chat_rounded,
-        'You review every message, then tap Send',
-        AppColors.whatsappSoft,
-        AppColors.whatsapp,
-      ),
-    ].indexed)
-      Reveal(
-        index: 3 + i,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: tint,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, size: 20, color: fg),
-              ),
-              const SizedBox(width: 14),
-              Expanded(child: Text(text, style: t.titleSmall)),
-            ],
-          ),
-        ),
-      ),
-    const SizedBox(height: 18),
+    const SizedBox(height: 40),
     if (_errorMessage != null) ...[
       _ErrorBanner(message: _errorMessage!),
       const SizedBox(height: 14),
     ],
     Reveal(
-      index: 6,
+      index: 4,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: _googleSection(t),
@@ -221,27 +186,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   String get _title {
     if (!_usePhone) {
-      return _googleRegistering ? 'Set Up Your Business' : 'Welcome';
+      return _googleRegistering ? 'Set up your business' : 'Welcome';
     }
-    if (_otpSent) return _isRegister ? 'Verify Registration' : 'Verify OTP';
-    return _isRegister ? 'Create Your Account' : 'Sign In to Your Workspace';
+    if (_otpSent) return 'Enter code';
+    return _isRegister ? 'Create account' : 'Sign in';
   }
 
-  String get _subtitle {
-    if (!_usePhone) {
-      return _googleRegistering
-          ? 'One last step: tell us about your business'
-          : 'Sign in or create your account with Google';
-    }
-    if (_otpSent) {
-      final hint = AppEnv.flavor != AppFlavor.prod
-          ? ' (Use 123456 on staging)'
-          : '';
-      return 'Enter the 6-digit code sent to ${PhoneUtils.display(_phoneController.text)}$hint';
-    }
-    return _isRegister
-        ? 'Start hiring AI employees for your business'
-        : 'Enter your phone number to receive a one-time login code';
+  /// Only shown where it prevents a mistake: which number the code went to.
+  String? get _subtitle {
+    if (!_usePhone || !_otpSent) return null;
+    final hint = AppEnv.flavor != AppFlavor.prod ? ' · use 123456' : '';
+    return 'Sent to ${PhoneUtils.display(_phoneController.text)}$hint';
   }
 
   List<Widget> _googleSection(TextTheme t) {
@@ -253,7 +208,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           autofillHints: const [AutofillHints.organizationName],
           decoration: const InputDecoration(
             labelText: 'Business name',
-            hintText: 'e.g. Apex Coaching / Sharma Realty',
+            hintText: 'e.g. Apex Coaching',
             prefixIcon: Icon(Icons.business_outlined),
           ),
         ),
@@ -268,7 +223,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           decoration: const InputDecoration(
             labelText: 'Business mobile number',
             hintText: '98300 12345',
-            helperText: 'Customers see this number on WhatsApp follow-ups',
+            helperText: 'Shown on your WhatsApp follow-ups',
             prefixIcon: Icon(Icons.phone_outlined),
             prefixText: '+91 ',
           ),
@@ -277,7 +232,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         PrimaryButton(
           label: 'Create Account',
           loading: _submitting,
-          color: AppColors.success,
           onPressed: _finishGoogleRegistration,
         ),
         const SizedBox(height: 12),
@@ -447,18 +401,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             children: [
                               const Mascot(
                                 state: MascotState.welcome,
-                                size: 110,
+                                size: 96,
                               ),
                               const SizedBox(height: 12),
-                              const BrandWordmark(size: 24),
-                              const SizedBox(height: 4),
-                              Text(
-                                Brand.tagline,
-                                style: t.bodyMedium?.copyWith(
-                                  color: AppColors.inkSoft,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
+                              const BrandWordmark(size: 22),
                             ],
                           ),
                         ),
@@ -470,37 +416,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Text(_title, style: t.titleLarge),
-                              const SizedBox(height: 6),
-                              Text(_subtitle, style: t.bodySmall),
+                              if (_subtitle != null) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  _subtitle!,
+                                  style: t.bodySmall?.copyWith(
+                                    color: AppColors.inkSoft,
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 20),
 
                               if (_errorMessage != null) ...[
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.hotSoft,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.error_outline_rounded,
-                                        color: AppColors.hot,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          _errorMessage!,
-                                          style: t.bodySmall?.copyWith(
-                                            color: AppColors.hot,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                                _ErrorBanner(message: _errorMessage!),
                                 const SizedBox(height: 16),
                               ],
 
@@ -517,8 +445,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ],
                                     decoration: const InputDecoration(
                                       labelText: 'Business name',
-                                      hintText:
-                                          'e.g. Apex Coaching / Sharma Realty',
+                                      hintText: 'e.g. Apex Coaching',
                                       prefixIcon: Icon(Icons.business_outlined),
                                     ),
                                   ),
@@ -548,7 +475,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       ? 'Get Verification Code'
                                       : 'Send OTP',
                                   loading: _submitting,
-                                  color: AppColors.brand,
                                   onPressed: _sendOtp,
                                 ),
                                 const SizedBox(height: 12),
@@ -565,11 +491,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     child: Text(
                                       _isRegister
                                           ? 'Already have an account? Sign in'
-                                          : 'New to ${Brand.appName}? Register your business',
-                                      style: t.bodySmall?.copyWith(
-                                        color: AppColors.brand,
-                                        fontWeight: FontWeight.w700,
-                                      ),
+                                          : 'New here? Create an account',
                                     ),
                                   ),
                                 ),
@@ -604,7 +526,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       ? 'Verify & Create Account'
                                       : 'Verify & Enter',
                                   loading: _submitting,
-                                  color: AppColors.success,
                                   onPressed: _verifyOtp,
                                 ),
                                 const SizedBox(height: 14),
@@ -650,10 +571,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 20),
                       Center(
                         child: Text(
-                          'By continuing, you agree to our Terms of Service & Privacy Policy.',
+                          'By continuing, you agree to our Terms & Privacy Policy.',
                           style: t.bodySmall?.copyWith(
                             fontSize: 11,
-                            color: AppColors.inkSoft,
+                            color: AppColors.inkFaint,
                           ),
                           textAlign: TextAlign.center,
                         ),

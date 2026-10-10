@@ -160,9 +160,9 @@ void main() {
         // ---- Create agent: learning phase, then "meet".
         expect(find.byType(CreateAgentScreen), findsOneWidget);
         expect(find.byType(LinearProgressIndicator), findsOneWidget);
-        expect(find.text('Meet your AI employee 👋'), findsNothing);
+        expect(find.text('Meet your AI employee'), findsNothing);
         await h.settle(40);
-        expect(find.text('Meet your AI employee 👋'), findsOneWidget);
+        expect(find.text('Meet your AI employee'), findsOneWidget);
 
         // Business + knowledge were persisted.
         expect(h.backend.business.name, 'Sunrise Clinic');
@@ -197,7 +197,7 @@ void main() {
         // ---- First call screen → dashboard.
         expect(find.byType(FirstCallScreen), findsOneWidget);
         expect(find.text('Talk to Kabir'), findsOneWidget);
-        await h.tapText('Go to my dashboard');
+        await h.tapText('Skip');
         expect(h.prefs.onboarded, isTrue);
         expect(h.location, '/home');
         expect(find.byType(HomeScreen), findsOneWidget);
@@ -255,7 +255,7 @@ void main() {
         await h.tapText('Try again');
         await h.settle(30);
         expect(failing.saves, 2);
-        expect(find.text('Meet your AI employee 👋'), findsOneWidget);
+        expect(find.text('Meet your AI employee'), findsOneWidget);
       },
       location: '/onboarding/create',
       onboarded: false,
@@ -293,7 +293,7 @@ void main() {
         await h.settle();
         h.router.go('/onboarding/test');
         await h.settle();
-        await h.tapText('Looks great – go to dashboard');
+        await h.tapText('Go to dashboard');
         expect(h.prefs.onboarded, isTrue);
         expect(h.location, '/home');
       },

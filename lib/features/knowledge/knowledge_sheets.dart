@@ -63,18 +63,12 @@ class _KnowledgeSheetState extends State<_KnowledgeSheet> {
     final t = Theme.of(context).textTheme;
     final (title, hint) = switch (widget.type) {
       KnowledgeType.website => ('Add website', 'abccoaching.in'),
-      KnowledgeType.faq => (
-        'Add FAQ',
-        'Q: Do you offer a free consultation?\nA: Yes, every Saturday at 11 AM.\n\nQ: Do you accept UPI?\nA: …',
-      ),
+      KnowledgeType.faq => ('Add FAQ', 'Q: Do you accept UPI?\nA: Yes.'),
       KnowledgeType.businessInfo => (
         'Add business information',
-        'Opening hours, location, parking, payment options, cancellation policy…',
+        'Hours, location, payments…',
       ),
-      _ => (
-        'Paste information',
-        'Anything your AI employee should know – services, pricing, offers, policies…',
-      ),
+      _ => ('Paste information', 'Services, pricing, policies…'),
     };
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -85,8 +79,8 @@ class _KnowledgeSheetState extends State<_KnowledgeSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: t.headlineSmall),
-              const SizedBox(height: 18),
+              Text(title, style: t.titleLarge),
+              const SizedBox(height: 16),
               if (!_isWeb) ...[
                 TextFormField(
                   controller: _title,

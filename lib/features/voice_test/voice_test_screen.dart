@@ -185,19 +185,18 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
         body: SafeArea(
           child: Column(
             children: [
-              const SizedBox(height: 4),
               Mascot(
                 state: mascotForVoiceState(_state),
-                size: MediaQuery.sizeOf(context).height < 700 ? 150 : 200,
+                size: MediaQuery.sizeOf(context).height < 700 ? 96 : 124,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Semantics(
                 liveRegion: true,
                 child: StatusDot(label: label, color: color, pulse: _live),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 4),
               SizedBox(
-                height: 44,
+                height: 36,
                 child: ValueListenableBuilder<double>(
                   valueListenable: _level,
                   builder: (_, v, _) => VoiceWaveform(
@@ -208,13 +207,15 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Expanded(
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: AppSpace.page),
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(AppRadius.card),
+                    border: Border.all(color: AppColors.hairline, width: 0.8),
                     boxShadow: AppShadows.card,
                   ),
                   child: _buildTranscript(context, name),
@@ -227,9 +228,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
                   AppSpace.page,
                   12,
                 ),
-                child: ended
-                    ? _buildEndedActions(context, name)
-                    : _buildLiveControls(name),
+                child: ended ? _buildEndedActions() : _buildLiveControls(name),
               ),
             ],
           ),
@@ -255,8 +254,10 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
           child: Text(
             _state == VoiceConnectionState.connecting
                 ? 'Connecting to $name…'
-                : 'Say “Hello” to start. ${ref.watch(workflowProvider).testCallerHint}',
-            style: Theme.of(context).textTheme.bodyMedium,
+                : 'Say “Hello”',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.inkFaint),
             textAlign: TextAlign.center,
           ),
         ),
@@ -277,14 +278,9 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
     );
   }
 
-  Widget _buildEndedActions(BuildContext context, String name) {
+  Widget _buildEndedActions() {
     return Column(
       children: [
-        Text(
-          'That\'s how $name handles your leads ✨',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
@@ -298,7 +294,6 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
             Expanded(
               child: PrimaryButton(
                 label: widget.fromOnboarding ? 'Continue' : 'Done',
-                color: AppColors.success,
                 onPressed: () => _finish(requestNotifications: true),
               ),
             ),

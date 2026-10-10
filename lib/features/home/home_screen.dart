@@ -41,7 +41,7 @@ class HomeScreen extends ConsumerWidget {
           child: CustomScrollView(
             slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(AppSpace.page, 12, 8, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.page, 14, 10, 0),
                 sliver: SliverToBoxAdapter(
                   child: Row(
                     children: [
@@ -51,14 +51,19 @@ class HomeScreen extends ConsumerWidget {
                           children: [
                             Text(
                               Fmt.greeting(),
-                              style: t.bodyLarge?.copyWith(
-                                color: AppColors.inkSoft,
+                              style: t.bodyMedium?.copyWith(
+                                color: AppColors.inkFaint,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${biz?.name ?? 'Welcome'}\u00A0👋',
-                              style: t.headlineSmall,
+                              biz?.name ?? 'Welcome',
+                              style: t.headlineSmall?.copyWith(
+                                fontSize: 26,
+                                letterSpacing: -0.6,
+                                height: 1.15,
+                              ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -68,21 +73,30 @@ class HomeScreen extends ConsumerWidget {
                       if (AppEnv.showDemoTools)
                         IconButton(
                           tooltip: 'Demo controls',
+                          color: AppColors.inkFaint,
                           onPressed: () => context.push('/demo'),
-                          icon: const Icon(Icons.science_outlined),
+                          icon: const Icon(Icons.science_outlined, size: 22),
                         ),
                       IconButton(
                         tooltip: unread > 0
                             ? '$unread new notifications'
                             : 'Notifications',
+                        color: AppColors.ink,
                         onPressed: () => context.push('/notifications'),
                         icon: Badge(
                           isLabelVisible: unread > 0,
                           label: Text('$unread'),
                           backgroundColor: AppColors.hot,
+                          largeSize: 16,
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          textStyle: t.labelSmall?.copyWith(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          offset: const Offset(5, -4),
                           child: const Icon(
                             Icons.notifications_none_rounded,
-                            size: 27,
+                            size: 25,
                           ),
                         ),
                       ),
@@ -134,7 +148,6 @@ class HomeScreen extends ConsumerWidget {
                     data: (d) => _HomeBody(
                       d: d,
                       agentName: agent?.name ?? Brand.employeeFallbackName,
-                      humanLabel: ref.watch(workflowProvider).humanLabel,
                     ),
                   ),
                 ),
@@ -148,155 +161,82 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _HomeBody extends StatelessWidget {
-  const _HomeBody({
-    required this.d,
-    required this.agentName,
-    required this.humanLabel,
-  });
+  const _HomeBody({required this.d, required this.agentName});
   final DailySummary d;
   final String agentName;
-  final String humanLabel;
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: _stagger([
         const SectionLabel("Today's results"),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.32,
-          children: [
-            HomeMetric(
-              value: d.callsToday,
-              label: 'Calls',
-              icon: Icons.call_rounded,
-              tint: AppColors.brandSoft,
-              color: AppColors.brand,
-              onTap: () => context.go('/calls'),
+        HomeStatStrip(
+          stats: [
+            HomeStat(d.callsToday, 'Calls', () => context.go('/calls')),
+            HomeStat(
+              d.connected,
+              'Connected',
+              () => context.go('/calls?filter=connected'),
             ),
-            HomeMetric(
-              value: d.connected,
-              label: 'Connected',
-              icon: Icons.check_circle_rounded,
-              tint: AppColors.successSoft,
-              color: AppColors.success,
-              onTap: () => context.go('/calls?filter=connected'),
+            HomeStat(
+              d.interested,
+              'Interested',
+              () => context.go('/leads?filter=warm'),
             ),
-            HomeMetric(
-              value: d.interested,
-              label: 'Interested',
-              icon: Icons.wb_sunny_rounded,
-              tint: AppColors.warmSoft,
-              color: AppColors.warmInk,
-              onTap: () => context.go('/leads?filter=warm'),
-            ),
-            HomeMetric(
-              value: d.hot,
-              label: 'Hot Leads',
-              icon: Icons.local_fire_department_rounded,
-              tint: AppColors.hotSoft,
-              color: AppColors.hot,
-              onTap: () => context.go('/leads?filter=hot'),
-            ),
+            HomeStat(d.hot, 'Hot', () => context.go('/leads?filter=hot')),
           ],
         ),
         const SectionLabel('Needs your attention'),
-        if (d.hot > 0)
-          HomeActionCard(
-            icon: Icons.local_fire_department_rounded,
-            tint: AppColors.hotSoft,
-            title: '${d.hot} hot leads',
-            body: 'These leads are ready for follow-up.',
-            cta: 'View hot leads',
-            ctaColor: AppColors.hot,
-            onTap: () => context.go('/leads?filter=hot'),
-          )
-        else
-          HomeActionCard(
-            icon: Icons.auto_awesome_rounded,
-            tint: AppColors.brandSoft,
-            ctaColor: AppColors.brand,
-            title: 'No hot leads yet',
-            body: '$agentName will flag anyone ready to buy or book.',
-            cta: 'Call new leads',
-            onTap: () => context.push('/campaign/new'),
-          ),
-        if (d.callbacksToday > 0) ...[
-          const SizedBox(height: 12),
-          HomeActionCard(
-            icon: Icons.event_rounded,
-            tint: AppColors.infoSoft,
-            title: '${d.callbacksToday} callbacks scheduled',
-            body:
-                'Customers asked to speak with your ${humanLabel.toLowerCase()}.',
-            cta: 'See callbacks',
-            ctaColor: AppColors.info,
-            onTap: () => context.push('/callbacks'),
-          ),
-        ],
-        const SectionLabel('Follow-ups'),
-        HomeActionCard(
-          icon: Icons.chat_rounded,
-          tint: AppColors.whatsappSoft,
-          title: d.followUpsReady == 0
-              ? 'All caught up 🎉'
-              : '${d.followUpsReady} follow-ups ready',
-          body: d.followUpsReady == 0
-              ? 'New drafts appear here after each call.'
-              : '$agentName drafted them from each call. Review and send.',
-          cta: d.followUpsReady == 0 ? 'View follow-ups' : 'Review & send',
-          ctaColor: AppColors.whatsapp,
-          onTap: () => context.go('/followups'),
+        HomeActionGroup(
+          rows: [
+            if (d.hot > 0)
+              HomeActionRow(
+                icon: Icons.local_fire_department_rounded,
+                color: AppColors.hot,
+                tint: AppColors.hotSoft,
+                count: d.hot,
+                label: 'hot leads',
+                onTap: () => context.go('/leads?filter=hot'),
+              )
+            else
+              HomeActionRow(
+                icon: Icons.local_fire_department_outlined,
+                color: AppColors.inkFaint,
+                tint: AppColors.surfaceMuted,
+                label: 'No hot leads yet',
+                trailing: 'Call new leads',
+                onTap: () => context.push('/campaign/new'),
+              ),
+            HomeActionRow(
+              icon: Icons.chat_bubble_outline_rounded,
+              color: AppColors.whatsapp,
+              tint: AppColors.whatsappSoft,
+              count: d.followUpsReady == 0 ? null : d.followUpsReady,
+              label: d.followUpsReady == 0
+                  ? 'All caught up'
+                  : 'follow-ups ready',
+              onTap: () => context.go('/followups'),
+            ),
+            if (d.callbacksToday > 0)
+              HomeActionRow(
+                icon: Icons.event_outlined,
+                color: AppColors.info,
+                tint: AppColors.infoSoft,
+                count: d.callbacksToday,
+                label: d.callbacksToday == 1 ? 'callback' : 'callbacks',
+                onTap: () => context.push('/callbacks'),
+              ),
+          ],
         ),
         if (d.newLeadsReady > 0) ...[
           const SizedBox(height: 20),
           CallNewLeadsButton(count: d.newLeadsReady),
         ],
         const SectionLabel("Today's AI activity"),
-        AppCard(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: d.activity.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text(
-                    '$agentName hasn\'t made any calls yet.',
-                    style: t.bodyMedium,
-                  ),
-                )
-              : Column(
-                  children: [
-                    for (var i = 0; i < d.activity.length; i++) ...[
-                      if (i > 0) const Divider(indent: 64),
-                      ListTile(
-                        minTileHeight: 58,
-                        onTap: d.activity[i].route == null
-                            ? null
-                            : () => context.go(d.activity[i].route!),
-                        leading: IconBubble(
-                          color: AppColors.surfaceMuted,
-                          size: 40,
-                          child: Emoji(d.activity[i].emoji, size: 18),
-                        ),
-                        title: Text(
-                          d.activity[i].text,
-                          style: t.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        trailing: Text(
-                          Fmt.relative(d.activity[i].at),
-                          style: t.bodySmall,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+        HomeActivityList(
+          items: d.activity.take(3).toList(),
+          emptyText: 'No calls yet',
         ),
       ], from: 2),
     );

@@ -5,9 +5,9 @@ import '../motion/motion.dart';
 import 'app_colors.dart';
 
 class AppRadius {
-  static const card = 22.0;
-  static const cardSm = 18.0;
-  static const button = 16.0;
+  static const card = 20.0;
+  static const cardSm = 16.0;
+  static const button = 14.0;
   static const chip = 999.0;
 }
 
@@ -18,14 +18,14 @@ class AppSpace {
   static const lg = 16.0;
   static const xl = 20.0;
   static const xxl = 28.0;
-  static const page = 20.0;
+  static const page = 22.0;
 }
 
 class AppShadows {
   /// Soft, wide, low-opacity: lifts cards without a visible "slab".
   static const card = [
-    BoxShadow(color: Color(0x0A1B1530), blurRadius: 14, offset: Offset(0, 3)),
-    BoxShadow(color: Color(0x08000000), blurRadius: 2, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x0A14121F), blurRadius: 24, offset: Offset(0, 8)),
+    BoxShadow(color: Color(0x05000000), blurRadius: 1, offset: Offset(0, 1)),
   ];
 
   /// Raised state (pressed / floating CTA).
@@ -65,40 +65,41 @@ class AppTheme {
         .copyWith(
           displaySmall: TextStyle(
             fontFamily: AppTheme.fontFamily,
-            fontSize: 34,
+            fontSize: 36,
             fontWeight: FontWeight.w800,
             color: AppColors.ink,
-            height: 1.12,
-            letterSpacing: -0.8,
+            height: 1.08,
+            letterSpacing: -1.2,
           ),
           headlineMedium: TextStyle(
             fontFamily: AppTheme.fontFamily,
-            fontSize: 28,
+            fontSize: 30,
             fontWeight: FontWeight.w800,
             color: AppColors.ink,
-            height: 1.15,
-            letterSpacing: -0.6,
+            height: 1.1,
+            letterSpacing: -1.0,
           ),
           headlineSmall: TextStyle(
             fontFamily: AppTheme.fontFamily,
             fontSize: 24,
             fontWeight: FontWeight.w800,
             color: AppColors.ink,
-            height: 1.2,
-            letterSpacing: -0.4,
+            height: 1.15,
+            letterSpacing: -0.6,
           ),
           titleLarge: TextStyle(
             fontFamily: AppTheme.fontFamily,
             fontSize: 20,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             color: AppColors.ink,
-            letterSpacing: -0.2,
+            letterSpacing: -0.4,
           ),
           titleMedium: TextStyle(
             fontFamily: AppTheme.fontFamily,
             fontSize: 17,
             fontWeight: FontWeight.w700,
             color: AppColors.ink,
+            letterSpacing: -0.2,
           ),
           titleSmall: TextStyle(
             fontFamily: AppTheme.fontFamily,
@@ -183,7 +184,7 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.ink,
           foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(56),
+          minimumSize: const Size.fromHeight(54),
           padding: const EdgeInsets.symmetric(horizontal: 14),
           shape: buttonShape,
           textStyle: text.labelLarge,
@@ -192,9 +193,9 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.ink,
-          minimumSize: const Size.fromHeight(56),
+          minimumSize: const Size.fromHeight(54),
           padding: const EdgeInsets.symmetric(horizontal: 14),
-          side: const BorderSide(color: AppColors.border, width: 1.5),
+          side: const BorderSide(color: AppColors.border, width: 1.2),
           shape: buttonShape,
           textStyle: text.labelLarge,
           backgroundColor: Colors.white,
@@ -245,8 +246,8 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: AppColors.brandSoft,
-        height: 72,
+        indicatorColor: Colors.transparent,
+        height: 68,
         labelTextStyle: WidgetStateProperty.resolveWith(
           (s) => TextStyle(
             fontFamily: AppTheme.fontFamily,
@@ -263,7 +264,7 @@ class AppTheme {
           (s) => IconThemeData(
             size: 24,
             color: s.contains(WidgetState.selected)
-                ? AppColors.brand
+                ? AppColors.ink
                 : AppColors.inkFaint,
           ),
         ),

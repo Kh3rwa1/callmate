@@ -39,7 +39,8 @@ void main() {
       expect(find.text(a.name), findsWidgets);
       expect(find.text('Active'), findsOneWidget);
 
-      await h.tapText('Edit AI Employee');
+      expect(find.text('Talk to ${a.name}'), findsOneWidget);
+      await h.tap(find.byTooltip('Edit AI Employee'));
       expect(h.location, '/agent/edit');
       expect(find.byType(EditAgentScreen), findsOneWidget);
     }, location: '/agent');
@@ -50,7 +51,7 @@ void main() {
       expect(find.byType(TeachAiScreen), findsOneWidget);
 
       await h.go('/agent');
-      await _tapListItem(h, find.textContaining('minutes left'));
+      await _tapListItem(h, find.textContaining('min left'));
       expect(h.location, '/usage');
       expect(find.byType(UsageScreen), findsOneWidget);
     }, location: '/agent');
@@ -172,7 +173,7 @@ void main() {
     }, location: '/agent/edit');
 
     appTest('teach card opens the knowledge screen', (h) async {
-      await _tapListItem(h, find.text('Business Knowledge · Teach Your AI'));
+      await _tapListItem(h, find.text('Teach Your AI'));
       expect(h.location, '/agent/teach');
     }, location: '/agent/edit');
   });

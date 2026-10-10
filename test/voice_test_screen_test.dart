@@ -165,7 +165,7 @@ void main() {
         for (var i = 0; i < 40; i++) {
           await h.tester.pump(const Duration(seconds: 1));
         }
-        expect(find.textContaining('handles your leads'), findsOneWidget);
+        expect(find.text('Talk again'), findsOneWidget);
 
         await h.tapText('Talk again');
         expect(find.text('Talk again'), findsNothing);

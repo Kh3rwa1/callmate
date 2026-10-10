@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/theme/app_colors.dart';
+
 /// Label/value row in the campaign setup summary.
 class CampaignSummaryRow extends StatelessWidget {
   const CampaignSummaryRow({
@@ -16,14 +18,27 @@ class CampaignSummaryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.symmetric(vertical: 15),
       child: Row(
         children: [
-          Text(label, style: t.bodyMedium),
-          const Spacer(),
-          if (leading != null) ...[leading!, const SizedBox(width: 8)],
-          Flexible(
-            child: Text(value, style: t.titleSmall, textAlign: TextAlign.right),
+          Text(label, style: t.bodyMedium?.copyWith(color: AppColors.inkSoft)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (leading != null) ...[leading!, const SizedBox(width: 8)],
+                Flexible(
+                  child: Text(
+                    value,
+                    style: t.titleSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -57,5 +72,6 @@ class CampaignChecklistItem extends StatelessWidget {
     ),
     controlAffinity: ListTileControlAffinity.leading,
     contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+    dense: true,
   );
 }

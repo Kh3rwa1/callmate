@@ -44,11 +44,11 @@ Future<void> _dismissBanner(AppHarness h) async {
 
 /// Opens the confirmation sheet from the setup screen and confirms it.
 Future<void> _startCampaign(AppHarness h) async {
-  await h.tapText('🚀  Start Campaign');
+  await h.tapText('Start Campaign');
   final attest = find.text('I confirm these contacts asked to be contacted');
   if (attest.evaluate().isNotEmpty) await h.tap(attest);
   expect(find.textContaining('Start calling'), findsOneWidget);
-  await h.tapText('🚀  Yes, start calling');
+  await h.tapText('Yes, start calling');
   // create (280 ms) + start (500 ms) of mock latency.
   await h.settle(12);
 }
@@ -61,10 +61,7 @@ void main() {
       expect(find.byType(CampaignSetupScreen), findsOneWidget);
       expect(find.text('$count'), findsWidgets);
       expect(find.text('leads ready'), findsOneWidget);
-      expect(
-        find.text('${h.backend.agent.name} · ${h.backend.agent.role}'),
-        findsOneWidget,
-      );
+      expect(find.text(h.backend.agent.name), findsOneWidget);
       expect(find.byType(CampaignSummaryRow), findsNWidgets(4));
       expect(find.text('Auto detect'), findsOneWidget);
       expect(find.byType(CampaignChecklistItem), findsNWidgets(4));
@@ -105,7 +102,7 @@ void main() {
     }, location: '/campaign/new');
 
     appTest('without consent the sheet counts only callable leads', (h) async {
-      await h.tapText('🚀  Start Campaign');
+      await h.tapText('Start Campaign');
       final attest = find.text(
         'I confirm these contacts asked to be contacted',
       );
@@ -122,7 +119,7 @@ void main() {
     }, location: '/campaign/new');
 
     appTest('"Not now" cancels without creating a campaign', (h) async {
-      await h.tapText('🚀  Start Campaign');
+      await h.tapText('Start Campaign');
       await h.tapText('Not now');
       expect(h.backend.campaigns, isEmpty);
       expect(find.byType(CampaignSetupScreen), findsOneWidget);
@@ -134,7 +131,7 @@ void main() {
       final count = _newLeadCount(h.backend);
       // Turn off one option to check it is carried into the campaign.
       await h.tapText('Recommend callback');
-      await h.tapText('🚀  Start Campaign');
+      await h.tapText('Start Campaign');
       // Leads without recorded consent trigger the attestation checkbox.
       final attest = find.text(
         'I confirm these contacts asked to be contacted',
@@ -142,7 +139,7 @@ void main() {
       if (attest.evaluate().isNotEmpty) {
         await h.tap(attest);
       }
-      await h.tapText('🚀  Yes, start calling');
+      await h.tapText('Yes, start calling');
       await h.settle(12);
 
       expect(h.backend.campaigns, hasLength(1));
@@ -152,7 +149,7 @@ void main() {
       expect(c.options.recommendCallback, isFalse);
       expect(h.location, '/campaigns/${c.id}');
       expect(find.byType(CampaignProgressScreen), findsOneWidget);
-      expect(find.textContaining('is doing the work for you'), findsOne);
+      expect(find.text('${h.backend.agent.name} is calling'), findsOneWidget);
     }, location: '/campaign/new');
 
     appTest(
@@ -183,10 +180,10 @@ void main() {
       await h.settle(6);
       final stats = h.backend.campaigns[id]!.stats;
       expect(stats.completed, greaterThan(0));
-      await _scrollTo(h, find.text('LATEST RESULTS'));
-      expect(find.text('LATEST RESULTS'), findsOneWidget);
+      await _scrollTo(h, find.text('Latest results'));
+      expect(find.text('Latest results'), findsOneWidget);
       expect(find.byType(CampaignRecentCallTile), findsWidgets);
-      expect(find.byType(CampaignStatTile), findsNWidgets(6));
+      expect(find.byType(CampaignStatTile), findsNWidgets(3));
 
       // Stop: first "Keep going", then actually stop.
       await _dismissBanner(h);
@@ -217,7 +214,7 @@ void main() {
       final c = h.backend.campaigns[id]!;
       expect(c.status, CampaignStatus.completed);
       expect(c.stats.completed, total);
-      expect(find.textContaining('finished calling ✓'), findsOneWidget);
+      expect(find.textContaining('finished calling'), findsOneWidget);
 
       await _scrollTo(h, find.text('View hot leads'));
       await h.tapText('View hot leads');

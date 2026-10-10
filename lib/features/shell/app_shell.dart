@@ -54,7 +54,6 @@ class AppNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tabs = AppShell._tabs;
-    final dur = AppMotion.of(context, const Duration(milliseconds: 420));
     return DecoratedBox(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -63,45 +62,21 @@ class AppNavBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 68,
-          child: LayoutBuilder(
-            builder: (context, c) {
-              final w = c.maxWidth / tabs.length;
-              return Stack(
-                children: [
-                  // Sliding pill behind the active icon.
-                  AnimatedPositioned(
-                    duration: dur,
-                    curve: AppMotion.pop,
-                    left: w * index + (w - 56) / 2,
-                    top: 8,
-                    width: 56,
-                    height: 30,
-                    child: const DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: AppColors.brandSoft,
-                        borderRadius: BorderRadius.all(Radius.circular(99)),
-                      ),
-                    ),
+          height: 64,
+          child: Row(
+            children: [
+              for (var i = 0; i < tabs.length; i++)
+                Expanded(
+                  child: _NavItem(
+                    icon: tabs[i].$1,
+                    selectedIcon: tabs[i].$2,
+                    label: tabs[i].$3,
+                    selected: i == index,
+                    badge: badges[i],
+                    onTap: () => onSelect(i),
                   ),
-                  Row(
-                    children: [
-                      for (var i = 0; i < tabs.length; i++)
-                        Expanded(
-                          child: _NavItem(
-                            icon: tabs[i].$1,
-                            selectedIcon: tabs[i].$2,
-                            label: tabs[i].$3,
-                            selected: i == index,
-                            badge: badges[i],
-                            onTap: () => onSelect(i),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              );
-            },
+                ),
+            ],
           ),
         ),
       ),
@@ -133,7 +108,7 @@ class _NavItem extends StatelessWidget {
       selected ? selectedIcon : icon,
       key: ValueKey(selected),
       size: 24,
-      color: selected ? AppColors.brand : AppColors.inkFaint,
+      color: selected ? AppColors.ink : AppColors.inkFaint,
     ),
   );
 
@@ -154,31 +129,34 @@ class _NavItem extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(
-              height: 30,
+              height: 28,
               child: Center(
-                child: AnimatedScale(
-                  scale: selected ? 1.08 : 1,
-                  duration: dur,
-                  curve: AppMotion.pop,
-                  child: badge == null
-                      ? _icon()
-                      : Badge(
-                          isLabelVisible: badge! > 0,
-                          backgroundColor: AppColors.hot,
-                          label: Text('$badge'),
-                          child: _icon(),
-                        ),
-                ),
+                child: badge == null
+                    ? _icon()
+                    : Badge(
+                        isLabelVisible: badge! > 0,
+                        backgroundColor: AppColors.hot,
+                        largeSize: 16,
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        offset: const Offset(8, -5),
+                        textStyle: Theme.of(context).textTheme.labelSmall
+                            ?.copyWith(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                        label: Text(badge! > 99 ? '99+' : '$badge'),
+                        child: _icon(),
+                      ),
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             AnimatedDefaultTextStyle(
               duration: dur,
               curve: AppMotion.standard,
               style: (t.labelSmall ?? const TextStyle()).copyWith(
                 fontSize: 11.5,
                 letterSpacing: 0,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
                 color: selected ? AppColors.ink : AppColors.inkFaint,
               ),
               child: Text(label, maxLines: 1, overflow: TextOverflow.fade),

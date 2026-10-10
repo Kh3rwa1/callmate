@@ -152,21 +152,12 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Semantics(
-                          header: true,
-                          child: Text('AI Calls', style: t.headlineMedium),
-                        ),
-                        Text(
-                          'Everything ${agent?.name ?? 'your AI employee'} did for you',
-                          style: t.bodyMedium,
-                        ),
-                      ],
+                    child: Semantics(
+                      header: true,
+                      child: Text('AI Calls', style: t.headlineMedium),
                     ),
                   ),
-                  const MascotAvatar(size: 46, state: MascotState.calling),
+                  const MascotAvatar(size: 40, state: MascotState.calling),
                 ],
               ),
             ),
@@ -225,13 +216,13 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
     if (s.items.isEmpty) {
       return EmptyState(
         title: '$agentName hasn\'t made any calls yet.',
-        message: 'Start a campaign and every call will show up here.',
+        message: 'Start a campaign to see calls here.',
         mascot: MascotState.calling,
         actionLabel: 'Call New Leads',
         onAction: () => context.push('/campaign/new'),
       );
     }
-    // Group by day header.
+    // Group by day: a heading, then one grouped card of slim rows.
     final rows = <Object>[];
     String? lastDay;
     for (final c in s.items) {
@@ -266,15 +257,14 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
           if (r is String) {
             return SectionLabel(
               r,
-              padding: EdgeInsets.fromLTRB(4, i == 0 ? 4 : 18, 4, 10),
+              padding: EdgeInsets.fromLTRB(2, i == 0 ? 8 : 28, 2, 10),
             );
           }
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Reveal(
-              index: i < 12 ? i : 0,
-              child: CallCard(call: r as Call),
-            ),
+          final first = rows[i - 1] is String;
+          final last = i + 1 >= rows.length || rows[i + 1] is String;
+          return Reveal(
+            index: i < 12 ? i : 0,
+            child: CallCard(call: r as Call, first: first, last: last),
           );
         },
       ),
@@ -282,102 +272,138 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
   }
 }
 
+/// One slim row inside a day's grouped card.
 class CallCard extends StatelessWidget {
-  const CallCard({super.key, required this.call});
+  const CallCard({
+    super.key,
+    required this.call,
+    this.first = true,
+    this.last = true,
+  });
   final Call call;
+
+  /// Position inside the grouped card (controls corners and divider).
+  final bool first;
+  final bool last;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final c = call;
     final connected = c.status.isConnected;
+    const r = Radius.circular(AppRadius.card);
+    final radius = BorderRadius.vertical(
+      top: first ? r : Radius.zero,
+      bottom: last ? r : Radius.zero,
+    );
+    final meta = connected
+        ? 'Connected · ${_shortDuration(c.duration)}'
+        : c.status.label;
     return RepaintBoundary(
-      child: AppCard(
-        padding: const EdgeInsets.all(16),
-        onTap: () => context.push(
-          connected ? '/calls/${c.id}/result' : '/calls/${c.id}',
-        ),
-        semanticLabel:
-            '${Fmt.time(c.startedAt)}, ${c.leadName}, ${c.status.label}',
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 62,
-              child: Text(
-                Fmt.time(c.startedAt),
-                style: t.labelMedium?.copyWith(color: AppColors.inkFaint),
-              ),
+      child: Semantics(
+        button: true,
+        label: '${Fmt.time(c.startedAt)}, ${c.leadName}, ${c.status.label}',
+        child: Material(
+          color: AppColors.surface,
+          borderRadius: radius,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => context.push(
+              connected ? '/calls/${c.id}/result' : '/calls/${c.id}',
             ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          c.leadName,
-                          style: t.titleSmall,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (c.leadScore != null) ScoreBadge(score: c.leadScore),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(
+            child: Column(
+              children: [
+                if (!first) const Divider(height: 1, thickness: 1, indent: 70),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  child: ExcludeSemantics(
+                    child: Row(
+                      children: [
                         connected
-                            ? Icons.check_circle_rounded
-                            : Icons.phone_missed_rounded,
-                        size: 16,
-                        color: connected
-                            ? AppColors.success
-                            : AppColors.inkFaint,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        connected
-                            ? 'Connected · ${Fmt.duration(c.duration)}'
-                            : c.status.label,
-                        style: t.labelMedium?.copyWith(
-                          color: connected
-                              ? AppColors.success
-                              : AppColors.inkFaint,
+                            ? LeadAvatar(
+                                name: c.leadName,
+                                temperature:
+                                    c.leadScore?.temperature ??
+                                    LeadTemperature.unknown,
+                                size: 40,
+                              )
+                            : Container(
+                                width: 40,
+                                height: 40,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.surfaceMuted,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.phone_missed_outlined,
+                                  size: 19,
+                                  color: AppColors.inkFaint,
+                                ),
+                              ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      c.leadName,
+                                      style: t.titleSmall,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    Fmt.time(c.startedAt),
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    style: t.bodySmall?.copyWith(
+                                      color: AppColors.inkFaint,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      meta,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: t.bodySmall?.copyWith(
+                                        color: AppColors.inkSoft,
+                                      ),
+                                    ),
+                                  ),
+                                  if (c.leadScore != null) ...[
+                                    const SizedBox(width: 8),
+                                    ScoreBadge(score: c.leadScore),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  if (c.nextAction != NextAction.none) ...[
-                    const SizedBox(height: 6),
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Next: ',
-                            style: t.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          TextSpan(
-                            text: c.nextAction.label,
-                            style: t.bodySmall?.copyWith(
-                              color: AppColors.brand,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
-                  ],
-                ],
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// "01:37" → "1:37".
+String _shortDuration(Duration d) {
+  final s = Fmt.duration(d);
+  return s.startsWith('0') && s.length > 4 ? s.substring(1) : s;
 }

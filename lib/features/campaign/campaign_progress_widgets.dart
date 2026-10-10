@@ -8,7 +8,7 @@ import '../../core/widgets/lead_widgets.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 
-/// Single metric tile on the campaign progress screen.
+/// Big number + label, one of a row of metrics on the progress screen.
 class CampaignStatTile extends StatelessWidget {
   const CampaignStatTile(this.label, this.value, this.color, {super.key});
   final String label;
@@ -17,9 +17,8 @@ class CampaignStatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return AppCard(
-      semanticLabel: '$value $label',
-      padding: const EdgeInsets.all(12),
+    return Semantics(
+      label: '$value $label',
       child: ExcludeSemantics(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -30,14 +29,18 @@ class CampaignStatTile extends StatelessWidget {
               child: Text(
                 '$value',
                 key: ValueKey(value),
-                style: t.headlineMedium?.copyWith(color: color),
+                style: t.headlineMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
             const SizedBox(height: 2),
             Text(
               label,
-              style: t.bodySmall?.copyWith(fontWeight: FontWeight.w700),
-              textAlign: TextAlign.center,
+              style: t.bodySmall,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -56,19 +59,23 @@ class CampaignRecentCallTile extends ConsumerWidget {
     if (call == null) {
       return const SizedBox(
         height: 70,
-        child: Center(child: Skeleton(height: 50)),
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Skeleton(height: 44),
+          ),
+        ),
       );
     }
     final t = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AppCard(
-        padding: const EdgeInsets.all(14),
-        onTap: () => context.push(
-          call.status.isConnected
-              ? '/calls/${call.id}/result'
-              : '/calls/${call.id}',
-        ),
+    return InkWell(
+      onTap: () => context.push(
+        call.status.isConnected
+            ? '/calls/${call.id}/result'
+            : '/calls/${call.id}',
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
             LeadAvatar(
@@ -82,21 +89,26 @@ class CampaignRecentCallTile extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(call.leadName, style: t.titleSmall),
                   Text(
-                    call.status.isConnected
-                        ? call.outcome ?? 'Connected'
-                        : call.status.label,
-                    style: t.bodySmall,
+                    call.leadName,
+                    style: t.titleSmall,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (call.status.isConnected)
+                    Text(
+                      call.outcome ?? 'Connected',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             if (call.leadScore != null)
               ScoreBadge(score: call.leadScore)
             else
-              const Pill(label: 'No answer'),
+              Pill(label: call.status.label, dense: true),
           ],
         ),
       ),

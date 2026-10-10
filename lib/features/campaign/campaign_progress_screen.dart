@@ -60,9 +60,7 @@ class CampaignProgressScreen extends ConsumerWidget {
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: const Text('Pause calling?'),
-                    content: Text(
-                      '$agentName will stop after the current call. Remaining leads stay in your list.',
-                    ),
+                    content: Text('$agentName stops after the current call.'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(ctx, false),
@@ -93,29 +91,28 @@ class CampaignProgressScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 32),
         children: [
           AppCard(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
             child: Column(
               children: [
                 Mascot(
                   state: done
                       ? MascotState.success
                       : (running ? MascotState.calling : MascotState.welcome),
-                  size: 150,
+                  size: 110,
                 ),
                 const SizedBox(height: 10),
                 Text(
                   done
-                      ? '$agentName finished calling ✓'
+                      ? '$agentName finished calling'
                       : (running
-                            ? '$agentName is doing the work for you'
+                            ? '$agentName is calling'
                             : 'Campaign stopped'),
                   style: t.titleLarge,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  running
-                      ? 'You\'ll get a notification for every hot lead.'
-                      : '${s.completed} of ${s.total} leads called',
+                  '${s.completed} of ${s.total} leads called',
                   style: t.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
@@ -128,17 +125,17 @@ class CampaignProgressScreen extends ConsumerWidget {
                     children: [
                       LinearProgressIndicator(
                         value: v,
-                        minHeight: 12,
+                        minHeight: 8,
                         borderRadius: BorderRadius.circular(9),
-                        backgroundColor: AppColors.brandSoft,
-                        color: done ? AppColors.success : AppColors.brand,
+                        backgroundColor: AppColors.surfaceMuted,
+                        color: done ? AppColors.success : AppColors.ink,
                       ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
                           Text('${(v * 100).round()}%', style: t.titleSmall),
                           const Spacer(),
-                          Text('${s.remaining} remaining', style: t.bodySmall),
+                          Text('${s.remaining} left', style: t.bodySmall),
                         ],
                       ),
                     ],
@@ -147,38 +144,54 @@ class CampaignProgressScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SectionLabel('Status'),
-          GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 1.05,
-            children: [
-              CampaignStatTile('Queued', s.queued, AppColors.inkSoft),
-              CampaignStatTile('Completed', s.completed, AppColors.ink),
-              CampaignStatTile('Connected', s.connected, AppColors.success),
-              CampaignStatTile(
-                'Interested',
-                s.interested,
-                const Color(0xFFB45309),
+          const SizedBox(height: 12),
+          AppCard(
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: CampaignStatTile(
+                      'Connected',
+                      s.connected,
+                      AppColors.ink,
+                    ),
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(
+                    child: CampaignStatTile(
+                      'Interested',
+                      s.interested,
+                      AppColors.ink,
+                    ),
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(
+                    child: CampaignStatTile('Hot', s.hot, AppColors.hot),
+                  ),
+                ],
               ),
-              CampaignStatTile('🔥 Hot', s.hot, AppColors.hot),
-              CampaignStatTile('Remaining', s.remaining, AppColors.brand),
-            ],
+            ),
           ),
           if (c.recentCallIds.isNotEmpty) ...[
             const SectionLabel('Latest results'),
-            for (final id in c.recentCallIds)
-              CampaignRecentCallTile(callId: id),
+            AppCard(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                children: [
+                  for (var i = 0; i < c.recentCallIds.length; i++) ...[
+                    if (i > 0) const Divider(height: 1, indent: 68),
+                    CampaignRecentCallTile(callId: c.recentCallIds[i]),
+                  ],
+                ],
+              ),
+            ),
           ],
           if (!running) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             PrimaryButton(
               label: 'Review follow-ups',
-              icon: Icons.chat_rounded,
-              color: AppColors.whatsapp,
+              icon: Icons.chat_outlined,
               onPressed: () => context.go('/followups'),
             ),
             const SizedBox(height: 10),

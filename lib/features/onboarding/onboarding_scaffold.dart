@@ -142,7 +142,16 @@ class FieldLabel extends StatelessWidget {
       children: [
         Text(text, style: Theme.of(context).textTheme.titleSmall),
         if (optional)
-          Text('  Optional', style: Theme.of(context).textTheme.bodySmall),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Text(
+              'Optional',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontSize: 12,
+                color: AppColors.inkFaint,
+              ),
+            ),
+          ),
       ],
     ),
   );

@@ -53,7 +53,7 @@ class VoiceTestComposer extends StatelessWidget {
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => onSend(),
                 decoration: InputDecoration(
-                  hintText: 'Talk or ask $employeeName anything…',
+                  hintText: 'Message $employeeName',
                   filled: true,
                   fillColor: Colors.white,
                   contentPadding: const EdgeInsets.symmetric(

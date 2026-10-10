@@ -46,9 +46,13 @@ class _TranscriptViewState extends State<TranscriptView> {
             at: l.offset,
           ),
         if (shown.length < lines.length)
-          TextButton(
-            onPressed: () => setState(() => _expanded = true),
-            child: Text('Show full transcript (${lines.length} lines)'),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: TextButton(
+              style: TextButton.styleFrom(foregroundColor: AppColors.ink),
+              onPressed: () => setState(() => _expanded = true),
+              child: Text('Show full transcript (${lines.length} lines)'),
+            ),
           ),
       ],
     );
@@ -75,7 +79,7 @@ class TranscriptBubble extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final bubble = Flexible(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
           color: isAgent ? AppColors.brandSoft : AppColors.surfaceMuted,
           borderRadius: BorderRadius.only(
@@ -94,22 +98,26 @@ class TranscriptBubble extends StatelessWidget {
                 Text(
                   who,
                   style: t.labelMedium?.copyWith(
-                    color: isAgent ? AppColors.brand : AppColors.inkSoft,
-                    fontSize: 12,
+                    color: AppColors.inkSoft,
+                    fontSize: 11.5,
                   ),
                 ),
                 if (at != null)
                   Text(
                     '  ${Fmt.duration(at!)}',
-                    style: t.bodySmall?.copyWith(fontSize: 11),
+                    style: t.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: AppColors.inkFaint,
+                    ),
                   ),
               ],
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 2),
             Text(
               text,
               style: t.bodyMedium?.copyWith(
                 color: AppColors.ink,
+                height: 1.4,
                 fontStyle: pending ? FontStyle.italic : null,
               ),
             ),
@@ -121,7 +129,7 @@ class TranscriptBubble extends StatelessWidget {
       label: '$who said: $text',
       child: ExcludeSemantics(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
             mainAxisAlignment: isAgent
                 ? MainAxisAlignment.start
@@ -129,7 +137,7 @@ class TranscriptBubble extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: isAgent
                 ? [
-                    const MascotAvatar(size: 30),
+                    const MascotAvatar(size: 26),
                     const SizedBox(width: 8),
                     bubble,
                     const SizedBox(width: 40),

@@ -64,49 +64,63 @@ class TeachAiOnboardingScreen extends ConsumerWidget {
 
     return OnboardingScaffold(
       step: 5,
-      title: 'Teach Your AI',
-      subtitle:
-          'The more your AI employee knows, the better it answers. You can always add more later.',
-      cta: PrimaryButton(
-        label: d.knowledge.isEmpty ? 'Skip for now' : 'Continue',
-        onPressed: () => context.push('/onboarding/create'),
-      ),
+      title: 'Teach your AI',
+      cta: d.knowledge.isEmpty
+          ? SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: TextButton(
+                onPressed: () => context.push('/onboarding/create'),
+                child: const Text('Skip for now'),
+              ),
+            )
+          : PrimaryButton(
+              label: 'Continue',
+              onPressed: () => context.push('/onboarding/create'),
+            ),
       children: [
-        _TeachOption(
-          emoji: '📄',
-          title: 'Upload brochure PDF',
-          subtitle: 'Services, pricing, brochure',
-          onTap: () => add(KnowledgeType.pdf),
+        AppCard(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            children: [
+              _TeachOption(
+                emoji: '📄',
+                title: 'Upload brochure PDF',
+                onTap: () => add(KnowledgeType.pdf),
+              ),
+              _TeachOption(
+                emoji: '🌐',
+                title: 'Add website',
+                onTap: () => add(KnowledgeType.website),
+              ),
+              _TeachOption(
+                emoji: '❓',
+                title: 'Add FAQ',
+                onTap: () => add(KnowledgeType.faq),
+              ),
+              _TeachOption(
+                emoji: '📍',
+                title: 'Add business information',
+                onTap: () => add(KnowledgeType.businessInfo),
+              ),
+              _TeachOption(
+                emoji: '📝',
+                title: 'Paste text',
+                last: true,
+                onTap: () => add(KnowledgeType.text),
+              ),
+            ],
+          ),
         ),
-        _TeachOption(
-          emoji: '🌐',
-          title: 'Add website',
-          subtitle: 'We\'ll read your public pages',
-          onTap: () => add(KnowledgeType.website),
-        ),
-        _TeachOption(
-          emoji: '❓',
-          title: 'Add FAQ',
-          subtitle: 'Common questions customers ask',
-          onTap: () => add(KnowledgeType.faq),
-        ),
-        _TeachOption(
-          emoji: '📍',
-          title: 'Add business information',
-          subtitle: 'Opening hours, location, policies',
-          onTap: () => add(KnowledgeType.businessInfo),
-        ),
-        _TeachOption(
-          emoji: '📝',
-          title: 'Paste text',
-          subtitle: 'Services, pricing, offers – anything else',
-          onTap: () => add(KnowledgeType.text),
-        ),
+        const SizedBox(height: 12),
         _TeachOption(
           emoji: '📥',
           title: 'Import CSV leads later',
-          subtitle: 'You can add leads from the Leads tab',
-          trailing: const Pill(label: 'Later'),
+          last: true,
+          trailing: Text(
+            'Later',
+            style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
+          ),
           onTap: () => ScaffoldMessenger.of(context)
             ..clearSnackBars()
             ..showSnackBar(
@@ -119,39 +133,51 @@ class TeachAiOnboardingScreen extends ConsumerWidget {
         ),
         if (d.knowledge.isNotEmpty) ...[
           const SectionLabel('Added'),
-          for (final k in d.knowledge)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: AppCard(
-                shadow: false,
-                border: Border.all(color: AppColors.border),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.check_circle_rounded,
-                      color: AppColors.success,
+          AppCard(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              children: [
+                for (final (i, k) in d.knowledge.indexed)
+                  Container(
+                    padding: const EdgeInsets.only(left: 16, right: 4),
+                    decoration: BoxDecoration(
+                      border: i == d.knowledge.length - 1
+                          ? null
+                          : const Border(
+                              bottom: BorderSide(color: AppColors.hairline),
+                            ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        k.title,
-                        style: t.titleSmall,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          size: 20,
+                          color: AppColors.success,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            k.title,
+                            style: t.titleSmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Remove',
+                          onPressed: () => n.removeKnowledge(k),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            size: 20,
+                            color: AppColors.inkFaint,
+                          ),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      tooltip: 'Remove',
-                      onPressed: () => n.removeKnowledge(k),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+              ],
             ),
+          ),
         ],
       ],
     );
@@ -162,40 +188,48 @@ class _TeachOption extends StatelessWidget {
   const _TeachOption({
     required this.emoji,
     required this.title,
-    required this.subtitle,
     required this.onTap,
     this.trailing,
+    this.last = false,
   });
   final String emoji;
   final String title;
-  final String subtitle;
   final VoidCallback onTap;
   final Widget? trailing;
+  final bool last;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: AppCard(
+    return Semantics(
+      button: true,
+      child: InkWell(
         onTap: onTap,
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            IconBubble(color: AppColors.surfaceMuted, child: Emoji(emoji)),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: t.titleSmall),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: t.bodySmall),
-                ],
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 60),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            border: last
+                ? null
+                : const Border(bottom: BorderSide(color: AppColors.hairline)),
+          ),
+          child: Row(
+            children: [
+              IconBubble(
+                size: 38,
+                color: AppColors.surfaceMuted,
+                child: Emoji(emoji, size: 19),
               ),
-            ),
-            trailing ?? const Icon(Icons.add_rounded, color: AppColors.brand),
-          ],
+              const SizedBox(width: 14),
+              Expanded(child: Text(title, style: t.titleSmall)),
+              trailing ??
+                  const Icon(
+                    Icons.add_rounded,
+                    size: 22,
+                    color: AppColors.inkFaint,
+                  ),
+            ],
+          ),
         ),
       ),
     );

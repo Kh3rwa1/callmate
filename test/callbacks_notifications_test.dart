@@ -31,7 +31,7 @@ void main() {
     appTest('lists upcoming callbacks and opens the lead', (h) async {
       await h.push('/callbacks');
       final first = _upcoming(h.backend).first;
-      expect(find.text('UPCOMING'), findsOneWidget);
+      expect(find.text('Upcoming'), findsOneWidget);
       expect(find.text(first.leadName), findsWidgets);
 
       await h.tap(find.text(first.leadName).first);
@@ -41,7 +41,7 @@ void main() {
       h.router.pop();
       await h.settle();
       await h.tester.scrollUntilVisible(
-        find.text('Swipe left to mark as done'),
+        find.text('Swipe left to mark done'),
         300,
         scrollable: find.byType(Scrollable).last,
       );
@@ -63,7 +63,7 @@ void main() {
         findsOneWidget,
       );
       await h.tester.scrollUntilVisible(
-        find.text('DONE'),
+        find.text('Done'),
         300,
         scrollable: find.byType(Scrollable).last,
       );
@@ -86,7 +86,7 @@ void main() {
       final suggested = DateTime.now().add(const Duration(days: 2));
       h.backend.leads[lead.id] = lead.copyWith(callbackAt: suggested);
       await h.push('/leads/${lead.id}');
-      await h.tap(find.widgetWithText(OutlinedButton, 'Callback'));
+      await h.tap(find.byTooltip('Callback'));
       expect(find.text('Suggested by ${h.backend.agent.name}'), findsOneWidget);
       await h.tap(find.widgetWithText(FilledButton, 'Schedule Callback'));
       final cb = _upcoming(h.backend).singleWhere((c) => c.leadId == lead.id);
@@ -96,7 +96,7 @@ void main() {
     appTest('custom date and time can be picked', (h) async {
       final lead = newLead(h.backend);
       await h.push('/leads/${lead.id}');
-      await h.tap(find.widgetWithText(OutlinedButton, 'Callback'));
+      await h.tap(find.byTooltip('Callback'));
       await h.tapText('Pick date & time');
       expect(find.byType(DatePickerDialog), findsOneWidget);
       await h.tap(find.byTooltip('Next month'));
@@ -120,7 +120,7 @@ void main() {
       (h) async {
         final lead = newLead(h.backend);
         await h.push('/leads/${lead.id}');
-        await h.tap(find.widgetWithText(OutlinedButton, 'Callback'));
+        await h.tap(find.byTooltip('Callback'));
         await h.tap(find.widgetWithText(FilledButton, 'Schedule Callback'));
         expect(find.text('Schedule callback'), findsOneWidget);
         expect(
@@ -145,7 +145,7 @@ void main() {
       expect(find.text('Hot lead detected'), findsOneWidget);
       expect(find.text(n1.body), findsOneWidget);
 
-      await h.tapText('Review Follow-up →');
+      await h.tapText('Hot lead detected');
       expect(h.location, n1.route);
       expect(
         h.backend.notifications.firstWhere((n) => n.id == 'n_1').read,
@@ -155,7 +155,7 @@ void main() {
 
     appTest('empty list says all caught up', (h) async {
       await h.push('/notifications');
-      expect(find.text('All caught up 🎉'), findsOneWidget);
+      expect(find.text('All caught up'), findsOneWidget);
     }, backend: () => MockBackend()..notifications.clear());
   });
 
@@ -164,7 +164,7 @@ void main() {
       final n = h.backend.simulateNotification(NotificationType.callback);
       await h.settle(2);
       expect(find.byType(InAppNotificationBanner), findsOneWidget);
-      expect(find.text(n.title), findsOneWidget);
+      expect(find.text(plainNotificationTitle(n.title)), findsOneWidget);
 
       await h.tap(find.widgetWithText(FilledButton, n.actionLabel));
       expect(h.location, n.route);
@@ -183,7 +183,11 @@ void main() {
     appTest('banner can be swiped away', (h) async {
       final n = h.backend.simulateNotification(NotificationType.followUpReady);
       await h.settle(2);
-      await h.tester.fling(find.text(n.title), const Offset(0, -300), 1500);
+      await h.tester.fling(
+        find.text(plainNotificationTitle(n.title)),
+        const Offset(0, -300),
+        1500,
+      );
       await h.settle();
       expect(find.byType(InAppNotificationBanner), findsNothing);
       expect(h.location, '/home');
