@@ -14,6 +14,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../data/templates/templates.dart';
 import '../../l10n/l10n.dart';
+import '../../services/voice/voice_persona.dart';
 
 /// Human-friendly agent settings. No prompts, no model knobs.
 class EditAgentScreen extends ConsumerStatefulWidget {
@@ -28,12 +29,6 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
   final _role = TextEditingController();
   final _goal = TextEditingController();
   final _transfer = TextEditingController();
-  static const _voices = [
-    'Warm · Female',
-    'Calm · Female',
-    'Friendly · Male',
-    'Confident · Male',
-  ];
   bool _saving = false;
   String? _nameError;
   static const _allLanguages = [
@@ -216,19 +211,28 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          for (final v in _voices)
+                          // Only what you can actually hear: a woman's or a
+                          // man's voice. "Warm" vs "Calm" sounded the same.
+                          for (final (male, label) in [
+                            (false, s.obVoiceFemale),
+                            (true, s.obVoiceMale),
+                          ])
                             ChoiceChip(
-                              label: Text(s.data(v)),
-                              selected: a.voice == v,
+                              label: Text(label),
+                              selected: isMaleVoice(a.voice) == male,
                               labelStyle: TextStyle(
                                 fontWeight: FontWeight.w700,
-                                color: a.voice == v
+                                color: isMaleVoice(a.voice) == male
                                     ? AppColors.onInverse
                                     : AppColors.inkSoft,
                               ),
                               onSelected: (_) {
                                 Haptics.tap();
-                                setState(() => _a = a.copyWith(voice: v));
+                                setState(
+                                  () => _a = a.copyWith(
+                                    voice: male ? maleVoice : femaleVoice,
+                                  ),
+                                );
                               },
                             ),
                         ],

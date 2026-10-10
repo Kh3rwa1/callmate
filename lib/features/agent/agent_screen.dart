@@ -17,6 +17,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../data/templates/templates.dart';
 import '../../l10n/l10n.dart';
+import '../../services/voice/voice_persona.dart';
 
 /// AI Employee – "What can my AI employee do?" plus the app's settings.
 class AgentScreen extends ConsumerWidget {
@@ -160,7 +161,10 @@ class _Body extends ConsumerWidget {
           CardGroup(
             children: [
               _InfoRow(label: s.languagesLabel, value: s.dataList(a.languages)),
-              _InfoRow(label: s.voice, value: s.data(a.voice)),
+              _InfoRow(
+                label: s.voice,
+                value: isMaleVoice(a.voice) ? s.obVoiceMale : s.obVoiceFemale,
+              ),
               _InfoRow(label: s.personality, value: s.data(a.personalityLabel)),
               _InfoRow(label: s.goal, value: s.data(a.goal), stacked: true),
             ],
