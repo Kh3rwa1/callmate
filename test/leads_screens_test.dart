@@ -51,8 +51,8 @@ void main() {
     }, location: '/leads');
 
     appTest('filter chips narrow the list', (h) async {
-      await h.tapText('Hot');
-      expect(_chipSelected('Hot'), isTrue);
+      await h.tapText('Wants to buy');
+      expect(_chipSelected('Wants to buy'), isTrue);
       final hot = _visibleLeads(h.tester);
       expect(hot, isNotEmpty);
       expect(hot.every((l) => l.isHot), isTrue);
@@ -72,7 +72,7 @@ void main() {
     }, location: '/leads');
 
     appTest('initial filter comes from the query string', (h) async {
-      expect(_chipSelected('Warm'), isTrue);
+      expect(_chipSelected('Thinking'), isTrue);
       final warm = _visibleLeads(h.tester);
       expect(warm, isNotEmpty);
       expect(warm.every((l) => l.isWarm), isTrue);

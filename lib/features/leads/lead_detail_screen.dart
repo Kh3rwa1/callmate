@@ -93,7 +93,7 @@ class _Body extends ConsumerWidget {
                   const SizedBox(height: 8),
                   PopIn(
                     delay: const Duration(milliseconds: 180),
-                    child: ScoreBadge(score: l.score),
+                    child: ScoreBadge(score: l.score, showNumber: true),
                   ),
                 ],
               ),

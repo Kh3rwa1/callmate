@@ -17,8 +17,8 @@ extension SLeads on S {
   String get filterAll => pick('All', 'सभी', 'সব');
   String get filterNew => pick('New', 'नई', 'নতুন');
   String get filterCalled => pick('Called', 'कॉल हुई', 'কল হয়েছে');
-  String get filterHot => pick('Hot', 'हॉट', 'হট');
-  String get filterWarm => pick('Warm', 'वॉर्म', 'ওয়ার্ম');
+  String get filterHot => pick('Wants to buy', 'खरीदना चाहते हैं', 'কিনতে চান');
+  String get filterWarm => pick('Thinking', 'सोच रहे हैं', 'ভাবছেন');
   String get filterCallback => pick('Call back', 'कॉल बैक', 'কল ব্যাক');
   String get noMatches =>
       pick('No matches', 'कुछ नहीं मिला', 'কিছু পাওয়া যায়নি');

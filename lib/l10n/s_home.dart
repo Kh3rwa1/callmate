@@ -34,7 +34,7 @@ extension SHome on S {
   String get statCalls => pick('Calls', 'कॉल', 'কল');
   String get statConnected => pick('Connected', 'बात हुई', 'কথা হয়েছে');
   String get statInterested => pick('Interested', 'रुचि है', 'আগ্রহী');
-  String get statHot => pick('Hot', 'हॉट', 'হট');
+  String get statHot => pick('Ready to buy', 'खरीदने को तैयार', 'কিনতে তৈরি');
   String get needsAttention =>
       pick('Needs your attention', 'आपका ध्यान चाहिए', 'আপনার নজর দরকার');
   String get hotLeadsLabel =>

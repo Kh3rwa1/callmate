@@ -9,6 +9,21 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/brand_widgets.dart';
 import '../../l10n/l10n.dart';
 
+/// Where the app goes once launch (and the first-launch language pick) is
+/// done: sign in, set up the employee, or straight home.
+Future<void> goAfterLaunch(BuildContext context, WidgetRef ref) async {
+  final isMock = ref.read(useMockProvider);
+  final hasSession = await ref.read(authRepoProvider).hasSession();
+  if (!context.mounted) return;
+  if (!isMock && !hasSession) {
+    context.go('/login');
+  } else {
+    context.go(
+      ref.read(localPrefsProvider).onboarded ? '/home' : '/onboarding',
+    );
+  }
+}
+
 /// Branded launch screen: "CallPilot · Your AI Calling Employee".
 /// Continues the native splash (same background + mark): the mark pops,
 /// the name rises in, then the tagline.
@@ -24,16 +39,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     super.initState();
     Future<void>.delayed(const Duration(milliseconds: 1300), () async {
       if (!mounted) return;
-      final isMock = ref.read(useMockProvider);
-      final hasSession = await ref.read(authRepoProvider).hasSession();
-      if (!mounted) return;
-      if (!isMock && !hasSession) {
-        context.go('/login');
-      } else {
-        context.go(
-          ref.read(localPrefsProvider).onboarded ? '/home' : '/onboarding',
-        );
+      final prefs = ref.read(localPrefsProvider);
+      // First launch: the language comes before any English word.
+      if (prefs.language == null && !prefs.onboarded) {
+        context.go('/language');
+        return;
       }
+      await goAfterLaunch(context, ref);
     });
   }
 

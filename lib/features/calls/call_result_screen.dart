@@ -205,9 +205,7 @@ class _Result extends ConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    s.tempLead(
-                                      s.temperature(score.temperature),
-                                    ),
+                                    s.temperature(score.temperature),
                                     style: t.headlineSmall,
                                   ),
                                   const SizedBox(height: 4),

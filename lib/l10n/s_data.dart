@@ -9,7 +9,7 @@ import 's.dart';
 /// typed themselves – is shown as entered.
 extension SData on S {
   String data(String en) {
-    if (isEn) return en;
+    if (isEn) return _plainEn[en.trim()] ?? en;
     final t = _data[en.trim()];
     if (t == null) return en;
     return lang == AppLang.hi ? t.$1 : t.$2;
@@ -18,6 +18,15 @@ extension SData on S {
   /// [data] for each item, joined with " · ".
   String dataList(Iterable<String> items) => items.map(data).join(' · ');
 }
+
+/// Backend words an owner wouldn't use, shown in plain English instead.
+/// The stored value stays the same; only the label changes.
+const _plainEn = <String, String>{
+  'Lead Qualification': 'Finds serious buyers',
+  'Follow-up': 'Sends WhatsApp messages',
+  'Callback Scheduling': 'Books call backs',
+  'Hot Lead Alerts': 'Tells you who wants to buy',
+};
 
 const _data = <String, (String, String)>{
   // Roles
@@ -61,11 +70,11 @@ const _data = <String, (String, String)>{
 
   // Capabilities
   'Calling': ('कॉलिंग', 'কল করা'),
-  'Lead Qualification': ('लीड की जाँच', 'লিড যাচাই'),
-  'Follow-up': ('फ़ॉलो-अप', 'ফলো-আপ'),
+  'Lead Qualification': ('पक्के खरीदार ढूँढता है', 'আসল ক্রেতা খোঁজে'),
+  'Follow-up': ('WhatsApp मैसेज भेजता है', 'WhatsApp মেসেজ পাঠায়'),
   'Customer Questions': ('ग्राहकों के सवाल', 'গ্রাহকের প্রশ্ন'),
-  'Callback Scheduling': ('कॉलबैक तय करना', 'কলব্যাক ঠিক করা'),
-  'Hot Lead Alerts': ('हॉट लीड अलर्ट', 'হট লিড অ্যালার্ট'),
+  'Callback Scheduling': ('कॉल बैक तय करता है', 'কল ব্যাক ঠিক করে'),
+  'Hot Lead Alerts': ('बताता है कौन खरीदना चाहता है', 'জানায় কে কিনতে চান'),
   'Admissions guidance': ('एडमिशन सलाह', 'ভর্তির পরামর্শ'),
   'Admissions Guidance': ('एडमिशन सलाह', 'ভর্তির পরামর্শ'),
   'Appointment Booking': ('अपॉइंटमेंट बुकिंग', 'অ্যাপয়েন্টমেন্ট বুকিং'),

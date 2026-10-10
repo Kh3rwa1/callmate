@@ -139,11 +139,20 @@ extension SCommon on S {
     ),
   };
 
-  /// "Hot" / "Warm" / "Cold" / "New".
+  /// What the customer wants, in the owner's words: never "hot/warm/cold"
+  /// or a score.
   String temperature(LeadTemperature v) => switch (v) {
-    LeadTemperature.hot => pick('Hot', 'हॉट', 'হট'),
-    LeadTemperature.warm => pick('Warm', 'वॉर्म', 'ওয়ার্ম'),
-    LeadTemperature.cold => pick('Cold', 'कोल्ड', 'কোল্ড'),
+    LeadTemperature.hot => pick(
+      'Wants to buy',
+      'खरीदना चाहते हैं',
+      'কিনতে চান',
+    ),
+    LeadTemperature.warm => pick('Thinking about it', 'सोच रहे हैं', 'ভাবছেন'),
+    LeadTemperature.cold => pick(
+      'Not interested now',
+      'अभी रुचि नहीं',
+      'এখন আগ্রহ নেই',
+    ),
     LeadTemperature.unknown => pick('New', 'नया', 'নতুন'),
   };
 

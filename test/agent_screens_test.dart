@@ -7,6 +7,7 @@ import 'package:callpilot/features/knowledge/teach_ai_screen.dart';
 import 'package:callpilot/features/usage/usage_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:callpilot/services/voice/voice_persona.dart';
 
 import 'helpers/app_harness.dart';
 
@@ -147,13 +148,13 @@ void main() {
       ].firstWhere((l) => !before.languages.contains(l));
       await _tapListItem(h, find.text(lang));
 
-      final voice = [
-        'Warm · Female',
-        'Calm · Female',
-        'Friendly · Male',
-        'Confident · Male',
-      ].firstWhere((v) => v != before.voice);
-      await _tapListItem(h, find.text(voice));
+      // Two voices only: switch to the other gender.
+      final toMale = !isMaleVoice(before.voice);
+      final voice = toMale ? maleVoice : femaleVoice;
+      await _tapListItem(
+        h,
+        find.text(toMale ? "Man's voice" : "Woman's voice"),
+      );
 
       final slider = find.byType(Slider);
       await _scrollTo(h, slider);
