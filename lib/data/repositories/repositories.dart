@@ -74,8 +74,12 @@ abstract class LeadSourceRepository {
   Future<List<LeadSource>> list();
 
   /// A form is one per business: returns the existing one if there is one.
-  /// A new webhook carries its [LeadSource.token] (shown once).
-  Future<LeadSource> create(LeadSourceKind kind);
+  /// Anything else carries its [LeadSource.token] (shown once). Integrations
+  /// send their [secrets] (IndiaMART CRM key, Meta app secret + page token).
+  Future<LeadSource> create(
+    LeadSourceKind kind, {
+    LeadSourceSecrets secrets = const LeadSourceSecrets(),
+  });
   Future<LeadSource> setAutoCall(String id, {required bool autoCall});
   Future<void> revoke(String id);
 }

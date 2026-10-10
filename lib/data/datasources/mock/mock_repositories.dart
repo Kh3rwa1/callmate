@@ -177,8 +177,32 @@ class MockLeadSourceRepository implements LeadSourceRepository {
   Future<List<LeadSource>> list() => _lag(() => List.of(b.leadSources), 200);
 
   @override
-  Future<LeadSource> create(LeadSourceKind kind) =>
-      _lag(() => b.createLeadSource(kind));
+  Future<LeadSource> create(
+    LeadSourceKind kind, {
+    LeadSourceSecrets secrets = const LeadSourceSecrets(),
+  }) => _lag(() {
+    // Same checks as the backend's createLeadSourceSchema.
+    if (kind == LeadSourceKind.indiaMart &&
+        (secrets.crmKey?.trim().length ?? 0) < 8) {
+      throw const ApiException(
+        'Paste the full IndiaMART CRM key',
+        statusCode: 400,
+        code: 'validation_error',
+      );
+    }
+    if (kind == LeadSourceKind.meta &&
+        (!RegExp(
+              r'^[A-Za-z0-9]{16,128}$',
+            ).hasMatch(secrets.appSecret?.trim() ?? '') ||
+            (secrets.pageAccessToken?.trim().length ?? 0) < 20)) {
+      throw const ApiException(
+        'Paste the App Secret and the page access token from Meta',
+        statusCode: 400,
+        code: 'validation_error',
+      );
+    }
+    return b.createLeadSource(kind, secrets: secrets);
+  });
 
   @override
   Future<LeadSource> setAutoCall(String id, {required bool autoCall}) =>

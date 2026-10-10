@@ -1,15 +1,19 @@
 /**
- * Owner APIs for speed-to-lead capture sources (hosted enquiry form, webhook). Scoped to the
- * caller's business. A webhook's bearer token is returned once, on creation; only its hash is kept.
+ * Owner APIs for speed-to-lead capture sources (hosted enquiry form, webhook, and the Google Ads /
+ * IndiaMART / Meta Lead Ads integrations). Scoped to the caller's business. Secrets are returned
+ * once, on creation: only their hash (or, for secrets the server must use, an encrypted copy) is kept.
  */
 import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { parseJsonBody, createLeadSourceSchema, patchLeadSourceSchema } from '../schemas/validation';
 import { formatLeadSource, newWebhookToken, randomToken, sha256Hex, SLUG_LENGTH } from '../services/lead_capture';
+import {
+  encryptConfig, IntegrationNotConfiguredError, newGoogleAdsKey, newIndiaMartPushToken, newMetaVerifyToken,
+} from '../services/lead_integrations';
 
 const leadSourcesApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
-/** Active webhooks a business may hold at once (a form is one per business). */
+/** Active sources of each non-form kind a business may hold at once (a form is one per business). */
 export const MAX_ACTIVE_WEBHOOKS = 5;
 
 const SELECT_SOURCE = `SELECT s.*, (SELECT COUNT(*) FROM leads l WHERE l.lead_source_id = s.id AND l.business_id = s.business_id) AS leads_count
@@ -34,15 +38,21 @@ leadSourcesApp.get('/lead-sources', async (c) => {
   return c.json({ items: (results ?? []).map((r) => formatLeadSource(r, base)) });
 });
 
-// POST /lead-sources {kind, auto_call?}
+// POST /lead-sources {kind, auto_call?, ...integration secrets}
 // form: idempotent, returns the business's active form if it has one (200) or a new one (201).
-// webhook: always new (201), with `token` (shown once).
+// Everything else is always new (201) and carries `token`, shown once (only its SHA-256 is kept):
+//   webhook     bearer token
+//   google_ads  the key to paste into the Google Ads lead form (also sent as `google_key`)
+//   indiamart   push-listener token; `push_url` is the full URL to paste into IndiaMART's Push API
+//   meta        the verify token for the Meta app's webhook settings (also sent as `verify_token`)
+// IndiaMART's CRM key and Meta's app secret / page token are stored encrypted and never returned.
 leadSourcesApp.post('/lead-sources', async (c) => {
   const user = c.get('user');
   const parsed = await parseJsonBody(c, createLeadSourceSchema);
   if (!parsed.success) return parsed.response;
-  const { kind } = parsed.data;
-  const autoCall = parsed.data.auto_call === false ? 0 : 1;
+  const body = parsed.data;
+  const { kind } = body;
+  const autoCall = body.auto_call === false ? 0 : 1;
   const base = baseUrl(c);
 
   if (kind === 'form') {
@@ -52,27 +62,54 @@ leadSourcesApp.post('/lead-sources', async (c) => {
     if (existing) return c.json(formatLeadSource(existing, base), 200);
   } else {
     const count = await c.env.DB.prepare(
-      `SELECT COUNT(*) AS cnt FROM lead_sources WHERE business_id = ? AND kind = 'webhook' AND revoked_at IS NULL`
-    ).bind(user.business_id).first<{ cnt: number }>();
+      `SELECT COUNT(*) AS cnt FROM lead_sources WHERE business_id = ? AND kind = ? AND revoked_at IS NULL`
+    ).bind(user.business_id, kind).first<{ cnt: number }>();
     if ((count?.cnt ?? 0) >= MAX_ACTIVE_WEBHOOKS) {
       return c.json({
-        message: `You can have at most ${MAX_ACTIVE_WEBHOOKS} webhooks. Revoke one first.`,
+        message: `You can have at most ${MAX_ACTIVE_WEBHOOKS} connections of this kind. Turn one off first.`,
         code: 'too_many_sources',
       }, 409);
     }
   }
 
+  let token: string | null = null;
+  let config: string | null = null;
+  try {
+    switch (body.kind) {
+      case 'webhook': token = newWebhookToken(); break;
+      case 'google_ads': token = newGoogleAdsKey(); break;
+      case 'indiamart':
+        token = newIndiaMartPushToken();
+        config = await encryptConfig(c.env, { crm_key: body.crm_key });
+        break;
+      case 'meta':
+        token = newMetaVerifyToken();
+        config = await encryptConfig(c.env, { app_secret: body.app_secret, page_access_token: body.page_access_token });
+        break;
+    }
+  } catch (err) {
+    if (err instanceof IntegrationNotConfiguredError) {
+      return c.json({ message: 'Integrations are not configured on the server yet.', code: 'not_configured' }, 503);
+    }
+    throw err;
+  }
+
   const id = `lsrc_${crypto.randomUUID().slice(0, 12)}`;
   const slug = randomToken(SLUG_LENGTH);
-  const token = kind === 'webhook' ? newWebhookToken() : null;
   const secretHash = token ? await sha256Hex(token) : null;
   await c.env.DB.prepare(
-    `INSERT INTO lead_sources (id, business_id, kind, public_slug, secret_hash, auto_call, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
-  ).bind(id, user.business_id, kind, slug, secretHash, autoCall).run();
+    `INSERT INTO lead_sources (id, business_id, kind, public_slug, secret_hash, auto_call, config_encrypted, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+  ).bind(id, user.business_id, kind, slug, secretHash, autoCall, config).run();
 
-  const created = await activeSource(c.env.DB, user.business_id, id);
-  return c.json({ ...formatLeadSource(created, base), ...(token ? { token } : {}) }, 201);
+  const created = formatLeadSource(await activeSource(c.env.DB, user.business_id, id), base);
+  return c.json({
+    ...created,
+    ...(token ? { token } : {}),
+    ...(kind === 'google_ads' ? { google_key: token } : {}),
+    ...(kind === 'indiamart' ? { push_url: `${created.url}?key=${token}` } : {}),
+    ...(kind === 'meta' ? { verify_token: token } : {}),
+  }, 201);
 });
 
 // PATCH /lead-sources/:id {auto_call}

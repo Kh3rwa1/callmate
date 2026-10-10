@@ -296,10 +296,13 @@ class ApiLeadSourceRepository implements LeadSourceRepository {
       api.get('/lead-sources', (d) => _l(d).map(LeadSource.fromJson).toList());
 
   @override
-  Future<LeadSource> create(LeadSourceKind kind) => api.post(
+  Future<LeadSource> create(
+    LeadSourceKind kind, {
+    LeadSourceSecrets secrets = const LeadSourceSecrets(),
+  }) => api.post(
     '/lead-sources',
     (d) => LeadSource.fromJson(_j(d)),
-    data: {'kind': kind.wire},
+    data: {'kind': kind.wire, ...secrets.toJson()},
   );
 
   @override

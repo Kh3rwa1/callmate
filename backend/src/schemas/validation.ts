@@ -207,10 +207,28 @@ export const deviceTokenSchema = z.object({
 // ==========================================
 // Lead capture (speed-to-lead)
 // ==========================================
-export const createLeadSourceSchema = z.object({
-  kind: z.enum(['form', 'webhook']),
-  auto_call: z.boolean().optional(),
-});
+const autoCallField = { auto_call: z.boolean().optional() };
+
+/**
+ * POST /lead-sources. Integrations carry the secrets the server needs later (stored encrypted,
+ * never returned): IndiaMART's CRM (Pull API) key, Meta's app secret and page access token.
+ */
+export const createLeadSourceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('form'), ...autoCallField }),
+  z.object({ kind: z.literal('webhook'), ...autoCallField }),
+  z.object({ kind: z.literal('google_ads'), ...autoCallField }),
+  z.object({
+    kind: z.literal('indiamart'),
+    ...autoCallField,
+    crm_key: z.string().trim().min(8, 'Paste the full IndiaMART CRM key').max(300),
+  }),
+  z.object({
+    kind: z.literal('meta'),
+    ...autoCallField,
+    app_secret: z.string().trim().regex(/^[A-Za-z0-9]{16,128}$/, 'Paste the App Secret from Meta app settings (Basic)'),
+    page_access_token: z.string().trim().min(20, 'Paste the full page access token').max(2048).regex(/^\S+$/, 'The page access token has no spaces'),
+  }),
+]);
 
 export const patchLeadSourceSchema = z.object({
   auto_call: z.boolean(),

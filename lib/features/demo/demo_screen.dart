@@ -110,6 +110,11 @@ class DemoScreen extends ConsumerWidget {
               notif.present(b.notifications.first);
               context.push('/leads/${lead.id}');
             }),
+            row(Icons.storefront_outlined, s.simulateIndiaMartEnquiry, () {
+              final lead = b.simulateIndiaMartEnquiry();
+              notif.present(b.notifications.first);
+              context.push('/leads/${lead.id}');
+            }),
             row(
               Icons.rocket_launch_outlined,
               'Simulate campaign progress',

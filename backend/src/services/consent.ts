@@ -4,14 +4,17 @@
  * which version of the wording the person or owner saw, and a hash of the request IP.
  *
  * Writers today: POST /leads, PATCH /leads/:id, POST /leads/import, campaign start with the
- * owner's attestation, and in-call opt-outs (Sarvam webhook). Lead-capture forms and lead-source
- * webhooks should call recordConsentEvent with source 'form' / 'webhook'.
+ * owner's attestation, and in-call opt-outs (Sarvam webhook). Lead-capture forms, lead-source
+ * webhooks and lead integrations (services/lead_integrations.ts) record 'form' / 'webhook' /
+ * 'google_ads' / 'indiamart' / 'meta_lead_ads' through captureLead.
  */
 import { Env } from '../types';
 import { hmacHex } from './plans';
 import { globalDncSecret } from './global_dnc';
 
-export type ConsentSource = 'form' | 'webhook' | 'import_attestation' | 'manual' | 'in_call_opt_out';
+export type ConsentSource =
+  | 'form' | 'webhook' | 'import_attestation' | 'manual' | 'in_call_opt_out'
+  | 'google_ads' | 'indiamart' | 'meta_lead_ads';
 
 /**
  * Version labels of the wording behind each kind of event. Bump the matching label whenever the
@@ -30,6 +33,12 @@ export const CONSENT_TEXT_VERSIONS = {
   form: 'enquiry-form-2026-10',
   /** Integration posted `consent: true` to the lead webhook. */
   webhook: 'lead-webhook-2026-10',
+  /** Person submitted a Google Ads lead form (asked the advertiser to contact them). */
+  google_ads: 'google-ads-lead-form-2026-10',
+  /** Buyer sent the seller an enquiry / call / buy requirement on IndiaMART. */
+  indiamart: 'indiamart-enquiry-2026-10',
+  /** Person submitted a Meta (Facebook / Instagram) Lead Ads instant form. */
+  meta_lead_ads: 'meta-lead-ads-2026-10',
 } as const;
 
 export interface ConsentEventInput {
