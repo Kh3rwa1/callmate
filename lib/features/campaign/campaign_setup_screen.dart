@@ -6,6 +6,7 @@ import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/calling_hours.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/employee_avatar.dart';
@@ -220,9 +221,9 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
     final t = Theme.of(context).textTheme;
     final leadsAsync = ref.watch(newLeadsProvider);
     final agent = ref.watch(agentProvider).value;
-    _hours ??= RangeValues(
-      (agent?.callingHoursStart ?? 10).toDouble(),
-      (agent?.callingHoursEnd ?? 19).toDouble(),
+    _hours ??= traiCallingHours(
+      agent?.callingHoursStart ?? 10,
+      agent?.callingHoursEnd ?? 19,
     );
 
     return Scaffold(
@@ -324,9 +325,9 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                             ),
                             RangeSlider(
                               values: _hours!,
-                              min: 8,
-                              max: 21,
-                              divisions: 13,
+                              min: kTraiEarliestHour.toDouble(),
+                              max: kTraiLatestHour.toDouble(),
+                              divisions: kTraiLatestHour - kTraiEarliestHour,
                               labels: RangeLabels(
                                 Fmt.hour(_hours!.start.round()),
                                 Fmt.hour(_hours!.end.round()),

@@ -22,6 +22,8 @@ export default defineConfig({
           PUBLIC_API_BASE_URL: '',
           OTP_PEPPER: 'test-otp-pepper-secret-32chars-min-length',
           ENCRYPTION_KEY: 'test-encryption-key-32chars-min-length',
+          // Tests seed 0-24 calling windows so they pass at any time of day; skips only the TRAI clamp.
+          DEV_ALLOW_ANY_CALLING_HOURS: 'true',
         },
       },
     }),

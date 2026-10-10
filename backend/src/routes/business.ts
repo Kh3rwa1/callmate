@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { safeJsonParse } from '../utils/json';
 import { parseJsonBody, patchBusinessSchema, patchAgentSchema } from '../schemas/validation';
+import { clampToTraiWindow } from '../services/compliance';
 
 const businessApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -134,8 +135,17 @@ businessApp.patch('/agent', async (c) => {
   const goal = body.goal !== undefined ? body.goal : existing.goal;
   const formality = body.formality !== undefined ? body.formality : existing.formality;
   const capabilities = body.capabilities !== undefined ? JSON.stringify(body.capabilities) : existing.capabilities;
-  const callingHoursStart = body.calling_hours_start !== undefined ? body.calling_hours_start : existing.calling_hours_start;
-  const callingHoursEnd = body.calling_hours_end !== undefined ? body.calling_hours_end : existing.calling_hours_end;
+  let callingHoursStart = body.calling_hours_start !== undefined ? body.calling_hours_start : existing.calling_hours_start;
+  let callingHoursEnd = body.calling_hours_end !== undefined ? body.calling_hours_end : existing.calling_hours_end;
+  if (body.calling_hours_start !== undefined || body.calling_hours_end !== undefined) {
+    // The other bound may be a legacy value from before the TRAI clamp; bring both into 09-21.
+    const clamped = clampToTraiWindow(callingHoursStart ?? 10, callingHoursEnd ?? 19);
+    if (clamped.start >= clamped.end) {
+      return c.json({ message: 'Calling hours start must be before calling hours end', code: 'validation_error' }, 400);
+    }
+    callingHoursStart = clamped.start;
+    callingHoursEnd = clamped.end;
+  }
   const transferNumber = body.transfer_number !== undefined ? body.transfer_number : existing.transfer_number;
   const voice = body.voice !== undefined ? body.voice : existing.voice;
 

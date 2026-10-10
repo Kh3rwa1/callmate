@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 
 const BASE = 'http://127.0.0.1:8787';
 let childProc = null;
@@ -40,6 +40,9 @@ async function ensureServer() {
       'JWT_SIGNING_KEY=test-jwt-signing-secret-key-32chars-min-length',
       'SARVAM_WEBHOOK_SECRET=dev_webhook_secret_key_12345',
       'SARVAM_API_KEY=sk_test_mock_sarvam_api_key',
+      'OTP_PEPPER=local-e2e-otp-pepper-secret-32chars-min',
+      'ENCRYPTION_KEY=local-e2e-encryption-key-32chars-min',
+      'DEV_ALLOW_ANY_CALLING_HOURS=true',
     ].join('\n'));
   }
 
@@ -54,6 +57,7 @@ async function ensureServer() {
     '--var', 'JWT_SIGNING_KEY:test-jwt-signing-secret-key-32chars-min-length',
     '--var', 'SARVAM_WEBHOOK_SECRET:dev_webhook_secret_key_12345',
     '--var', 'SARVAM_API_KEY:sk_test_mock_sarvam_api_key',
+    '--var', 'DEV_ALLOW_ANY_CALLING_HOURS:true',
   ], {
     stdio: 'ignore',
     detached: true,
@@ -225,14 +229,26 @@ async function run() {
 
   // 9b. Trigger Outbound Lead Call via Sarvam
   console.log('9b. Trigger Lead Call via Sarvam Outbound...');
-  // Calls are blocked outside the agent's calling hours. Open the window all day
-  // so this run does not depend on the time of day it happens to execute.
-  const openHours = await req('/agent', {
+  // TRAI: the API only accepts calling hours inside 09:00-21:00.
+  const tooWide = await req('/agent', {
     method: 'PATCH',
     headers: authHeader,
     body: JSON.stringify({ calling_hours_start: 0, calling_hours_end: 24 }),
   });
-  assert.strictEqual(openHours.status, 200);
+  assert.strictEqual(tooWide.status, 400);
+  const traiHours = await req('/agent', {
+    method: 'PATCH',
+    headers: authHeader,
+    body: JSON.stringify({ calling_hours_start: 9, calling_hours_end: 21 }),
+  });
+  assert.strictEqual(traiHours.status, 200);
+  // So this run does not depend on the time of day, open the stored window all day directly in
+  // the local D1 (the API refuses it) and run the server with DEV_ALLOW_ANY_CALLING_HOURS, which
+  // skips the TRAI clamp in development only.
+  execFileSync('npx', [
+    'wrangler', 'd1', 'execute', 'callpilot-db', '--local',
+    '--command', `UPDATE agents SET calling_hours_start = 0, calling_hours_end = 24 WHERE id = '${traiHours.data.id}'`,
+  ], { stdio: 'ignore' });
   const triggerRes = await req(`/leads/${singleLead.data.id}/call`, {
     method: 'POST',
     headers: authHeader,

@@ -6,6 +6,7 @@ import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/calling_hours.dart';
 import '../../core/utils/format.dart';
 import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
@@ -106,7 +107,17 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
     final t = Theme.of(context).textTheme;
     final async = ref.watch(agentProvider);
     if (_a == null && async.value != null) {
-      _a = async.value;
+      final loaded = async.value!;
+      // Older accounts may hold hours outside the TRAI window; saving them
+      // as-is would be rejected, so start from the clamped window.
+      final hours = traiCallingHours(
+        loaded.callingHoursStart,
+        loaded.callingHoursEnd,
+      );
+      _a = loaded.copyWith(
+        callingHoursStart: hours.start.round(),
+        callingHoursEnd: hours.end.round(),
+      );
       _name.text = _a!.name;
       _role.text = _a!.role;
       _goal.text = _a!.goal;
@@ -273,13 +284,13 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                             '${Fmt.hour(a.callingHoursStart)} – ${Fmt.hour(a.callingHoursEnd)}',
                       ),
                       RangeSlider(
-                        values: RangeValues(
-                          a.callingHoursStart.toDouble(),
-                          a.callingHoursEnd.toDouble(),
+                        values: traiCallingHours(
+                          a.callingHoursStart,
+                          a.callingHoursEnd,
                         ),
-                        min: 8,
-                        max: 21,
-                        divisions: 13,
+                        min: kTraiEarliestHour.toDouble(),
+                        max: kTraiLatestHour.toDouble(),
+                        divisions: kTraiLatestHour - kTraiEarliestHour,
                         onChanged: (v) {
                           if (v.end - v.start < 2) return;
                           setState(

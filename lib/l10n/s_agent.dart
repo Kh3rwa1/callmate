@@ -57,6 +57,23 @@ extension SAgent on S {
     'অ্যাকাউন্ট মোছা হয়নি: $why',
   );
 
+  // ------------------------------------------------------------ Support
+  String get helpSupport =>
+      pick('Help & support', 'मदद और सहायता', 'সাহায্য ও সহায়তা');
+  String get emailSupport =>
+      pick('Email us', 'हमें ईमेल करें', 'আমাদের ইমেল করুন');
+  String get termsOfService =>
+      pick('Terms of Service', 'सेवा की शर्तें', 'পরিষেবার শর্তাবলি');
+  String get deleteAccountHelp => pick(
+    'How account deletion works',
+    'अकाउंट डिलीट करने का तरीका',
+    'অ্যাকাউন্ট মোছার নিয়ম',
+  );
+  String get supportEmailSubject =>
+      pick('CallPilot support', 'CallPilot सहायता', 'CallPilot সহায়তা');
+  String couldNotOpen(String what) =>
+      pick('Could not open $what', '$what नहीं खुल सका', '$what খোলা গেল না');
+
   // ------------------------------------------------------------ Settings
   String get settings => pick('Settings', 'सेटिंग्स', 'সেটিংস');
   String get appLanguage => pick('App language', 'ऐप की भाषा', 'অ্যাপের ভাষা');
