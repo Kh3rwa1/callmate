@@ -14,6 +14,7 @@ import { isAllowedSarvamPath } from '../services/sarvam_proxy_guard';
 import { hitRateLimit } from '../utils/rate_limit';
 import { retrieveKnowledge } from '../services/knowledge';
 import { buildSystemPrompt, loadHistory, saveTurn } from '../services/prompt';
+import { defaultFollowupDraft } from '../services/playbooks';
 import { requireSecret } from '../utils/secrets';
 import { timingSafeEqual } from '../utils/compare';
 import { jsonErrorHandler } from '../utils/errors';
@@ -717,9 +718,18 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
 
     // 4. Only create FollowUp when finalStatus is a connected status
     const isConnected = ['completed', 'connected', 'answered', 'ended'].includes(finalStatus);
-    if (isConnected && (norm.whatsapp_followup_required || outputVars.whatsapp_message)) {
+    // Without the agent's own message, the business's playbook template for this outcome is the
+    // draft (services/playbooks.ts). A lead who opted out gets no default draft.
+    const aiMessage = typeof outputVars.whatsapp_message === 'string' ? outputVars.whatsapp_message.trim() : '';
+    if (isConnected && (aiMessage || (norm.whatsapp_followup_required && !optOutRequested))) {
       followUpId = `fu_${crypto.randomUUID().slice(0, 12)}`;
-      const msg = outputVars.whatsapp_message || `Hi ${leadName.split(' ')[0]} 👋 Thanks for speaking with us!`;
+      const msg = aiMessage || await defaultFollowupDraft(c.env.DB, businessId, {
+        leadName: lead?.name || call.lead_name,
+        temperature: norm.temperature,
+        intent: norm.intent,
+        callbackAt,
+        language: outputVars.language,
+      });
       statements.push(
         c.env.DB.prepare(
           `INSERT INTO followups (id, business_id, lead_id, call_id, message, status, created_at)

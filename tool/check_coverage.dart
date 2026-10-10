@@ -3,23 +3,23 @@ import 'dart:io';
 // Coverage ratchet for `flutter test --coverage` (reads coverage/lcov.info).
 //
 // Thresholds sit ~2 points under the measured baseline so normal churn passes
-// but a real regression fails CI. Baseline measured 2026-10-10:
-//   lib/data 94.31%, lib/services 55.16%, data+services 83.78%,
-//   lib/ (excl. l10n + generated) 91.05%.
+// but a real regression fails CI. Baseline measured 2026-10-10 (after playbooks):
+//   lib/data 95.26%, lib/services 56.50%, data+services 85.94%,
+//   lib/ (excl. l10n + generated) 91.45%.
 // Raise these when coverage improves; never lower them to land a PR.
 //
 // Run with plain `dart tool/check_coverage.dart` (only needs dart:io).
 
 /// Minimum line coverage for lib/data + lib/services combined.
-const minDataAndServices = 81.5;
+const minDataAndServices = 83.5;
 
 /// Minimum line coverage for lib/services on its own (weakest area; floor so
 /// it cannot silently get worse while lib/data carries the combined number).
-const minServices = 53.0;
+const minServices = 54.5;
 
 /// Minimum line coverage for everything under lib/, excluding string tables
 /// (lib/l10n) and generated code, which would otherwise distort the number.
-const minOverall = 89.0;
+const minOverall = 89.5;
 
 /// Files left out of the overall bucket.
 bool _excluded(String path) =>

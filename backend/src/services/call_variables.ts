@@ -12,6 +12,7 @@ import { Env } from '../types';
 import { voiceAgentVariables } from './voice_persona';
 import { topKnowledge } from './knowledge';
 import { ROLE_GOALS } from './prompt';
+import { playbookFor, playbookCallContext } from './playbooks';
 import { safeJsonParse } from '../utils/json';
 
 /** Declared in the Sarvam agent today; sent when SARVAM_AGENT_VARIABLES is unset. */
@@ -62,8 +63,10 @@ function clip(s: string, max: number): string {
 }
 
 /**
- * Compact plain-text summary of the business for the call agent: profile fields that exist plus
- * the top knowledge snippets, capped at `max` characters.
+ * Compact plain-text summary of the business for the call agent: profile fields that exist, the
+ * vertical playbook's qualifying questions and ready-to-buy definition (services/playbooks.ts),
+ * then the top knowledge snippets, capped at `max` characters. Knowledge comes last so a long
+ * knowledge base is what gets cut, not the playbook.
  */
 export function formatBusinessContext(business: any, agent: any, knowledge: string[], max = BUSINESS_CONTEXT_MAX_CHARS): string {
   const lines: string[] = [];
@@ -72,13 +75,14 @@ export function formatBusinessContext(business: any, agent: any, knowledge: stri
   const category = (b.category || '').trim();
   if (name) lines.push(`Business: ${name}${category && category !== 'other' ? ` (${category.replace(/_/g, ' ')})` : ''}`);
   const offerings = safeJsonParse<unknown>(b.offerings, []);
-  if (Array.isArray(offerings) && offerings.length) lines.push(`Offerings: ${offerings.map(String).join(', ')}`);
+  if (Array.isArray(offerings) && offerings.length) lines.push(clip(`Offerings: ${offerings.map(String).join(', ')}`, 300));
   if (b.pricing) lines.push(`Pricing: ${String(b.pricing).trim()}`);
   if (b.opening_hours) lines.push(`Hours: ${String(b.opening_hours).trim()}`);
   const place = [b.address, b.location].filter((x) => x && String(x).trim()).map((x) => String(x).trim());
   if (place.length) lines.push(`Location: ${[...new Set(place)].join(', ')}`);
   const goal = (agent?.goal || '').trim() || ROLE_GOALS[category] || '';
   if (goal) lines.push(`Goal: ${goal}`);
+  lines.push(playbookCallContext(playbookFor(category)));
   const facts = knowledge.map((k) => k.replace(/\s+/g, ' ').trim()).filter(Boolean);
   if (facts.length) lines.push(`Facts:\n${facts.map((f) => `- ${clip(f, 400)}`).join('\n')}`);
   return clip(lines.join('\n'), max);

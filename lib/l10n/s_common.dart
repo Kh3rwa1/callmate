@@ -285,6 +285,11 @@ extension SCommon on S {
     ),
     BusinessCategory.automobile => pick('Automobile', 'ऑटोमोबाइल', 'অটোমোবাইল'),
     BusinessCategory.salon => pick('Salon', 'सैलून', 'সেলুন'),
+    BusinessCategory.gym => pick(
+      'Gym & Fitness',
+      'जिम और फ़िटनेस',
+      'জিম ও ফিটনেস',
+    ),
     BusinessCategory.restaurant => pick(
       'Restaurant',
       'रेस्टोरेंट',

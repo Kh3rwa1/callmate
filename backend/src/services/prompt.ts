@@ -1,3 +1,5 @@
+import { playbookFor, playbookPromptBlock } from './playbooks';
+
 export const ROLE_GOALS: Record<string, string> = {
   coaching: 'answer questions about courses, batches and fees, guide students to book a free demo class, and collect their standard/exam and target year.',
   clinic: 'answer questions about treatments and doctor availability, guide patients to book an appointment, and confirm whether it is an emergency.',
@@ -32,7 +34,9 @@ RULES:
 3. Keep responses conversational, clear, and concise (1-3 sentences) suitable for spoken voice.
 4. Support English, Hindi, and Hinglish naturally depending on the user's language.
 5. Never invent or hallucinate pricing, dates, or policies not present in the knowledge.
-6. If the user asks not to be contacted or asks to stop calling, apologize politely, confirm they will not be called again, and emit intent 'opt_out'.${knowledgeBlock}`;
+6. If the user asks not to be contacted or asks to stop calling, apologize politely, confirm they will not be called again, and emit intent 'opt_out'.
+
+${playbookPromptBlock(playbookFor(ctx.category))}${knowledgeBlock}`;
 }
 
 export async function loadHistory(

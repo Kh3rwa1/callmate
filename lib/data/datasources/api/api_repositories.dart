@@ -462,6 +462,17 @@ class ApiReferralRepository implements ReferralRepository {
       api.get('/referrals', (d) => ReferralSummary.fromJson(_j(d)));
 }
 
+class ApiPlaybookRepository implements PlaybookRepository {
+  ApiPlaybookRepository(this.api);
+  final ApiClient api;
+  @override
+  Future<CallPlaybook> current({String? lang}) => api.get(
+    '/playbooks/current',
+    (d) => CallPlaybook.fromJson(_j(d)),
+    query: {'lang': ?lang},
+  );
+}
+
 class ApiNotificationRepository implements NotificationRepository {
   ApiNotificationRepository(this.api);
   final ApiClient api;

@@ -276,7 +276,7 @@ describe('public /stop page and global do-not-call list', () => {
     expect(csp).toContain("form-action 'self'");
     expect(res.headers.get('Cache-Control')).toBe('no-store');
     const html = await res.text();
-    expect(html).toContain('<form method="post" action="/stop">');
+    expect(html).toContain('<form method="post" action="/stop?lang=en">');
     expect(html).not.toMatch(/<script/i);
   });
 
