@@ -59,7 +59,7 @@ class _BusinessTypeScreenState extends ConsumerState<BusinessTypeScreen> {
       children: [
         Row(
           children: [
-            const Mascot(state: MascotState.welcome, size: 64),
+            const Mascot(state: MascotState.waving, size: 64),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

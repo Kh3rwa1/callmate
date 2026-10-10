@@ -58,7 +58,7 @@ class LanguagePickScreen extends ConsumerWidget {
                     child: PopIn(
                       child: FloatIdle(
                         child: Mascot(
-                          state: MascotState.welcome,
+                          state: MascotState.waving,
                           size: (c.maxHeight * 0.22).clamp(120, 170),
                         ),
                       ),

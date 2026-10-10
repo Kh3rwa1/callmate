@@ -417,8 +417,9 @@ class _Detail extends StatelessWidget {
           child: PopIn(
             child: Mascot(
               state: c.status.isConnected
-                  ? MascotState.success
-                  : MascotState.error,
+                  ? MascotState.celebrating
+                  : MascotState.thinking,
+              pose: c.status.isConnected ? null : BirdPose.error,
               size: 96,
             ),
           ),

@@ -13,8 +13,8 @@ import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 
 /// Confirms and starts a call to [l]: an AI call, an in-app voice test, or
-/// a normal call from the owner's phone.
-Future<void> handleLeadCall(
+/// a normal call from the owner's phone. True when an AI call was placed.
+Future<bool> handleLeadCall(
   BuildContext context,
   WidgetRef ref,
   Lead l,
@@ -106,7 +106,7 @@ Future<void> handleLeadCall(
     },
   );
 
-  if (!context.mounted || action == null) return;
+  if (!context.mounted || action == null) return false;
 
   if (action == 'ai_call') {
     final messenger = ScaffoldMessenger.of(context);
@@ -121,6 +121,7 @@ Future<void> handleLeadCall(
         ..showSnackBar(
           SnackBar(content: Text(s.agentIsCalling(agentName, l.name))),
         );
+      return true;
     } catch (e) {
       messenger
         ..clearSnackBars()
@@ -132,4 +133,5 @@ Future<void> handleLeadCall(
     final d = PhoneUtils.normalize(l.phone);
     if (d != null) launchUrl(Uri.parse('tel:+$d'));
   }
+  return false;
 }

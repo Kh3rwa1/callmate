@@ -7,6 +7,7 @@ import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/employee_avatar.dart';
+import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../l10n/l10n.dart';
 import '../../services/voice/voice_persona.dart';
@@ -97,6 +98,7 @@ class _NameVoiceScreenState extends ConsumerState<NameVoiceScreen> {
     final at = draft.suggestedAgent;
     final name = draft.resolvedEmployeeName;
     return OnboardingScaffold(
+      mascot: MascotState.thinking,
       step: 2,
       title: s.obNameTitle,
       subtitle: s.obNameSub,

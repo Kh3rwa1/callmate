@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../data/templates/templates.dart';
 import '../motion/motion.dart';
@@ -10,37 +11,93 @@ import '../theme/app_icons.dart';
 /// The CallPilot mascot: a little blue bird.
 ///
 /// He is the product's character, not a customer's AI employee (those are
-/// [EmployeeAvatar] monograms). He shows up where people already look:
-/// onboarding, empty states, errors and wins.
-///
-/// Drawn in code, not from image files: every state below is a real
-/// animation (blinks, a waving wing, a talking beak, a happy hop) that stays
-/// crisp at any size and costs almost nothing on cheap phones.
+/// [EmployeeAvatar] monograms). He shows up where people already look: the
+/// Home hero, onboarding, empty states, errors and wins.
 ///
 /// Personality: an eager, quick little helper who loves good news. Idle is
-/// calm (breathing, the odd blink); the big energy is saved for success.
+/// calm (a gentle bob, the odd blink); the big energy is saved for wins.
+///
+/// Every state is drawn in code – the bird ([BirdPainter]) plus a state
+/// overlay ([MascotOverlayPainter]: phone and sound waves, confetti, "z z",
+/// thought dots, motion lines) – so it is crisp at any size and costs no
+/// APK space. If artwork for a state is added as `assets/mascot/<name>.png`
+/// it replaces the drawing (see `assets/mascot/README.md`).
 enum MascotState {
-  welcome('welcome'),
-  speaking('speaking'),
-  listening('listening'),
-  thinking('thinking'),
-  calling('calling'),
-  success('success'),
-  hotLead('hot_lead'),
-  whatsapp('whatsapp'),
-  error('error');
+  /// Default: calm, breathing, blinking.
+  idle(BirdPose.idle),
 
-  const MascotState(this.file);
+  /// A call is live: talking beak, a phone and sound waves.
+  calling(BirdPose.speaking),
 
-  /// Stable id (analytics, goldens).
-  final String file;
+  /// A win (ready-to-buy lead, checklist done): hop + confetti.
+  celebrating(BirdPose.success),
+
+  /// Outside calling hours: eyes closed, drifting "z z".
+  resting(BirdPose.resting),
+
+  /// Working something out / nothing here yet / errors: thought dots.
+  thinking(BirdPose.thinking),
+
+  /// Hello: a wink, a waving wing, a little rock side to side.
+  waving(BirdPose.welcome);
+
+  const MascotState(this.pose);
+
+  /// The drawn pose used when no artwork file exists for this state.
+  final BirdPose pose;
+
+  /// Optional artwork that replaces the drawing (512×512 transparent PNG).
+  String get asset => 'assets/mascot/$name.png';
 }
 
-/// The mascot with an optional soft halo behind him.
+/// Which `assets/mascot/<state>.png` files are bundled. Read once from the
+/// asset manifest; until then (and when nothing is bundled) the drawn bird
+/// is used.
+class MascotAssets {
+  MascotAssets._();
+
+  static Set<String>? _available;
+  static Future<Set<String>>? _loading;
+
+  /// Test hook: pretend exactly these asset paths exist (null = real
+  /// manifest).
+  @visibleForTesting
+  static Set<String>? debugOverride;
+
+  /// Synchronous answer if known: null while the manifest is loading.
+  static bool? has(MascotState s) {
+    final set = debugOverride ?? _available;
+    return set?.contains(s.asset);
+  }
+
+  /// Loads the manifest (once).
+  static Future<Set<String>> load([AssetBundle? bundle]) {
+    if (debugOverride != null) return Future.value(debugOverride);
+    if (_available != null) return Future.value(_available);
+    return _loading ??= AssetManifest.loadFromAssetBundle(bundle ?? rootBundle)
+        .then((m) {
+          return _available = m
+              .listAssets()
+              .where((a) => a.startsWith('assets/mascot/'))
+              .toSet();
+        })
+        .catchError((Object _) => _available = <String>{});
+  }
+
+  @visibleForTesting
+  static void reset() {
+    _available = null;
+    _loading = null;
+    debugOverride = null;
+  }
+}
+
+/// The mascot in a [MascotState], with an optional soft halo behind him.
 class Mascot extends StatefulWidget {
   const Mascot({
     super.key,
-    this.state = MascotState.welcome,
+    this.state = MascotState.idle,
+    this.pose,
     this.size = 120,
     this.halo = true,
     this.haloColor,
@@ -50,6 +107,11 @@ class Mascot extends StatefulWidget {
   });
 
   final MascotState state;
+
+  /// Overrides the drawn bird's face/body (e.g. [BirdPose.error] for a
+  /// worried look on error screens, or the voice-test poses). The state's
+  /// overlay still plays.
+  final BirdPose? pose;
   final double size;
   final bool halo;
   final Color? haloColor;
@@ -73,6 +135,7 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
     duration: const Duration(seconds: 12),
   );
   bool _reduced = false;
+  bool? _hasArt;
 
   bool get _moves => widget.animate && !_reduced;
 
@@ -81,6 +144,21 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
       if (!_c.isAnimating) _c.repeat();
     } else {
       _c.stop();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveArt();
+  }
+
+  void _resolveArt() {
+    _hasArt = MascotAssets.has(widget.state);
+    if (_hasArt == null) {
+      MascotAssets.load().then((_) {
+        if (mounted) setState(() => _hasArt = MascotAssets.has(widget.state));
+      });
     }
   }
 
@@ -95,6 +173,7 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
   void didUpdateWidget(Mascot old) {
     super.didUpdateWidget(old);
     if (old.animate != widget.animate) _sync();
+    if (old.state != widget.state) _resolveArt();
   }
 
   @override
@@ -103,21 +182,70 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
+  /// Whole-body rotation (radians) for the state at [t] seconds.
+  static double tilt(MascotState s, double t, bool moving) {
+    const deg = math.pi / 180;
+    final w = moving ? math.sin(t * 0.9 * math.pi * 2) : 0.0;
+    return switch (s) {
+      MascotState.waving => 8 * deg * w,
+      MascotState.resting => 6 * deg,
+      MascotState.thinking => -4 * deg,
+      _ => 0.0,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = widget.size;
+    final art = _hasArt == true;
     Widget body = RepaintBoundary(
       child: AnimatedBuilder(
         animation: _c,
-        builder: (_, _) => CustomPaint(
-          size: Size.square(s),
-          painter: BirdPainter(
-            state: widget.state,
-            // A still pose sits mid-breath with both eyes open.
-            t: _moves ? _c.value * _loop : 1.0,
-            moving: _moves,
-          ),
-        ),
+        builder: (_, _) {
+          // A still pose sits mid-breath with both eyes open.
+          final t = _moves ? _c.value * _loop : 1.0;
+          if (art) {
+            // Supplied artwork: only a gentle bob, no overlays.
+            final bob = _moves
+                ? -s * 0.02 * math.sin(t * 0.5 * 2 * math.pi)
+                : 0.0;
+            return Transform.translate(
+              offset: Offset(0, bob),
+              child: Image.asset(
+                widget.state.asset,
+                width: s,
+                height: s,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+            );
+          }
+          return Stack(
+            children: [
+              Transform.rotate(
+                angle: tilt(widget.state, t, _moves),
+                alignment: const Alignment(0, 0.85),
+                child: CustomPaint(
+                  size: Size.square(s),
+                  painter: BirdPainter(
+                    state: widget.pose ?? widget.state.pose,
+                    t: t,
+                    moving: _moves,
+                    extras: false,
+                  ),
+                ),
+              ),
+              CustomPaint(
+                size: Size.square(s),
+                painter: MascotOverlayPainter(
+                  state: widget.state,
+                  t: t,
+                  moving: _moves,
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
 
@@ -163,14 +291,265 @@ class _MascotState extends State<Mascot> with SingleTickerProviderStateMixin {
   }
 }
 
-/// Paints the bird in any [MascotState] at time [t] (seconds).
+/// The pieces a state's overlay draws.
+enum MascotOverlayPart {
+  handset,
+  soundWaves,
+  confetti,
+  sleepZs,
+  thoughtDots,
+  motionLines,
+}
+
+/// Draws a [MascotState]'s overlay on top of the bird, in the bird's flat
+/// rounded style: royal blue, light blue, beak pink and the marigold accent.
+///
+/// Shares [BirdPainter]'s coordinate space (the 1254 px character sheet),
+/// so positions line up with his head and wings at any size.
+class MascotOverlayPainter extends CustomPainter {
+  MascotOverlayPainter({
+    required this.state,
+    required this.t,
+    this.moving = true,
+  });
+
+  final MascotState state;
+
+  /// Seconds on the mascot clock.
+  final double t;
+
+  /// False under reduced motion: a single, meaningful still frame.
+  final bool moving;
+
+  static const royal = Color(0xFF1F5BFF);
+  static const light = BirdPainter.light;
+  static const pink = BirdPainter.pink;
+  static const navy = BirdPainter.navy;
+  static const marigold = Color(0xFFF5A524);
+
+  /// What [state] draws. Idle is deliberately bare.
+  static List<MascotOverlayPart> partsFor(MascotState s) => switch (s) {
+    MascotState.idle => const [],
+    MascotState.calling => const [
+      MascotOverlayPart.handset,
+      MascotOverlayPart.soundWaves,
+    ],
+    MascotState.celebrating => const [MascotOverlayPart.confetti],
+    MascotState.resting => const [MascotOverlayPart.sleepZs],
+    MascotState.thinking => const [MascotOverlayPart.thoughtDots],
+    MascotState.waving => const [MascotOverlayPart.motionLines],
+  };
+
+  static const _tau = math.pi * 2;
+
+  /// Loop phase 0..1 with period [seconds]; a fixed, readable phase when
+  /// still.
+  double _phase(double seconds, [double offset = 0, double still = 0.45]) =>
+      moving ? ((t / seconds) + offset) % 1.0 : (still + offset) % 1.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final parts = partsFor(state);
+    if (parts.isEmpty) return;
+    final k = size.shortestSide * 0.9 / 1117;
+    canvas.save();
+    canvas.translate(size.width / 2, size.height / 2);
+    canvas.scale(k);
+    canvas.translate(-648, -630);
+    for (final p in parts) {
+      switch (p) {
+        case MascotOverlayPart.handset:
+          _handset(canvas);
+        case MascotOverlayPart.soundWaves:
+          _soundWaves(canvas);
+        case MascotOverlayPart.confetti:
+          _confetti(canvas);
+        case MascotOverlayPart.sleepZs:
+          _zs(canvas);
+        case MascotOverlayPart.thoughtDots:
+          _thoughtDots(canvas);
+        case MascotOverlayPart.motionLines:
+          _motionLines(canvas);
+      }
+    }
+    canvas.restore();
+  }
+
+  Paint _stroke(Color c, double w) => Paint()
+    ..color = c
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = w
+    ..strokeCap = StrokeCap.round
+    ..strokeJoin = StrokeJoin.round;
+
+  /// A small rounded navy handset held by his right cheek.
+  void _handset(Canvas c) {
+    c.save();
+    c.translate(990, 470);
+    c.rotate(-0.55);
+    final body = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset.zero, width: 86, height: 250),
+      const Radius.circular(43),
+    );
+    c.drawRRect(body, Paint()..color = navy);
+    // Ear and mouth pieces.
+    for (final y in [-92.0, 92.0]) {
+      c.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(-26, y), width: 92, height: 70),
+          const Radius.circular(30),
+        ),
+        Paint()..color = navy,
+      );
+    }
+    // A highlight so it reads as an object, not a hole.
+    c.drawLine(
+      const Offset(14, -60),
+      const Offset(14, 40),
+      _stroke(Colors.white.withValues(alpha: 0.35), 12),
+    );
+    c.restore();
+  }
+
+  /// Two or three arcs rippling out from the phone.
+  void _soundWaves(Canvas c) {
+    const centre = Offset(1060, 330);
+    for (var i = 0; i < 3; i++) {
+      final p = _phase(1.4, i / 3);
+      final r = 50 + 110 * p;
+      final alpha = moving ? (1 - p) : 0.85 - i * 0.2;
+      c.drawArc(
+        Rect.fromCircle(center: centre, radius: r),
+        -1.5,
+        1.25,
+        false,
+        _stroke(royal.withValues(alpha: alpha.clamp(0.0, 1.0)), 20),
+      );
+    }
+  }
+
+  /// Bits of marigold, blue and pink bursting out and falling, every 2.4 s.
+  void _confetti(Canvas c) {
+    final p = _phase(2.4, 0, 0.35);
+    final out = Curves.easeOutCubic.transform(p);
+    const colors = [marigold, royal, pink, light];
+    const centre = Offset(650, 520);
+    for (var i = 0; i < 18; i++) {
+      final angle = -math.pi / 2 + (i / 18 - 0.5) * math.pi * 1.6;
+      final speed = 0.65 + (i * 37 % 40) / 100;
+      final dist = 560 * speed * out;
+      final gravity = 260 * p * p;
+      final pos =
+          centre +
+          Offset(dist * math.cos(angle), dist * math.sin(angle) + gravity);
+      final alpha = moving ? (1 - p * p).clamp(0.0, 1.0) : 1.0;
+      c.save();
+      c.translate(pos.dx, pos.dy);
+      c.rotate((i % 5 - 2) * 2.2 * p + i);
+      final paint = Paint()
+        ..color = colors[i % colors.length].withValues(alpha: alpha);
+      if (i % 3 == 0) {
+        c.drawCircle(Offset.zero, 18, paint);
+      } else {
+        c.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset.zero, width: 46, height: 22),
+            const Radius.circular(10),
+          ),
+          paint,
+        );
+      }
+      c.restore();
+    }
+  }
+
+  /// Light-blue "z z" drifting up and fading.
+  void _zs(Canvas c) {
+    for (var i = 0; i < 2; i++) {
+      final p = _phase(3.2, i * 0.5, 0.3);
+      final size = 64.0 + i * 26;
+      final x = 960 + 70 * i + 30 * math.sin(p * _tau);
+      final y = 400 - i * 130 - 150 * p;
+      final alpha = moving ? math.sin(p * math.pi) : 1.0;
+      _drawZ(c, Offset(x, y), size, light.withValues(alpha: alpha));
+    }
+  }
+
+  void _drawZ(Canvas c, Offset o, double s, Color color) {
+    final path = Path()
+      ..moveTo(o.dx - s / 2, o.dy - s / 2)
+      ..lineTo(o.dx + s / 2, o.dy - s / 2)
+      ..lineTo(o.dx - s / 2, o.dy + s / 2)
+      ..lineTo(o.dx + s / 2, o.dy + s / 2);
+    c.drawPath(path, _stroke(color, s * 0.2));
+  }
+
+  /// Three dots rising from his head in a thought trail.
+  void _thoughtDots(Canvas c) {
+    for (var i = 0; i < 3; i++) {
+      final p = _phase(1.8, -i * 0.18, 1.0);
+      final lift = moving ? 14 * math.sin(p * _tau) : 0.0;
+      final a = moving ? 0.45 + 0.55 * (0.5 + 0.5 * math.sin(p * _tau)) : 1.0;
+      c.drawCircle(
+        Offset(940 + i * 72, 250 - i * 60 - lift),
+        20.0 + i * 9,
+        Paint()..color = royal.withValues(alpha: a),
+      );
+    }
+  }
+
+  /// Motion lines by the raised (right) wing.
+  void _motionLines(Canvas c) {
+    final pulse = moving ? 0.6 + 0.4 * math.sin(t * 1.8 * _tau) : 1.0;
+    final paint = _stroke(marigold.withValues(alpha: pulse), 26);
+    c.save();
+    c.translate(1150, 600);
+    c.scale(0.9 + 0.1 * pulse);
+    c.translate(-1150, -600);
+    c.drawLine(const Offset(1150, 470), const Offset(1210, 430), paint);
+    c.drawLine(const Offset(1180, 580), const Offset(1250, 570), paint);
+    c.drawLine(const Offset(1150, 690), const Offset(1210, 720), paint);
+    c.restore();
+  }
+
+  @override
+  bool shouldRepaint(MascotOverlayPainter o) =>
+      o.t != t || o.state != state || o.moving != moving;
+}
+
+/// The drawn bird's face and body language. [MascotState] picks one; a
+/// few screens (voice test, errors) ask for a specific pose directly.
+enum BirdPose {
+  welcome,
+  speaking,
+  listening,
+  thinking,
+  calling,
+  success,
+  hotLead,
+  whatsapp,
+  error,
+  idle,
+  resting,
+}
+
+/// Paints the bird in any [BirdPose] at time [t] (seconds).
 ///
 /// Coordinates follow the original 1254 px character sheet, so tweaks can
 /// be read straight off the artwork.
 class BirdPainter extends CustomPainter {
-  BirdPainter({required this.state, required this.t, this.moving = true});
+  BirdPainter({
+    required this.state,
+    required this.t,
+    this.moving = true,
+    this.extras = true,
+  });
 
-  final MascotState state;
+  final BirdPose state;
+
+  /// Paint the pose's own effects (thinking dots, call waves…). The
+  /// [Mascot] widget turns these off and draws its overlay set instead.
+  final bool extras;
   final double t;
   final bool moving;
 
@@ -210,30 +589,38 @@ class BirdPainter extends CustomPainter {
     var hop = 0.0, sway = 0.0, squash = 1.0;
     final breathe = 1 + 0.018 * _wave(0.42);
     switch (state) {
-      case MascotState.success:
-      case MascotState.hotLead:
+      case BirdPose.success:
+      case BirdPose.hotLead:
         final h = _wave(1.4).abs();
         hop = -60 * h;
         squash = 1 - 0.06 * (1 - h) * (1 - h);
-      case MascotState.speaking:
+      case BirdPose.speaking:
         hop = -8 * _wave(2.2).abs();
-      case MascotState.listening:
+      case BirdPose.listening:
         sway = 0.07 * _wave(0.35);
-      case MascotState.thinking:
+      case BirdPose.thinking:
         sway = -0.05 + 0.025 * _wave(0.3);
-      case MascotState.calling:
+      case BirdPose.calling:
         hop = -10 * _wave(1.1).abs();
-      case MascotState.error:
+      case BirdPose.error:
         sway = 0.035 * _wave(0.25);
         squash = 0.97;
-      case MascotState.welcome:
-      case MascotState.whatsapp:
+      case BirdPose.welcome:
+      case BirdPose.whatsapp:
         hop = -6 * _wave(0.5).abs();
+      case BirdPose.idle:
+        hop = -7 * (0.5 + 0.5 * _wave(0.4));
+      case BirdPose.resting:
+        squash = 0.985;
     }
     if (!moving) {
       hop = 0;
-      sway = state == MascotState.thinking ? -0.05 : 0;
-      squash = state == MascotState.error ? 0.97 : 1;
+      sway = state == BirdPose.thinking ? -0.05 : 0;
+      squash = state == BirdPose.error
+          ? 0.97
+          : state == BirdPose.resting
+          ? 0.985
+          : 1;
     }
 
     // Soft ground shadow (shrinks as he hops up).
@@ -290,16 +677,16 @@ class BirdPainter extends CustomPainter {
   double _wingAngle(bool left) {
     if (!moving) return 0;
     switch (state) {
-      case MascotState.welcome:
+      case BirdPose.welcome:
         // Right wing waves hello; left wing rests.
         return left ? 0.04 * _wave(0.5) : -0.32 * (0.5 + 0.5 * _wave(1.5));
-      case MascotState.success:
-      case MascotState.hotLead:
+      case BirdPose.success:
+      case BirdPose.hotLead:
         final f = -0.38 * (0.5 + 0.5 * _wave(2.8));
         return left ? -f : f;
-      case MascotState.speaking:
+      case BirdPose.speaking:
         return (left ? 1 : -1) * 0.08 * _wave(1.2);
-      case MascotState.error:
+      case BirdPose.error:
         return (left ? -1 : 1) * 0.12;
       default:
         return (left ? 1 : -1) * 0.03 * _wave(0.42);
@@ -378,18 +765,26 @@ class BirdPainter extends CustomPainter {
     // Where the pupils look.
     var look = Offset.zero;
     switch (state) {
-      case MascotState.thinking:
+      case BirdPose.thinking:
         look = const Offset(-14, -18);
-      case MascotState.error:
+      case BirdPose.error:
         look = const Offset(-6, 14);
-      case MascotState.listening:
+      case BirdPose.listening:
         look = Offset(10 * _wave(0.2), 0);
       default:
         break;
     }
 
-    final happy = state == MascotState.success || state == MascotState.hotLead;
-    final wink = state == MascotState.welcome;
+    if (state == BirdPose.resting) {
+      // Sleepy: both eyes closed as soft downward arcs, beak shut.
+      _sleepEye(c, const Offset(505, 610), 70);
+      _sleepEye(c, const Offset(835, 545), 78);
+      _beak(c);
+      return;
+    }
+
+    final happy = state == BirdPose.success || state == BirdPose.hotLead;
+    final wink = state == BirdPose.welcome;
     final blink = _blink;
 
     // Left eye: wink (welcome), happy arc (success) or open.
@@ -405,7 +800,7 @@ class BirdPainter extends CustomPainter {
       _openEye(c, const Offset(835, 535), 86, look, blink);
     }
 
-    if (state == MascotState.error) {
+    if (state == BirdPose.error) {
       // Worried lids.
       final lid = Paint()..color = blue;
       c.drawRect(const Rect.fromLTRB(425, 515, 585, 575), lid);
@@ -430,6 +825,20 @@ class BirdPainter extends CustomPainter {
     c.restore();
   }
 
+  void _sleepEye(Canvas c, Offset o, double r) {
+    c.drawArc(
+      Rect.fromCircle(center: o, radius: r * 0.8),
+      math.pi * 0.15,
+      math.pi * 0.7,
+      false,
+      Paint()
+        ..color = navy
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 26
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
   void _arcEye(Canvas c, Offset o, double r) {
     c.drawArc(
       Rect.fromCircle(center: o, radius: r * 0.95),
@@ -448,17 +857,19 @@ class BirdPainter extends CustomPainter {
   double get _open {
     if (!moving) {
       return switch (state) {
-        MascotState.error || MascotState.thinking => 0.0,
+        BirdPose.error || BirdPose.thinking || BirdPose.resting => 0.0,
+        BirdPose.idle => 0.45,
         _ => 0.7,
       };
     }
     return switch (state) {
-      MascotState.speaking => (0.5 + 0.5 * _wave(4.6)).clamp(0.1, 1.0),
-      MascotState.calling => 0.35 + 0.25 * _wave(2.2),
-      MascotState.success || MascotState.hotLead => 1.0,
-      MascotState.welcome || MascotState.whatsapp => 0.75,
-      MascotState.listening => 0.15,
-      MascotState.thinking || MascotState.error => 0.0,
+      BirdPose.speaking => (0.5 + 0.5 * _wave(4.6)).clamp(0.1, 1.0),
+      BirdPose.calling => 0.35 + 0.25 * _wave(2.2),
+      BirdPose.success || BirdPose.hotLead => 1.0,
+      BirdPose.welcome || BirdPose.whatsapp => 0.75,
+      BirdPose.listening => 0.15,
+      BirdPose.thinking || BirdPose.error || BirdPose.resting => 0.0,
+      BirdPose.idle => 0.45,
     };
   }
 
@@ -502,12 +913,13 @@ class BirdPainter extends CustomPainter {
   /// Effects around him: excitement lines, thinking dots, call waves,
   /// a sweat drop, a chat bubble.
   void _extras(Canvas c, double hop) {
+    if (!extras) return;
     final pulse = moving ? 0.5 + 0.5 * _wave(1.6) : 1.0;
     switch (state) {
-      case MascotState.welcome:
-      case MascotState.success:
-      case MascotState.hotLead:
-        final color = state == MascotState.hotLead ? hotPink : blue;
+      case BirdPose.welcome:
+      case BirdPose.success:
+      case BirdPose.hotLead:
+        final color = state == BirdPose.hotLead ? hotPink : blue;
         final p = Paint()
           ..color = color.withValues(alpha: 0.55 + 0.45 * pulse)
           ..strokeWidth = 30
@@ -521,7 +933,7 @@ class BirdPainter extends CustomPainter {
         c.drawLine(const Offset(1110, 358), const Offset(1046, 402), p);
         c.drawLine(const Offset(1112, 458), const Offset(1062, 464), p);
         c.restore();
-      case MascotState.thinking:
+      case BirdPose.thinking:
         for (var i = 0; i < 3; i++) {
           final a = moving
               ? (0.5 + 0.5 * math.sin((t * 1.2 - i * 0.22) * _tau))
@@ -532,7 +944,7 @@ class BirdPainter extends CustomPainter {
             Paint()..color = deep.withValues(alpha: 0.25 + 0.6 * a),
           );
         }
-      case MascotState.calling:
+      case BirdPose.calling:
         for (var i = 0; i < 2; i++) {
           final p = moving ? ((t * 0.9 + i * 0.5) % 1.0) : 0.5;
           c.drawArc(
@@ -550,7 +962,7 @@ class BirdPainter extends CustomPainter {
               ..strokeCap = StrokeCap.round,
           );
         }
-      case MascotState.error:
+      case BirdPose.error:
         final y = moving ? 40 * ((t * 0.5) % 1.0) : 0.0;
         final drop = Path()
           ..moveTo(1000, 330 + y)
@@ -558,7 +970,7 @@ class BirdPainter extends CustomPainter {
           ..quadraticBezierTo(950, 410 + y, 1000, 330 + y)
           ..close();
         c.drawPath(drop, Paint()..color = light);
-      case MascotState.whatsapp:
+      case BirdPose.whatsapp:
         final r = RRect.fromRectAndRadius(
           Rect.fromLTWH(930, 210 + hop * 0.5, 230, 150),
           const Radius.circular(60),
@@ -574,15 +986,17 @@ class BirdPainter extends CustomPainter {
             Paint()..color = Colors.white.withValues(alpha: 0.5 + 0.5 * a),
           );
         }
-      case MascotState.listening:
-      case MascotState.speaking:
+      case BirdPose.listening:
+      case BirdPose.speaking:
+      case BirdPose.idle:
+      case BirdPose.resting:
         break;
     }
   }
 
   @override
   bool shouldRepaint(BirdPainter o) =>
-      o.t != t || o.state != state || o.moving != moving;
+      o.t != t || o.state != state || o.moving != moving || o.extras != extras;
 }
 
 /// Accessory badge for a role (used by employee avatars).
@@ -617,11 +1031,13 @@ class MascotAvatar extends StatelessWidget {
   const MascotAvatar({
     super.key,
     this.size = 44,
-    this.state = MascotState.welcome,
+    this.state = MascotState.waving,
+    this.pose,
     this.ring,
   });
   final double size;
   final MascotState state;
+  final BirdPose? pose;
   final Color? ring;
 
   @override
@@ -641,6 +1057,7 @@ class MascotAvatar extends StatelessWidget {
         alignment: const Alignment(0, -0.2),
         child: Mascot(
           state: state,
+          pose: pose,
           size: size * 1.3,
           halo: false,
           animate: false,

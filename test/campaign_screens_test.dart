@@ -5,7 +5,6 @@ import 'package:callpilot/data/models/models.dart';
 import 'package:callpilot/features/campaign/campaign_progress_widgets.dart';
 import 'package:callpilot/features/campaign/campaign_screens.dart';
 import 'package:callpilot/features/campaign/campaign_setup_widgets.dart';
-import 'package:callpilot/features/campaign/campaign_widgets.dart';
 import 'package:callpilot/features/notifications/notifications_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -260,21 +259,14 @@ void main() {
   });
 
   group('Campaign widgets', () {
-    appTest('CallNewLeadsButton on home opens campaign setup', (h) async {
-      final button = find.byType(CallNewLeadsButton);
-      expect(button, findsOneWidget);
-      expect(
-        find.descendant(
-          of: button,
-          matching: find.textContaining('New Customers'),
-        ),
-        findsOneWidget,
-      );
-      await h.tap(button);
+    appTest('Call new customers on home opens campaign setup', (h) async {
+      final row = find.textContaining('New Customers');
+      expect(row, findsWidgets);
+      await h.tap(row.first);
       expect(h.location, '/campaign/new');
     });
 
-    appTest('CampaignLiveBanner on home links to the live campaign', (h) async {
+    appTest('the Home hero shows a live campaign and opens it', (h) async {
       // A running campaign without the mock dialer timer, so no data
       // changes race with the navigation.
       final draft = h.backend.createCampaign(
@@ -291,13 +283,10 @@ void main() {
       h.container.read(activeCampaignProvider.notifier).set(running);
       final id = running.id;
       await h.settle();
-      final banner = find.byType(CampaignLiveBanner);
-      expect(banner, findsOneWidget);
-      expect(find.textContaining('is calling your customers…'), findsOneWidget);
-      expect(find.textContaining('0 of 3 done'), findsOneWidget);
-      // Tap in place: scrolling it into view would tuck it under the
-      // pinned header.
-      await h.tester.tap(banner);
+      expect(find.textContaining('Calling'), findsWidgets);
+      final action = find.text('See live calls');
+      expect(action, findsOneWidget);
+      await h.tester.tap(action);
       await h.settle();
       expect(h.location, '/campaigns/$id');
     });

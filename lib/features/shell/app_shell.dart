@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_glyphs.dart';
+import '../../core/widgets/celebration.dart';
 import '../../l10n/l10n.dart';
 
 /// Bottom navigation: exactly Home · Customers · Calls · Messages ·
@@ -14,11 +16,11 @@ class AppShell extends ConsumerWidget {
   final StatefulNavigationShell shell;
 
   static const _icons = [
-    (Icons.home_outlined, Icons.home_rounded),
-    (Icons.people_outline_rounded, Icons.people_rounded),
-    (Icons.call_outlined, Icons.call_rounded),
-    (Icons.chat_bubble_outline_rounded, Icons.chat_bubble_rounded),
-    (Icons.support_agent_outlined, Icons.support_agent_rounded),
+    AppGlyphs.home,
+    AppGlyphs.customers,
+    AppGlyphs.call,
+    AppGlyphs.message,
+    AppGlyphs.employee,
   ];
 
   @override
@@ -33,12 +35,12 @@ class AppShell extends ConsumerWidget {
       s.navAgent,
     ];
     return Scaffold(
-      body: shell,
+      body: HotLeadCelebrator(child: shell),
       bottomNavigationBar: AppNavBar(
         index: shell.currentIndex,
         items: [
           for (var i = 0; i < _icons.length; i++)
-            NavItemData(_icons[i].$1, _icons[i].$2, labels[i]),
+            NavItemData(_icons[i], labels[i]),
         ],
         badges: {3: pending},
         onSelect: (i) {
@@ -51,14 +53,14 @@ class AppShell extends ConsumerWidget {
 }
 
 class NavItemData {
-  const NavItemData(this.icon, this.selectedIcon, this.label);
-  final IconData icon;
-  final IconData selectedIcon;
+  const NavItemData(this.glyph, this.label);
+  final AppGlyphs glyph;
   final String label;
 }
 
-/// The tab bar. A soft pill glides (with a slight overshoot) to the selected
-/// tab; the icon fills in with a pop; badges pop when their count changes.
+/// The tab bar: CallPilot's own rounded icons, a pill that glides (with a
+/// slight overshoot) behind the selected tab, labels at 12.5+ that wrap
+/// rather than truncate, and badges that pop when their count changes.
 class AppNavBar extends StatelessWidget {
   const AppNavBar({
     super.key,
@@ -97,10 +99,11 @@ class AppNavBar extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        // Labels may wrap to two lines ("मेरा कर्मचारी") and grow with the
-        // owner's text size, up to [_maxLabelScale]; the bar grows with them.
+        // One line per label, never split inside a word: labels grow with
+        // the owner's text size up to [_maxLabelScale] and shrink to fit
+        // their tab if a long word ("मेरा कर्मचारी") would not fit.
         child: SizedBox(
-          height: 32 + 4 + 12 + 2 * labelLine(context),
+          height: 32 + 4 + 14 + labelLine(context),
           child: LayoutBuilder(
             builder: (context, c) {
               final w = c.maxWidth / items.length;
@@ -167,8 +170,8 @@ class _NavItem extends StatelessWidget {
     final count = badge ?? 0;
     final icon = PopSwitcher(
       duration: AppMotion.slow,
-      child: Icon(
-        selected ? data.selectedIcon : data.icon,
+      child: AppGlyph(
+        data.glyph,
         key: ValueKey(selected),
         size: 24,
         color: selected ? AppColors.brand : AppColors.inkFaint,
@@ -220,14 +223,21 @@ class _NavItem extends StatelessWidget {
                 height: 1.2,
                 letterSpacing: 0,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                color: selected ? AppColors.brand : AppColors.inkFaint,
+                color: selected ? AppColors.ink : AppColors.inkFaint,
               ),
-              child: Text(
-                data.label,
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                textScaler: AppNavBar.labelScaler(context),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    data.label,
+                    key: ValueKey('nav-label-${data.label}'),
+                    maxLines: 1,
+                    softWrap: false,
+                    textAlign: TextAlign.center,
+                    textScaler: AppNavBar.labelScaler(context),
+                  ),
+                ),
               ),
             ),
           ],
@@ -257,7 +267,7 @@ class _Badge extends StatelessWidget {
       textScaler: TextScaler.noScaling,
       style: const TextStyle(
         color: Colors.white,
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w600,
         height: 1.1,
         fontFeatures: [FontFeature.tabularFigures()],

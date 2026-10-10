@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_glyphs.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/utils/phone.dart';
@@ -133,15 +134,19 @@ class _Body extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
               _ActionIcon(
+                key: const Key('lead-call'),
                 tooltip: s.aiCallTooltip,
-                icon: Icons.call_outlined,
+                glyph: AppGlyphs.call,
                 onPressed: () => handleLeadCall(context, ref, l, agentName),
               ),
               const SizedBox(width: 10),
               _ActionIcon(
                 tooltip: s.callbackTooltip,
-                icon: Icons.event_outlined,
-                onPressed: () => showCallbackSheet(context, ref, lead: l),
+                glyph: AppGlyphs.callback,
+                onPressed: () async {
+                  await showCallbackSheet(context, ref, lead: l);
+                  return false;
+                },
               ),
             ],
           ),
@@ -382,35 +387,50 @@ class _Body extends ConsumerWidget {
 String _fmtAttr(String key, String v) =>
     key == 'budget' && int.tryParse(v) != null ? Fmt.inr(int.parse(v)) : v;
 
-class _ActionIcon extends StatelessWidget {
+/// Square outlined action (call, call back). When [onPressed] reports
+/// success (a call went out) rings ripple from the button once.
+class _ActionIcon extends StatefulWidget {
   const _ActionIcon({
+    super.key,
     required this.tooltip,
-    required this.icon,
+    required this.glyph,
     required this.onPressed,
   });
   final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
+  final AppGlyphs glyph;
+  final Future<bool> Function() onPressed;
 
   @override
-  Widget build(BuildContext context) => Pressable(
-    scale: 0.92,
-    child: IconButton.outlined(
-      tooltip: tooltip,
-      onPressed: () {
-        Haptics.tap();
-        onPressed();
-      },
-      style: IconButton.styleFrom(
-        fixedSize: const Size(52, 48),
-        foregroundColor: AppColors.ink,
-        backgroundColor: AppColors.surface,
-        side: BorderSide(color: AppColors.border, width: 1.2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.button),
+  State<_ActionIcon> createState() => _ActionIconState();
+}
+
+class _ActionIconState extends State<_ActionIcon> {
+  int _placed = 0;
+
+  @override
+  Widget build(BuildContext context) => RingBurst(
+    trigger: _placed,
+    color: AppColors.brand,
+    child: Pressable(
+      scale: 0.92,
+      child: IconButton.outlined(
+        tooltip: widget.tooltip,
+        onPressed: () async {
+          Haptics.tap();
+          final ok = await widget.onPressed();
+          if (ok && mounted) setState(() => _placed++);
+        },
+        style: IconButton.styleFrom(
+          fixedSize: const Size(52, 48),
+          foregroundColor: AppColors.ink,
+          backgroundColor: AppColors.surface,
+          side: BorderSide(color: AppColors.border, width: 1.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.button),
+          ),
         ),
+        icon: AppGlyph(widget.glyph, size: 22, color: AppColors.ink),
       ),
-      icon: Icon(icon, size: 21),
     ),
   );
 }

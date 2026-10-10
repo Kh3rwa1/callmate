@@ -36,6 +36,7 @@ dependencies:
   google_sign_in: ^7.2.0
   play_install_referrer: ^0.5.0
   qr_flutter: ^4.1.0
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -49,6 +50,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon/
+    # Hand-drawn 24×24 rounded-stroke icons (see lib/core/theme/app_glyphs.dart).
+    - assets/icons/
+    # Optional mascot pose overrides – see assets/mascot/README.md.
+    - assets/mascot/
   fonts:
     - family: Geist
       fonts:
@@ -61,15 +66,18 @@ flutter:
         - asset: assets/fonts/Geist-Bold.ttf
           weight: 700
     # Devanagari (Hindi) and Bengali fallbacks – see AppTheme.fontFallback.
-    - family: Hind
+    # Both are subset to their own script (+ ₹, dashes, ZWJ/ZWNJ) with every
+    # OpenType layout feature kept, since Geist draws all Latin text.
+    # Licences: assets/fonts/OFL-*.txt.
+    - family: Mukta
       fonts:
-        - asset: assets/fonts/Hind-Regular.ttf
+        - asset: assets/fonts/Mukta-Regular.ttf
           weight: 400
-        - asset: assets/fonts/Hind-Medium.ttf
+        - asset: assets/fonts/Mukta-Medium.ttf
           weight: 500
-        - asset: assets/fonts/Hind-SemiBold.ttf
+        - asset: assets/fonts/Mukta-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/Hind-Bold.ttf
+        - asset: assets/fonts/Mukta-Bold.ttf
           weight: 700
     - family: HindSiliguri
       fonts:

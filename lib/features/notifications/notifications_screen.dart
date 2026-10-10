@@ -33,7 +33,7 @@ class NotificationsScreen extends ConsumerWidget {
             ? EmptyState(
                 title: s.allCaughtUp,
                 message: s.nothingNeedsYou,
-                mascot: MascotState.success,
+                mascot: MascotState.idle,
               )
             : ListView(
                 padding: const EdgeInsets.fromLTRB(
@@ -235,9 +235,9 @@ class InAppNotificationBanner extends StatelessWidget {
                   children: [
                     MascotAvatar(
                       size: 42,
-                      state: n.type == NotificationType.hotLead
-                          ? MascotState.hotLead
-                          : MascotState.success,
+                      pose: n.type == NotificationType.hotLead
+                          ? BirdPose.hotLead
+                          : BirdPose.success,
                     ),
                     Positioned(
                       right: -4,

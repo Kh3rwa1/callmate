@@ -6,6 +6,7 @@ import '../../core/config/app_env.dart';
 import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_glyphs.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
@@ -13,10 +14,11 @@ import '../../core/widgets/settings_sheets.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
-import '../campaign/campaign_widgets.dart';
 import 'getting_started.dart';
 import 'home_widgets.dart';
+import 'home_hero.dart';
 import 'results_card.dart';
+import 'week_funnel.dart';
 import '../../core/widgets/brand_widgets.dart';
 import '../usage/plan_banner.dart';
 
@@ -29,13 +31,10 @@ class HomeScreen extends ConsumerWidget {
     final s = context.s;
     final t = Theme.of(context).textTheme;
     final biz = ref.watch(businessProvider).value;
-    final agent = ref.watch(agentProvider).value;
     final dash = ref.watch(dashboardProvider);
-    final campaign = ref.watch(activeCampaignProvider);
     final unread =
         ref.watch(notificationsProvider).value?.where((n) => !n.read).length ??
         0;
-    final live = (campaign != null && campaign.isActive) ? campaign : null;
 
     return Scaffold(
       body: SafeArea(
@@ -66,17 +65,23 @@ class HomeScreen extends ConsumerWidget {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            SwapFade(
-                              child: GradientText(
-                                biz?.name ?? s.homeWelcome,
-                                key: ValueKey(biz?.name),
-                                style: t.headlineSmall?.copyWith(
-                                  fontSize: 26,
-                                  letterSpacing: -0.6,
-                                  height: 1.15,
+                            // Up to two lines, never cut short: the name
+                            // tops out at 1.5× so a typical 20-letter name
+                            // fits even at the biggest text size.
+                            MediaQuery.withClampedTextScaling(
+                              maxScaleFactor: 1.5,
+                              child: SwapFade(
+                                child: GradientText(
+                                  biz?.name ?? s.homeWelcome,
+                                  key: ValueKey(biz?.name),
+                                  style: t.headlineSmall?.copyWith(
+                                    fontSize: 26,
+                                    letterSpacing: -0.6,
+                                    height: 1.15,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -91,7 +96,7 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       TopBarAction(
                         key: const Key('home-help'),
-                        icon: const Icon(Icons.help_outline_rounded, size: 26),
+                        icon: const AppGlyph(AppGlyphs.help, size: 26),
                         label: s.help,
                         onTap: () => showHelpSheet(context),
                       ),
@@ -109,15 +114,12 @@ class HomeScreen extends ConsumerWidget {
                           largeSize: 18,
                           padding: const EdgeInsets.symmetric(horizontal: 5),
                           textStyle: t.labelSmall?.copyWith(
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0,
                           ),
                           offset: const Offset(5, -4),
-                          child: const Icon(
-                            Icons.notifications_none_rounded,
-                            size: 26,
-                          ),
+                          child: const AppGlyph(AppGlyphs.alerts, size: 26),
                         ),
                       ),
                     ],
@@ -127,18 +129,15 @@ class HomeScreen extends ConsumerWidget {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpace.page,
-                  18,
+                  AppSpace.lg,
                   AppSpace.page,
                   0,
                 ),
-                sliver: SliverToBoxAdapter(
+                sliver: const SliverToBoxAdapter(
                   child: Reveal(
                     id: 'home-hero',
                     index: 1,
-                    child: HomeAgentCard(
-                      agent: agent,
-                      callsToday: dash.value?.callsToday,
-                    ),
+                    child: HomeHeroCard(),
                   ),
                 ),
               ),
@@ -146,27 +145,6 @@ class HomeScreen extends ConsumerWidget {
               const SliverPadding(
                 padding: EdgeInsets.symmetric(horizontal: AppSpace.page),
                 sliver: SliverToBoxAdapter(child: GettingStartedCard()),
-              ),
-              // The live banner grows in and out instead of popping.
-              SliverToBoxAdapter(
-                child: AnimatedSize(
-                  duration: AppMotion.of(context, AppMotion.slow),
-                  curve: AppMotion.emphasized,
-                  alignment: Alignment.topCenter,
-                  child: live != null
-                      ? Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSpace.page,
-                            14,
-                            AppSpace.page,
-                            0,
-                          ),
-                          child: PopIn(
-                            child: CampaignLiveBanner(campaign: live),
-                          ),
-                        )
-                      : const SizedBox(width: double.infinity),
-                ),
               ),
               // Payment due / trial running low.
               SliverToBoxAdapter(
@@ -229,36 +207,27 @@ class _HomeBody extends ConsumerWidget {
           null,
           (a, b) => a == null || b.scheduledAt.isBefore(a.scheduledAt) ? b : a,
         );
+    final heroCallsNew =
+        ref.watch(activeCampaignProvider)?.isActive != true &&
+        d.hot == 0 &&
+        d.followUpsReady == 0 &&
+        d.leads > 0 &&
+        d.newLeadsReady > 0;
+    final results = ref.watch(weekResultsProvider).value;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: _stagger([
-        SectionLabel(s.todaysResults),
-        HomeStatStrip(
-          stats: [
-            HomeStat(
-              d.connected,
-              s.statConnected,
-              () => context.go('/calls?filter=connected'),
-            ),
-            HomeStat(
-              d.interested,
-              s.statInterested,
-              () => context.go('/leads?filter=warm'),
-            ),
-            HomeStat(
-              d.hot,
-              s.statHot,
-              () => context.go('/leads?filter=hot'),
-              accent: AppColors.hot,
-            ),
-          ],
-        ),
+        if (results != null && !results.hasCalls) ...[
+          SectionLabel(s.resultsThisWeek),
+          const HearYourAiCard(),
+        ] else
+          const WeekFunnelSection(),
         SectionLabel(s.needsAttention),
         HomeActionGroup(
           rows: [
             if (d.hot > 0)
               HomeActionRow(
-                icon: Icons.local_fire_department_rounded,
+                glyph: AppGlyphs.hot,
                 color: AppColors.hot,
                 tint: AppColors.hotSoft,
                 count: d.hot,
@@ -267,7 +236,7 @@ class _HomeBody extends ConsumerWidget {
               )
             else
               HomeActionRow(
-                icon: Icons.local_fire_department_outlined,
+                glyph: AppGlyphs.hot,
                 color: AppColors.inkFaint,
                 tint: AppColors.surfaceMuted,
                 label: s.noHotLeadsYet,
@@ -275,7 +244,7 @@ class _HomeBody extends ConsumerWidget {
                 onTap: () => context.push('/campaign/new'),
               ),
             HomeActionRow(
-              icon: Icons.chat_bubble_outline_rounded,
+              glyph: AppGlyphs.message,
               color: AppColors.whatsapp,
               tint: AppColors.whatsappSoft,
               count: d.followUpsReady == 0 ? null : d.followUpsReady,
@@ -285,7 +254,7 @@ class _HomeBody extends ConsumerWidget {
               onTap: () => context.go('/followups'),
             ),
             HomeActionRow(
-              icon: Icons.event_outlined,
+              glyph: AppGlyphs.callback,
               color: AppColors.info,
               tint: AppColors.infoSoft,
               count: d.callbacksToday > 0 ? d.callbacksToday : null,
@@ -302,13 +271,17 @@ class _HomeBody extends ConsumerWidget {
                     ),
               onTap: () => context.push('/callbacks'),
             ),
+            // The hero already offers this when it's the top job.
+            if (d.newLeadsReady > 0 && !heroCallsNew)
+              HomeActionRow(
+                glyph: AppGlyphs.call,
+                color: AppColors.brand,
+                tint: AppColors.brandSoft,
+                label: s.callNewLeadsCount(d.newLeadsReady),
+                onTap: () => context.push('/campaign/new'),
+              ),
           ],
         ),
-        if (d.newLeadsReady > 0) ...[
-          const SizedBox(height: 20),
-          CallNewLeadsButton(count: d.newLeadsReady),
-        ],
-        const HomeResultsSection(),
         SectionLabel(s.todaysActivity),
         HomeActivityList(
           items: d.activity.take(3).toList(),
@@ -355,9 +328,15 @@ class TopBarAction extends StatelessWidget {
           onTap();
         },
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 56, minHeight: 56),
+          // Narrow and capped so the business name, not these, gets the
+          // room at big text sizes.
+          constraints: const BoxConstraints(
+            minWidth: 48,
+            maxWidth: 64,
+            minHeight: 56,
+          ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -367,12 +346,19 @@ class TopBarAction extends StatelessWidget {
                   child: icon,
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  label,
-                  maxLines: 1,
-                  style: t.labelMedium?.copyWith(
-                    fontSize: 13,
-                    color: AppColors.ink,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    softWrap: false,
+                    textScaler: MediaQuery.textScalerOf(
+                      context,
+                    ).clamp(maxScaleFactor: 1.3),
+                    style: t.labelMedium?.copyWith(
+                      fontSize: 13,
+                      color: AppColors.ink,
+                    ),
                   ),
                 ),
               ],

@@ -180,3 +180,8 @@ class Fmt {
     return DateFormat('h a').format(dt);
   }
 }
+
+/// Glues digit groups ("64,358") with a word joiner so a line never breaks
+/// inside a number ("64," / "358").
+String keepNumbersTogether(String text) =>
+    text.replaceAllMapped(RegExp(r'(\d),(\d)'), (m) => '${m[1]},\u2060${m[2]}');

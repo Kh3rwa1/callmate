@@ -155,7 +155,7 @@ class _ContactsPickerScreenState extends ConsumerState<ContactsPickerScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 4),
-                const Mascot(state: MascotState.success, size: 120),
+                const Mascot(state: MascotState.celebrating, size: 120),
                 const SizedBox(height: 8),
                 Text(
                   s.nImported(r.imported),
@@ -255,7 +255,7 @@ class _ContactsPickerScreenState extends ConsumerState<ContactsPickerScreen> {
               child: Column(
                 children: [
                   const PopIn(
-                    child: Mascot(state: MascotState.welcome, size: 130),
+                    child: Mascot(state: MascotState.waving, size: 130),
                   ),
                   const SizedBox(height: 12),
                   Reveal(
@@ -309,7 +309,7 @@ class _ContactsPickerScreenState extends ConsumerState<ContactsPickerScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Mascot(state: MascotState.welcome, size: 150),
+            const Mascot(state: MascotState.waving, size: 150),
             const SizedBox(height: 16),
             Text(s.ctAccessTitle, style: t.titleLarge),
             const SizedBox(height: 8),

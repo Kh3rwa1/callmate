@@ -71,7 +71,7 @@ class FollowUpsScreen extends ConsumerWidget {
                       child: EmptyState(
                         title: s.allCaughtUp,
                         message: s.newDraftsAppear,
-                        mascot: MascotState.success,
+                        mascot: MascotState.celebrating,
                       ),
                     )
                   else ...[

@@ -40,15 +40,17 @@ bool _chipSelected(String label) =>
 
 void main() {
   group('HomeScreen', () {
-    appTest('shows business, agent card and today\'s metrics', (h) async {
+    appTest('shows business, the hero and what needs attention', (h) async {
       final b = h.backend;
       expect(find.textContaining(b.business.name), findsOneWidget);
       expect(find.text(b.agent.name), findsWidgets);
-      expect(find.text('Active'), findsOneWidget);
-      expect(find.text("Today's results"), findsOneWidget);
+      expect(find.text('Your employee today'), findsOneWidget);
+      expect(find.text('This week'), findsOneWidget);
 
       final hot = b.leads.values.where((l) => l.isHot).length;
-      expect(find.text('$hot ready to buy'), findsOneWidget);
+      // Hero status line and the attention row.
+      expect(find.text('$hot ready to buy'), findsNWidgets(2));
+      expect(find.text('See who is ready'), findsOneWidget);
 
       final pending = b.followUps.values.where((f) => f.isPending).length;
       expect(find.text('$pending messages ready'), findsOneWidget);
@@ -67,13 +69,14 @@ void main() {
 
     appTest('hot leads action opens leads filtered to hot', (h) async {
       final hotCount = h.backend.leads.values.where((l) => l.isHot).length;
-      await h.tapText('$hotCount ready to buy');
+      expect(find.text('$hotCount ready to buy'), findsWidgets);
+      await h.tapText('See who is ready');
       expect(h.location, '/leads');
       expect(_chipSelected('Wants to buy'), isTrue);
     });
 
-    appTest('metric tiles deep link into filtered lists', (h) async {
-      await h.tapText('Connected');
+    appTest('funnel rows deep link into filtered lists', (h) async {
+      await h.tapText('Talked');
       expect(h.location, '/calls');
       expect(_chipSelected('Connected'), isTrue);
 
@@ -84,11 +87,16 @@ void main() {
     });
 
     appTest('agent card, notifications and follow-ups navigate', (h) async {
-      await h.tap(find.byIcon(Icons.notifications_none_rounded));
+      await h.tap(find.byKey(const Key('home-alerts')));
       expect(h.location, '/notifications');
 
       await h.go('/home');
-      await h.tap(find.byType(HomeAgentCard));
+      await h.tap(
+        find.descendant(
+          of: find.byKey(const Key('home-hero')),
+          matching: find.text(h.backend.agent.name),
+        ),
+      );
       expect(h.location, '/agent');
 
       await h.go('/home');
@@ -119,7 +127,9 @@ void main() {
       expect(find.byType(CampaignSetupScreen), findsOneWidget);
     });
 
-    appTest('live campaign banner appears and opens progress', (h) async {
+    appTest('a live campaign takes over the hero and opens progress', (
+      h,
+    ) async {
       final b = h.backend;
       final ids = b.leads.values
           .where((l) => l.status == LeadStatus.newLead)
@@ -135,11 +145,8 @@ void main() {
       h.container.read(activeCampaignProvider.notifier).set(c);
       await h.settle(2);
 
-      expect(
-        find.text('${b.agent.name} is calling your customers…'),
-        findsOneWidget,
-      );
-      await h.tap(find.text('${b.agent.name} is calling your customers…'));
+      expect(find.text('Calling your customers…'), findsOneWidget);
+      await h.tap(find.text('See live calls'));
       expect(h.location, '/campaigns/${c.id}');
       expect(find.byType(CampaignProgressScreen), findsOneWidget);
     });

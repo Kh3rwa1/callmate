@@ -216,7 +216,15 @@ class LeadAvatar extends StatelessWidget {
         width: size,
         height: size,
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: style.bg, shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: style.bg,
+          shape: BoxShape.circle,
+          // Ready-to-buy leads get a thin ring so they stand out in a list
+          // even for owners who don't read colour well.
+          border: temperature == LeadTemperature.hot
+              ? Border.all(color: style.fg.withValues(alpha: 0.45), width: 1.5)
+              : null,
+        ),
         child: Text(
           initials.toUpperCase(),
           style: TextStyle(

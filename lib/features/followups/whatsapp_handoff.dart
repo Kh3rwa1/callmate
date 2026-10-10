@@ -88,7 +88,11 @@ Future<void> _fallback(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Mascot(state: MascotState.error, size: 88),
+              const Mascot(
+                state: MascotState.thinking,
+                pose: BirdPose.error,
+                size: 88,
+              ),
               const SizedBox(height: 14),
               Text(s.waNotInstalled, style: t.titleLarge),
               const SizedBox(height: 6),

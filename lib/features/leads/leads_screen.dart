@@ -241,12 +241,7 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
           itemBuilder: (context, i) {
             if (i == st.items.length) {
               return st.hasMore
-                  ? const Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Center(
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
-                      ),
-                    )
+                  ? const SkeletonRow()
                   : const SizedBox(height: 12);
             }
             final lead = st.items[i];

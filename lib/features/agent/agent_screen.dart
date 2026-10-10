@@ -8,8 +8,10 @@ import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/settings.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_glyphs.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
+import '../../core/widgets/whole_word_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/employee_avatar.dart';
 import '../../core/widgets/settings_sheets.dart';
@@ -170,11 +172,13 @@ class _Body extends ConsumerWidget {
             children: [
               _NavRow(
                 icon: Icons.ring_volume_outlined,
+                glyph: AppGlyphs.call,
                 title: s.hearYourAiShort,
                 onTap: () => showOwnerTestCallSheet(context),
               ),
               _NavRow(
                 icon: Icons.menu_book_outlined,
+                glyph: AppGlyphs.teach,
                 title: s.teachYourAi,
                 value: knowledge == null ? null : s.nSources(knowledge.length),
                 onTap: () => context.push('/agent/teach'),
@@ -209,6 +213,7 @@ class _Body extends ConsumerWidget {
                     )
                   : _NavRow(
                       icon: Icons.timelapse_rounded,
+                      glyph: AppGlyphs.plan,
                       title: s.minLeft(Fmt.number(usage.minutesRemaining)),
                       value: s.planDisplayName(usage.subscription.planName),
                       progress: usage.ratio,
@@ -219,6 +224,7 @@ class _Body extends ConsumerWidget {
                     ),
               _NavRow(
                 icon: Icons.card_giftcard_outlined,
+                glyph: AppGlyphs.share,
                 title: s.inviteAndEarn,
                 value: referralBonus == null
                     ? null
@@ -360,7 +366,7 @@ class _Hero extends StatelessWidget {
                     Text(
                       s.data(a.role),
                       style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
@@ -439,6 +445,7 @@ class _NavRow extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.onTap,
+    this.glyph,
     this.value,
     this.color,
     this.chevron = true,
@@ -446,6 +453,9 @@ class _NavRow extends StatelessWidget {
     this.progressColor,
   });
   final IconData icon;
+
+  /// CallPilot's own icon, used instead of [icon] when given.
+  final AppGlyphs? glyph;
   final String title;
   final VoidCallback onTap;
   final String? value;
@@ -454,10 +464,17 @@ class _NavRow extends StatelessWidget {
   final double? progress;
   final Color? progressColor;
 
+  /// Above this text scale the value moves under the title instead of
+  /// being squeezed (and cut off) beside it.
+  static const stackAbove = 1.3;
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final fg = color ?? AppColors.ink;
+    final stacked =
+        MediaQuery.textScalerOf(context).scale(100) / 100 > stackAbove;
+    final valueStyle = t.bodyMedium?.copyWith(color: AppColors.inkFaint);
     return Semantics(
       button: true,
       child: InkWell(
@@ -471,19 +488,27 @@ class _NavRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                Icon(icon, size: 22, color: fg),
+                if (glyph case final g?)
+                  AppGlyph(g, size: 22, color: fg)
+                else
+                  Icon(icon, size: 22, color: fg),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        title,
+                      WholeWordText(
+                        keepNumbersTogether(title),
                         style: t.titleSmall?.copyWith(color: fg),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        maxLines: stacked ? 3 : 2,
                       ),
+                      if (stacked && value != null)
+                        Text(
+                          keepNumbersTogether(value!),
+                          key: const Key('nav-row-value'),
+                          style: valueStyle,
+                        ),
                       if (progress != null) ...[
                         const SizedBox(height: 8),
                         TweenAnimationBuilder<double>(
@@ -502,15 +527,15 @@ class _NavRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (value != null) ...[
+                if (value != null && !stacked) ...[
                   const SizedBox(width: 12),
                   Flexible(
                     child: Text(
-                      value!,
+                      keepNumbersTogether(value!),
                       textAlign: TextAlign.end,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: t.bodyMedium?.copyWith(color: AppColors.inkFaint),
+                      style: valueStyle,
                     ),
                   ),
                 ],
