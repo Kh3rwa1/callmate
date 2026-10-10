@@ -3,8 +3,8 @@ import { Env, AuthUser } from '../types';
 import { safeJsonParse } from '../utils/json';
 import { decryptAtRest, maskPhone } from '../utils/crypto_data';
 import { requireSecret, isMockSarvam } from '../utils/secrets';
-import { checkCallCompliance } from '../services/compliance';
-import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS } from '../services/campaign_queue';
+import { checkCallCompliance, allowAnyCallingHours } from '../services/compliance';
+import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS, hasMinutesHeadroom } from '../services/campaign_queue';
 import { parseLimit } from '../utils/pagination';
 import { buildCallAgentVariables } from '../services/call_variables';
 
@@ -167,6 +167,7 @@ callsApp.post('/leads/:id/call', async (c) => {
     hoursStart: agent?.calling_hours_start,
     hoursEnd: agent?.calling_hours_end,
     timezone: lead.timezone || 'Asia/Kolkata',
+    skipTraiClamp: allowAnyCallingHours(c.env),
   });
   if (!compliance.allowed) {
     return c.json({
@@ -185,7 +186,7 @@ callsApp.post('/leads/:id/call', async (c) => {
 
   const usage = await c.env.DB.prepare('SELECT included_minutes, minutes_used FROM usage WHERE business_id = ?')
     .bind(user.business_id).first<{ included_minutes: number; minutes_used: number }>();
-  if (usage && usage.included_minutes - usage.minutes_used <= 0) {
+  if (usage && !hasMinutesHeadroom(usage, active?.cnt ?? 0)) {
     return c.json({ message: 'You have used all included calling minutes.', code: 'exhausted_minutes' }, 402);
   }
 

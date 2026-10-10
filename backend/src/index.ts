@@ -20,6 +20,7 @@ import { fcApp } from './routes/followups_callbacks';
 import { knowledgeApp } from './routes/knowledge';
 import { dashApp } from './routes/dashboard';
 import { voiceApp, handleSarvamWebhook } from './routes/voice';
+import { legalApp } from './routes/legal';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
@@ -137,6 +138,9 @@ app.get('/health/deep', async (c) => {
 
 // ------------------------------------------------------------- Public Routes
 app.route('/auth', authApp);
+
+// Privacy policy, terms and account-deletion pages (linked from the app and Play Store listing)
+app.route('/legal', legalApp);
 
 // Public Sarvam completed call webhook
 app.post('/webhooks/sarvam', async (c) => {

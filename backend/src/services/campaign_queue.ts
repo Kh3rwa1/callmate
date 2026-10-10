@@ -11,7 +11,7 @@
  * The ONLY transition into 'calling' is the atomic claim in processCampaignJob.
  */
 import { Env } from '../types';
-import { checkCallCompliance } from './compliance';
+import { checkCallCompliance, allowAnyCallingHours } from './compliance';
 import { maskPhone } from '../utils/crypto_data';
 import { isMockSarvam } from '../utils/secrets';
 import { buildCallAgentVariables } from './call_variables';
@@ -40,6 +40,20 @@ export interface ProcessResult {
 
 export const MAX_DIAL_ATTEMPTS = 3;
 export const MAX_CONCURRENT_CALLS_PER_BUSINESS = 5;
+/**
+ * Minutes held back for every call that is (or is about to be) in progress. Usage is only billed when
+ * a call ends, so a new dial needs room for itself plus every call still running.
+ */
+export const RESERVED_MINUTES_PER_CALL = 5;
+
+/** True when the remaining minutes cover the calls in progress plus one more. */
+export function hasMinutesHeadroom(
+  usage: { included_minutes: number; minutes_used: number },
+  activeCalls: number,
+): boolean {
+  const remaining = usage.included_minutes - usage.minutes_used;
+  return remaining >= (activeCalls + 1) * RESERVED_MINUTES_PER_CALL;
+}
 /** Cloudflare Queues caps retry/send delay (12h at time of writing; verify in CF docs). */
 export const MAX_QUEUE_DELAY_SECONDS = 12 * 60 * 60;
 export const CLAIMABLE_STATUSES = ['pending', 'queued', 'rescheduled', 'retry_pending'] as const;
@@ -221,6 +235,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
     hoursStart: campaign.calling_hours_start,
     hoursEnd: campaign.calling_hours_end,
     timezone: lead.timezone || 'Asia/Kolkata',
+    skipTraiClamp: allowAnyCallingHours(env),
   });
 
   if (!compliance.allowed) {
@@ -243,7 +258,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
   // 5. Billing guard
   const usage = await env.DB.prepare('SELECT included_minutes, minutes_used FROM usage WHERE business_id = ?')
     .bind(business_id).first<{ included_minutes: number; minutes_used: number }>();
-  if (usage && usage.included_minutes - usage.minutes_used <= 0) {
+  if (usage && !hasMinutesHeadroom(usage, active?.cnt ?? 0)) {
     await env.DB.prepare(`UPDATE campaigns SET status = 'paused' WHERE id = ? AND business_id = ?`)
       .bind(campaign_id, business_id).run();
     return { success: true, reason: 'exhausted_minutes' };

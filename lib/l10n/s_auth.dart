@@ -66,8 +66,11 @@ extension SAuth on S {
       pick(' · use 123456', ' · 123456 डालें', ' · 123456 দিন');
   String get businessName =>
       pick('Business name', 'कारोबार का नाम', 'ব্যবসার নাম');
-  String get businessNameHint =>
-      pick('e.g. Apex Coaching', 'जैसे Apex Coaching', 'যেমন Apex Coaching');
+  String get businessNameHint => pick(
+    'e.g. Sharma Enterprises',
+    'जैसे Sharma Enterprises',
+    'যেমন Sharma Enterprises',
+  );
   String get businessMobile => pick(
     'Business mobile number',
     'कारोबार का मोबाइल नंबर',

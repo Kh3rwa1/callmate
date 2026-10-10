@@ -87,6 +87,8 @@ Firebase config is missing.
 Cloudflare D1 is SQLite at the edge. To roll back an accidental or failing migration:
 
 ### 2.1 Export Current Database Backup
+Every **Deploy Production** run exports the database before migrating and keeps it
+for 30 days as the workflow artifact `d1-backup-<run id>` (`backup-<sha>.sql`).
 Always capture an immediate snapshot before any rollback operations:
 ```bash
 npx wrangler d1 export callpilot-db --remote --output=./backup_$(date +%Y%m%d_%H%M%S).sql
@@ -127,26 +129,48 @@ echo "$NEW_KEY" | npx wrangler secret put JWT_SIGNING_KEY
 3. **Impact & Recovery:** Existing access tokens will be rejected with 401 on their next request. The Flutter client's `ApiClient` automatically intercepts the 401 and uses the valid refresh token (stored as a SHA-256 hash in D1) to silently obtain a new access token signed with the new key. Users will not be logged out.
 
 ### 3.2 Rotating Sarvam AI API Key (`SARVAM_API_KEY`)
-1. Log into Sarvam AI Dashboard and generate a new API key.
-2. Update production secret:
+See also `docs/SARVAM_SETUP.md`. The API is served on workers.dev:
+production `https://callpilot-backend.dulalkisku0.workers.dev`, staging
+`https://callpilot-backend-staging.dulalkisku0.workers.dev`.
+
+1. In the Sarvam dashboard (**Settings → API Key**) create a new key. Keep the old one for now.
+2. Update the secret in both environments:
 ```bash
-npx wrangler secret put SARVAM_API_KEY
+npx wrangler secret put SARVAM_API_KEY                 # production
+npx wrangler secret put SARVAM_API_KEY --env staging   # staging
 ```
-3. Test connectivity immediately:
+3. Confirm it works: on staging, open the app → Agent → talk to your AI employee (or
+   `POST /voice/test-session` with an owner's access token), then place one test call to
+   **your own number** and check it rings and the result arrives.
 ```bash
-curl -X POST https://api.callpilot.app/voice/test-session \
-  -H "Authorization: Bearer <ADMIN_TEST_TOKEN>"
+curl -X POST https://callpilot-backend-staging.dulalkisku0.workers.dev/voice/test-session \
+  -H "Authorization: Bearer <OWNER_ACCESS_TOKEN>"
 ```
-4. Verify voice test session generates successfully, then revoke the old key in the Sarvam dashboard.
+4. Repeat the check on production, then revoke the old key in the Sarvam dashboard.
 
 ### 3.3 Rotating Sarvam Webhook Secret (`SARVAM_WEBHOOK_SECRET`)
-1. Generate new webhook secret or retrieve from Sarvam dashboard.
-2. Update Cloudflare secret:
+Sarvam does **not** sign webhooks and this secret is **not** entered in Sarvam.
+Each dial puts a per-call token in its webhook URL:
+`{PUBLIC_API_BASE_URL}/webhooks/sarvam?call_id=…&token=HMAC-SHA256(SARVAM_WEBHOOK_SECRET, call_id)`,
+and `/webhooks/sarvam` recomputes it. Rotating the secret therefore invalidates the
+tokens of calls still in progress: their results are rejected (401) and the
+maintenance sweeper later marks those calls failed.
+
+1. Pick a quiet moment: pause running campaigns and check nothing is in progress:
 ```bash
-npx wrangler secret put SARVAM_WEBHOOK_SECRET
+npx wrangler d1 execute callpilot-db --remote --command="
+  SELECT COUNT(*) FROM calls WHERE status = 'calling';
+"
 ```
-3. Update the webhook configuration in the Sarvam AI portal to match the new secret.
-4. Send a test webhook to `/webhooks/sarvam` and confirm HTTP 200 response.
+2. Generate and set a new secret (32+ chars):
+```bash
+openssl rand -hex 32
+npx wrangler secret put SARVAM_WEBHOOK_SECRET                 # production
+npx wrangler secret put SARVAM_WEBHOOK_SECRET --env staging   # staging (use a different value)
+```
+3. Nothing to change in the Sarvam portal: the next dial carries a token made with the new secret.
+4. Place one test call to your own number and confirm the call completes in the app
+   (`npx wrangler tail` shows the `/webhooks/sarvam` request with status 200). Resume campaigns.
 
 ---
 
@@ -178,7 +202,7 @@ npx wrangler d1 execute callpilot-db --remote --command="
 ### 4.3 Force Stop the Campaign
 Halting the campaign transitions `campaigns.status` to `stopped`, causing the queue consumer to immediately acknowledge and drop remaining tasks:
 ```bash
-curl -X POST https://api.callpilot.app/campaigns/<CAMPAIGN_ID>/stop \
+curl -X POST https://callpilot-backend.dulalkisku0.workers.dev/campaigns/<CAMPAIGN_ID>/stop \
   -H "Authorization: Bearer <TOKEN>"
 ```
 Alternatively, update database directly:

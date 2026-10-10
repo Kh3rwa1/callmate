@@ -79,8 +79,8 @@ voiceApp.post('/test-session', async (c) => {
   const url = new URL(c.req.url);
   const proxyBaseUrl = `${url.origin}/voice/sarvam-proxy/`;
 
-  const agentName = agent?.name || 'Riya';
-  const businessName = business?.name || 'CallPilot Business';
+  const agentName = agent?.name || 'Assistant';
+  const businessName = business?.name || 'our business';
   const greetingText = `Hello, I'm ${agentName}, an AI assistant from ${businessName}. How can I assist you today?`;
   // The employee's own voice: a man named Arjun must not answer as a woman.
   // The app sends its language so the live call speaks it too.
@@ -147,7 +147,7 @@ voiceApp.post('/chat', async (c) => {
   const business = await c.env.DB.prepare('SELECT * FROM businesses WHERE id = ?').bind(user.business_id).first<any>();
   const agent = await c.env.DB.prepare('SELECT * FROM agents WHERE business_id = ?').bind(user.business_id).first<any>();
 
-  const agentName = agent?.name || 'Riya';
+  const agentName = agent?.name || 'Assistant';
   const agentRole = agent?.role || 'Assistant';
   const businessName = business?.name || 'our business';
   const category = business?.category || 'business';

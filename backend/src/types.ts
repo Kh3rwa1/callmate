@@ -38,6 +38,12 @@ export interface Env {
   FIREBASE_PROJECT_ID?: string;
   /** Public origin of this worker (e.g. https://api.example.com), used for Sarvam webhook_config on queued dials. */
   PUBLIC_API_BASE_URL?: string;
+  /** Dev/test only: 'true' skips the TRAI 09:00-21:00 clamp so tests can dial at any time of day. */
+  DEV_ALLOW_ANY_CALLING_HOURS?: string;
+  /** Contact address shown on the public legal pages. */
+  SUPPORT_EMAIL?: string;
+  /** Legal entity named on the public legal pages. */
+  LEGAL_ENTITY_NAME?: string;
 }
 
 export interface AuthUser {

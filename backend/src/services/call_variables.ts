@@ -98,7 +98,7 @@ export async function buildCallAgentVariables(env: Env, input: CallVariableInput
     lead_id: () => lead.id,
     lead_name: () => lead.name,
     business_name: () => input.business?.name ?? 'our business',
-    agent_name: () => agent?.name ?? 'Riya',
+    agent_name: () => agent?.name ?? 'Assistant',
     agent_role: () => agent?.role ?? 'Assistant',
     interest: () => lead.interest ?? lead.course_interest ?? '',
     call_language: () => firstLanguageName(agent?.languages),

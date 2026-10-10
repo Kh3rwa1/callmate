@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n.dart';
+import '../config/app_env.dart';
 import '../motion/motion.dart';
 import '../settings.dart';
 import '../theme/app_colors.dart';
@@ -106,6 +108,108 @@ Future<void> showAppearanceSheet(BuildContext context, WidgetRef ref) {
                   ),
                 ),
             ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// Help & support: email the team and read the legal pages. Links whose URL
+/// is not configured for this build are hidden.
+Future<void> showSupportSheet(BuildContext context) {
+  final s = context.s;
+  final options = <(String, String?, IconData, Uri)>[
+    (
+      s.emailSupport,
+      AppEnv.supportEmail,
+      Icons.mail_outline_rounded,
+      Uri(
+        scheme: 'mailto',
+        path: AppEnv.supportEmail,
+        query: 'subject=${Uri.encodeComponent(s.supportEmailSubject)}',
+      ),
+    ),
+    if (AppEnv.privacyUrl.isNotEmpty)
+      (
+        s.privacyPolicy,
+        null,
+        Icons.privacy_tip_outlined,
+        Uri.parse(AppEnv.privacyUrl),
+      ),
+    if (AppEnv.termsUrl.isNotEmpty)
+      (
+        s.termsOfService,
+        null,
+        Icons.description_outlined,
+        Uri.parse(AppEnv.termsUrl),
+      ),
+    if (AppEnv.deleteAccountUrl.isNotEmpty)
+      (
+        s.deleteAccountHelp,
+        null,
+        Icons.person_remove_outlined,
+        Uri.parse(AppEnv.deleteAccountUrl),
+      ),
+  ];
+  return showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    builder: (ctx) {
+      String? error;
+      return StatefulBuilder(
+        builder: (ctx, setSheetState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.page,
+              0,
+              AppSpace.page,
+              16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(s.helpSupport, style: Theme.of(ctx).textTheme.titleLarge),
+                const SizedBox(height: 12),
+                for (final (i, (label, hint, icon, uri)) in options.indexed)
+                  Reveal(
+                    index: i,
+                    offset: 8,
+                    child: _ChoiceRow(
+                      label: label,
+                      hint: hint,
+                      icon: icon,
+                      selected: false,
+                      onTap: () async {
+                        Haptics.tap();
+                        var ok = false;
+                        try {
+                          ok = await launchUrl(
+                            uri,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        } catch (_) {}
+                        // Errors stay inside the sheet: a snackbar would
+                        // render behind it.
+                        if (!ok && ctx.mounted) {
+                          setSheetState(() => error = s.couldNotOpen(label));
+                        }
+                      },
+                    ),
+                  ),
+                if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      error!,
+                      style: Theme.of(
+                        ctx,
+                      ).textTheme.bodySmall?.copyWith(color: AppColors.hot),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       );
