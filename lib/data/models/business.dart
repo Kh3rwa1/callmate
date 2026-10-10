@@ -14,6 +14,8 @@ class Business {
     this.whatsappNumber,
     this.humanNumber,
     this.ownerName,
+    this.digestEnabled = true,
+    this.avgDealValueInr,
   });
 
   final String id;
@@ -30,6 +32,12 @@ class Business {
   final String? humanNumber;
   final String? ownerName;
 
+  /// The 7 PM "your day" summary push.
+  final bool digestEnabled;
+
+  /// Average sale value, for the results card's estimate. Null = not set.
+  final int? avgDealValueInr;
+
   Business copyWith({
     String? name,
     BusinessCategory? category,
@@ -40,6 +48,9 @@ class Business {
     String? location,
     String? whatsappNumber,
     String? humanNumber,
+    bool? digestEnabled,
+    int? avgDealValueInr,
+    bool clearAvgDealValue = false,
   }) => Business(
     id: id,
     name: name ?? this.name,
@@ -52,6 +63,10 @@ class Business {
     whatsappNumber: whatsappNumber ?? this.whatsappNumber,
     humanNumber: humanNumber ?? this.humanNumber,
     ownerName: ownerName,
+    digestEnabled: digestEnabled ?? this.digestEnabled,
+    avgDealValueInr: clearAvgDealValue
+        ? null
+        : (avgDealValueInr ?? this.avgDealValueInr),
   );
 
   factory Business.fromJson(Json j) => Business(
@@ -66,6 +81,8 @@ class Business {
     whatsappNumber: jStrN(j, 'whatsapp_number'),
     humanNumber: jStrN(j, 'human_number') ?? jStrN(j, 'counsellor_number'),
     ownerName: jStrN(j, 'owner_name'),
+    digestEnabled: jBool(j, 'digest_enabled', true),
+    avgDealValueInr: jIntN(j, 'avg_deal_value_inr'),
   );
 
   Json toJson() => {
@@ -80,6 +97,9 @@ class Business {
     'whatsapp_number': whatsappNumber,
     'human_number': humanNumber,
     'owner_name': ownerName,
+    'digest_enabled': digestEnabled,
+    // Nullable on the backend: null clears it.
+    'avg_deal_value_inr': avgDealValueInr,
   };
 }
 

@@ -83,7 +83,8 @@ campaignsApp.post('/campaigns', async (c) => {
       const slice = leadIds.slice(i, i + chunkSize);
       const placeholders = slice.map(() => '?').join(',');
       const check = await c.env.DB.prepare(
-        `SELECT COUNT(*) as cnt FROM leads WHERE business_id = ? AND id IN (${placeholders})`
+        // The owner's own test lead (POST /agent/test-call) is never campaign material.
+        `SELECT COUNT(*) as cnt FROM leads WHERE business_id = ? AND is_owner_test = 0 AND id IN (${placeholders})`
       ).bind(user.business_id, ...slice).first<{ cnt: number }>();
       validCount += check?.cnt || 0;
     }

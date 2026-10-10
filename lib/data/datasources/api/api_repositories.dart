@@ -304,6 +304,15 @@ class ApiCallRepository implements CallRepository {
     '/leads/$leadId/call',
     (d) => Call.fromJson(_j(d is Map && d.containsKey('call') ? d['call'] : d)),
   );
+  @override
+  Future<OwnerTestCallInfo> ownerTestCallInfo() =>
+      api.get('/agent/test-call', (d) => OwnerTestCallInfo.fromJson(_j(d)));
+  @override
+  Future<OwnerTestCallInfo> callOwner(String phone) => api.post(
+    '/agent/test-call',
+    (d) => OwnerTestCallInfo.fromJson(_j(d)),
+    data: {'phone': phone},
+  );
 }
 
 class ApiCampaignRepository implements CampaignRepository {
@@ -443,6 +452,13 @@ class ApiDashboardRepository implements DashboardRepository {
       ),
     );
   });
+
+  @override
+  Future<ResultsSummary> results(ResultsRange range) => api.get(
+    '/dashboard/results',
+    (d) => ResultsSummary.fromJson(_j(d)),
+    query: {'range': range.wire},
+  );
 }
 
 class ApiVoiceSessionRepository implements VoiceSessionRepository {
