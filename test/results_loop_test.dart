@@ -151,18 +151,28 @@ void main() {
       expect(find.text('could come from $hot ready buyers'), findsOneWidget);
     });
 
-    appTest('before any call, Home offers to call the owner', (h) async {
-      expect(find.byType(HearYourAiCard), findsOneWidget);
-      await h.tapText('Call me now');
-      // Prefilled with the owner's number from GET /agent/test-call.
-      expect(find.text('+91 98300 12345'), findsOneWidget);
-      await h.tap(find.text('Call me now').last);
-      expect(
-        find.text('Calling you now. Your phone will ring in a few seconds.'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('2 test calls left today'), findsOneWidget);
-    }, backend: () => MockBackend()..calls.clear());
+    appTest(
+      'before any call, Home offers to call the owner',
+      (h) async {
+        expect(find.byType(HearYourAiCard), findsOneWidget);
+        await h.tapText('Call me now');
+        // Prefilled with the owner's number from GET /agent/test-call.
+        expect(find.text('+91 98300 12345'), findsOneWidget);
+        await h.tap(find.text('Call me now').last);
+        expect(
+          find.text('Calling you now. Your phone will ring in a few seconds.'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('2 test calls left today'), findsOneWidget);
+      },
+      backend: () => MockBackend()..calls.clear(),
+      // 14:00 IST: inside the calling window, whenever CI runs.
+      overrides: () => [
+        clockProvider.overrideWithValue(
+          () => DateTime.utc(2026, 10, 10, 8, 30),
+        ),
+      ],
+    );
   });
 
   group('Agent settings', () {

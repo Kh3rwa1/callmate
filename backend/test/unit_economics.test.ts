@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeAll, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, vi, afterEach, afterAll } from 'vitest';
 import { env } from 'cloudflare:test';
+import { useIndianBusinessHours, useRealClock } from './clock';
 import { migrateTestDb } from './setup-db';
 import app from '../src/index';
 import { signJWT } from '../src/auth';
@@ -46,7 +47,10 @@ const minutesUsed = async () =>
   (await env.DB.prepare('SELECT minutes_used FROM usage WHERE business_id = ?').bind(BIZ).first<any>()).minutes_used as number;
 
 describe('Unit economics', () => {
+  afterAll(useRealClock);
+
   beforeAll(async () => {
+    useIndianBusinessHours();
     await migrateTestDb();
     await env.DB.batch([
       env.DB.prepare("INSERT OR REPLACE INTO businesses (id, name) VALUES (?, 'Econ Biz')").bind(BIZ),
