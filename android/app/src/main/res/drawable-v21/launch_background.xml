@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- CallPilot native splash: brand mark on warm off-white. Wordmark + tagline render in the Flutter splash. -->
+<!-- CallPilot native splash: the bird on cool off-white. Wordmark + tagline render in the Flutter splash. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/splash_background" />
     <item>

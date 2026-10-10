@@ -8,7 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/mascot.dart';
+import '../../core/widgets/employee_avatar.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
@@ -65,7 +65,13 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Mascot(state: MascotState.calling, size: 88),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: AgentAvatar(
+                        size: 72,
+                        activity: EmployeeActivity.calling,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     SwapFade(
                       child: Text(
@@ -277,7 +283,7 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                                 ],
                               ),
                             ),
-                            const Mascot(state: MascotState.calling, size: 76),
+                            const AgentAvatar(size: 56),
                           ],
                         ),
                       ),
@@ -291,7 +297,10 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                             CampaignSummaryRow(
                               label: s.campaignCaller,
                               value: agent?.name ?? '—',
-                              leading: const MascotAvatar(size: 26),
+                              leading: const AgentAvatar(
+                                size: 26,
+                                showRole: false,
+                              ),
                             ),
                             const Divider(height: 1),
                             CampaignSummaryRow(

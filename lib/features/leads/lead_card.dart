@@ -65,78 +65,77 @@ class LeadCard extends ConsumerWidget {
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: () => context.push('/leads/${l.id}'),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 6, 8),
-              decoration: BoxDecoration(
-                border: last
-                    ? null
-                    : Border(
-                        bottom: BorderSide(color: AppColors.border, width: 0.8),
-                      ),
-              ),
-              child: Row(
-                children: [
-                  Hero(
-                    tag: 'lead-avatar-${l.id}',
-                    child: LeadAvatar(
-                      name: l.name,
-                      temperature: l.temperature,
-                      size: 42,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l.name,
-                          style: t.titleMedium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          meta,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: t.bodySmall?.copyWith(
-                            color: AppColors.inkSoft,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 6, 8),
+                  child: Row(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: _Status(lead: l),
+                      Hero(
+                        tag: 'lead-avatar-${l.id}',
+                        child: LeadAvatar(
+                          name: l.name,
+                          temperature: l.temperature,
+                          size: 42,
+                        ),
                       ),
-                      const SizedBox(height: 2),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l.name,
+                              style: t.titleMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              meta,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.bodySmall?.copyWith(
+                                color: AppColors.inkSoft,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          _QuickAction(
-                            icon: Icons.chat_outlined,
-                            tooltip: s.whatsapp,
-                            color: AppColors.whatsapp,
-                            onTap: () => _whatsapp(context, ref),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: _Status(lead: l),
                           ),
-                          _QuickAction(
-                            icon: Icons.call_outlined,
-                            tooltip: s.call,
-                            color: AppColors.inkSoft,
-                            onTap: () => _call(context),
+                          const SizedBox(height: 2),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _QuickAction(
+                                icon: Icons.chat_outlined,
+                                tooltip: s.whatsapp,
+                                color: AppColors.whatsapp,
+                                onTap: () => _whatsapp(context, ref),
+                              ),
+                              _QuickAction(
+                                icon: Icons.call_outlined,
+                                tooltip: s.call,
+                                color: AppColors.inkSoft,
+                                onTap: () => _call(context),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                if (!last) const Divider(height: 1, thickness: 1, indent: 70),
+              ],
             ),
           ),
         ),

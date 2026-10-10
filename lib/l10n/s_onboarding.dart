@@ -25,17 +25,17 @@ extension SOnboarding on S {
     (
       pick('Calls', 'कॉल', 'কল'),
       pick(
-        'Calls every new lead within minutes',
-        'हर नई लीड को मिनटों में कॉल',
-        'প্রতিটি নতুন লিডে কয়েক মিনিটে কল',
+        'Calls every new customer within minutes',
+        'हर नए ग्राहक को मिनटों में कॉल',
+        'প্রতিটি নতুন গ্রাহকে কয়েক মিনিটে কল',
       ),
     ),
     (
       pick('Listens', 'समझ', 'বোঝে'),
       pick(
-        'Understands what each lead wants',
-        'समझे कि हर लीड क्या चाहती है',
-        'বোঝে প্রত্যেক লিড কী চায়',
+        'Understands what each customer wants',
+        'समझे कि हर ग्राहक क्या चाहता है',
+        'বোঝে প্রত্যেক গ্রাহক কী চায়',
       ),
     ),
     (
@@ -49,9 +49,9 @@ extension SOnboarding on S {
     (
       pick('Drafts', 'मैसेज', 'মেসেজ'),
       pick(
-        'Drafts a WhatsApp follow-up for you',
-        'आपके लिए WhatsApp फ़ॉलो-अप लिखकर रखे',
-        'আপনার জন্য WhatsApp ফলো-আপ লিখে রাখে',
+        'Drafts a WhatsApp message for you',
+        'आपके लिए WhatsApp मैसेज लिखकर रखे',
+        'আপনার জন্য WhatsApp মেসেজ লিখে রাখে',
       ),
     ),
     (
@@ -75,9 +75,9 @@ extension SOnboarding on S {
   String get obTypeTitle =>
       pick('Type of business', 'कारोबार का प्रकार', 'ব্যবসার ধরন');
   String get obTypeSub => pick(
-    'Calls, questions and follow-ups are tailored to it.',
-    'कॉल, सवाल और फ़ॉलो-अप इसी के हिसाब से बनेंगे।',
-    'কল, প্রশ্ন আর ফলো-আপ এই অনুযায়ী সাজানো হবে।',
+    'Calls, questions and messages are tailored to it.',
+    'कॉल, सवाल और मैसेज इसी के हिसाब से बनेंगे।',
+    'কল, প্রশ্ন আর মেসেজ এই অনুযায়ী সাজানো হবে।',
   );
 
   // ------------------------------------------------------------- Skills
@@ -154,9 +154,9 @@ extension SOnboarding on S {
   String obHumanNumber(String label) =>
       pick('$label number', '$label का नंबर', '$label-এর নম্বর');
   String get obHumanNumberHint => pick(
-    'Who closes hot leads',
-    'जो हॉट लीड्स की डील पक्की करे',
-    'যিনি হট লিডের ডিল পাকা করেন',
+    'Who talks to ready-to-buy customers',
+    'जो खरीदने को तैयार ग्राहक की डील पक्की करे',
+    'যিনি কিনতে তৈরি গ্রাহকের ডিল পাকা করেন',
   );
   String get obRequired => pick('Required', 'ज़रूरी है', 'দরকারি');
 
@@ -169,9 +169,9 @@ extension SOnboarding on S {
   String get obAdded => pick('Added', 'जोड़ा गया', 'যোগ করা হয়েছে');
   String get obSkipForNow => pick('Skip for now', 'अभी छोड़ें', 'এখন বাদ দিন');
   String get obCsvLater => pick(
-    'You can import your leads from a CSV right after setup.',
-    'सेटअप के ठीक बाद CSV से लीड्स इम्पोर्ट कर सकते हैं।',
-    'সেটআপের ঠিক পরেই CSV থেকে লিড ইমপোর্ট করতে পারবেন।',
+    'You can add customers from your phone contacts right after setup.',
+    'सेटअप के ठीक बाद फ़ोन कॉन्टैक्ट्स से ग्राहक जोड़ सकते हैं।',
+    'সেটআপের ঠিক পরেই ফোনের কন্টাক্ট থেকে গ্রাহক যোগ করতে পারবেন।',
   );
 
   // ------------------------------------------------------------- Create
@@ -215,6 +215,11 @@ extension SOnboarding on S {
   String get obNameYourEmployee =>
       pick('Name your employee', 'कर्मचारी का नाम रखें', 'কর্মীর নাম দিন');
   String get obSpeaks => pick('Speaks', 'भाषाएँ', 'ভাষা');
+  String get obVoice => pick('Voice', 'आवाज़', 'কণ্ঠ');
+  String get obVoiceFemale =>
+      pick("Woman's voice", 'महिला की आवाज़', 'মহিলার কণ্ঠ');
+  String get obVoiceMale =>
+      pick("Man's voice", 'पुरुष की आवाज़', 'পুরুষের কণ্ঠ');
   String get obActivate =>
       pick('Activate Employee', 'कर्मचारी चालू करें', 'কর্মী চালু করুন');
 
@@ -236,8 +241,8 @@ extension SOnboarding on S {
     '$name-এর সঙ্গে আবার কথা বলুন',
   );
   String get obFreePractice => pick(
-    'Free · never calls real leads',
-    'मुफ़्त · असली लीड्स को कभी कॉल नहीं',
-    'ফ্রি · আসল লিডে কখনও কল নয়',
+    'Free · never calls real customers',
+    'मुफ़्त · असली ग्राहकों को कभी कॉल नहीं',
+    'ফ্রি · আসল গ্রাহকে কখনও কল নয়',
   );
 }

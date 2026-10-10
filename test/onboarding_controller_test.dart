@@ -7,6 +7,7 @@ import 'package:callpilot/features/onboarding/onboarding_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:callpilot/services/voice/voice_persona.dart';
 
 void main() {
   late MockBackend backend;
@@ -242,6 +243,31 @@ void main() {
         expect(agent.capabilities.toSet().length, agent.capabilities.length);
       },
     );
+
+    test('Arjun speaks as a man, Riya as a woman, by default', () async {
+      ctrl().update(
+        (d) => d.copyWith(
+          category: BusinessCategory.clinic,
+          skills: {EmployeeSkill.bookAppointments},
+        ),
+      );
+      expect(draft().suggestedAgent.defaultName, 'Arjun');
+      expect(isMaleVoice((await ctrl().activateEmployee()).voice), isTrue);
+
+      ctrl().update((d) => d.copyWith(skills: {EmployeeSkill.admissions}));
+      expect(draft().suggestedAgent.defaultName, 'Riya');
+      expect(isMaleVoice((await ctrl().activateEmployee()).voice), isFalse);
+    });
+
+    test('the owner\'s voice choice wins over the template', () async {
+      ctrl().selectCategory(BusinessCategory.coaching);
+      ctrl().update(
+        (d) => d.copyWith(employeeName: 'Rahul', employeeVoice: maleVoice),
+      );
+      final agent = await ctrl().activateEmployee();
+      expect(agent.voice, maleVoice);
+      expect(backend.agent.voice, maleVoice);
+    });
 
     test(
       'activateEmployee falls back to template skills when none chosen',

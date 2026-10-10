@@ -58,10 +58,7 @@ class FollowUpsScreen extends ConsumerWidget {
                           ),
                           if (pending.isNotEmpty) ...[
                             const SizedBox(height: 4),
-                            Text(
-                              s.nDraftedFromCalls(pending.length),
-                              style: t.bodyMedium,
-                            ),
+                            Text(s.followUpsSubtitle, style: t.bodyMedium),
                           ],
                         ],
                       ),
@@ -340,7 +337,7 @@ class _FollowUpRow extends ConsumerWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        fu.message.replaceAll(RegExp(r'\s+'), ' ').trim(),
+                        followUpPreview(fu.message),
                         style: t.bodySmall?.copyWith(color: AppColors.inkSoft),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -354,9 +351,9 @@ class _FollowUpRow extends ConsumerWidget {
                   child: IconButton.filled(
                     tooltip: s.openInWhatsapp,
                     style: IconButton.styleFrom(
-                      backgroundColor: AppColors.whatsappFill,
-                      foregroundColor: Colors.white,
-                      fixedSize: const Size(46, 46),
+                      backgroundColor: AppColors.whatsappSoft,
+                      foregroundColor: AppColors.whatsapp,
+                      fixedSize: const Size(44, 44),
                     ),
                     onPressed: () {
                       Haptics.press();
@@ -372,4 +369,19 @@ class _FollowUpRow extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// A follow-up without its opening greeting ("Hi Sourav 👋 Great speaking
+/// with you today."), so each list preview shows what's actually different.
+String followUpPreview(String message) {
+  final flat = message.replaceAll(RegExp(r'\s+'), ' ').trim();
+  final greeting = RegExp(
+    r'^((hi|hello|hey|dear|namaste|namaskar)\b|नमस्ते|নমস্কার)',
+    caseSensitive: false,
+  );
+  if (!greeting.hasMatch(flat)) return flat;
+  final end = RegExp(r'[.!?।]\s').firstMatch(flat);
+  if (end == null || end.end > 100) return flat;
+  final rest = flat.substring(end.end).trim();
+  return rest.isEmpty ? flat : rest;
 }

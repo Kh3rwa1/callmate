@@ -6,7 +6,7 @@ import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/mascot.dart';
+import '../../core/widgets/employee_avatar.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 
@@ -84,10 +84,16 @@ class CampaignLiveBanner extends ConsumerWidget {
       color: AppColors.strong,
       border: Border.all(color: Colors.transparent),
       onTap: () => context.push('/campaigns/${campaign.id}'),
-      padding: const EdgeInsets.fromLTRB(10, 12, 18, 14),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
       child: Row(
         children: [
-          const MascotAvatar(size: 52, state: MascotState.calling),
+          const AgentAvatar(
+            size: 44,
+            onDark: true,
+            showRole: false,
+            activity: EmployeeActivity.calling,
+          ),
+          const SizedBox(width: 4),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

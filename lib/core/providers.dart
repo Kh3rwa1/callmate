@@ -9,6 +9,7 @@ import '../data/datasources/mock/mock_repositories.dart';
 import '../data/models/models.dart';
 import '../data/repositories/repositories.dart';
 import '../data/templates/templates.dart';
+import '../l10n/l10n.dart';
 import '../services/analytics/analytics_service.dart';
 import '../services/auth/google_auth_service.dart';
 import '../services/crash/crash_reporting_service.dart';
@@ -22,6 +23,7 @@ import 'config/brand.dart';
 import 'network/api_client.dart';
 import 'routing/app_router.dart';
 import 'routing/deep_link.dart';
+import 'settings.dart';
 import 'storage/local_prefs.dart';
 import 'storage/secure_store.dart';
 
@@ -295,7 +297,13 @@ final analyticsProvider = Provider<AnalyticsService>(
   (_) => DebugAnalyticsService(),
 );
 final notificationServiceProvider = Provider<NotificationService>(
-  (_) => NotificationService(),
+  (ref) => NotificationService(
+    // The owner's choice, else the phone's language (as the app does).
+    strings: () => S(
+      ref.read(languageProvider) ??
+          AppLang.fromCode(PlatformDispatcher.instance.locale.languageCode),
+    ),
+  ),
 );
 
 final pushServiceProvider = Provider<PushService>((ref) {

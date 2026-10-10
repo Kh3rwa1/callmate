@@ -15,34 +15,37 @@ extension SMisc on S {
   /// Notification titles in the UI language (backend titles are English).
   String notificationTitle(NotificationType t) => switch (t) {
     NotificationType.hotLead => pick(
-      'Hot lead detected',
-      'हॉट लीड मिली',
-      'হট লিড পাওয়া গেছে',
+      'Customer ready to buy',
+      'खरीदने को तैयार ग्राहक मिला',
+      'কিনতে তৈরি গ্রাহক পাওয়া গেছে',
     ),
     NotificationType.followUpReady => pick(
-      'Follow-up ready',
-      'फ़ॉलो-अप तैयार',
-      'ফলো-আপ তৈরি',
+      'Message ready',
+      'मैसेज तैयार',
+      'মেসেজ তৈরি',
     ),
     NotificationType.callback => pick(
-      'Callback requested',
-      'कॉलबैक माँगा गया',
-      'কলব্যাক চাওয়া হয়েছে',
+      'Call back requested',
+      'कॉल बैक माँगा गया',
+      'কল ব্যাক চাওয়া হয়েছে',
     ),
     NotificationType.campaign => pick(
-      'Campaign update',
-      'कैंपेन अपडेट',
-      'ক্যাম্পেন আপডেট',
+      'Calling update',
+      'कॉलिंग अपडेट',
+      'কলিং আপডেট',
     ),
   };
 
   // ------------------------------------------------------------ Callbacks
-  String get noCallbacksYet =>
-      pick('No callbacks yet', 'अभी कोई कॉलबैक नहीं', 'এখনও কোনো কলব্যাক নেই');
+  String get noCallbacksYet => pick(
+    'No call backs yet',
+    'अभी कोई कॉल बैक नहीं',
+    'এখনও কোনো কল ব্যাক নেই',
+  );
   String get requestedCallbacksAppear => pick(
-    'Requested callbacks show up here.',
-    'माँगे गए कॉलबैक यहाँ दिखेंगे।',
-    'চাওয়া কলব্যাক এখানে দেখা যাবে।',
+    'Requested call backs show up here.',
+    'माँगे गए कॉल बैक यहाँ दिखेंगे।',
+    'চাওয়া কল ব্যাক এখানে দেখা যাবে।',
   );
   String get upcoming => pick('Upcoming', 'आने वाले', 'আসন্ন');
   String get swipeLeftDone => pick(
@@ -51,12 +54,12 @@ extension SMisc on S {
     'শেষ হিসেবে চিহ্নিত করতে বাঁ দিকে সোয়াইপ করুন',
   );
   String markedCallbackDone(String first) => pick(
-    'Marked $first\'s callback as done ✓',
-    '$first का कॉलबैक पूरा हुआ ✓',
-    '$first-এর কলব্যাক শেষ ✓',
+    'Marked $first\'s call back as done ✓',
+    '$first का कॉल बैक पूरा हुआ ✓',
+    '$first-এর কল ব্যাক শেষ ✓',
   );
   String get scheduleCallbackTitle =>
-      pick('Schedule callback', 'कॉलबैक तय करें', 'কলব্যাক ঠিক করুন');
+      pick('Schedule call back', 'कॉल बैक तय करें', 'কল ব্যাক ঠিক করুন');
   String suggestedBy(String name) =>
       pick('Suggested by $name', '$name का सुझाव', '$name-এর পরামর্শ');
   String get todaySixPm => pick('Today, 6 PM', 'आज, 6 PM', 'আজ, 6 PM');
@@ -69,9 +72,9 @@ extension SMisc on S {
   String get chooseAnySlot =>
       pick('Choose any slot', 'कोई भी समय चुनें', 'যেকোনো সময় বাছুন');
   String callbackSetFor(String when) => pick(
-    'Callback set for $when',
-    'कॉलबैक तय: $when',
-    'কলব্যাক ঠিক হয়েছে: $when',
+    'Call back set for $when',
+    'कॉल बैक तय: $when',
+    'কল ব্যাক ঠিক হয়েছে: $when',
   );
 
   // ------------------------------------------------------------ Teach AI

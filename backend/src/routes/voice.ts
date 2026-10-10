@@ -14,6 +14,7 @@ import { buildSystemPrompt, loadHistory, saveTurn } from '../services/prompt';
 import { requireSecret } from '../utils/secrets';
 import { timingSafeEqual } from '../utils/compare';
 import { jsonErrorHandler } from '../utils/errors';
+import { VoiceGender, auraVoice, sarvamLanguageCode, sarvamSpeaker, voiceGender, voiceLang } from '../services/voice_persona';
 
 const voiceApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 // voiceApp is also dispatched directly (voiceApp.fetch) for the proxy, bypassing the main app's onError.
@@ -81,7 +82,12 @@ voiceApp.post('/test-session', async (c) => {
   const agentName = agent?.name || 'Riya';
   const businessName = business?.name || 'CallPilot Business';
   const greetingText = `Hello, I'm ${agentName}, an AI assistant from ${businessName}. How can I assist you today?`;
-  const greetingAudioBase64 = await synthesizeFemaleAudio(c.env, greetingText);
+  // The employee's own voice: a man named Arjun must not answer as a woman.
+  // The app sends its language so the live call speaks it too.
+  const reqBody: any = await c.req.json().catch(() => ({}));
+  const gender = voiceGender(agent?.voice);
+  const lang = voiceLang(reqBody?.lang);
+  const greetingAudioBase64 = await synthesizeSpeech(c.env, greetingText, gender);
 
   return c.json({
     session_token: sessionToken,
@@ -96,9 +102,10 @@ voiceApp.post('/test-session', async (c) => {
       business_name: businessName,
       agent_name: agentName,
       agent_role: agent?.role || 'Assistant',
-      gender: 'female',
-      voice: 'female',
-      speaker: 'meera',
+      gender,
+      voice: gender,
+      speaker: sarvamSpeaker(gender, lang),
+      language_code: sarvamLanguageCode(lang),
       tts_model: 'bulbul:v4-flash',
       mode: 'owner_test',
     },
@@ -168,7 +175,8 @@ voiceApp.post('/chat', async (c) => {
     agentName,
     agentRole,
     businessName,
-    knowledge
+    knowledge,
+    voiceGender(agent?.voice)
   );
 
   await saveTurn(c.env.DB, user.business_id, conversationId, userMessage, reply);
@@ -194,7 +202,8 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | undefined> {
+/** Speaks English [text] (greetings, chat replies) in the employee's voice. */
+async function synthesizeSpeech(env: Env, text: string, gender: VoiceGender): Promise<string | undefined> {
   const cleanText = text.replace(/!+/g, '.').replace(/\s+/g, ' ').trim();
   if (!cleanText) return undefined;
 
@@ -204,8 +213,8 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
     try {
       const v4Payload = {
         inputs: [cleanText],
-        target_language_code: 'en-IN',
-        speaker: 'meera',
+        target_language_code: sarvamLanguageCode('en'),
+        speaker: sarvamSpeaker(gender, 'en'),
         pace: 0.95,
         speech_sample_rate: 22050,
         enable_preprocessing: true,
@@ -249,7 +258,7 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
     }
   }
 
-  // 2. Try Cloudflare Workers AI TTS (Deepgram Aura 2 female executive voice 'luna')
+  // 2. Try Cloudflare Workers AI TTS (Deepgram Aura 2: 'luna' or 'orion')
   const cfToken = env.CF_AI_API_TOKEN || '';
   const cfAccount = env.CF_ACCOUNT_ID || '';
   if (cfToken && cfAccount) {
@@ -264,7 +273,7 @@ async function synthesizeFemaleAudio(env: Env, text: string): Promise<string | u
           },
           body: JSON.stringify({
             text: cleanText,
-            voice: 'luna',
+            voice: auraVoice(gender),
           }),
           signal: AbortSignal.timeout(6000),
         }
@@ -289,7 +298,8 @@ async function generateAIReply(
   agentName: string,
   agentRole: string,
   businessName: string,
-  knowledge?: string[]
+  knowledge?: string[],
+  gender: VoiceGender = 'female'
 ): Promise<{ reply: string; audioBase64?: string }> {
   let replyText = '';
 
@@ -394,8 +404,8 @@ async function generateAIReply(
   // De-dramatize: replace exclamation marks with periods, remove dramatic punctuation
   replyText = replyText.replace(/!+/g, '.').replace(/\s+/g, ' ').trim();
 
-  // 4. Synthesize natural female audio
-  const audioBase64 = await synthesizeFemaleAudio(env, replyText);
+  // 4. Speak it in the employee's voice
+  const audioBase64 = await synthesizeSpeech(env, replyText, gender);
 
   return { reply: replyText, audioBase64 };
 }

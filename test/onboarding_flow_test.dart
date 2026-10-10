@@ -148,7 +148,7 @@ void main() {
 
         // Importing leads is explained, not faked as an option.
         expect(
-          find.textContaining('import your leads from a CSV'),
+          find.textContaining('customers from your phone contacts'),
           findsOneWidget,
         );
 

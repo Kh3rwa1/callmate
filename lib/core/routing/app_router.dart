@@ -14,6 +14,7 @@ import '../../features/followups/followup_detail_screen.dart';
 import '../../features/followups/followups_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/knowledge/teach_ai_screen.dart';
+import '../../features/leads/contacts_picker_screen.dart';
 import '../../features/leads/import_leads_screen.dart';
 import '../../features/leads/lead_detail_screen.dart';
 import '../../features/leads/leads_screen.dart';
@@ -181,6 +182,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/leads/import',
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (_, s) => _page(s, const ImportLeadsScreen()),
+      ),
+      GoRoute(
+        path: '/leads/contacts',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, s) => _page(s, const ContactsPickerScreen()),
       ),
       GoRoute(
         path: '/leads/:id',

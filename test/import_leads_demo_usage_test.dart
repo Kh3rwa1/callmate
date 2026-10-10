@@ -38,60 +38,68 @@ Finder _navItem(String label) =>
 
 void main() {
   group('ImportLeadsScreen', () {
-    appTest('sample CSV previews valid rows and skips bad ones', (h) async {
-      expect(find.byType(ImportLeadsScreen), findsOneWidget);
-      await h.tapText('Try with sample leads');
-      // 6 data rows, one with an invalid phone number.
-      expect(find.text('5 ready'), findsOneWidget);
-      expect(find.text('1 skipped'), findsOneWidget);
-      expect(find.text('Riddhi Sen'), findsOneWidget);
-      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
-      expect(find.text('Import 5 leads'), findsOneWidget);
-    }, location: '/leads/import');
+    appTest(
+      'sample CSV previews valid rows and skips bad ones',
+      (h) async {
+        expect(find.byType(ImportLeadsScreen), findsOneWidget);
+        await h.tapText('Try with sample customers');
+        // 6 data rows, one with an invalid phone number.
+        expect(find.text('5 ready'), findsOneWidget);
+        expect(find.text('1 skipped'), findsOneWidget);
+        expect(find.text('Riddhi Sen'), findsOneWidget);
+        expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+        expect(find.text('Import 5 customers'), findsOneWidget);
+      },
+      location: '/leads/import',
+    );
 
-    appTest('importing the sample adds leads and offers to call', (h) async {
-      final before = h.backend.leads.length;
-      await h.tapText('Try with sample leads');
-      await _tapListItem(h, find.text('Import 5 leads'));
-      expect(h.backend.leads.length, before + 5);
-      expect(
-        h.backend.leads.values.where((l) => l.name == 'Karan Mehta'),
-        hasLength(1),
-      );
-      expect(find.text('5 leads imported'), findsOneWidget);
+    appTest(
+      'importing the sample adds leads and offers to call',
+      (h) async {
+        final before = h.backend.leads.length;
+        await h.tapText('Try with sample customers');
+        await _tapListItem(h, find.text('Import 5 customers'));
+        expect(h.backend.leads.length, before + 5);
+        expect(
+          h.backend.leads.values.where((l) => l.name == 'Karan Mehta'),
+          hasLength(1),
+        );
+        expect(find.text('5 customers imported'), findsOneWidget);
 
-      await h.tapText('Call them now');
-      expect(h.location, '/campaign/new');
-      expect(find.byType(CampaignSetupScreen), findsOneWidget);
-    }, location: '/leads/import');
+        await h.tapText('Call them now');
+        expect(h.location, '/campaign/new');
+        expect(find.byType(CampaignSetupScreen), findsOneWidget);
+      },
+      location: '/leads/import',
+    );
 
     appTest('"Later" closes the import result', (h) async {
       await h.push('/leads/import');
-      await h.tapText('Try with sample leads');
-      await _tapListItem(h, find.text('Import 5 leads'));
+      await h.tapText('Try with sample customers');
+      await _tapListItem(h, find.text('Import 5 customers'));
       await h.tapText('Later');
-      expect(find.text('5 leads imported'), findsNothing);
+      expect(find.text('5 customers imported'), findsNothing);
       expect(find.byType(ImportLeadsScreen), findsNothing);
       expect(h.location, '/home');
     });
 
     appTest('a single lead is validated, then added', (h) async {
       final before = h.backend.leads.length;
-      await _tapListItem(h, find.text('Add lead'));
+      await _tapListItem(h, find.text('Add customer'));
       expect(find.text('Enter a name'), findsOneWidget);
       expect(find.text('Enter a valid 10-digit mobile number'), findsOneWidget);
       expect(h.backend.leads.length, before);
 
       await h.tester.enterText(_hint('Customer name'), 'Zoya Testlead');
       await h.tester.enterText(_hint('Mobile number'), '98765 43210');
-      await _tapListItem(h, find.text('Add lead'));
+      await _tapListItem(h, find.text('Add customer'));
 
       expect(h.backend.leads.length, before + 1);
       expect(
         h.backend.leads.values.where((l) => l.name == 'Zoya Testlead'),
         hasLength(1),
       );
-      expect(find.textContaining('Lead added ✓'), findsOneWidget);
+      expect(find.textContaining('Customer added ✓'), findsOneWidget);
       // Form is cleared for the next lead.
       expect(
         h.tester.widget<TextField>(_hint('Customer name')).controller!.text,
@@ -140,7 +148,7 @@ void main() {
       expect(n.type, NotificationType.followUpReady);
       final banner = find.byType(InAppNotificationBanner);
       expect(banner, findsOneWidget);
-      expect(find.text('Follow-up ready'), findsOneWidget);
+      expect(find.text('Message ready'), findsOneWidget);
 
       await h.tap(
         find.descendant(of: banner, matching: find.byType(FilledButton)),
@@ -152,10 +160,10 @@ void main() {
     appTest('hot lead and callback notifications are recorded', (h) async {
       await _tapListItem(h, find.text('Hot lead notification'));
       expect(h.backend.notifications.first.type, NotificationType.hotLead);
-      expect(find.text('Hot lead detected'), findsOneWidget);
+      expect(find.text('Customer ready to buy'), findsOneWidget);
       await _tapListItem(h, find.text('Callback notification'));
       expect(h.backend.notifications.first.type, NotificationType.callback);
-      expect(find.text('Callback requested'), findsOneWidget);
+      expect(find.text('Call back requested'), findsOneWidget);
     }, location: '/demo');
 
     appTest('replay onboarding resets prefs and restarts the flow', (h) async {
@@ -210,9 +218,9 @@ void main() {
   group('AppShell', () {
     appTest('bottom navigation switches tabs', (h) async {
       for (final (label, path) in [
-        ('Leads', '/leads'),
+        ('Customers', '/leads'),
         ('Calls', '/calls'),
-        ('Follow-ups', '/followups'),
+        ('Messages', '/followups'),
         ('Agent', '/agent'),
         ('Home', '/home'),
       ]) {
@@ -224,7 +232,7 @@ void main() {
     appTest('re-selecting the current tab resets it', (h) async {
       await h.go('/leads?filter=hot');
       expect(h.router.state.uri.queryParameters['filter'], 'hot');
-      await h.tap(_navItem('Leads'));
+      await h.tap(_navItem('Customers'));
       expect(h.location, '/leads');
       expect(h.router.state.uri.queryParameters, isEmpty);
     });

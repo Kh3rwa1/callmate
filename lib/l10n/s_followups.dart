@@ -2,11 +2,11 @@ import 's.dart';
 
 /// Follow-ups list, the follow-up detail and the WhatsApp handoff.
 extension SFollowUps on S {
-  String get followUpsTitle => pick('Follow-ups', 'फ़ॉलो-अप', 'ফলো-আপ');
-  String nDraftedFromCalls(int n) => pick(
-    '$n WhatsApp messages drafted from calls',
-    'कॉल्स से $n WhatsApp मैसेज तैयार',
-    'কল থেকে $n টি WhatsApp মেসেজ তৈরি',
+  String get followUpsTitle => pick('Messages', 'मैसेज', 'মেসেজ');
+  String get followUpsSubtitle => pick(
+    'Drafted from your calls. Review, then send on WhatsApp.',
+    'कॉल से तैयार मैसेज। देखें, फिर WhatsApp पर भेजें।',
+    'কল থেকে তৈরি মেসেজ। দেখে নিন, তারপর WhatsApp-এ পাঠান।',
   );
   String get readyToSend =>
       pick('Ready to send', 'भेजने के लिए तैयार', 'পাঠানোর জন্য তৈরি');
@@ -27,7 +27,7 @@ extension SFollowUps on S {
 
   // ------------------------------------------------------------ Detail
   String get followUpReady =>
-      pick('Follow-up ready', 'फ़ॉलो-अप तैयार', 'ফলো-আপ তৈরি');
+      pick('Message ready', 'मैसेज तैयार', 'মেসেজ তৈরি');
   String get iSentIt => pick('I sent it', 'मैंने भेज दिया', 'আমি পাঠিয়েছি');
   String get dismiss => pick('Dismiss', 'हटाएँ', 'বাদ দিন');
   String get messageUpdated =>

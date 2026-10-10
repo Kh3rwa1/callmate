@@ -8,9 +8,9 @@ extension SAuth on S {
     'আপনার AI কলিং কর্মী',
   );
   String get loginHeadline => pick(
-    'Your AI employee\ncalls every lead',
-    'आपका AI कर्मचारी\nहर लीड को कॉल करे',
-    'আপনার AI কর্মী\nপ্রতিটি লিডে কল করে',
+    'Your AI employee\ncalls every customer',
+    'आपका AI कर्मचारी\nहर ग्राहक को कॉल करे',
+    'আপনার AI কর্মী\nপ্রতিটি গ্রাহকে কল করে',
   );
   String get loginLanguages => pick(
     'Hindi · English · Bengali',
@@ -18,9 +18,9 @@ extension SAuth on S {
     'বাংলা · हिन्दी · English',
   );
   String get loginPointCalls => pick(
-    'Calls new leads within minutes',
-    'नई लीड्स को मिनटों में कॉल',
-    'নতুন লিডে কয়েক মিনিটে কল',
+    'Calls new customers within minutes',
+    'नए ग्राहकों को मिनटों में कॉल',
+    'নতুন গ্রাহকে কয়েক মিনিটে কল',
   );
   String get loginPointScores => pick(
     'Tells you who is ready to buy',
@@ -74,9 +74,9 @@ extension SAuth on S {
     'ব্যবসার মোবাইল নম্বর',
   );
   String get shownOnFollowUps => pick(
-    'Shown on your WhatsApp follow-ups',
-    'आपके WhatsApp फ़ॉलो-अप पर दिखेगा',
-    'আপনার WhatsApp ফলো-আপে দেখাবে',
+    'Shown on your WhatsApp messages',
+    'आपके WhatsApp मैसेज पर दिखेगा',
+    'আপনার WhatsApp মেসেজে দেখাবে',
   );
   String get mobileNumber =>
       pick('Mobile number', 'मोबाइल नंबर', 'মোবাইল নম্বর');

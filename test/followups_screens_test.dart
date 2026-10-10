@@ -133,7 +133,7 @@ void main() {
     appTest('shows the drafted message and call summary', (h) async {
       final fu = _topPending(h.backend);
       await h.push('/followups/${fu.id}');
-      expect(find.text('Follow-up ready'), findsOneWidget);
+      expect(find.text('Message ready'), findsOneWidget);
       expect(find.text(fu.leadName), findsOneWidget);
       expect(find.text(PhoneUtils.display(fu.leadPhone)), findsOneWidget);
       expect(find.text(fu.message), findsOneWidget);
@@ -268,7 +268,7 @@ void main() {
           findsOneWidget,
         );
         expect(h.backend.followUps[fu.id]!.status, fu.status);
-        expect(find.text('Follow-up ready'), findsOneWidget);
+        expect(find.text('Message ready'), findsOneWidget);
       },
       location: '/followups',
       overrides: fakeWa(WhatsAppOpenResult.invalidPhone),

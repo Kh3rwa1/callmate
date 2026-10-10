@@ -280,17 +280,17 @@ class MockBackend implements BackendEvents {
       AppNotification(
         id: 'n_1',
         type: NotificationType.hotLead,
-        title: '🔥 Hot lead detected',
+        title: '🔥 Customer ready to buy',
         body:
-            'Your AI employee identified a high-intent lead: Rahul (score 87).',
+            'Your AI employee found a customer who wants to buy: Rahul (score 87).',
         route: '/followups/${followUpForLead(rahul.id)?.id ?? ''}',
-        actionLabel: 'Review Follow-up',
+        actionLabel: 'See message',
         createdAt: now.subtract(const Duration(minutes: 42)),
       ),
       AppNotification(
         id: 'n_2',
         type: NotificationType.followUpReady,
-        title: '💬 Follow-up ready',
+        title: '💬 Message ready',
         body: 'Your AI employee prepared a WhatsApp message for Priya.',
         route: '/followups/${followUpForLead(priya.id)?.id ?? ''}',
         createdAt: now.subtract(const Duration(hours: 1, minutes: 10)),
@@ -298,10 +298,10 @@ class MockBackend implements BackendEvents {
       AppNotification(
         id: 'n_3',
         type: NotificationType.callback,
-        title: '📅 Callback requested',
-        body: 'A customer asked for a callback: Rahul, tomorrow at 6 PM.',
+        title: '📅 Call back requested',
+        body: 'A customer asked you to call back: Rahul, tomorrow at 6 PM.',
         route: '/leads/${rahul.id}',
-        actionLabel: 'View lead',
+        actionLabel: 'See customer',
         createdAt: now.subtract(const Duration(minutes: 41)),
         read: true,
       ),
@@ -564,11 +564,11 @@ class MockBackend implements BackendEvents {
       final n = AppNotification(
         id: _nextId('n'),
         type: NotificationType.hotLead,
-        title: '🔥 Hot lead detected',
+        title: '🔥 Customer ready to buy',
         body:
-            'Your AI employee identified a high-intent lead: ${call.leadName.split(' ').first} (score ${call.leadScore?.value}).',
+            'Your AI employee found a customer who wants to buy: ${call.leadName.split(' ').first} (score ${call.leadScore?.value}).',
         route: fu != null ? '/followups/${fu.id}' : '/calls/${call.id}/result',
-        actionLabel: 'Review Follow-up',
+        actionLabel: 'See message',
         createdAt: DateTime.now(),
       );
       notifications.insert(0, n);
@@ -680,7 +680,7 @@ class MockBackend implements BackendEvents {
           type: NotificationType.campaign,
           title: '✅ ${agent.name} finished calling',
           body:
-              '${cur.stats.completed} calls · ${cur.stats.hot} hot leads · $ready follow-ups ready.',
+              '${cur.stats.completed} calls · ${cur.stats.hot} ready to buy · $ready messages ready.',
           route: '/followups',
           actionLabel: 'Review & send',
           createdAt: DateTime.now(),
@@ -771,17 +771,17 @@ class MockBackend implements BackendEvents {
       NotificationType.hotLead => AppNotification(
         id: _nextId('n'),
         type: type,
-        title: '🔥 Hot lead detected',
+        title: '🔥 Customer ready to buy',
         body:
-            'Your AI employee identified a high-intent lead: $first (score ${fu?.scoreValue ?? 87}).',
+            'Your AI employee found a customer who wants to buy: $first (score ${fu?.scoreValue ?? 87}).',
         route: fu == null ? '/leads?filter=hot' : '/followups/${fu.id}',
-        actionLabel: 'Review Follow-up',
+        actionLabel: 'See message',
         createdAt: DateTime.now(),
       ),
       NotificationType.followUpReady => AppNotification(
         id: _nextId('n'),
         type: type,
-        title: '💬 Follow-up ready',
+        title: '💬 Message ready',
         body: 'Your AI employee prepared a WhatsApp message for $first.',
         route: fu == null ? '/followups' : '/followups/${fu.id}',
         createdAt: DateTime.now(),
@@ -789,18 +789,18 @@ class MockBackend implements BackendEvents {
       NotificationType.callback => AppNotification(
         id: _nextId('n'),
         type: type,
-        title: '📅 Callback requested',
+        title: '📅 Call back requested',
         body:
-            'A customer asked for a callback: ${(cb?.leadName ?? 'Rahul').split(' ').first}, tomorrow at 6 PM.',
+            'A customer asked you to call back: ${(cb?.leadName ?? 'Rahul').split(' ').first}, tomorrow at 6 PM.',
         route: cb == null ? '/callbacks' : '/leads/${cb.leadId}',
-        actionLabel: 'View lead',
+        actionLabel: 'See customer',
         createdAt: DateTime.now(),
       ),
       NotificationType.campaign => AppNotification(
         id: _nextId('n'),
         type: type,
         title: '✅ ${agent.name} finished calling',
-        body: 'All new leads were called. Follow-ups are ready.',
+        body: 'All new customers were called. Messages are ready.',
         route: '/followups',
         createdAt: DateTime.now(),
       ),

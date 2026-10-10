@@ -8,10 +8,12 @@ import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/employee_avatar.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/templates/templates.dart';
 import '../../l10n/l10n.dart';
+import '../../services/voice/voice_persona.dart';
 import 'onboarding_controller.dart';
 
 enum _Phase { learning, ready, meet }
@@ -40,6 +42,7 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
   Object? _error;
   late final TextEditingController _name;
   late final TextEditingController _role;
+  late bool _male;
 
   @override
   void initState() {
@@ -48,6 +51,7 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
     final a = d.suggestedAgent;
     _name = TextEditingController(text: d.employeeName ?? a.defaultName);
     _role = TextEditingController(text: d.employeeRole ?? a.role);
+    _male = isMaleVoice(d.employeeVoice ?? a.voice);
     _learn();
   }
 
@@ -109,6 +113,7 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
           (d) => d.copyWith(
             employeeName: _name.text.trim(),
             employeeRole: _role.text.trim(),
+            employeeVoice: _male ? maleVoice : femaleVoice,
           ),
         );
     try {
@@ -210,10 +215,15 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                       curve: Curves.elasticOut,
                       builder: (_, v, child) =>
                           Transform.scale(scale: 0.55 + 0.45 * v, child: child),
-                      child: Mascot(
-                        state: MascotState.success,
-                        size: 180,
-                        role: roleKind,
+                      // The employee's monogram follows the name as it's
+                      // typed below.
+                      child: ValueListenableBuilder(
+                        valueListenable: _name,
+                        builder: (_, v, _) => EmployeeAvatar(
+                          name: v.text,
+                          role: roleKind,
+                          size: 132,
+                        ),
                       ),
                     ),
                     const Positioned.fill(
@@ -292,6 +302,11 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                             decoration: InputDecoration(labelText: s.roleLabel),
                             // The badge follows the role as it's typed.
                             onChanged: (_) => setState(() {}),
+                          ),
+                          const SizedBox(height: 16),
+                          _VoicePicker(
+                            male: _male,
+                            onChanged: (m) => setState(() => _male = m),
                           ),
                         ],
                       ),
@@ -549,6 +564,87 @@ class _ErrorView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "Woman's voice" / "Man's voice": two big choices, so an employee named
+/// Rahul never answers in a woman's voice.
+class _VoicePicker extends StatelessWidget {
+  const _VoicePicker({required this.male, required this.onChanged});
+  final bool male;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    final t = Theme.of(context).textTheme;
+    Widget option(bool isMale, String label) {
+      final on = male == isMale;
+      return Expanded(
+        child: Semantics(
+          button: true,
+          selected: on,
+          child: Pressable(
+            onTap: () => onChanged(isMale),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: AppMotion.standard,
+              height: 52,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: on ? AppColors.brandSoft : AppColors.surfaceMuted,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: on ? AppColors.brand : AppColors.border,
+                  width: on ? 2 : 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    on
+                        ? Icons.record_voice_over_rounded
+                        : Icons.record_voice_over_outlined,
+                    size: 20,
+                    color: on ? AppColors.brand : AppColors.inkFaint,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.titleSmall?.copyWith(
+                        color: on ? AppColors.brandDeep : AppColors.inkSoft,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          s.obVoice,
+          style: t.labelLarge?.copyWith(color: AppColors.inkSoft),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            option(false, s.obVoiceFemale),
+            const SizedBox(width: 10),
+            option(true, s.obVoiceMale),
+          ],
+        ),
+      ],
     );
   }
 }

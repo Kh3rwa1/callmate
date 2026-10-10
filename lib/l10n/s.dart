@@ -32,7 +32,7 @@ enum AppLang {
 /// screen's Hindi and Bengali side by side with the English:
 ///
 /// ```dart
-/// String get leadsTitle => pick('Leads', 'लीड्स', 'লিডস');
+/// String get leadsTitle => pick('Customers', 'ग्राहक', 'গ্রাহক');
 /// ```
 @immutable
 class S {

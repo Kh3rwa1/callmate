@@ -1,0 +1,763 @@
+00:00 +0: loading /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart
+00:00 +0: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: JSON round-trips preserve seeded data Lead
+00:00 +1: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: JSON round-trips preserve seeded data Call
+00:00 +2: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: JSON round-trips preserve seeded data Business and Agent
+00:00 +3: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: JSON round-trips preserve seeded data Campaign with stats and options
+00:00 +4: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: fromJson edge cases jDate reads zoneless SQLite timestamps as UTC
+00:00 +5: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: fromJson edge cases LeadScore derives temperature from value when absent
+00:00 +6: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: fromJson edge cases AiCallOutput honours explicit temperature and legacy keys
+00:00 +7: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: fromJson edge cases Campaign defaults when fields are missing
+00:00 +8: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: copyWith LeadScore intent labels
+00:00 +9: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: copyWith Callback.copyWith changes status/time only
+00:00 +10: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: copyWith AppNotification.copyWith marks read
+00:00 +11: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: copyWith CampaignOptions.copyWith
+00:00 +12: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: copyWith Campaign.copyWith keeps identity fields
+00:00 +13: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: copyWith Business.copyWith keeps unspecified fields
+00:00 +14: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: copyWith KnowledgeSource.copyWith updates status and progress
+00:00 +15: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: Templates EmployeeSkill.parse round-trips wire values
+00:00 +16: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: Templates agentForSkills picks a role from the skill mix
+00:00 +17: /Users/dulorai/Downloads/callmate-main/test/models_json_test.dart: Templates templateFor falls back for unknown categories
+00:01 +18: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen lists leads with hot leads first
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:02 +18: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen shows business, agent card and today's metrics
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:02 +19: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen shows business, agent card and today's metrics
+00:02 +20: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen filter chips narrow the list
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:02 +20: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen hot leads action opens leads filtered to hot
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:03 +21: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen filter chips narrow the list
+00:03 +21: /Users/dulorai/Downloads/callmate-main/test/api_repositories_coverage_test.dart: ApiAuthRepository Coverage covers full auth lifecycle methods
+[api] POST /auth/otp/request → 200
+[api] POST /auth/login → 200
+[api] POST /auth/register → 200
+[api] POST /auth/logout → 200
+[api] DELETE /auth/account → 200
+00:03 +22: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen filter chips narrow the list
+00:03 +22: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen metric tiles deep link into filtered lists
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:03 +22: /Users/dulorai/Downloads/callmate-main/test/api_repositories_coverage_test.dart: ApiBusinessRepository Coverage getBusiness, saveBusiness, getAgent, saveAgent
+[api] GET /business → 200
+[api] PATCH /business → 200
+[api] GET /agent → 200
+[api] PATCH /agent → 200
+00:03 +23: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen filter chips narrow the list
+00:03 +23: /Users/dulorai/Downloads/callmate-main/test/api_repositories_coverage_test.dart: ApiLeadRepository Coverage list, get, create, update, newLeads, import
+[api] GET /leads → 200
+[api] GET /leads/l1 → 200
+[api] POST /leads → 200
+[api] PATCH /leads/l1 → 200
+[api] POST /leads/import → 200
+[api] GET /leads → 200
+00:03 +24: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen filter chips narrow the list
+00:03 +24: /Users/dulorai/Downloads/callmate-main/test/api_repositories_coverage_test.dart: ApiCallRepository & ApiCampaignRepository Coverage calls list, get, forLead, triggerCall and campaigns lifecycle
+[api] GET /calls → 200
+[api] GET /calls/call1 → 200
+[api] GET /calls → 200
+[api] POST /leads/l1/call → 200
+[api] GET /campaigns → 200
+[api] GET /campaigns/cmp1 → 200
+[api] POST /campaigns → 200
+[api] POST /campaigns/cmp1/start → 200
+[api] POST /campaigns/cmp1/stop → 200
+00:03 +25: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen filter chips narrow the list
+00:03 +25: /Users/dulorai/Downloads/callmate-main/test/api_repositories_coverage_test.dart: ApiFollowUpRepository & ApiCallbackRepository Coverage followups and callbacks
+[api] GET /followups → 200
+[api] GET /followups/f1 → 200
+[api] PATCH /followups/f1 → 200
+[api] GET /followups → 200
+[api] GET /callbacks → 200
+[api] POST /callbacks → 200
+[api] PATCH /callbacks/cb1 → 200
+00:03 +26: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen filter chips narrow the list
+00:03 +26: /Users/dulorai/Downloads/callmate-main/test/api_repositories_coverage_test.dart: ApiUsage, Notifications, Knowledge, Device, VoiceSession Repositories Coverage covers usage, notif, knowledge, device, voice session
+[api] GET /usage → 200
+[api] GET /notifications → 200
+[api] PATCH /notifications/n1 → 200
+[api] GET /knowledge → 200
+[api] GET /knowledge/kn1 → 200
+[api] POST /knowledge → 200
+[api] DELETE /knowledge/kn1 → 200
+[api] POST /devices → 200
+[api] DELETE /devices/tok1 → 200
+[api] POST /voice/test-session → 200
+00:03 +27: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen metric tiles deep link into filtered lists
+00:03 +27: /Users/dulorai/Downloads/callmate-main/test/api_repositories_coverage_test.dart: ApiUsage, Notifications, Knowledge, Device, VoiceSession Repositories Coverage covers usage, notif, knowledge, device, voice session
+[api] POST /voice/chat → 200
+00:03 +28: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen metric tiles deep link into filtered lists
+00:03 +28: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen initial filter comes from the query string
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:03 +29: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen metric tiles deep link into filtered lists
+00:03 +29: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:03 +30: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:03 +30: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen agent card, notifications and follow-ups navigate
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:04 +31: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +32: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +33: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +34: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +35: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +36: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +37: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +38: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +39: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +40: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +41: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +42: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +43: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +44: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +45: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +46: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search is debounced and can be cleared
+00:04 +47: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen agent card, notifications and follow-ups navigate
+00:04 +47: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search without matches shows an empty state
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:04 +48: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen search without matches shows an empty state
+00:04 +48: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen callbacks card and activity rows navigate
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:04 +49: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen callbacks card and activity rows navigate
+00:04 +49: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen hot filter with no hot leads explains why
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:04 +50: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen callbacks card and activity rows navigate
+00:04 +50: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen empty list offers to add leads
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:04 +51: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen empty list offers to add leads
+00:04 +51: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen new leads CTA opens campaign setup
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:05 +52: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen new leads CTA opens campaign setup
+00:05 +52: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen load failure shows retry
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:05 +53: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen new leads CTA opens campaign setup
+00:05 +53: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen add button opens the import screen
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:05 +54: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen add button opens the import screen
+00:05 +54: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen live campaign banner appears and opens progress
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:05 +55: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen add button opens the import screen
+00:05 +55: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen without hot leads it suggests calling new leads
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:05 +56: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen without hot leads it suggests calling new leads
+00:05 +56: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen tapping a card opens the lead
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:05 +57: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen tapping a card opens the lead
+00:05 +57: /Users/dulorai/Downloads/callmate-main/test/home_screen_test.dart: HomeScreen dashboard error shows retry which reloads
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:05 +58: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen tapping a card opens the lead
+00:05 +59: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen tapping a card opens the lead
+00:05 +60: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockBusinessRepository getBusiness and saveBusiness updates state
+00:05 +60: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen WhatsApp on a lead with a pending draft opens the draft
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:06 +61: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockBusinessRepository getBusiness and saveBusiness updates state
+00:06 +61: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen WhatsApp without a draft opens a greeting via the WhatsApp service
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:06 +62: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadsScreen WhatsApp without a draft opens a greeting via the WhatsApp service
+[analytics] whatsapp_opened {has_followup: false}
+00:06 +63: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockBusinessRepository getAgent and saveAgent updates agent state
+00:06 +63: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadDetailScreen shows profile, details, signals and history
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:06 +64: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen summarises the new leads and the agent
+00:06 +65: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen summarises the new leads and the agent
+00:06 +65: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadDetailScreen follow-up card and WhatsApp open the pending draft
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:06 +65: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen summarises the new leads and the agent
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:07 +66: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen summarises the new leads and the agent
+00:07 +66: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadDetailScreen summary links to the full call result
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:07 +67: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen summarises the new leads and the agent
+00:07 +68: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadDetailScreen summary links to the full call result
+00:07 +68: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen checklist items toggle their options
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:07 +69: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockLeadRepository create and get lead
+00:07 +69: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadDetailScreen AI call option triggers a call and reports it
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:07 +70: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockLeadRepository create and get lead
+00:07 +71: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockLeadRepository create and get lead
+00:07 +72: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockLeadRepository create and get lead
+00:07 +73: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockLeadRepository create and get lead
+00:07 +73: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen dragging the hours slider updates calling hours
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:07 +74: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockLeadRepository create and get lead
+00:07 +74: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadDetailScreen in-app option opens the voice test
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:07 +75: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockLeadRepository create and get lead
+00:07 +75: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen without consent the sheet counts only callable leads
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:07 +76: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadDetailScreen in-app option opens the voice test
+00:07 +77: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadDetailScreen in-app option opens the voice test
+00:07 +77: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen "Not now" cancels without creating a campaign
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:07 +78: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadDetailScreen in-app option opens the voice test
+00:07 +79: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockLeadRepository update lead details
+00:07 +79: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen starting creates a running campaign and opens its progress
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:07 +79: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadDetailScreen dismissing the call sheet does nothing
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:08 +79: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen starting creates a running campaign and opens its progress
+[analytics] campaign_started {leads: 37}
+00:08 +80: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen starting creates a running campaign and opens its progress
+00:08 +81: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen starting creates a running campaign and opens its progress
+00:08 +81: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadDetailScreen callback sheet schedules a callback
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:08 +82: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockLeadRepository import multiple leads
+00:08 +82: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignSetupScreen shows an empty state when there are no new leads
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:08 +83: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockLeadRepository import multiple leads
+00:08 +83: /Users/dulorai/Downloads/callmate-main/test/leads_screens_test.dart: LeadDetailScreen unknown lead shows a friendly error
+[notifications] init failed: LateInitializationError: Field '_instance@1357271368' has not been initialized.
+00:08 +84: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockLeadRepository import multiple leads
+00:08 +84: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignProgressScreen progress advances as calls complete, then stop
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:08 +85: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockLeadRepository import multiple leads
+00:08 +85: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignProgressScreen progress advances as calls complete, then stop
+[analytics] campaign_started {leads: 37}
+00:08 +86: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignProgressScreen progress advances as calls complete, then stop
+00:09 +87: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockCallRepository list calls with filters and trigger call for lead
+00:09 +87: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignProgressScreen completes after every lead was called
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+[analytics] campaign_started {leads: 37}
+00:09 +88: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockCallRepository list calls with filters and trigger call for lead
+00:09 +88: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignProgressScreen recent call tiles open the call
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+[analytics] campaign_started {leads: 37}
+00:09 +89: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignProgressScreen recent call tiles open the call
+00:10 +90: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockCampaignRepository create, start, stop campaign and estimate cost
+00:10 +90: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignProgressScreen loads a campaign that is not the live one
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:10 +91: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockCampaignRepository create, start, stop campaign and estimate cost
+00:10 +91: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: CampaignProgressScreen unknown campaign shows an error
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:10 +92: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockCampaignRepository create, start, stop campaign and estimate cost
+00:10 +92: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: Campaign widgets CallNewLeadsButton on home opens campaign setup
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:10 +93: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockCampaignRepository create, start, stop campaign and estimate cost
+00:10 +93: /Users/dulorai/Downloads/callmate-main/test/campaign_screens_test.dart: Campaign widgets CampaignLiveBanner on home links to the live campaign
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:10 +94: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockCampaignRepository create, start, stop campaign and estimate cost
+00:11 +95: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockFollowUpRepository & MockCallbackRepository follow-up list and update
+00:11 +96: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockFollowUpRepository & MockCallbackRepository follow-up list and update
+00:11 +97: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockFollowUpRepository & MockCallbackRepository follow-up list and update
+00:11 +98: /Users/dulorai/Downloads/callmate-main/test/providers_test.dart: Riverpod Providers Unit Tests (Mock Environment) businessProvider and agentProvider load seed data
+00:11 +99: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockFollowUpRepository & MockCallbackRepository callback schedule and markDone
+00:11 +100: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockFollowUpRepository & MockCallbackRepository callback schedule and markDone
+00:12 +100: /Users/dulorai/Downloads/callmate-main/test/app_routes_test.dart: Router boots into the home tab when onboarded
+[notifications] init failed: LateInitializationError: Field '_instance@1248271368' has not been initialized.
+00:12 +101: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: MockFollowUpRepository & MockCallbackRepository callback schedule and markDone
+00:12 +102: /Users/dulorai/Downloads/callmate-main/test/app_routes_test.dart: Router boots into the home tab when onboarded
+00:12 +103: /Users/dulorai/Downloads/callmate-main/test/app_routes_test.dart: Router boots into the home tab when onboarded
+00:12 +104: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: Usage, Notification, Knowledge & Voice Repositories usage get returns non-empty plan
+00:12 +105: /Users/dulorai/Downloads/callmate-main/test/providers_test.dart: Riverpod Providers Unit Tests (Mock Environment) sessionProvider login and logout flow
+00:12 +105: /Users/dulorai/Downloads/callmate-main/test/app_routes_test.dart: Router redirects to onboarding when not onboarded
+[notifications] init failed: LateInitializationError: Field '_instance@1248271368' has not been initialized.
+00:12 +106: /Users/dulorai/Downloads/callmate-main/test/providers_test.dart: Riverpod Providers Unit Tests (Mock Environment) sessionProvider login and logout flow
+00:12 +106: /Users/dulorai/Downloads/callmate-main/test/app_routes_test.dart: Router main tabs render their screens
+[notifications] init failed: LateInitializationError: Field '_instance@1248271368' has not been initialized.
+00:12 +107: /Users/dulorai/Downloads/callmate-main/test/providers_test.dart: Riverpod Providers Unit Tests (Mock Environment) sessionProvider login and logout flow
+00:12 +108: /Users/dulorai/Downloads/callmate-main/test/app_routes_test.dart: Router main tabs render their screens
+00:12 +109: /Users/dulorai/Downloads/callmate-main/test/app_routes_test.dart: Router main tabs render their screens
+00:13 +110: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: Usage, Notification, Knowledge & Voice Repositories knowledge add, list, and remove
+00:13 +110: /Users/dulorai/Downloads/callmate-main/test/app_routes_test.dart: Router detail routes resolve their path parameters
+[notifications] init failed: LateInitializationError: Field '_instance@1248271368' has not been initialized.
+00:13 +111: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: Usage, Notification, Knowledge & Voice Repositories knowledge add, list, and remove
+00:13 +112: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: Usage, Notification, Knowledge & Voice Repositories knowledge add, list, and remove
+00:13 +113: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: Usage, Notification, Knowledge & Voice Repositories knowledge add, list, and remove
+00:13 +113: /Users/dulorai/Downloads/callmate-main/test/app_routes_test.dart: Router secondary full-screen routes render
+[notifications] init failed: LateInitializationError: Field '_instance@1248271368' has not been initialized.
+00:13 +114: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: Usage, Notification, Knowledge & Voice Repositories knowledge add, list, and remove
+00:14 +114: /Users/dulorai/Downloads/callmate-main/test/live_campaign_navigation_test.dart: navigating during a live campaign is safe (settle 1)
+[notifications] init failed: LateInitializationError: Field '_instance@1236271368' has not been initialized.
+00:14 +115: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: Usage, Notification, Knowledge & Voice Repositories knowledge add, list, and remove
+00:14 +116: /Users/dulorai/Downloads/callmate-main/test/live_campaign_navigation_test.dart: navigating during a live campaign is safe (settle 1)
+00:14 +117: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: Usage, Notification, Knowledge & Voice Repositories voiceSessionRepo createTestSession and sendChatMessage
+00:14 +117: /Users/dulorai/Downloads/callmate-main/test/live_campaign_navigation_test.dart: navigating during a live campaign is safe (settle 2)
+[notifications] init failed: LateInitializationError: Field '_instance@1236271368' has not been initialized.
+00:15 +118: /Users/dulorai/Downloads/callmate-main/test/repository_test.dart: Usage, Notification, Knowledge & Voice Repositories voiceSessionRepo createTestSession and sendChatMessage
+00:15 +118: /Users/dulorai/Downloads/callmate-main/test/live_campaign_navigation_test.dart: navigating during a live campaign is safe (settle 5)
+[notifications] init failed: LateInitializationError: Field '_instance@1236271368' has not been initialized.
+00:15 +119: /Users/dulorai/Downloads/callmate-main/test/live_campaign_navigation_test.dart: navigating during a live campaign is safe (settle 5)
+00:16 +120: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: ApiClient keeps the session unless the server rejects it network failure during refresh keeps tokens
+[api] GET /leads ✗ 401
+00:16 +121: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: ApiClient keeps the session unless the server rejects it server 5xx during refresh keeps tokens
+[api] GET /leads ✗ 401
+00:16 +122: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: ApiClient keeps the session unless the server rejects it rejected refresh (401) clears tokens and logs out
+[api] GET /leads ✗ 401
+00:16 +123: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: ApiClient keeps the session unless the server rejects it 401 from /auth/* never triggers a refresh
+[api] POST /auth/login ✗ 401
+00:16 +124: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: ApiClient network resilience GET is retried once after a transient network error
+[api] GET /leads → 200
+00:16 +125: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: ApiClient network resilience POST is never retried automatically
+[api] POST /calls ✗ connectionError
+00:16 +126: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: ApiClient network resilience send timeout gets an upload-specific message
+[api] POST /leads/import ✗ sendTimeout
+00:16 +127: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: ApiAuthRepository.logout revokes the refresh token server-side, then clears
+[api] POST /auth/logout → 200
+00:16 +128: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: ApiAuthRepository.logout still clears locally when offline
+[api] POST /auth/logout ✗ connectionError
+00:16 +129: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: AppEnv release guard a release build with no flavor refuses to start
+00:16 +130: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: AppEnv release guard debug dev builds and mock release builds are allowed
+00:16 +131: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: Session state failed account deletion keeps the session and rethrows
+00:17 +132: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: Session state logout forgets the previous account's onboarding
+00:17 +133: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: Session state logging into an existing account skips onboarding
+00:17 +134: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: PushService foreground push forwards its data so screens refresh
+00:17 +135: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: PushService init is idempotent
+[firebase] not configured: PlatformException(channel-error, Unable to establish connection on channel: "dev.flutter.pigeon.firebase_core_platform_interface.FirebaseCoreHostApi.initializeCore"., null, null)
+00:17 +136: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: openDeepLink detail routes keep their tab underneath
+00:17 +137: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: openDeepLink external or malformed routes fall back to home
+00:17 +138: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: SafeCrashReportingService sink only scrubbed data reaches the sink
+[CrashReporter] Error: Exception: call to [PHONE_REDACTED] failed | reason: token Bearer [TOKEN_REDACTED] | ctx: {screen: leads}
+[CrashReporter] lead [PHONE_REDACTED]
+00:17 +139: /Users/dulorai/Downloads/callmate-main/test/production_hardening_test.dart: SafeCrashReportingService sink a failing sink never throws into the app
+[CrashReporter] Error: Exception: x | reason: null | ctx: {}
+00:17 +140: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:19 +141: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +142: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +143: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +144: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +145: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +146: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +147: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +148: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +149: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +150: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +151: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +152: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +153: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +154: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +155: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +156: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +157: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +158: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:19 +159: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow owner completes onboarding end to end
+00:20 +160: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow back button returns to the previous step
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:20 +161: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow skills step requires at least one skill
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:20 +162: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow skills step requires at least one skill
+00:20 +163: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadQueryController filter and search are independent
+00:20 +164: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow create step shows an error and recovers on retry
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:20 +165: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList first page loads 20 leads sorted by priority
+00:21 +165: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow first call CTA opens the in-app voice test
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:21 +166: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList first page loads 20 leads sorted by priority
+00:21 +167: /Users/dulorai/Downloads/callmate-main/test/onboarding_flow_test.dart: Onboarding flow agent tested shows the shortcut to the dashboard
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:21 +168: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore appends the next page without duplicates
+00:21 +169: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +170: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +171: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +172: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +173: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +174: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +175: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +176: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +177: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +178: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +178: /Users/dulorai/Downloads/callmate-main/test/models_and_services_coverage_test.dart: Services Coverage DebugAnalyticsService track calls and filtering
+[analytics] test_event {foo: bar}
+00:22 +179: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +180: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +180: /Users/dulorai/Downloads/callmate-main/test/models_and_services_coverage_test.dart: Services Coverage SafeCrashReportingService scrubs PII and respects enabled flag
+[CrashReporter] Error: Exception: Fail with [PHONE_REDACTED] | reason: Test reason | ctx: {}
+[CrashReporter] Log message
+00:22 +181: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:22 +182: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:23 +183: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:23 +184: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:23 +185: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:23 +186: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:23 +187: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList loadMore is a no-op when there are no more pages
+00:24 +188: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList filter restricts results
+00:24 +189: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList search matches by name
+00:24 +190: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList search with no match yields an empty last page
+00:25 +191: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList refresh failure surfaces the error, retry clears it
+00:25 +192: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen lists pending drafts and opened ones
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:25 +193: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen lists pending drafts and opened ones
+00:26 +194: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList backend data changes trigger a silent refresh
+00:26 +194: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen tapping a row opens the draft
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:26 +195: /Users/dulorai/Downloads/callmate-main/test/leads_controller_test.dart: LeadsList backend data changes trigger a silent refresh
+00:26 +195: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen WhatsApp button hands off and marks the draft opened
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:26 +196: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen WhatsApp button hands off and marks the draft opened
+[analytics] whatsapp_opened {has_followup: true}
+00:26 +197: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen swiping a draft also hands off to WhatsApp
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+[analytics] whatsapp_opened {has_followup: true}
+00:27 +198: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen empty inbox says all caught up
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:27 +199: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen empty inbox says all caught up
+00:27 +200: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen empty inbox says all caught up
+00:27 +201: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen empty inbox says all caught up
+00:27 +202: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen empty inbox says all caught up
+00:27 +203: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen empty inbox says all caught up
+00:27 +204: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen empty inbox says all caught up
+00:27 +205: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen empty inbox says all caught up
+00:27 +206: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen empty inbox says all caught up
+00:27 +207: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen empty inbox says all caught up
+00:27 +208: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen empty inbox says all caught up
+00:27 +209: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen empty inbox says all caught up
+00:27 +210: /Users/dulorai/Downloads/callmate-main/test/core_logic_test.dart: Mock backend pipeline lead pagination
+00:27 +210: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpsScreen opened drafts are listed and reopenable
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:27 +211: /Users/dulorai/Downloads/callmate-main/test/core_logic_test.dart: Mock backend pipeline lead pagination
+00:27 +211: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen shows the drafted message and call summary
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:27 +212: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen shows the drafted message and call summary
+00:27 +213: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen editing and saving updates the draft
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:28 +214: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen editing and saving updates the draft
+00:28 +215: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen editing and saving updates the draft
+00:28 +216: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen editing and saving updates the draft
+00:28 +217: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen editing and saving updates the draft
+00:28 +218: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen editing and saving updates the draft
+00:28 +219: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen editing and saving updates the draft
+00:28 +220: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen runs a live session: suggestions, typed text, mute and end
+00:28 +220: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen tapping the message starts editing; unchanged save is a no-op
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:28 +221: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen runs a live session: suggestions, typed text, mute and end
+00:28 +221: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen WhatsApp opens the edited text, then "I sent it" completes
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+[analytics] whatsapp_opened {has_followup: true}
+00:28 +221: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen runs a live session: suggestions, typed text, mute and end
+[notifications] init failed: LateInitializationError: Field '_instance@1243271368' has not been initialized.
+00:29 +222: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen runs a live session: suggestions, typed text, mute and end
+00:29 +222: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen menu copies, shares and dismisses
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:29 +223: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen runs a live session: suggestions, typed text, mute and end
+00:29 +223: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen menu can mark an opened draft as sent
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:29 +224: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen runs a live session: suggestions, typed text, mute and end
+00:29 +224: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: FollowUpDetailScreen unknown follow-up shows a friendly error
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:29 +225: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen runs a live session: suggestions, typed text, mute and end
+00:29 +225: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: WhatsApp handoff results invalid phone is reported and nothing is marked opened
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:30 +226: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen runs a live session: suggestions, typed text, mute and end
+00:30 +226: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: WhatsApp handoff results empty message is reported
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:30 +227: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen runs a live session: suggestions, typed text, mute and end
+00:30 +227: /Users/dulorai/Downloads/callmate-main/test/followups_screens_test.dart: WhatsApp handoff results not installed offers copy and share fallbacks
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:30 +228: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen runs a live session: suggestions, typed text, mute and end
+00:30 +229: /Users/dulorai/Downloads/callmate-main/test/mock_journey_widget_test.dart: Mock Journey Widget Tests (Onboarding → Lead → Campaign → Call Result → Follow-up) 1. Onboarding WelcomeScreen renders brand and Get Started
+00:30 +229: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen a man employee speaks in a man's voice, in the owner's language
+[notifications] init failed: LateInitializationError: Field '_instance@1243271368' has not been initialized.
+00:31 +230: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: CallbacksScreen lists upcoming callbacks and opens the lead
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:31 +231: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: CallbacksScreen lists upcoming callbacks and opens the lead
+00:31 +231: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen the default employee speaks in a woman's voice
+[notifications] init failed: LateInitializationError: Field '_instance@1243271368' has not been initialized.
+00:31 +232: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: CallbacksScreen lists upcoming callbacks and opens the lead
+00:31 +233: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: CallbacksScreen lists upcoming callbacks and opens the lead
+00:31 +233: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen from onboarding: finishing the scripted call completes onboarding
+[notifications] init failed: LateInitializationError: Field '_instance@1243271368' has not been initialized.
+00:31 +234: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: CallbacksScreen lists upcoming callbacks and opens the lead
+00:31 +235: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: CallbacksScreen lists upcoming callbacks and opens the lead
+00:31 +236: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: CallbacksScreen lists upcoming callbacks and opens the lead
+00:32 +237: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen from onboarding: finishing the scripted call completes onboarding
+00:32 +237: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: CallbacksScreen swiping left marks a callback done
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:32 +238: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: CallbacksScreen swiping left marks a callback done
+00:32 +238: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen connection failure shows retry which reconnects
+[notifications] init failed: LateInitializationError: Field '_instance@1243271368' has not been initialized.
+00:32 +239: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen connection failure shows retry which reconnects
+00:32 +239: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: CallbacksScreen no callbacks shows an empty state
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:32 +240: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:32 +240: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen error from onboarding offers to continue to the dashboard
+[notifications] init failed: LateInitializationError: Field '_instance@1243271368' has not been initialized.
+00:32 +241: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:32 +242: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:32 +242: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: Callback sheet suggests the AI-proposed time first
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:32 +242: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen denied microphone shows open settings; End leaves the screen
+[notifications] init failed: LateInitializationError: Field '_instance@1243271368' has not been initialized.
+00:32 +243: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +243: /Users/dulorai/Downloads/callmate-main/test/voice_test_screen_test.dart: VoiceTestScreen backgrounding the app stops a live session
+[notifications] init failed: LateInitializationError: Field '_instance@1243271368' has not been initialized.
+00:33 +243: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:33 +244: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +244: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: Callback sheet custom date and time can be picked
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:33 +245: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +245: /Users/dulorai/Downloads/callmate-main/test/api_client_behaviour_test.dart: ApiClient onMutation fires after successful writes only
+[api] GET /leads → 200
+[api] POST /leads → 200
+[api] PATCH /followups/1 → 200
+[api] DELETE /knowledge/1 → 200
+[api] POST /bad ✗ 400
+00:33 +246: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +246: /Users/dulorai/Downloads/callmate-main/test/api_client_behaviour_test.dart: ApiClient auth headers sends bearer token and flavor header
+[api] GET /x → 200
+00:33 +247: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +247: /Users/dulorai/Downloads/callmate-main/test/api_client_behaviour_test.dart: ApiClient auth headers omits Authorization when there is no access token
+[api] GET /x → 200
+00:33 +248: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +249: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +249: /Users/dulorai/Downloads/callmate-main/test/api_client_behaviour_test.dart: ApiClient 401 handling without a refresh token it fails fast and signals auth failure
+[api] GET /x ✗ 401
+00:33 +250: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +250: /Users/dulorai/Downloads/callmate-main/test/api_client_behaviour_test.dart: ApiClient 401 handling a retried request that is still 401 is not retried again
+[api] GET /x ✗ 401
+[api] GET /x ✗ 401
+00:33 +251: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +251: /Users/dulorai/Downloads/callmate-main/test/api_client_behaviour_test.dart: ApiClient 401 handling the single-flight resets so a later 401 refreshes again
+[api] GET /one → 200
+[api] GET /two → 200
+00:33 +252: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +252: /Users/dulorai/Downloads/callmate-main/test/api_client_behaviour_test.dart: ApiClient 401 handling a malformed refresh response clears tokens and logs out
+[api] GET /x ✗ 401
+00:33 +253: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +253: /Users/dulorai/Downloads/callmate-main/test/api_client_behaviour_test.dart: ApiClient error mapping connection errors become network ApiExceptions
+[api] POST /x ✗ connectionError
+00:33 +254: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +254: /Users/dulorai/Downloads/callmate-main/test/api_client_behaviour_test.dart: ApiClient error mapping server message is surfaced with its status code
+[api] PATCH /leads/1 ✗ 404
+00:33 +255: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +255: /Users/dulorai/Downloads/callmate-main/test/api_client_behaviour_test.dart: ApiClient error mapping bodies without a message fall back to a generic error
+[api] DELETE /leads/1 ✗ 500
+00:33 +256: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +256: /Users/dulorai/Downloads/callmate-main/test/api_client_behaviour_test.dart: ApiClient error mapping successful verbs map response bodies
+[api] POST /p → 200
+[api] PATCH /p → 200
+[api] DELETE /p → 200
+[api] GET /q → 200
+00:33 +257: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +258: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen shows the agent and links to its settings
+00:33 +258: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: Callback sheet failure keeps the sheet open and reports the error
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:33 +259: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: Callback sheet failure keeps the sheet open and reports the error
+00:34 +259: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen knowledge and usage cards open their screens
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:34 +260: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen knowledge and usage cards open their screens
+00:34 +260: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: NotificationsScreen lists notifications and opens their route
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:34 +261: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: NotificationsScreen lists notifications and opens their route
+00:34 +261: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen "More" links open callbacks and notifications
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:34 +262: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen "More" links open callbacks and notifications
+00:34 +262: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: NotificationsScreen empty list says all caught up
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:34 +263: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen "More" links open callbacks and notifications
+00:34 +263: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: In-app notification banner backend notification shows a banner that deep links
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:34 +264: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: In-app notification banner backend notification shows a banner that deep links
+00:34 +264: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen sign out asks first, then ends the session
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:35 +265: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen sign out asks first, then ends the session
+00:35 +265: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: In-app notification banner banner hides itself after a few seconds
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:35 +266: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: In-app notification banner banner hides itself after a few seconds
+00:35 +266: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen delete account asks first, then ends the session
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:35 +267: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: AgentScreen delete account asks first, then ends the session
+00:35 +267: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: In-app notification banner banner can be swiped away
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:35 +268: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: In-app notification banner banner can be swiped away
+00:35 +269: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen lists the AI employee's calls
+00:35 +269: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: EditAgentScreen saves edited identity fields to the backend
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:35 +269: /Users/dulorai/Downloads/callmate-main/test/callbacks_notifications_test.dart: In-app notification banner system notification taps route through the app
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:36 +270: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen lists the AI employee's calls
+00:36 +271: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen lists the AI employee's calls
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:36 +271: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: EditAgentScreen rejects an invalid transfer number
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:36 +272: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen lists the AI employee's calls
+00:36 +273: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen lists the AI employee's calls
+00:36 +274: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen lists the AI employee's calls
+00:36 +274: /Users/dulorai/Downloads/callmate-main/test/sarvam_voice_agent_service_test.dart: SarvamVoiceAgentService (native path) backend session failure is reported (no direct fallback)
+[SarvamVoiceAgent] Server session creation error: Exception: 503
+00:36 +275: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen lists the AI employee's calls
+00:36 +276: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen lists the AI employee's calls
+00:36 +276: /Users/dulorai/Downloads/callmate-main/test/sarvam_voice_agent_service_test.dart: SarvamVoiceAgentService (native path) connects only to our proxy with the session token as bearer
+[SarvamVoiceAgent] Failed to connect: Exception: Failed to get signed URL: 502
+00:36 +277: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen lists the AI employee's calls
+00:36 +278: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen lists the AI employee's calls
+00:36 +279: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen lists the AI employee's calls
+00:36 +279: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: EditAgentScreen an empty name is not saved
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:36 +280: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen lists the AI employee's calls
+00:36 +280: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: EditAgentScreen languages, voice, personality, hours and status
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:36 +281: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: EditAgentScreen languages, voice, personality, hours and status
+00:36 +281: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen filter chips narrow the list
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:36 +282: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen filter chips narrow the list
+00:36 +282: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: EditAgentScreen teach card opens the knowledge screen
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:37 +283: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen filter chips narrow the list
+00:37 +283: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: TeachAiScreen lists existing knowledge sources
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:37 +284: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen filter chips narrow the list
+00:37 +284: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: TeachAiScreen pasted text is validated, learned and listed
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:37 +285: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: TeachAiScreen pasted text is validated, learned and listed
+00:37 +285: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen initial filter comes from the query string
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:37 +286: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: TeachAiScreen pasted text is validated, learned and listed
+00:37 +286: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen connected call opens the result screen
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:37 +287: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen connected call opens the result screen
+00:37 +287: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: TeachAiScreen website input is normalised to https
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:37 +288: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen connected call opens the result screen
+00:37 +288: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: TeachAiScreen FAQ uses a default title when none is given
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:37 +289: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: TeachAiScreen FAQ uses a default title when none is given
+00:37 +289: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen unanswered call opens the detail view
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:37 +290: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen unanswered call opens the detail view
+00:37 +290: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: TeachAiScreen a ready source can be removed
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:38 +291: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen unanswered call opens the detail view
+00:38 +291: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: TeachAiScreen empty state offers to add information
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:38 +292: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen unanswered call opens the detail view
+00:38 +292: /Users/dulorai/Downloads/callmate-main/test/agent_screens_test.dart: TeachAiScreen polls processing sources until they are ready
+[notifications] init failed: LateInitializationError: Field '_instance@1240271368' has not been initialized.
+00:38 +293: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen unanswered call opens the detail view
+00:38 +294: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen unanswered call opens the detail view
+00:38 +295: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: owner picks contacts and adds them as customers
+00:38 +295: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallsScreen empty log invites starting a campaign
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:38 +296: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: owner picks contacts and adds them as customers
+00:38 +296: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallResultScreen Prepare WhatsApp opens the drafted follow-up
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:38 +296: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: owner picks contacts and adds them as customers
+[notifications] init failed: LateInitializationError: Field '_instance@1236271368' has not been initialized.
+00:39 +296: /Users/dulorai/Downloads/callmate-main/test/api_client_test.dart: ApiClient single-flight token refresh concurrent 401s coalesce into exactly one refresh call and retry
+[api] GET /resource-1 → 200
+[api] GET /resource-2 → 200
+00:39 +297: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: owner picks contacts and adds them as customers
+00:39 +297: /Users/dulorai/Downloads/callmate-main/test/api_client_test.dart: ApiClient single-flight token refresh failed refresh clears store and triggers onAuthFailure logout cleanly
+[api] GET /protected ✗ 401
+00:39 +298: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: owner picks contacts and adds them as customers
+00:39 +299: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: owner picks contacts and adds them as customers
+00:39 +299: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallResultScreen without a follow-up the result offers to open the lead
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:39 +300: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: owner picks contacts and adds them as customers
+00:39 +300: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallResultScreen Schedule Callback books a callback for the lead
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:39 +301: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallResultScreen Schedule Callback books a callback for the lead
+00:39 +301: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: search narrows the list; select all picks what is shown
+[notifications] init failed: LateInitializationError: Field '_instance@1236271368' has not been initialized.
+00:40 +302: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: search narrows the list; select all picks what is shown
+00:40 +302: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallResultScreen detail-only route shows the call facts
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:40 +303: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: search narrows the list; select all picks what is shown
+00:40 +303: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallResultScreen missing call shows a friendly error
+[notifications] init failed: LateInitializationError: Field '_instance@1242271368' has not been initialized.
+00:40 +304: /Users/dulorai/Downloads/callmate-main/test/calls_screens_test.dart: CallResultScreen missing call shows a friendly error
+00:40 +304: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: without permission it explains and links to settings
+[notifications] init failed: LateInitializationError: Field '_instance@1236271368' has not been initialized.
+00:40 +305: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: without permission it explains and links to settings
+00:40 +306: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: without permission it explains and links to settings
+00:40 +307: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: without permission it explains and links to settings
+00:40 +308: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: explains what is read and sent before asking Android
+[notifications] init failed: LateInitializationError: Field '_instance@1236271368' has not been initialized.
+00:40 +309: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: agreeing asks Android once and is remembered
+[notifications] init failed: LateInitializationError: Field '_instance@1236271368' has not been initialized.
+00:41 +310: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: once agreed, the next visit goes straight to the list
+[notifications] init failed: LateInitializationError: Field '_instance@1236271368' has not been initialized.
+00:41 +311: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: once agreed, the next visit goes straight to the list
+00:41 +312: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: once agreed, the next visit goes straight to the list
+00:41 +313: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingDraft suggestedAgent follows the chosen skills
+00:41 +314: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: add customers screen offers phone contacts first
+[notifications] init failed: LateInitializationError: Field '_instance@1236271368' has not been initialized.
+00:41 +315: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: add customers screen offers phone contacts first
+00:41 +316: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: add customers screen offers phone contacts first
+00:41 +317: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: add customers screen offers phone contacts first
+00:41 +318: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: add customers screen offers phone contacts first
+00:41 +319: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: add customers screen offers phone contacts first
+00:41 +320: /Users/dulorai/Downloads/callmate-main/test/contacts_picker_test.dart: add customers screen offers phone contacts first
+00:41 +321: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController saveBusiness persists trimmed fields and uploads knowledge
+00:42 +321: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: ImportLeadsScreen sample CSV previews valid rows and skips bad ones
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:42 +322: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController saveBusiness persists trimmed fields and uploads knowledge
+00:42 +322: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: ImportLeadsScreen importing the sample adds leads and offers to call
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:42 +323: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: ImportLeadsScreen importing the sample adds leads and offers to call
+00:42 +324: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: ImportLeadsScreen importing the sample adds leads and offers to call
+00:42 +324: /Users/dulorai/Downloads/callmate-main/test/push_service_test.dart: PushService Unit Tests PushService initializes gracefully without crashing in test environment
+[firebase] not configured: PlatformException(channel-error, Unable to establish connection on channel: "dev.flutter.pigeon.firebase_core_platform_interface.FirebaseCoreHostApi.initializeCore"., null, null)
+00:42 +325: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: ImportLeadsScreen importing the sample adds leads and offers to call
+00:42 +326: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController saveBusiness keeps the existing name when none is entered
+00:43 +326: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: ImportLeadsScreen "Later" closes the import result
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:43 +327: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: ImportLeadsScreen "Later" closes the import result
+00:43 +328: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController activateEmployee uses template defaults when owner left blanks
+00:43 +328: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: ImportLeadsScreen a single lead is validated, then added
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:43 +329: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: ImportLeadsScreen a single lead is validated, then added
+00:43 +330: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController activateEmployee applies owner overrides and skill capabilities
+00:43 +330: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: DemoScreen simulate hot lead runs a call and opens its result
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:43 +331: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController activateEmployee applies owner overrides and skill capabilities
+00:43 +331: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: DemoScreen simulate call completed drafts a warm follow-up
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:43 +332: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: DemoScreen simulate call completed drafts a warm follow-up
+00:43 +333: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController Arjun speaks as a man, Riya as a woman, by default
+00:43 +333: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: DemoScreen simulate WhatsApp follow-up opens the draft
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:44 +334: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController Arjun speaks as a man, Riya as a woman, by default
+00:44 +334: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: DemoScreen simulate campaign opens campaign setup
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:44 +335: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController Arjun speaks as a man, Riya as a woman, by default
+00:44 +335: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: DemoScreen notification tiles show a deep-linking banner
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:44 +336: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController Arjun speaks as a man, Riya as a woman, by default
+00:44 +336: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: DemoScreen hot lead and callback notifications are recorded
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:44 +337: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController Arjun speaks as a man, Riya as a woman, by default
+00:44 +337: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: DemoScreen replay onboarding resets prefs and restarts the flow
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:44 +338: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController Arjun speaks as a man, Riya as a woman, by default
+00:44 +338: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: UsageScreen shows plan, minutes and upgrade prompt
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:44 +339: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController Arjun speaks as a man, Riya as a woman, by default
+00:44 +339: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: SplashScreen continues to home when onboarded
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:44 +340: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController Arjun speaks as a man, Riya as a woman, by default
+00:44 +341: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController Arjun speaks as a man, Riya as a woman, by default
+00:44 +341: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: SplashScreen continues to onboarding when not onboarded
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:44 +342: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController Arjun speaks as a man, Riya as a woman, by default
+00:44 +342: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: AppShell bottom navigation switches tabs
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:44 +343: /Users/dulorai/Downloads/callmate-main/test/login_screen_test.dart: new Google account finishes with business name and phone
+00:45 +344: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: AppShell bottom navigation switches tabs
+00:45 +345: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: AppShell bottom navigation switches tabs
+00:45 +346: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: AppShell bottom navigation switches tabs
+00:45 +347: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: AppShell bottom navigation switches tabs
+00:45 +348: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: AppShell bottom navigation switches tabs
+00:45 +349: /Users/dulorai/Downloads/callmate-main/test/onboarding_controller_test.dart: OnboardingController activateEmployee falls back to template skills when none chosen
+00:45 +349: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: AppShell re-selecting the current tab resets it
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:45 +350: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: AppShell re-selecting the current tab resets it
+00:46 +351: /Users/dulorai/Downloads/callmate-main/test/import_leads_demo_usage_test.dart: AppShell follow-ups tab shows the pending badge
+[notifications] init failed: LateInitializationError: Field '_instance@1247271368' has not been initialized.
+00:47 +352: /Users/dulorai/Downloads/callmate-main/test/session_provider_test.dart: SessionNotifier starts from the repository session
+00:47 +353: /Users/dulorai/Downloads/callmate-main/test/session_provider_test.dart: SessionNotifier requestOtp, login and register update the session
+00:47 +354: /Users/dulorai/Downloads/callmate-main/test/session_provider_test.dart: SessionNotifier failed login surfaces an error state
+00:47 +355: /Users/dulorai/Downloads/callmate-main/test/session_provider_test.dart: SessionNotifier logout unregisters the push token then signs out
+00:47 +356: /Users/dulorai/Downloads/callmate-main/test/session_provider_test.dart: SessionNotifier deleteAccount unregisters the device and signs out
+00:47 +357: /Users/dulorai/Downloads/callmate-main/test/session_provider_test.dart: SessionNotifier forceLogout drops the session without calling the backend
+00:47 +358: /Users/dulorai/Downloads/callmate-main/test/session_provider_test.dart: production wiring (USE_MOCK=false) repositories resolve to the API implementations
+00:47 +359: /Users/dulorai/Downloads/callmate-main/test/session_provider_test.dart: production wiring (USE_MOCK=false) an auth failure from the API client forces logout
+00:48 +360: /Users/dulorai/Downloads/callmate-main/test/notification_title_test.dart: backend jargon never reaches the owner
+00:48 +361: /Users/dulorai/Downloads/callmate-main/test/notification_title_test.dart: calling updates keep the English title that names the employee
+00:48 +362: /Users/dulorai/Downloads/callmate-main/test/notification_title_test.dart: splitNotificationTitle separates the emoji
+00:49 +363: /Users/dulorai/Downloads/callmate-main/test/branding_test.dart: Brand exact product name, tagline, description
+00:49 +364: /Users/dulorai/Downloads/callmate-main/test/branding_test.dart: Brand package id is com.callpilot.app; launcher label is CallPilot
+00:49 +365: /Users/dulorai/Downloads/callmate-main/test/branding_test.dart: Brand no forbidden product branding in app sources
+00:49 +366: /Users/dulorai/Downloads/callmate-main/test/branding_test.dart: Templates every business category has a template with an employee
+00:49 +367: /Users/dulorai/Downloads/callmate-main/test/branding_test.dart: Templates skills drive the suggested role
+00:49 +368: /Users/dulorai/Downloads/callmate-main/test/branding_test.dart: Templates lead is generic with custom attributes + legacy payload support
+00:49 +369: /Users/dulorai/Downloads/callmate-main/test/branding_test.dart: Demo tenant is configurable, not the brand Maya @ real-estate tenant works end-to-end in the mock pipeline
+00:49 +370: All tests passed!

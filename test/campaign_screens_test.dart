@@ -44,7 +44,7 @@ Future<void> _dismissBanner(AppHarness h) async {
 
 /// Opens the confirmation sheet from the setup screen and confirms it.
 Future<void> _startCampaign(AppHarness h) async {
-  await h.tapText('Start Campaign');
+  await h.tapText('Start Calling');
   final attest = find.text('I confirm these contacts asked to be contacted');
   if (attest.evaluate().isNotEmpty) await h.tap(attest);
   expect(find.textContaining('Start calling'), findsOneWidget);
@@ -60,7 +60,7 @@ void main() {
       expect(count, greaterThan(0));
       expect(find.byType(CampaignSetupScreen), findsOneWidget);
       expect(find.text('$count'), findsWidgets);
-      expect(find.text('leads ready'), findsOneWidget);
+      expect(find.text('customers ready'), findsOneWidget);
       expect(find.text(h.backend.agent.name), findsOneWidget);
       expect(find.byType(CampaignSummaryRow), findsNWidgets(4));
       expect(find.text('Auto detect'), findsOneWidget);
@@ -69,10 +69,10 @@ void main() {
 
     appTest('checklist items toggle their options', (h) async {
       for (final label in [
-        'Score lead',
-        'Generate WhatsApp follow-up',
-        'Recommend callback',
-        'Notify me for hot leads',
+        'Score the customer',
+        'Write a WhatsApp message',
+        'Suggest a call back',
+        'Tell me who is ready to buy',
       ]) {
         final before = _checked(h.tester, label);
         await h.tapText(label);
@@ -101,62 +101,71 @@ void main() {
       expect(hours(), isNot(before));
     }, location: '/campaign/new');
 
-    appTest('without consent the sheet counts only callable leads', (h) async {
-      await h.tapText('Start Campaign');
-      final attest = find.text(
-        'I confirm these contacts asked to be contacted',
-      );
-      if (attest.evaluate().isEmpty) return; // seed has consented leads only
-      final unknown = h.backend.leads.values
-          .where(
-            (l) => l.status == LeadStatus.newLead && l.consent == 'unknown',
-          )
-          .length;
-      expect(find.textContaining('will be skipped'), findsOneWidget);
-      expect(find.textContaining('Start calling $unknown leads'), findsNothing);
-      await h.tap(attest);
-      expect(find.textContaining('will be skipped'), findsNothing);
-    }, location: '/campaign/new');
+    appTest(
+      'without consent the sheet counts only callable leads',
+      (h) async {
+        await h.tapText('Start Calling');
+        final attest = find.text(
+          'I confirm these contacts asked to be contacted',
+        );
+        if (attest.evaluate().isEmpty) return; // seed has consented leads only
+        final unknown = h.backend.leads.values
+            .where(
+              (l) => l.status == LeadStatus.newLead && l.consent == 'unknown',
+            )
+            .length;
+        expect(find.textContaining('will be skipped'), findsOneWidget);
+        expect(
+          find.textContaining('Start calling $unknown customers'),
+          findsNothing,
+        );
+        await h.tap(attest);
+        expect(find.textContaining('will be skipped'), findsNothing);
+      },
+      location: '/campaign/new',
+    );
 
     appTest('"Not now" cancels without creating a campaign', (h) async {
-      await h.tapText('Start Campaign');
+      await h.tapText('Start Calling');
       await h.tapText('Not now');
       expect(h.backend.campaigns, isEmpty);
       expect(find.byType(CampaignSetupScreen), findsOneWidget);
     }, location: '/campaign/new');
 
-    appTest('starting creates a running campaign and opens its progress', (
-      h,
-    ) async {
-      final count = _newLeadCount(h.backend);
-      // Turn off one option to check it is carried into the campaign.
-      await h.tapText('Recommend callback');
-      await h.tapText('Start Campaign');
-      // Leads without recorded consent trigger the attestation checkbox.
-      final attest = find.text(
-        'I confirm these contacts asked to be contacted',
-      );
-      if (attest.evaluate().isNotEmpty) {
-        await h.tap(attest);
-      }
-      await h.tapText('Yes, start calling');
-      await h.settle(12);
+    appTest(
+      'starting creates a running campaign and opens its progress',
+      (h) async {
+        final count = _newLeadCount(h.backend);
+        // Turn off one option to check it is carried into the campaign.
+        await h.tapText('Suggest a call back');
+        await h.tapText('Start Calling');
+        // Leads without recorded consent trigger the attestation checkbox.
+        final attest = find.text(
+          'I confirm these contacts asked to be contacted',
+        );
+        if (attest.evaluate().isNotEmpty) {
+          await h.tap(attest);
+        }
+        await h.tapText('Yes, start calling');
+        await h.settle(12);
 
-      expect(h.backend.campaigns, hasLength(1));
-      final c = h.backend.campaigns.values.single;
-      expect(c.status, CampaignStatus.running);
-      expect(c.leadIds, hasLength(count));
-      expect(c.options.recommendCallback, isFalse);
-      expect(h.location, '/campaigns/${c.id}');
-      expect(find.byType(CampaignProgressScreen), findsOneWidget);
-      expect(find.text('${h.backend.agent.name} is calling'), findsOneWidget);
-    }, location: '/campaign/new');
+        expect(h.backend.campaigns, hasLength(1));
+        final c = h.backend.campaigns.values.single;
+        expect(c.status, CampaignStatus.running);
+        expect(c.leadIds, hasLength(count));
+        expect(c.options.recommendCallback, isFalse);
+        expect(h.location, '/campaigns/${c.id}');
+        expect(find.byType(CampaignProgressScreen), findsOneWidget);
+        expect(find.text('${h.backend.agent.name} is calling'), findsOneWidget);
+      },
+      location: '/campaign/new',
+    );
 
     appTest(
       'shows an empty state when there are no new leads',
       (h) async {
-        expect(find.text('No new leads to call'), findsOneWidget);
-        await h.tapText('Add leads');
+        expect(find.text('No new customers to call'), findsOneWidget);
+        await h.tapText('Add customers');
         expect(h.location, '/leads/import');
       },
       location: '/campaign/new',
@@ -196,11 +205,11 @@ void main() {
       await h.tapText('Stop');
       await h.tap(find.text('Stop').last);
       expect(h.backend.campaigns[id]!.status, CampaignStatus.stopped);
-      expect(find.text('Campaign stopped'), findsOneWidget);
-      expect(find.textContaining('leads called'), findsOneWidget);
+      expect(find.text('Calling stopped'), findsOneWidget);
+      expect(find.textContaining('customers called'), findsOneWidget);
 
-      await _scrollTo(h, find.text('Review follow-ups'));
-      await h.tapText('Review follow-ups');
+      await _scrollTo(h, find.text('Review messages'));
+      await h.tapText('Review messages');
       expect(h.location, '/followups');
     }, location: '/campaign/new');
 
@@ -216,8 +225,8 @@ void main() {
       expect(c.stats.completed, total);
       expect(find.textContaining('finished calling'), findsOneWidget);
 
-      await _scrollTo(h, find.text('View hot leads'));
-      await h.tapText('View hot leads');
+      await _scrollTo(h, find.text('See ready-to-buy customers'));
+      await h.tapText('See ready-to-buy customers');
       expect(h.location, '/leads');
     }, location: '/campaign/new');
 
@@ -246,8 +255,8 @@ void main() {
       );
       await h.push('/campaigns/${c.id}');
       expect(find.byType(CampaignProgressScreen), findsOneWidget);
-      expect(find.text('Campaign stopped'), findsOneWidget);
-      expect(find.text('0 of 2 leads called'), findsOneWidget);
+      expect(find.text('Calling stopped'), findsOneWidget);
+      expect(find.text('0 of 2 customers called'), findsOneWidget);
     });
 
     appTest('unknown campaign shows an error', (h) async {
@@ -261,7 +270,10 @@ void main() {
       final button = find.byType(CallNewLeadsButton);
       expect(button, findsOneWidget);
       expect(
-        find.descendant(of: button, matching: find.textContaining('New Leads')),
+        find.descendant(
+          of: button,
+          matching: find.textContaining('New Customers'),
+        ),
         findsOneWidget,
       );
       await h.tap(button);
@@ -287,7 +299,7 @@ void main() {
       await h.settle();
       final banner = find.byType(CampaignLiveBanner);
       expect(banner, findsOneWidget);
-      expect(find.textContaining('is calling your leads…'), findsOneWidget);
+      expect(find.textContaining('is calling your customers…'), findsOneWidget);
       expect(find.textContaining('0 of 3 done'), findsOneWidget);
       // Tap in place: scrolling it into view would tuck it under the
       // pinned header.

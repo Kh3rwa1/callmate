@@ -1,4 +1,5 @@
 import '../models/enums.dart';
+import '../../services/voice/voice_persona.dart';
 
 /// ---------------------------------------------------------------------------
 /// CallPilot template architecture.
@@ -78,9 +79,13 @@ class AgentTemplate {
     required this.capabilities,
     required this.callPurpose,
     this.defaultSkills = const [],
+    this.voice = femaleVoice,
   });
   final String id;
   final String defaultName;
+
+  /// Default voice; matches [defaultName] (Arjun speaks as a man).
+  final String voice;
   final String role;
   final EmployeeRoleKind roleKind;
   final String goal;
@@ -203,6 +208,7 @@ const coachingAgentTemplate = AgentTemplate(
 const appointmentAgentTemplate = AgentTemplate(
   id: 'generic_appointments_v1',
   defaultName: 'Arjun',
+  voice: maleVoice,
   role: 'Appointment Assistant',
   roleKind: EmployeeRoleKind.appointments,
   goal: 'Turn enquiries into booked appointments',

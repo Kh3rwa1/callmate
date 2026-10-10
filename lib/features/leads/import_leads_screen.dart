@@ -199,7 +199,49 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 32),
         children: [
+          // The easy way first: the people already in his phone.
           Reveal(
+            child: AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      IconBubble(
+                        size: 48,
+                        child: Icon(
+                          Icons.contacts_rounded,
+                          color: AppColors.brand,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(s.ctFromContacts, style: t.titleMedium),
+                            Text(s.ctFromContactsSub, style: t.bodyMedium),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  PrimaryButton(
+                    label: s.ctChoose,
+                    icon: Icons.contacts_outlined,
+                    onPressed: _busy
+                        ? null
+                        : () => context.push('/leads/contacts'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Reveal(index: 1, child: SectionLabel(s.ctHaveFile)),
+          Reveal(
+            index: 1,
             child: AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,7 +272,7 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                   const SizedBox(height: 16),
                   SwapFade(
                     child: p == null
-                        ? PrimaryButton(
+                        ? SecondaryButton(
                             key: const ValueKey('choose'),
                             label: s.chooseFile,
                             icon: Icons.attach_file_rounded,

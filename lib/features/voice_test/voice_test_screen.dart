@@ -1,3 +1,4 @@
+import '../../core/widgets/employee_avatar.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -9,9 +10,9 @@ import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/mascot.dart';
 import '../../l10n/l10n.dart';
 import '../../services/voice/voice_agent_service.dart';
+import '../../services/voice/voice_persona.dart';
 import '../calls/transcript_view.dart';
 import 'voice_test_composer.dart';
 import 'voice_test_status.dart';
@@ -80,14 +81,22 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
     try {
       final biz = ref.read(businessProvider).value;
       final name = ref.read(employeeNameProvider);
+      // Speak as the employee the owner set up: his or her voice, in the
+      // owner's language (an employee named Rahul must sound like a man).
+      // Wait for the employee (it may still be loading, or reloading after
+      // an edit): "not loaded yet" must never mean "speak as a woman".
+      String? voice;
+      try {
+        voice = (await ref.read(agentProvider.future))?.voice;
+      } catch (_) {
+        voice = ref.read(agentProvider).value?.voice;
+      }
+      if (!mounted) return;
       await _voice.startTestSession(
         agentVariables: {
           'business_name': biz?.name ?? '',
           'agent_name': name,
-          'gender': 'female',
-          'voice': 'female',
-          'speaker': 'meera',
-          'tts_model': 'bulbul:v4-flash',
+          ...voiceVariables(voice: voice, lang: strings.lang),
           'mode': 'owner_test',
         },
       );
@@ -171,6 +180,11 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
 
   bool get _live => isLiveVoiceState(_state);
 
+  /// Audio is actually flowing (someone is listening or speaking).
+  bool get _audible =>
+      _state == VoiceConnectionState.listening ||
+      _state == VoiceConnectionState.speaking;
+
   @override
   Widget build(BuildContext context) {
     final s = context.s;
@@ -196,11 +210,14 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
                     ? const SizedBox(width: double.infinity)
                     : Column(
                         children: [
-                          Mascot(
-                            state: mascotForVoiceState(_state),
-                            size: mascotSize,
+                          // Room above and below for the activity rings.
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 22),
+                            child: AgentAvatar(
+                              size: mascotSize * 0.78,
+                              activity: employeeActivityFor(_state),
+                            ),
                           ),
-                          const SizedBox(height: 6),
                         ],
                       ),
               ),
@@ -220,11 +237,15 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
                 height: 36,
                 child: ValueListenableBuilder<double>(
                   valueListenable: _level,
+                  // Only real audio moves the wave: flat and grey while
+                  // connecting or thinking, so it never looks live early.
                   builder: (_, v, _) => VoiceWaveform(
-                    level: _live ? v : 0,
-                    color: _state == VoiceConnectionState.speaking
-                        ? AppColors.brand
-                        : AppColors.success,
+                    level: _audible ? v : 0,
+                    color: switch (_state) {
+                      VoiceConnectionState.speaking => AppColors.brand,
+                      VoiceConnectionState.listening => AppColors.success,
+                      _ => AppColors.border,
+                    },
                   ),
                 ),
               ),

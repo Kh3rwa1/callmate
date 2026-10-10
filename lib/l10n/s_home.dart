@@ -4,9 +4,9 @@ import 's.dart';
 extension SHome on S {
   // ------------------------------------------------------------ Navigation
   String get navHome => pick('Home', 'होम', 'হোম');
-  String get navLeads => pick('Leads', 'लीड्स', 'লিড');
+  String get navLeads => pick('Customers', 'ग्राहक', 'গ্রাহক');
   String get navCalls => pick('Calls', 'कॉल्स', 'কল');
-  String get navFollowUps => pick('Follow-ups', 'फ़ॉलो-अप', 'ফলো-আপ');
+  String get navFollowUps => pick('Messages', 'मैसेज', 'মেসেজ');
   String get navAgent => pick('Agent', 'एजेंट', 'এজেন্ট');
   String navPending(String tab, int n) =>
       pick('$tab, $n pending', '$tab, $n बाकी', '$tab, $n বাকি');
@@ -37,17 +37,24 @@ extension SHome on S {
   String get statHot => pick('Hot', 'हॉट', 'হট');
   String get needsAttention =>
       pick('Needs your attention', 'आपका ध्यान चाहिए', 'আপনার নজর দরকার');
-  String get hotLeadsLabel => pick('hot leads', 'हॉट लीड्स', 'হট লিড');
-  String get noHotLeadsYet =>
-      pick('No hot leads yet', 'अभी कोई हॉट लीड नहीं', 'এখনও কোনো হট লিড নেই');
-  String get callNewLeadsShort =>
-      pick('Call new leads', 'नई लीड्स को कॉल करें', 'নতুন লিডে কল করুন');
+  String get hotLeadsLabel =>
+      pick('ready to buy', 'खरीदने को तैयार ग्राहक', 'কিনতে তৈরি গ্রাহক');
+  String get noHotLeadsYet => pick(
+    'No one ready to buy yet',
+    'अभी कोई खरीदने को तैयार ग्राहक नहीं',
+    'এখনও কোনো কিনতে তৈরি গ্রাহক নেই',
+  );
+  String get callNewLeadsShort => pick(
+    'Call new customers',
+    'नए ग्राहकों को कॉल करें',
+    'নতুন গ্রাহকে কল করুন',
+  );
   String get followUpsReadyLabel =>
-      pick('follow-ups ready', 'फ़ॉलो-अप तैयार', 'ফলো-আপ তৈরি');
+      pick('messages ready', 'मैसेज तैयार', 'মেসেজ তৈরি');
   String callbacksLabel(int n) =>
-      plural(n, 'callback', 'callbacks', 'कॉलबैक', 'কলব্যাক');
+      plural(n, 'call back', 'call backs', 'कॉल बैक', 'কল ব্যাক');
   String get upcomingCallback =>
-      pick('Upcoming callback', 'अगला कॉलबैक', 'পরের কলব্যাক');
+      pick('Next call back', 'अगला कॉल बैक', 'পরের কল ব্যাক');
   String nextCallback(String name, String when) =>
       pick('$name · $when', '$name · $when', '$name · $when');
   String get todaysActivity =>

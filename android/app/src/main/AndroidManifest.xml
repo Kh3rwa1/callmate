@@ -6,6 +6,8 @@
     <!-- Hot lead / follow-up / callback notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Owner picks customers from their own contacts (Add customers) -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <application
         android:label="CallPilot"
         android:name="${applicationName}"

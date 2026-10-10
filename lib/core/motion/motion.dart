@@ -928,9 +928,10 @@ class ConfettiBurst extends StatefulWidget {
     this.colors = const [
       Color(0xFFD92D35),
       Color(0xFFF59E0B),
-      Color(0xFF6D64F5),
+      Color(0xFF0562FD),
       Color(0xFF22A55A),
       Color(0xFF0EA5E9),
+      Color(0xFFFD8BB2),
     ],
   });
   final double size;

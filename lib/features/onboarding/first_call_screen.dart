@@ -6,9 +6,8 @@ import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/brand_widgets.dart';
+import '../../core/widgets/employee_avatar.dart';
 import '../../core/widgets/lead_widgets.dart';
-import '../../core/widgets/mascot.dart';
 import '../../l10n/l10n.dart';
 import 'onboarding_scaffold.dart';
 
@@ -147,13 +146,10 @@ class FirstCallScreen extends ConsumerWidget {
         const SizedBox(height: 24),
         Reveal(
           index: 4,
-          child: const Center(
-            child: FloatIdle(
-              child: EmployeeMascot(
-                state: MascotState.calling,
-                size: 120,
-                halo: false,
-              ),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: AgentAvatar(size: 96, activity: EmployeeActivity.calling),
             ),
           ),
         ),
