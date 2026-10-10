@@ -452,9 +452,10 @@ describe('Production readiness fixes', () => {
       });
       expect(r.success).toBe(true);
       const callId = dialBody.app_config.agent_variables.call_id;
-      // Real calls carry the employee's voice, never the retired "meera".
-      expect(['female', 'male']).toContain(dialBody.app_config.agent_variables.gender);
-      expect(dialBody.app_config.agent_variables.speaker).toMatch(/^[a-z]+_(hi|bn|en|enhi)_[a-z]+$/);
+      // Only variables the Sarvam agent declares; any extra one makes Sarvam reject the dial (422).
+      expect(Object.keys(dialBody.app_config.agent_variables).sort()).toEqual(
+        ['agent_name', 'agent_role', 'business_name', 'call_id', 'campaign_id', 'interest', 'lead_id', 'lead_name'],
+      );
       expect(dialBody.webhook_config).toEqual({
         url: `https://worker.example.test/webhooks/sarvam?call_id=${callId}&token=${await sarvamWebhookToken(env.SARVAM_WEBHOOK_SECRET, callId)}`,
         metadata: { call_id: callId },

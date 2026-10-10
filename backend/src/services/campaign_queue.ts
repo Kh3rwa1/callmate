@@ -14,7 +14,6 @@ import { Env } from '../types';
 import { checkCallCompliance } from './compliance';
 import { maskPhone } from '../utils/crypto_data';
 import { isMockSarvam } from '../utils/secrets';
-import { voiceAgentVariables } from './voice_persona';
 
 export interface CampaignJobMessage {
   campaign_id: string;
@@ -116,6 +115,25 @@ export interface DialRequest {
   webhookBaseUrl?: string | null;
 }
 
+/**
+ * What Sarvam said was wrong, for failure_reason and logs. Its 422 is documented as
+ * `detail: [{loc, msg}]` but other shapes occur, so fall back to message/error/raw text.
+ * Never keep `input`, and mask digit runs so a phone number can't leak into logs.
+ */
+export function sarvamErrorDetail(data: any, rawText = ''): string | null {
+  const detail = data?.detail;
+  let out: string | null = null;
+  if (Array.isArray(detail) && detail.length > 0) {
+    out = detail.map((d: any) => `${Array.isArray(d?.loc) ? d.loc.join('.') : '?'}: ${d?.msg ?? '?'}`).join('; ');
+  } else if (typeof detail === 'string') {
+    out = detail;
+  } else {
+    const msg = data?.message ?? data?.error?.message ?? data?.error;
+    out = rawText.trim() || (typeof msg === 'string' ? msg : null);
+  }
+  return out ? out.replace(/\d{7,}/g, '<digits>').slice(0, 500) : null;
+}
+
 /** Instant outbound call: POST /api/outbounds/v1/orgs/{org}/workspaces/{ws}/outbounds. */
 export async function dialSarvam(env: Env, req: DialRequest): Promise<DialResult> {
   const orgId = env.SARVAM_ORG_ID;
@@ -146,11 +164,14 @@ export async function dialSarvam(env: Env, req: DialRequest): Promise<DialResult
         signal: AbortSignal.timeout(15_000),
       }
     );
-    const data: any = await res.json().catch(() => null);
+    const rawText = await res.text().catch(() => '');
+    let data: any = null;
+    try { data = JSON.parse(rawText); } catch { /* non-JSON body */ }
     if (!res.ok) {
       // 429 / 5xx are transient; other 4xx are our fault (bad number, bad config): don't hammer.
       const retryable = res.status === 429 || res.status >= 500;
-      return { ok: false, retryable, error: `sarvam_http_${res.status}` };
+      const detail = sarvamErrorDetail(data, rawText);
+      return { ok: false, retryable, error: `sarvam_http_${res.status}${detail ? `: ${detail}` : ''}` };
     }
     const interactionId = data?.attempt_id ?? data?.interaction_id ?? data?.id ?? null;
     return { ok: true, interactionId };
@@ -265,8 +286,8 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
       agent_name: agent?.name ?? 'Riya',
       agent_role: agent?.role ?? 'Assistant',
       interest: lead.interest ?? '',
-      // The same voice the owner heard in the test call (gender + language).
-      ...voiceAgentVariables(agent),
+      // No voice variables (gender, speaker, ...): Sarvam rejects the whole dial with a 422
+      // unless the agent declares every variable sent. Add them to the agent first.
     },
     webhookBaseUrl: env.PUBLIC_API_BASE_URL || job.webhook_base_url,
   });
