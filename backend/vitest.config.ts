@@ -35,13 +35,13 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['src/types.ts'],
       // Ratchet: ~2 points under the measured baseline (2026-10-10:
-      // statements 89.18, branches 75.27, functions 92.53, lines 91.33).
+      // statements 91.74, branches 80.21, functions 94.25, lines 93.49).
       // Raise these when coverage improves; never lower them to land a PR.
       thresholds: {
-        statements: 87,
-        branches: 73,
-        functions: 90,
-        lines: 89,
+        statements: 89,
+        branches: 78,
+        functions: 92,
+        lines: 91,
         'src/auth.ts': {
           lines: 100,
         },

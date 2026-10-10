@@ -10,7 +10,7 @@
  * Outside calling hours the message is re-sent with a delay until the window opens (Queues caps a
  * delay at 12h, so long waits hop more than once and re-check each time).
  */
-import { recordConsentEventsForLeads, CONSENT_TEXT_VERSIONS } from './consent';
+import { recordConsentEventsForLeads, CONSENT_TEXT_VERSIONS, type ConsentSource } from './consent';
 import { Env } from '../types';
 import { timingSafeEqual } from '../utils/compare';
 import { normalizePhone } from '../utils/phone';
@@ -39,28 +39,60 @@ export function isInstantCallMessage(body: any): body is InstantCallMessage {
   return body?.kind === INSTANT_CALL_KIND;
 }
 
+/** Every kind of lead source. Integrations (services/lead_integrations.ts) reuse this pipeline. */
+export const LEAD_SOURCE_KINDS = ['form', 'webhook', 'google_ads', 'indiamart', 'meta'] as const;
+export type LeadSourceKind = typeof LEAD_SOURCE_KINDS[number];
+
 export interface LeadSourceRow {
   id: string;
   business_id: string;
-  kind: 'form' | 'webhook';
+  kind: LeadSourceKind;
   public_slug: string;
   secret_hash: string | null;
   auto_call: number;
   created_at: string;
   revoked_at: string | null;
+  /** Integrations only (migration 0016). */
+  config_encrypted?: string | null;
+  last_pulled_at?: string | null;
+  last_cursor?: string | null;
+  next_pull_at?: string | null;
+  last_error?: string | null;
 }
 
-/** Owner-facing JSON for a source. Never includes the token hash. */
+/** Public path of a source: the hosted form or the endpoint its provider posts to. */
+export function leadSourcePath(kind: LeadSourceKind, slug: string): string {
+  switch (kind) {
+    case 'form': return `/f/${slug}`;
+    case 'webhook': return `/hooks/leads/${slug}`;
+    case 'google_ads': return `/hooks/google-ads/${slug}`;
+    case 'indiamart': return `/hooks/indiamart/${slug}`;
+    case 'meta': return `/hooks/meta/${slug}`;
+  }
+}
+
+/** Consent-event source recorded for leads from each kind (consent_events.source). */
+export function consentSourceFor(kind: LeadSourceKind): ConsentSource {
+  return kind === 'meta' ? 'meta_lead_ads' : kind;
+}
+
+/**
+ * Owner-facing JSON for a source. Never includes the secret hash or the encrypted integration
+ * config: secrets are returned once, by POST /lead-sources, and never again.
+ */
 export function formatLeadSource(row: any, baseUrl: string) {
   const base = baseUrl.replace(/\/+$/, '');
   return {
     id: row.id,
     kind: row.kind,
     slug: row.public_slug,
-    url: row.kind === 'form' ? `${base}/f/${row.public_slug}` : `${base}/hooks/leads/${row.public_slug}`,
+    url: `${base}${leadSourcePath(row.kind, row.public_slug)}`,
     auto_call: row.auto_call === 1,
     leads_count: row.leads_count ?? 0,
     created_at: row.created_at,
+    // Integration health: the last problem the owner should fix, and (IndiaMART) the last good sync.
+    last_error: row.last_error ?? null,
+    ...(row.kind === 'indiamart' ? { last_synced_at: row.last_cursor ? sqliteNow(new Date(row.last_cursor)) : null } : {}),
   };
 }
 
@@ -97,7 +129,7 @@ export async function verifyWebhookToken(token: string | null | undefined, secre
 }
 
 /** Active (not revoked) source for a public slug, or null. */
-export async function findActiveSource(db: D1Database, slug: string, kind: 'form' | 'webhook'): Promise<LeadSourceRow | null> {
+export async function findActiveSource(db: D1Database, slug: string, kind: LeadSourceKind): Promise<LeadSourceRow | null> {
   if (!/^[A-Za-z0-9]{8,64}$/.test(slug)) return null;
   return db.prepare(
     'SELECT * FROM lead_sources WHERE public_slug = ? AND kind = ? AND revoked_at IS NULL'
@@ -113,6 +145,8 @@ export interface CaptureInput {
   name: string;
   phone: string;
   interest?: string | null;
+  /** Extra details shown on the lead (e.g. email, city), stored in leads.attributes on create. */
+  attributes?: Record<string, string>;
 }
 
 export type CaptureResult =
@@ -137,8 +171,8 @@ export async function captureLead(
 ): Promise<CaptureResult> {
   const phone = normalizePhone(input.phone);
   if (!phone) return { status: 'invalid_phone' };
-  const name = input.name.trim();
-  const interest = input.interest?.trim() || null;
+  const name = input.name.trim().slice(0, 100) || 'Customer';
+  const interest = input.interest?.trim().slice(0, 500) || null;
   const businessId = source.business_id;
   const autoCall = source.auto_call === 1;
 
@@ -168,8 +202,8 @@ export async function captureLead(
       await env.DB.prepare(
         `INSERT INTO leads (id, business_id, name, phone, interest, source, status, attributes, do_not_call, consent, timezone,
                             lead_source_id, last_enquiry_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'new', '{}', 0, 'explicit_opt_in', 'Asia/Kolkata', ?, datetime('now'), datetime('now'), datetime('now'))`
-      ).bind(leadId, businessId, name, phone, interest, source.kind, source.id).run();
+         VALUES (?, ?, ?, ?, ?, ?, 'new', ?, 0, 'explicit_opt_in', 'Asia/Kolkata', ?, datetime('now'), datetime('now'), datetime('now'))`
+      ).bind(leadId, businessId, name, phone, interest, source.kind, JSON.stringify(input.attributes ?? {}), source.id).run();
     } catch (err) {
       // Lost a race with a concurrent enquiry from the same phone: that one wins.
       if (!isUniqueViolation(err)) throw err;
@@ -183,7 +217,8 @@ export async function captureLead(
   // Evidence of the opt-in this enquiry carried (shown in the lead's consent history).
   // Records the lead's stored value: a repeat enquiry never overrides an earlier opt-out.
   await recordConsentEventsForLeads(env.DB, businessId, [leadId], {
-    source: source.kind, textVersion: CONSENT_TEXT_VERSIONS[source.kind], ipHash: opts.ipHash ?? null,
+    source: consentSourceFor(source.kind), textVersion: CONSENT_TEXT_VERSIONS[consentSourceFor(source.kind) as keyof typeof CONSENT_TEXT_VERSIONS],
+    ipHash: opts.ipHash ?? null,
   });
 
   if (autoCall) {

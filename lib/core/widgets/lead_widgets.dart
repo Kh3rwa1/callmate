@@ -232,8 +232,9 @@ class LeadAvatar extends StatelessWidget {
   }
 }
 
-/// "Form" / "Website" chip for leads that arrived by themselves through the
-/// enquiry form or a website webhook. Nothing for leads added by hand.
+/// "Form" / "Website" / "Google Ads" / "IndiaMART" / "Facebook" chip for leads
+/// that arrived by themselves through the enquiry form, a website webhook or a
+/// lead-source integration. Nothing for leads added by hand.
 class LeadSourceChip extends StatelessWidget {
   const LeadSourceChip({super.key, required this.source});
   final String source;
@@ -247,7 +248,13 @@ class LeadSourceChip extends StatelessWidget {
       dense: true,
       color: AppColors.info,
       icon: Icon(
-        source == 'form' ? Icons.dynamic_form_outlined : Icons.language_rounded,
+        switch (source) {
+          'form' => Icons.dynamic_form_outlined,
+          'google_ads' => Icons.campaign_outlined,
+          'indiamart' => Icons.storefront_outlined,
+          'meta' => Icons.thumb_up_alt_outlined,
+          _ => Icons.language_rounded,
+        },
         size: 12,
         color: AppColors.info,
       ),

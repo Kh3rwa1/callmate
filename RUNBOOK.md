@@ -467,3 +467,46 @@ What the code enforces and what the owner must do: `COMPLIANCE.md`.
   the Play install referrer). Set `DEMO_AUDIO_URL` to an https recording (the
   page's CSP allows only that origin for media). Use a recording made with
   consent and without customer personal data.
+
+## 9. Lead integrations (Google Ads, IndiaMART, Meta Lead Ads)
+
+Owner setup per integration: [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md).
+Contract: `API.md` §10b. All three reuse the speed-to-lead pipeline (consent
+event + instant call with every dial guard).
+
+- **Secrets.** IndiaMART CRM keys and Meta app secrets / page tokens are in
+  `lead_sources.config_encrypted`, AES-GCM with `ENCRYPTION_KEY`. Rotating
+  `ENCRYPTION_KEY` makes them unreadable: affected sources show
+  `last_error = 'config_unreadable'` and the owners must connect again. Google
+  keys, IndiaMART push tokens and Meta verify tokens are stored only as SHA-256.
+- **Meta Graph version.** Default `v21.0`. When Meta deprecates it, set a plain
+  var `META_GRAPH_API_VERSION = "v23.0"` (in `[vars]` / `[env.staging.vars]`)
+  and redeploy; no code change.
+- **IndiaMART pull** runs in `scheduled()` every cron run, ≤ 50 sources per run,
+  never more than once per 5 minutes per source (`last_pulled_at`), with a
+  15-minute back-off when IndiaMART blocks a key (`next_pull_at`) and hourly
+  retries for a dead key. Logs: `indiamart_pulls`, `indiamart_pull_failed`.
+- **Integration health:**
+  ```bash
+  npx wrangler d1 execute callpilot-db --remote --command="
+    SELECT kind, last_error, COUNT(*) AS n, MAX(last_pulled_at) AS last_pull
+    FROM lead_sources WHERE revoked_at IS NULL AND kind IN ('google_ads','indiamart','meta')
+    GROUP BY kind, last_error;"
+  ```
+- **Did a provider lead arrive?** (`lead_external_ids` holds each provider id
+  once: Google `lead_id`, IndiaMART `UNIQUE_QUERY_ID`, Meta `leadgen_id`)
+  ```bash
+  npx wrangler d1 execute callpilot-db --remote --command="
+    SELECT kind, external_id, lead_id, created_at FROM lead_external_ids
+    WHERE business_id='biz_xxx' ORDER BY created_at DESC LIMIT 20;"
+  ```
+  A row with `lead_id` NULL means the lead had no usable phone number.
+- **Re-pull IndiaMART now** (e.g. after an outage; the next cron run picks it
+  up, overlapping windows are deduplicated):
+  ```bash
+  npx wrangler d1 execute callpilot-db --remote --command="
+    UPDATE lead_sources SET last_pulled_at = NULL, next_pull_at = NULL WHERE id='lsrc_xxx';"
+  ```
+- **Migration 0016** rebuilds `lead_sources` and `consent_events` (wider CHECK
+  lists) by copy + rename. Roll back only by restoring a backup (§2); both
+  tables keep all existing rows and ids.
