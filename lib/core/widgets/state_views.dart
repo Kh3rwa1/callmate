@@ -180,13 +180,17 @@ class EmptyState extends StatelessWidget {
     super.key,
     required this.title,
     this.message,
-    this.mascot = MascotState.welcome,
+    this.mascot = MascotState.idle,
+    this.mascotPose,
     this.actionLabel,
     this.onAction,
   });
   final String title;
   final String? message;
   final MascotState mascot;
+
+  /// Optional drawn-face override (e.g. worried on errors).
+  final BirdPose? mascotPose;
   final String? actionLabel;
   final VoidCallback? onAction;
 
@@ -200,10 +204,7 @@ class EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             PopIn(
-              child: FloatIdle(
-                amplitude: 5,
-                child: Mascot(state: mascot, size: 150, animate: false),
-              ),
+              child: Mascot(state: mascot, pose: mascotPose, size: 150),
             ),
             const SizedBox(height: 20),
             Reveal(
@@ -261,7 +262,8 @@ class ErrorState extends StatelessWidget {
     return EmptyState(
       title: s.errorTitle,
       message: message ?? s.somethingWentWrong,
-      mascot: MascotState.error,
+      mascot: MascotState.thinking,
+      mascotPose: BirdPose.error,
       actionLabel: s.tryAgain,
       onAction: onRetry,
     );

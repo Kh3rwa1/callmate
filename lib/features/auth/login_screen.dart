@@ -375,7 +375,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             duration: Duration(milliseconds: 680),
             child: FloatIdle(
               amplitude: 8,
-              child: Mascot(state: MascotState.welcome, size: 150),
+              child: Mascot(state: MascotState.waving, size: 150),
             ),
           ),
         ),
@@ -484,7 +484,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Center(
-          child: PopIn(child: Mascot(state: MascotState.welcome, size: 96)),
+          child: PopIn(child: Mascot(state: MascotState.waving, size: 96)),
         ),
         const SizedBox(height: 12),
         const Center(child: BrandWordmark(size: 22)),

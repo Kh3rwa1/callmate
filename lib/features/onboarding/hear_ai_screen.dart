@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/employee_avatar.dart';
+import '../../core/widgets/mascot.dart';
 import '../../l10n/l10n.dart';
 import '../agent/owner_test_call_sheet.dart';
 import 'onboarding_scaffold.dart';
@@ -28,6 +29,7 @@ class HearAiScreen extends ConsumerWidget {
     final s = context.s;
     final name = ref.watch(employeeNameProvider);
     return OnboardingScaffold(
+      mascot: MascotState.calling,
       step: 3,
       title: s.obHearTitle,
       subtitle: s.obHearSub(name),

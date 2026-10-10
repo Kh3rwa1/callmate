@@ -5,6 +5,7 @@ import 'package:callpilot/data/datasources/mock/mock_backend.dart';
 import 'package:callpilot/data/datasources/mock/mock_repositories.dart';
 import 'package:callpilot/data/models/models.dart';
 import 'package:callpilot/features/home/results_card.dart';
+import 'package:callpilot/features/home/week_funnel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -130,7 +131,7 @@ void main() {
     ) async {
       final results = h.container.read(weekResultsProvider).value!;
       expect(results.hasCalls, isTrue);
-      expect(find.byType(ResultsCard), findsOneWidget);
+      expect(find.byType(WeekFunnelCard), findsOneWidget);
       expect(find.text('This week'), findsOneWidget);
 
       await h.tapText('Add your average sale value to see what this is worth');
@@ -144,7 +145,10 @@ void main() {
           .value!
           .current
           .readyToBuy;
-      expect(find.text('Worth about ${Fmt.inr(hot * 5000)}'), findsOneWidget);
+      // The money figure counts up to its final value.
+      await h.settle(10);
+      expect(find.text(Fmt.inr(hot * 5000)), findsOneWidget);
+      expect(find.text('could come from $hot ready buyers'), findsOneWidget);
     });
 
     appTest('before any call, Home offers to call the owner', (h) async {

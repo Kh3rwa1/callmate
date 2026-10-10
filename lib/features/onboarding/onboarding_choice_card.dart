@@ -6,6 +6,20 @@ import 'package:flutter/physics.dart';
 import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/whole_word_text.dart';
+
+/// The width of one [ChoiceGrid] cell, so cards inside its
+/// [IntrinsicHeight] rows can fit long words without a [LayoutBuilder].
+class ChoiceCellWidth extends InheritedWidget {
+  const ChoiceCellWidth({super.key, required this.width, required super.child});
+  final double width;
+
+  static double? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ChoiceCellWidth>()?.width;
+
+  @override
+  bool updateShouldNotify(ChoiceCellWidth old) => old.width != width;
+}
 
 /// Two equal-height columns of [OnboardingChoiceCard]s that pop in one
 /// after another. Rows grow with their text (long Hindi/Bengali labels
@@ -28,22 +42,27 @@ class ChoiceGrid extends StatelessWidget {
             child: children[i],
           )
         : const SizedBox.shrink();
-    return Column(
-      children: [
-        for (var r = 0; r < children.length; r += 2) ...[
-          if (r > 0) const SizedBox(height: gap),
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: cell(r)),
-                const SizedBox(width: gap),
-                Expanded(child: cell(r + 1)),
-              ],
-            ),
-          ),
-        ],
-      ],
+    return LayoutBuilder(
+      builder: (context, c) => ChoiceCellWidth(
+        width: (c.maxWidth - gap) / 2,
+        child: Column(
+          children: [
+            for (var r = 0; r < children.length; r += 2) ...[
+              if (r > 0) const SizedBox(height: gap),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: cell(r)),
+                    const SizedBox(width: gap),
+                    Expanded(child: cell(r + 1)),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -196,11 +215,15 @@ class _OnboardingChoiceCardState extends State<OnboardingChoiceCard>
                   ],
                 ),
                 const SizedBox(height: 14),
-                Text(
+                WholeWordText(
                   widget.title,
                   style: t.titleMedium,
                   maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
+                  // Card padding (16 + 16) and border.
+                  width: switch (ChoiceCellWidth.of(context)) {
+                    final w? => w - 36,
+                    null => null,
+                  },
                 ),
                 if (widget.subtitle != null) ...[
                   const SizedBox(height: 2),

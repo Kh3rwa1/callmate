@@ -4,80 +4,96 @@ import 'package:flutter/services.dart';
 import '../motion/motion.dart';
 import 'app_colors.dart';
 
+/// Corner radii: 8 (chips, small tiles), 12 (buttons, inputs, rows),
+/// 20 (cards and sheets). Pills use [chip].
 class AppRadius {
-  static const card = 20.0;
-  static const cardSm = 16.0;
-  static const button = 14.0;
+  const AppRadius._();
+  static const sm = 8.0;
+  static const md = 12.0;
+  static const lg = 20.0;
+
+  static const card = lg;
+  static const cardSm = md;
+  static const button = md;
   static const chip = 999.0;
 }
 
+/// Spacing scale: 4 / 8 / 12 / 16 / 24 / 32. [page] is the screen gutter.
 class AppSpace {
+  const AppSpace._();
   static const xs = 4.0;
   static const sm = 8.0;
   static const md = 12.0;
   static const lg = 16.0;
-  static const xl = 20.0;
-  static const xxl = 28.0;
-  static const page = 22.0;
+  static const xl = 24.0;
+  static const xxl = 32.0;
+  static const page = 20.0;
 }
 
-/// Shadows follow the active palette: soft and wide on paper, deeper but
-/// quieter in the dark (where elevation mostly comes from surface colour).
+/// Elevation is mostly a 1 px border; shadows stay soft and short so cards
+/// sit on the page instead of floating above it.
 class AppShadows {
   const AppShadows._();
 
-  /// Lifts cards without a visible "slab".
+  /// Resting cards: a whisper of shadow under the 1 px border.
   static List<BoxShadow> get card => AppColors.isDark
-      ? const [
-          BoxShadow(
-            color: Color(0x40000000),
-            blurRadius: 18,
-            offset: Offset(0, 6),
-          ),
-        ]
+      ? const []
       : const [
           BoxShadow(
-            color: Color(0x0D1A2A5E),
-            blurRadius: 30,
-            spreadRadius: -6,
-            offset: Offset(0, 12),
+            color: Color(0x0A15163A),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           ),
           BoxShadow(
-            color: Color(0x05000000),
-            blurRadius: 1,
+            color: Color(0x0515163A),
+            blurRadius: 2,
             offset: Offset(0, 1),
           ),
         ];
 
-  /// Raised state (pressed / floating CTA / banners).
+  /// Raised state (hero, floating CTA, banners).
   static List<BoxShadow> get raised => AppColors.isDark
       ? const [
           BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 28,
-            offset: Offset(0, 12),
+            color: Color(0x59000000),
+            blurRadius: 24,
+            offset: Offset(0, 10),
           ),
         ]
       : const [
           BoxShadow(
-            color: Color(0x1A1B1530),
-            blurRadius: 28,
+            color: Color(0x1A15163A),
+            blurRadius: 24,
+            spreadRadius: -4,
             offset: Offset(0, 12),
           ),
           BoxShadow(
             color: Color(0x0A000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
+            blurRadius: 3,
+            offset: Offset(0, 1),
           ),
         ];
 
   static List<BoxShadow> glow(Color c) => [
     BoxShadow(
-      color: c.withValues(alpha: AppColors.isDark ? 0.22 : 0.32),
-      blurRadius: 20,
-      offset: const Offset(0, 8),
+      color: c.withValues(alpha: AppColors.isDark ? 0.18 : 0.26),
+      blurRadius: 16,
+      offset: const Offset(0, 6),
     ),
   ];
+}
+
+/// Type scale (sizes in logical px). Display is for key numbers only.
+class AppTypeScale {
+  const AppTypeScale._();
+  static const display = 44.0;
+  static const displaySm = 34.0;
+  static const headline = 26.0;
+  static const title = 20.0;
+  static const titleSm = 17.0;
+  static const body = 16.0;
+  static const bodySm = 15.0;
+  static const caption = 13.0;
 }
 
 class AppTheme {
@@ -85,8 +101,10 @@ class AppTheme {
 
   static const fontFamily = 'Geist';
 
-  /// Devanagari and Bengali glyphs: Geist covers Latin only.
-  static const fontFallback = ['Hind', 'HindSiliguri'];
+  /// Devanagari (Mukta) and Bengali (Hind Siliguri) glyphs: Geist covers
+  /// Latin only. Both are humanist sans with a similar x-height and stroke
+  /// contrast, so mixed-script lines look set in one family.
+  static const fontFallback = ['Mukta', 'HindSiliguri'];
 
   static ThemeData light() => _build(AppPalette.light);
   static ThemeData dark() => _build(AppPalette.dark);
@@ -140,66 +158,104 @@ class AppTheme {
           displayColor: p.ink,
         )
         .copyWith(
-          // Display sizes sit at semibold with tight tracking: confident
-          // without shouting. Body copy stays regular weight for calm.
+          // Display: key numbers only (calls today, money). Semibold, tight
+          // tracking, tabular figures. Titles step down clearly; body stays
+          // regular weight for calm. Nothing goes below 13.
+          displayLarge: s(
+            AppTypeScale.display,
+            FontWeight.w600,
+            color: p.ink,
+            height: 1.02,
+            letterSpacing: -1.6,
+          ),
           displayMedium: s(
-            42,
+            40,
             FontWeight.w600,
             color: p.ink,
             height: 1.04,
-            letterSpacing: -1.7,
+            letterSpacing: -1.4,
           ),
           displaySmall: s(
-            34,
+            AppTypeScale.displaySm,
             FontWeight.w600,
             color: p.ink,
             height: 1.08,
-            letterSpacing: -1.25,
+            letterSpacing: -1.1,
           ),
-          headlineMedium: s(
+          headlineLarge: s(
             30,
             FontWeight.w600,
             color: p.ink,
             height: 1.1,
-            letterSpacing: -1.05,
+            letterSpacing: -0.9,
+          ),
+          headlineMedium: s(
+            28,
+            FontWeight.w600,
+            color: p.ink,
+            height: 1.12,
+            letterSpacing: -0.8,
           ),
           headlineSmall: s(
-            23,
+            AppTypeScale.headline - 3,
             FontWeight.w600,
             color: p.ink,
             height: 1.18,
-            letterSpacing: -0.6,
+            letterSpacing: -0.5,
           ),
           titleLarge: s(
-            20,
+            AppTypeScale.title,
             FontWeight.w600,
             color: p.ink,
             height: 1.25,
-            letterSpacing: -0.45,
+            letterSpacing: -0.35,
           ),
           titleMedium: s(
-            17,
+            AppTypeScale.titleSm,
             FontWeight.w600,
             color: p.ink,
             height: 1.3,
-            letterSpacing: -0.25,
+            letterSpacing: -0.2,
           ),
           titleSmall: s(
-            15,
+            AppTypeScale.bodySm,
             FontWeight.w600,
             color: p.ink,
-            letterSpacing: -0.15,
+            letterSpacing: -0.1,
           ),
-          bodyLarge: s(16, FontWeight.w400, color: p.ink, height: 1.5),
-          bodyMedium: s(15, FontWeight.w400, color: p.inkSoft, height: 1.5),
-          bodySmall: s(13, FontWeight.w400, color: p.inkFaint, height: 1.45),
-          labelLarge: s(16, FontWeight.w600, letterSpacing: -0.1),
-          labelMedium: s(13, FontWeight.w500, color: p.inkSoft),
+          bodyLarge: s(
+            AppTypeScale.body,
+            FontWeight.w400,
+            color: p.ink,
+            height: 1.5,
+          ),
+          bodyMedium: s(
+            AppTypeScale.bodySm,
+            FontWeight.w400,
+            color: p.inkSoft,
+            height: 1.5,
+          ),
+          bodySmall: s(
+            AppTypeScale.caption,
+            FontWeight.w400,
+            color: p.inkFaint,
+            height: 1.45,
+          ),
+          labelLarge: s(
+            AppTypeScale.body,
+            FontWeight.w600,
+            letterSpacing: -0.1,
+          ),
+          labelMedium: s(
+            AppTypeScale.caption,
+            FontWeight.w500,
+            color: p.inkSoft,
+          ),
           labelSmall: s(
-            13,
+            AppTypeScale.caption,
             FontWeight.w600,
             color: p.inkFaint,
-            letterSpacing: 0.5,
+            letterSpacing: 0.3,
           ),
         );
 
@@ -364,7 +420,7 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: p.strong,
-        actionTextColor: const Color(0xFF8DBBFF),
+        actionTextColor: p.accent,
         contentTextStyle: text.bodyMedium?.copyWith(
           color: Colors.white,
           fontWeight: FontWeight.w600,

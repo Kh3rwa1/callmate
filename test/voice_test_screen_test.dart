@@ -84,17 +84,14 @@ void main() {
   group('voice test status mapping', () {
     test('every state maps to a mascot pose and label', () {
       for (final s in VoiceConnectionState.values) {
-        expect(mascotForVoiceState(s), isA<MascotState>());
+        expect(mascotForVoiceState(s), isA<BirdPose>());
         expect(voiceStatusFor(s).$1, isNotEmpty);
       }
       expect(
         mascotForVoiceState(VoiceConnectionState.speaking),
-        MascotState.speaking,
+        BirdPose.speaking,
       );
-      expect(
-        mascotForVoiceState(VoiceConnectionState.error),
-        MascotState.error,
-      );
+      expect(mascotForVoiceState(VoiceConnectionState.error), BirdPose.error);
     });
 
     test('listening shows Muted when muted', () {

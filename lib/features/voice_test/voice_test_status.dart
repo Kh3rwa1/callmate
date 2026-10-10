@@ -9,15 +9,15 @@ import '../../services/voice/voice_agent_service.dart';
 /// Pure presentation mapping for the voice test screen, kept separate from the
 /// widget so it can be unit tested.
 
-/// Mascot pose for a given connection state.
-MascotState mascotForVoiceState(VoiceConnectionState state) => switch (state) {
-  VoiceConnectionState.speaking => MascotState.speaking,
-  VoiceConnectionState.listening => MascotState.listening,
-  VoiceConnectionState.thinking => MascotState.thinking,
-  VoiceConnectionState.connecting => MascotState.calling,
-  VoiceConnectionState.error => MascotState.error,
-  VoiceConnectionState.disconnected => MascotState.success,
-  VoiceConnectionState.idle => MascotState.welcome,
+/// Drawn mascot pose for a given connection state.
+BirdPose mascotForVoiceState(VoiceConnectionState state) => switch (state) {
+  VoiceConnectionState.speaking => BirdPose.speaking,
+  VoiceConnectionState.listening => BirdPose.listening,
+  VoiceConnectionState.thinking => BirdPose.thinking,
+  VoiceConnectionState.connecting => BirdPose.calling,
+  VoiceConnectionState.error => BirdPose.error,
+  VoiceConnectionState.disconnected => BirdPose.success,
+  VoiceConnectionState.idle => BirdPose.welcome,
 };
 
 /// What the employee's avatar shows for a given connection state.

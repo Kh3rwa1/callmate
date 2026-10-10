@@ -61,8 +61,9 @@ class BrandWordmark extends StatelessWidget {
   );
 }
 
-/// Text painted with [AppColors.titleGradient] – used for page titles so
-/// headings carry the brand instead of plain ink.
+/// Page title text. Titles used to carry a blue→violet gradient; the
+/// design system now keeps headings solid ink (hierarchy comes from size and
+/// weight) unless [colors] asks for a tint – its first colour is used.
 class GradientText extends StatelessWidget {
   const GradientText(
     this.text, {
@@ -81,19 +82,13 @@ class GradientText extends StatelessWidget {
   final List<Color>? colors;
 
   @override
-  Widget build(BuildContext context) => ShaderMask(
-    blendMode: BlendMode.srcIn,
-    shaderCallback: (bounds) => LinearGradient(
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-      colors: colors ?? AppColors.titleGradient,
-    ).createShader(Offset.zero & bounds.size),
-    child: Text(
-      text,
-      style: style,
-      maxLines: maxLines,
-      overflow: overflow,
-      textAlign: textAlign,
+  Widget build(BuildContext context) => Text(
+    text,
+    style: (style ?? const TextStyle()).copyWith(
+      color: colors?.first ?? style?.color ?? AppColors.ink,
     ),
+    maxLines: maxLines,
+    overflow: overflow,
+    textAlign: textAlign,
   );
 }

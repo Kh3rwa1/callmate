@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_glyphs.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
@@ -126,13 +127,13 @@ class LeadCard extends ConsumerWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               _QuickAction(
-                                icon: Icons.chat_outlined,
+                                glyph: AppGlyphs.message,
                                 tooltip: s.whatsapp,
                                 color: AppColors.whatsapp,
                                 onTap: () => _whatsapp(context, ref),
                               ),
                               _QuickAction(
-                                icon: Icons.call_outlined,
+                                glyph: AppGlyphs.call,
                                 tooltip: s.call,
                                 color: AppColors.inkSoft,
                                 onTap: () => _call(context),
@@ -248,12 +249,12 @@ class _Status extends StatelessWidget {
 
 class _QuickAction extends StatelessWidget {
   const _QuickAction({
-    required this.icon,
+    required this.glyph,
     required this.tooltip,
     required this.onTap,
     required this.color,
   });
-  final IconData icon;
+  final AppGlyphs glyph;
   final String tooltip;
   final VoidCallback onTap;
   final Color color;
@@ -265,10 +266,9 @@ class _QuickAction extends StatelessWidget {
       Haptics.tap();
       onTap();
     },
-    iconSize: 21,
     color: color,
-    constraints: const BoxConstraints.tightFor(width: 42, height: 40),
+    constraints: const BoxConstraints.tightFor(width: 44, height: 44),
     padding: EdgeInsets.zero,
-    icon: Icon(icon),
+    icon: AppGlyph(glyph, size: 21, color: color),
   );
 }

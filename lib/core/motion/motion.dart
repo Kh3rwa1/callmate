@@ -926,6 +926,7 @@ class ConfettiBurst extends StatefulWidget {
     super.key,
     this.size = 220,
     this.count = 28,
+    this.duration = const Duration(milliseconds: 1500),
     this.colors = const [
       Color(0xFFD92D35),
       Color(0xFFF59E0B),
@@ -937,6 +938,7 @@ class ConfettiBurst extends StatefulWidget {
   });
   final double size;
   final int count;
+  final Duration duration;
   final List<Color> colors;
 
   @override
@@ -947,7 +949,7 @@ class _ConfettiBurstState extends State<ConfettiBurst>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1500),
+    duration: widget.duration,
   );
   late final List<_Bit> _bits = List.generate(widget.count, (i) {
     final angle = (i / widget.count) * 6.283 + (i.isEven ? 0.15 : -0.1);
@@ -1201,4 +1203,113 @@ class _RingsPainter extends CustomPainter {
   @override
   bool shouldRepaint(_RingsPainter old) =>
       old.t != t || old.color != color || old.rings != rings;
+}
+
+/// Plays two rings rippling out from its child once each time [trigger]
+/// changes – "the call went out". Skipped under reduced motion.
+class RingBurst extends StatefulWidget {
+  const RingBurst({
+    super.key,
+    required this.trigger,
+    required this.child,
+    this.color,
+    this.spread = 28,
+  });
+
+  /// Bump (e.g. a counter) to play once.
+  final int trigger;
+  final Widget child;
+  final Color? color;
+
+  /// How far past the child's edge the rings travel.
+  final double spread;
+
+  @override
+  State<RingBurst> createState() => _RingBurstState();
+}
+
+class _RingBurstState extends State<RingBurst>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+
+  @override
+  void didUpdateWidget(RingBurst old) {
+    super.didUpdateWidget(old);
+    if (old.trigger != widget.trigger && !AppMotion.reduced(context)) {
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.color ?? Theme.of(context).colorScheme.primary;
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        Positioned(
+          left: -widget.spread,
+          right: -widget.spread,
+          top: -widget.spread,
+          bottom: -widget.spread,
+          child: IgnorePointer(
+            child: ExcludeSemantics(
+              child: AnimatedBuilder(
+                animation: _c,
+                builder: (_, _) => _c.isAnimating
+                    ? CustomPaint(
+                        key: const Key('ring-burst'),
+                        painter: _BurstPainter(_c.value, color, widget.spread),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+        widget.child,
+      ],
+    );
+  }
+}
+
+class _BurstPainter extends CustomPainter {
+  _BurstPainter(this.t, this.color, this.spread);
+  final double t;
+  final Color color;
+  final double spread;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final inner = Rect.fromLTRB(
+      spread,
+      spread,
+      size.width - spread,
+      size.height - spread,
+    );
+    for (var i = 0; i < 2; i++) {
+      final p = ((t - i * 0.25) / 0.75).clamp(0.0, 1.0);
+      if (p <= 0 || p >= 1) continue;
+      final grow = spread * Curves.easeOutCubic.transform(p);
+      final r = inner.inflate(grow);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(r, Radius.circular(12 + grow)),
+        Paint()
+          ..color = color.withValues(alpha: 0.45 * (1 - p))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BurstPainter old) => old.t != t || old.color != color;
 }

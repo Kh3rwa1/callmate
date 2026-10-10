@@ -251,14 +251,7 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
         itemCount: rows.length + 1,
         itemBuilder: (context, i) {
           if (i == rows.length) {
-            return st.hasMore
-                ? const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Center(
-                      child: CircularProgressIndicator(strokeWidth: 2.5),
-                    ),
-                  )
-                : const SizedBox(height: 8);
+            return st.hasMore ? const SkeletonRow() : const SizedBox(height: 8);
           }
           final r = rows[i];
           if (r is DateTime) {

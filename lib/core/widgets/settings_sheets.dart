@@ -409,7 +409,10 @@ class LanguageChip extends ConsumerWidget {
                 child: Text(
                   s.lang.nativeName,
                   key: ValueKey(s.lang),
-                  style: Theme.of(context).textTheme.labelLarge,
+                  maxLines: 1,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(color: AppColors.ink),
                 ),
               ),
               const SizedBox(width: 2),

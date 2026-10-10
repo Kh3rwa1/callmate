@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../l10n/l10n.dart';
 import '../../core/widgets/brand_widgets.dart';
+import '../../core/widgets/mascot.dart';
 
 /// Shared onboarding frame: progress, back, scrollable body, sticky CTA.
 ///
@@ -26,6 +27,7 @@ class OnboardingScaffold extends StatelessWidget {
     this.trailing,
     this.secondary,
     this.revealChildren = true,
+    this.mascot,
   });
 
   final int step;
@@ -42,6 +44,9 @@ class OnboardingScaffold extends StatelessWidget {
   /// Wrap each child in its own [Reveal]. Turn off when a screen staggers
   /// its own pieces (a form's fields, a grid's cards).
   final bool revealChildren;
+
+  /// The mascot beside the title, in a pose that fits the step.
+  final MascotState? mascot;
 
   @override
   Widget build(BuildContext context) {
@@ -90,9 +95,23 @@ class OnboardingScaffold extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Reveal(
-                      child: Semantics(
-                        header: true,
-                        child: GradientText(title, style: t.headlineMedium),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Semantics(
+                              header: true,
+                              child: GradientText(
+                                title,
+                                style: t.headlineMedium,
+                              ),
+                            ),
+                          ),
+                          if (mascot != null) ...[
+                            const SizedBox(width: AppSpace.md),
+                            Mascot(state: mascot!, size: 64),
+                          ],
+                        ],
                       ),
                     ),
                     if (subtitle != null) ...[
