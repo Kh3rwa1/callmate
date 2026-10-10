@@ -34,6 +34,7 @@ extension SMisc on S {
       'कॉलिंग अपडेट',
       'কলিং আপডেট',
     ),
+    NotificationType.newLead => pick('New enquiry', 'नई पूछताछ', 'নতুন খোঁজ'),
   };
 
   // ------------------------------------------------------------ Callbacks

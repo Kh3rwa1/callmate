@@ -17,6 +17,7 @@ import '../../features/knowledge/teach_ai_screen.dart';
 import '../../features/language/language_pick_screen.dart';
 import '../../features/leads/contacts_picker_screen.dart';
 import '../../features/leads/import_leads_screen.dart';
+import '../../features/leads/lead_capture_screen.dart';
 import '../../features/leads/lead_detail_screen.dart';
 import '../../features/leads/leads_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
@@ -189,6 +190,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/leads/import',
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (_, s) => _page(s, const ImportLeadsScreen()),
+      ),
+      GoRoute(
+        path: '/leads/auto',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, s) => _page(s, const LeadCaptureScreen()),
       ),
       GoRoute(
         path: '/leads/contacts',

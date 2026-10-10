@@ -179,6 +179,29 @@ export const deviceTokenSchema = z.object({
   platform: z.enum(['android', 'ios', 'web']).default('android'),
 });
 
+// ==========================================
+// Lead capture (speed-to-lead)
+// ==========================================
+export const createLeadSourceSchema = z.object({
+  kind: z.enum(['form', 'webhook']),
+  auto_call: z.boolean().optional(),
+});
+
+export const patchLeadSourceSchema = z.object({
+  auto_call: z.boolean(),
+});
+
+/** Public enquiry: hosted form fields and the webhook JSON body share these limits. */
+export const LEAD_NAME_MAX = 100;
+export const LEAD_INTEREST_MAX = 500;
+
+export const leadWebhookSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(LEAD_NAME_MAX),
+  phone: z.string().min(8, 'Phone number must be at least 8 digits').max(20),
+  interest: z.string().max(LEAD_INTEREST_MAX).nullable().optional(),
+  consent: z.literal(true, { message: 'consent must be true: the person agreed to receive a call' }),
+});
+
 /**
  * Helper to validate a request body with a Zod schema.
  * Returns { success: true, data } or { success: false, response: Response }

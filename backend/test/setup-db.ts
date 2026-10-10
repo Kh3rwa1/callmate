@@ -8,6 +8,7 @@ import sql0007 from '../migrations/0007_consent_and_attestation.sql?raw';
 import sql0008 from '../migrations/0008_google_sign_in.sql?raw';
 import sql0009 from '../migrations/0009_ops_alerts.sql?raw';
 import sql0010 from '../migrations/0010_billing_plans.sql?raw';
+import sql0011 from '../migrations/0011_lead_sources.sql?raw';
 
 function cleanSql(sql: string): string[] {
   const noComments = sql
@@ -20,7 +21,7 @@ function cleanSql(sql: string): string[] {
 }
 
 export async function migrateTestDb() {
-  const scripts = [sql0001, sql0003, sql0004, sql0005, sql0006, sql0007, sql0008, sql0009, sql0010];
+  const scripts = [sql0001, sql0003, sql0004, sql0005, sql0006, sql0007, sql0008, sql0009, sql0010, sql0011];
 
   for (const script of scripts) {
     const statements = cleanSql(script);

@@ -9,6 +9,7 @@ export 's_data.dart';
 export 's_campaign.dart';
 export 's_home.dart';
 export 's_leads.dart';
+export 's_lead_capture.dart';
 export 's_calls.dart';
 export 's_followups.dart';
 export 's_agent.dart';
