@@ -34,8 +34,14 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
       exclude: ['src/types.ts'],
+      // Ratchet: ~2 points under the measured baseline (2026-10-10:
+      // statements 89.18, branches 75.27, functions 92.53, lines 91.33).
+      // Raise these when coverage improves; never lower them to land a PR.
       thresholds: {
-        lines: 80,
+        statements: 87,
+        branches: 73,
+        functions: 90,
+        lines: 89,
         'src/auth.ts': {
           lines: 100,
         },

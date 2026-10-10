@@ -56,7 +56,7 @@ jobs:
       - name: Run unit & widget tests with coverage
         run: flutter test --coverage
 
-      - name: Verify coverage gate (data+services >=80%, lib/ >=85%)
+      - name: Verify coverage gate (ratchet; thresholds in tool/check_coverage.dart)
         # Plain `dart`, not `dart run`: the script only needs dart:io, and `dart run`
         # refuses packages with native build hooks (objective_c via path_provider_foundation).
         run: dart tool/check_coverage.dart
@@ -93,7 +93,7 @@ jobs:
           npm run db:migrate
           npm run db:seed
 
-      - name: Run unit & integration tests with coverage gate (>=80% lines)
+      - name: Run unit & integration tests with coverage gate (thresholds in vitest.config.ts)
         run: npm run test:coverage
 
       - name: Initialize local dev environment variables for E2E
@@ -110,6 +110,44 @@ jobs:
 
       - name: Run Cloudflare & Sarvam E2E tests
         run: npm test
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Backend production dependencies (fails on high/critical)
+        working-directory: backend
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Backend dev/test tooling (informational)
+        # Dev-only advisories (e.g. undici inside @cloudflare/vitest-pool-workers)
+        # never ship in the Worker bundle; surfaced here so they stay visible.
+        working-directory: backend
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.47.4'
+          channel: 'stable'
+          cache: true
+
+      - name: Flutter outdated packages (informational)
+        continue-on-error: true
+        run: |
+          flutter pub get
+          flutter pub outdated
 
   android-release:
     name: Android Release Build (R8 + signing)
