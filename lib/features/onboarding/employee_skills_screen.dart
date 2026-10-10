@@ -21,8 +21,7 @@ class EmployeeSkillsScreen extends ConsumerWidget {
     final suggested = d.suggestedAgent;
     return OnboardingScaffold(
       step: 2,
-      title: 'What should your AI employee do?',
-      subtitle: 'Pick everything that applies.',
+      title: 'What should it do?',
       cta: PrimaryButton(
         label: 'Continue',
         onPressed: d.skills.isEmpty
@@ -52,24 +51,19 @@ class EmployeeSkillsScreen extends ConsumerWidget {
         const SizedBox(height: 18),
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
-          child: AppCard(
+          child: Row(
             key: ValueKey(suggested.role),
-            color: AppColors.surfaceMuted,
-            shadow: false,
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                RoleBadge(role: suggested.roleKind, size: 36),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'We\'ll set up ${'AEIOU'.contains(suggested.role[0]) ? 'an' : 'a'} '
-                    '${suggested.role} for you.',
-                    style: t.titleSmall,
-                  ),
+            children: [
+              RoleBadge(role: suggested.roleKind, size: 26),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'We\'ll set up ${'AEIOU'.contains(suggested.role[0]) ? 'an' : 'a'} '
+                  '${suggested.role} for you.',
+                  style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ],

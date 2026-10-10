@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/config/brand.dart';
 import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -26,20 +25,20 @@ class WelcomeScreen extends StatelessWidget {
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: c.maxHeight),
               child: Padding(
-                padding: const EdgeInsets.all(AppSpace.page),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.page,
+                  AppSpace.lg,
+                  AppSpace.page,
+                  AppSpace.xl,
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 8),
-                    const BrandWordmark(size: 19),
-                    const SizedBox(height: 22),
-                    Text('Welcome to ${Brand.appName}', style: t.headlineSmall),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${Brand.tagline}.',
-                      style: t.bodyLarge?.copyWith(color: AppColors.inkSoft),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: BrandWordmark(size: 19),
                     ),
-                    SizedBox(height: c.maxHeight * 0.02),
+                    SizedBox(height: c.maxHeight * 0.05),
                     Center(
                       child: TweenAnimationBuilder<double>(
                         tween: Tween(begin: 0, end: 1),
@@ -51,39 +50,34 @@ class WelcomeScreen extends StatelessWidget {
                         ),
                         child: Mascot(
                           state: MascotState.welcome,
-                          size: (c.maxHeight * 0.3).clamp(180, 260),
+                          size: (c.maxHeight * 0.36).clamp(200, 300),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'HIRE YOUR AI EMPLOYEE',
-                      style: t.labelSmall?.copyWith(
-                        color: AppColors.brand,
-                        fontSize: 13,
+                    SizedBox(height: c.maxHeight * 0.04),
+                    Reveal(
+                      index: 1,
+                      child: Semantics(
+                        header: true,
+                        child: Text(
+                          'Your AI employee that calls every lead.',
+                          textAlign: TextAlign.center,
+                          style: t.displaySmall?.copyWith(
+                            fontSize: 32,
+                            height: 1.12,
+                            letterSpacing: -0.8,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Call leads, qualify customers, and follow up for your business.',
-                      style: t.headlineSmall?.copyWith(height: 1.25),
-                    ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpace.xxl),
                     const _LoopStrip(),
-                    const SizedBox(height: 26),
+                    const SizedBox(height: AppSpace.xxl + 4),
                     PrimaryButton(
                       label: 'Create My AI Employee',
                       trailingArrow: true,
                       onPressed: () =>
                           context.push('/onboarding/business-type'),
-                    ),
-                    const SizedBox(height: 10),
-                    Center(
-                      child: Text(
-                        Brand.description,
-                        style: t.bodySmall,
-                        textAlign: TextAlign.center,
-                      ),
                     ),
                   ],
                 ),
@@ -102,11 +96,11 @@ class _LoopStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const steps = [
-      (Icons.call_rounded, 'Calls', AppColors.brand),
-      (Icons.psychology_rounded, 'Analyses', AppColors.info),
-      (Icons.local_fire_department_rounded, 'Scores', AppColors.hot),
-      (Icons.chat_rounded, 'Drafts', AppColors.whatsapp),
-      (Icons.handshake_rounded, 'You close', AppColors.warmInk),
+      (Icons.call_outlined, 'Calls'),
+      (Icons.psychology_outlined, 'Analyses'),
+      (Icons.local_fire_department_outlined, 'Scores'),
+      (Icons.chat_bubble_outline_rounded, 'Drafts'),
+      (Icons.handshake_outlined, 'You close'),
     ];
     return Semantics(
       label: 'Calls, analyses, scores, drafts a follow-up, you close',
@@ -121,26 +115,32 @@ class _LoopStrip extends StatelessWidget {
                       index: 4 + i,
                       offset: 8,
                       child: Container(
-                        width: 44,
-                        height: 44,
+                        width: 40,
+                        height: 40,
                         alignment: Alignment.center,
                         decoration: const BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
                           boxShadow: AppShadows.card,
                         ),
-                        child: Icon(steps[i].$1, size: 21, color: steps[i].$3),
+                        child: Icon(
+                          steps[i].$1,
+                          size: 19,
+                          color: i == steps.length - 1
+                              ? AppColors.brand
+                              : AppColors.ink,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 5),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
                         steps[i].$2,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.inkSoft,
-                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.inkFaint,
+                          fontSize: 11,
                         ),
                       ),
                     ),
@@ -149,10 +149,10 @@ class _LoopStrip extends StatelessWidget {
               ),
               if (i < steps.length - 1)
                 const Padding(
-                  padding: EdgeInsets.only(bottom: 20),
+                  padding: EdgeInsets.only(bottom: 18),
                   child: Icon(
                     Icons.chevron_right_rounded,
-                    size: 16,
+                    size: 14,
                     color: AppColors.inkFaint,
                   ),
                 ),

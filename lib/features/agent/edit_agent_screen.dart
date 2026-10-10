@@ -123,107 +123,99 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
               children: [
                 Center(
                   child: Mascot(
-                    size: 120,
+                    size: 96,
                     role: EmployeeRoleKind.fromRole(_role.text),
                   ),
                 ),
                 const SectionLabel('Identity'),
                 AppCard(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Name', style: t.titleSmall),
-                      const SizedBox(height: 8),
                       TextField(
                         controller: _name,
                         textCapitalization: TextCapitalization.words,
-                        decoration: const InputDecoration(
-                          hintText: 'e.g. Maya, Riya, Arjun',
-                        ),
+                        decoration: const InputDecoration(labelText: 'Name'),
                       ),
-                      const SizedBox(height: 16),
-                      Text('Role', style: t.titleSmall),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: _role,
                         textCapitalization: TextCapitalization.words,
                         onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          hintText:
-                              'e.g. Sales Assistant, Appointment Assistant',
-                        ),
+                        decoration: const InputDecoration(labelText: 'Role'),
                       ),
-                      const SizedBox(height: 16),
-                      Text('Goal', style: t.titleSmall),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: _goal,
                         maxLines: 2,
                         minLines: 1,
                         textCapitalization: TextCapitalization.sentences,
-                        decoration: const InputDecoration(
-                          hintText:
-                              'e.g. Convert enquiries into qualified opportunities',
-                        ),
+                        decoration: const InputDecoration(labelText: 'Goal'),
                       ),
                     ],
                   ),
                 ),
-                const SectionLabel('Languages'),
-                AppCard(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final l in _allLanguages)
-                        FilterChip(
-                          label: Text(l),
-                          selected: a.languages.contains(l),
-                          labelStyle: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: a.languages.contains(l)
-                                ? Colors.white
-                                : AppColors.inkSoft,
-                          ),
-                          onSelected: (on) {
-                            final next = on
-                                ? [...a.languages, l]
-                                : a.languages.where((x) => x != l).toList();
-                            if (next.isEmpty) return;
-                            setState(() => _a = a.copyWith(languages: next));
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-                const SectionLabel('Voice'),
-                AppCard(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final v in _voices)
-                        ChoiceChip(
-                          label: Text(v),
-                          selected: a.voice == v,
-                          labelStyle: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: a.voice == v
-                                ? Colors.white
-                                : AppColors.inkSoft,
-                          ),
-                          onSelected: (_) =>
-                              setState(() => _a = a.copyWith(voice: v)),
-                        ),
-                    ],
-                  ),
-                ),
-                const SectionLabel('Personality'),
+                const SectionLabel('Voice & language'),
                 AppCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(a.personalityLabel, style: t.titleMedium),
+                      const _FieldLabel('Languages'),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final l in _allLanguages)
+                            FilterChip(
+                              label: Text(l),
+                              selected: a.languages.contains(l),
+                              labelStyle: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: a.languages.contains(l)
+                                    ? Colors.white
+                                    : AppColors.inkSoft,
+                              ),
+                              onSelected: (on) {
+                                final next = on
+                                    ? [...a.languages, l]
+                                    : a.languages.where((x) => x != l).toList();
+                                if (next.isEmpty) return;
+                                setState(
+                                  () => _a = a.copyWith(languages: next),
+                                );
+                              },
+                            ),
+                        ],
+                      ),
+                      const _GroupDivider(),
+                      const _FieldLabel('Voice'),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final v in _voices)
+                            ChoiceChip(
+                              label: Text(v),
+                              selected: a.voice == v,
+                              labelStyle: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: a.voice == v
+                                    ? Colors.white
+                                    : AppColors.inkSoft,
+                              ),
+                              onSelected: (_) =>
+                                  setState(() => _a = a.copyWith(voice: v)),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SectionLabel('Behaviour'),
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _FieldLabel('Personality', value: a.personalityLabel),
                       Slider(
                         value: a.formality,
                         divisions: 10,
@@ -232,34 +224,20 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                         onChanged: (v) =>
                             setState(() => _a = a.copyWith(formality: v)),
                       ),
-                      Row(
-                        children: [
-                          Text(
-                            '😊 Friendly',
-                            style: t.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            'Formal 👔',
-                            style: t.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
+                      ExcludeSemantics(
+                        child: Row(
+                          children: [
+                            Text('Friendly', style: t.bodySmall),
+                            const Spacer(),
+                            Text('Formal', style: t.bodySmall),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-                const SectionLabel('Calling hours'),
-                AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${Fmt.hour(a.callingHoursStart)} – ${Fmt.hour(a.callingHoursEnd)}',
-                        style: t.titleMedium,
+                      const _GroupDivider(),
+                      _FieldLabel(
+                        'Calling hours',
+                        value:
+                            '${Fmt.hour(a.callingHoursStart)} – ${Fmt.hour(a.callingHoursEnd)}',
                       ),
                       RangeSlider(
                         values: RangeValues(
@@ -279,73 +257,64 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
                           );
                         },
                       ),
-                      Text(
-                        '${a.name} never calls outside these hours.',
-                        style: t.bodySmall,
-                      ),
                     ],
                   ),
                 ),
-                const SectionLabel('Hot lead transfer'),
+                const SectionLabel('Calls'),
                 AppCard(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 8, 8),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'When a lead wants to talk now, ${a.name} can transfer the call to:',
-                        style: t.bodyMedium,
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: TextField(
+                          controller: _transfer,
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            labelText: 'Transfer hot leads to',
+                            hintText:
+                                '${ref.watch(workflowProvider).humanLabel} number',
+                            prefixIcon: const Icon(Icons.support_agent_rounded),
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _transfer,
-                        keyboardType: TextInputType.phone,
-                        decoration: InputDecoration(
-                          hintText:
-                              '${ref.watch(workflowProvider).humanLabel} number',
-                          prefixIcon: const Icon(Icons.support_agent_rounded),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: const EdgeInsets.only(right: 4),
+                        value: a.status == AgentStatus.active,
+                        title: Text(
+                          a.status == AgentStatus.active
+                              ? '${a.name} is active'
+                              : '${a.name} is paused',
+                          style: t.titleSmall,
+                        ),
+                        onChanged: (v) => setState(
+                          () => _a = a.copyWith(
+                            status: v ? AgentStatus.active : AgentStatus.paused,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SectionLabel('Status'),
+                const SizedBox(height: 16),
                 AppCard(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 16,
+                    vertical: 16,
                   ),
-                  child: SwitchListTile(
-                    value: a.status == AgentStatus.active,
-                    title: Text(
-                      a.status == AgentStatus.active
-                          ? '${a.name} is active'
-                          : '${a.name} is paused',
-                      style: t.titleSmall,
-                    ),
-                    subtitle: const Text(
-                      'Pause to stop all calling immediately',
-                    ),
-                    onChanged: (v) => setState(
-                      () => _a = a.copyWith(
-                        status: v ? AgentStatus.active : AgentStatus.paused,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                AppCard(
                   onTap: () => context.push('/agent/teach'),
                   child: Row(
                     children: [
-                      const Emoji('📚'),
-                      const SizedBox(width: 12),
+                      const Icon(Icons.menu_book_outlined, size: 22),
+                      const SizedBox(width: 14),
                       Expanded(
-                        child: Text(
-                          'Business Knowledge · Teach Your AI',
-                          style: t.titleSmall,
-                        ),
+                        child: Text('Teach Your AI', style: t.titleSmall),
                       ),
-                      const Icon(Icons.chevron_right_rounded),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.inkFaint,
+                      ),
                     ],
                   ),
                 ),
@@ -370,4 +339,46 @@ class _EditAgentScreenState extends ConsumerState<EditAgentScreen> {
             ),
     );
   }
+}
+
+/// Small label above a control, with an optional value on the right.
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text, {this.value});
+  final String text;
+  final String? value;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Text(text, style: t.bodyMedium?.copyWith(color: AppColors.inkSoft)),
+          if (value != null) ...[
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                value!,
+                style: t.titleSmall,
+                textAlign: TextAlign.end,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupDivider extends StatelessWidget {
+  const _GroupDivider();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(vertical: 16),
+    child: Divider(height: 1, thickness: 1, color: AppColors.border),
+  );
 }

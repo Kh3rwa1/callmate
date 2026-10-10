@@ -32,40 +32,58 @@ class UsageScreen extends ConsumerWidget {
           children: [
             AppCard(
               color: AppColors.ink,
+              padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    u.subscription.planName.toUpperCase(),
-                    style: t.labelSmall?.copyWith(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '${Fmt.number(u.subscription.includedMinutes)} calling minutes',
-                    style: t.headlineSmall?.copyWith(color: Colors.white),
+                    u.subscription.planName,
+                    style: t.labelMedium?.copyWith(color: Colors.white70),
                   ),
                   const SizedBox(height: 18),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      Fmt.number(u.minutesRemaining),
+                      style: t.displaySmall?.copyWith(
+                        color: Colors.white,
+                        fontSize: 52,
+                        height: 1,
+                        letterSpacing: -1.8,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'minutes remaining',
+                    style: t.bodySmall?.copyWith(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 22),
                   TweenAnimationBuilder<double>(
                     tween: Tween(begin: 0, end: u.ratio),
                     duration: const Duration(milliseconds: 900),
                     curve: Curves.easeOutCubic,
                     builder: (_, v, _) => LinearProgressIndicator(
                       value: v,
-                      minHeight: 12,
-                      borderRadius: BorderRadius.circular(9),
+                      minHeight: 6,
+                      borderRadius: BorderRadius.circular(6),
                       backgroundColor: Colors.white24,
-                      color: u.ratio > 0.85 ? AppColors.hot : AppColors.success,
+                      color: u.ratio > 0.85 ? AppColors.hot : Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(child: _Big(Fmt.number(u.minutesUsed), 'used')),
                       Expanded(
-                        child: _Big(
-                          Fmt.number(u.minutesRemaining),
-                          'remaining',
+                        child: Text(
+                          '${Fmt.number(u.minutesUsed)} used',
+                          style: t.bodySmall?.copyWith(color: Colors.white70),
                         ),
+                      ),
+                      Text(
+                        'of ${Fmt.number(u.subscription.includedMinutes)}',
+                        style: t.bodySmall?.copyWith(color: Colors.white70),
                       ),
                     ],
                   ),
@@ -78,8 +96,6 @@ class UsageScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   _Kv('Calls made', Fmt.number(u.callsMade)),
-                  _Kv('Minutes used', '${Fmt.number(u.minutesUsed)} min'),
-                  _Kv('Remaining', '${Fmt.number(u.minutesRemaining)} min'),
                   _Kv(
                     'Renews on',
                     DateFormat('d MMM yyyy').format(u.subscription.renewsAt),
@@ -92,11 +108,9 @@ class UsageScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 28),
             PrimaryButton(
               label: 'Upgrade',
-              icon: Icons.workspace_premium_rounded,
-              color: AppColors.brand,
               onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
@@ -105,32 +119,15 @@ class UsageScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text(
-              'Only connected call minutes are counted.',
-              style: t.bodySmall,
+              'Only connected minutes count.',
+              style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
               textAlign: TextAlign.center,
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Big extends StatelessWidget {
-  const _Big(this.v, this.l);
-  final String v;
-  final String l;
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(v, style: t.headlineMedium?.copyWith(color: Colors.white)),
-        Text(l, style: t.bodySmall?.copyWith(color: Colors.white70)),
-      ],
     );
   }
 }
@@ -152,8 +149,17 @@ class _Kv extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: Text(k, style: t.bodyMedium)),
-          Text(v, style: t.titleSmall),
+          Text(k, style: t.bodyMedium),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              v,
+              style: t.titleSmall,
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );

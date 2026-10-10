@@ -65,35 +65,36 @@ class _Result extends ConsumerWidget {
               24,
             ),
             children: [
+              const SizedBox(height: 4),
+              Semantics(
+                header: true,
+                child: Text(
+                  c.leadName,
+                  style: t.headlineMedium,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 6),
               Row(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Call completed ✓', style: t.headlineMedium),
-                        const SizedBox(height: 6),
-                        Text(
-                          c.leadName,
-                          style: t.titleLarge?.copyWith(
-                            color: AppColors.inkSoft,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${Fmt.friendlyFuture(c.startedAt)} · ${Fmt.duration(c.duration)}',
-                          style: t.bodySmall,
-                        ),
-                      ],
-                    ),
+                  const Icon(
+                    Icons.check_circle_outline_rounded,
+                    size: 16,
+                    color: AppColors.success,
                   ),
-                  Mascot(
-                    state: hot ? MascotState.hotLead : MascotState.success,
-                    size: 110,
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '${Fmt.friendlyFuture(c.startedAt)} · ${Fmt.duration(c.duration)}',
+                      style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
-              const SectionLabel('AI summary'),
+              const SizedBox(height: 24),
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,39 +103,51 @@ class _Result extends ConsumerWidget {
                       children: [
                         const Icon(
                           Icons.auto_awesome_rounded,
-                          size: 18,
+                          size: 16,
                           color: AppColors.brand,
                         ),
                         const SizedBox(width: 6),
-                        Text(
-                          'What ${ref.watch(employeeNameProvider)} understood',
-                          style: t.labelMedium?.copyWith(
-                            color: AppColors.brand,
+                        Flexible(
+                          child: Text(
+                            'What ${ref.watch(employeeNameProvider)} understood',
+                            style: t.labelMedium?.copyWith(
+                              color: AppColors.brand,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Text(
                       '“${c.summary ?? 'No summary available.'}”',
-                      style: t.bodyLarge?.copyWith(fontSize: 17, height: 1.5),
+                      style: t.bodyLarge?.copyWith(height: 1.45),
                     ),
                     if ((c.interest ?? '').isNotEmpty) ...[
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: [
                           Pill(
-                            label: '📌 ${c.interest}',
+                            label: c.interest!,
                             color: AppColors.ink,
                             background: AppColors.surfaceMuted,
+                            icon: const Icon(
+                              Icons.push_pin_outlined,
+                              size: 14,
+                              color: AppColors.inkSoft,
+                            ),
                           ),
                           if (c.transcript.language != null)
                             Pill(
-                              label: '🗣 ${c.transcript.language}',
+                              label: c.transcript.language!,
                               color: AppColors.ink,
                               background: AppColors.surfaceMuted,
+                              icon: const Icon(
+                                Icons.translate_rounded,
+                                size: 14,
+                                color: AppColors.inkSoft,
+                              ),
                             ),
                         ],
                       ),
@@ -145,7 +158,6 @@ class _Result extends ConsumerWidget {
               if (score != null) ...[
                 const SectionLabel('Lead score'),
                 AppCard(
-                  color: hot ? AppColors.hotSoft : Colors.white,
                   child: Column(
                     children: [
                       Row(
@@ -154,16 +166,16 @@ class _Result extends ConsumerWidget {
                             alignment: Alignment.center,
                             clipBehavior: Clip.none,
                             children: [
-                              ScoreRing(score: score, size: 120),
+                              ScoreRing(score: score, size: 112),
                               if (hot)
                                 const Positioned(
-                                  left: -50,
-                                  top: -50,
+                                  left: -54,
+                                  top: -54,
                                   child: ConfettiBurst(size: 220),
                                 ),
                             ],
                           ),
-                          const SizedBox(width: 18),
+                          const SizedBox(width: 20),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,14 +186,11 @@ class _Result extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  score.intentLabel,
-                                  style: t.labelLarge?.copyWith(
-                                    color: TempStyle.of(score.temperature).fg,
-                                    letterSpacing: 1,
+                                  score.intent.label,
+                                  style: t.bodyMedium?.copyWith(
+                                    color: AppColors.inkSoft,
                                   ),
                                 ),
-                                const SizedBox(height: 6),
-                                Text(score.intent.label, style: t.bodySmall),
                               ],
                             ),
                           ),
@@ -190,13 +199,10 @@ class _Result extends ConsumerWidget {
                       if (score.positiveSignals.isNotEmpty ||
                           score.concerns.isNotEmpty) ...[
                         const SizedBox(height: 16),
-                        const Divider(),
-                        const SizedBox(height: 10),
+                        const Divider(height: 1),
+                        const SizedBox(height: 12),
                         for (final p in score.positiveSignals)
                           _Reason(text: p, positive: true),
-                        if (score.positiveSignals.isNotEmpty &&
-                            score.concerns.isNotEmpty)
-                          const SizedBox(height: 6),
                         for (final o in score.concerns)
                           _Reason(text: o, positive: false),
                       ],
@@ -204,13 +210,14 @@ class _Result extends ConsumerWidget {
                   ),
                 ),
               ],
-              const SectionLabel('Recommended action'),
+              const SectionLabel('Next step'),
               AppCard(
                 child: Row(
                   children: [
                     const IconBubble(
-                      color: AppColors.infoSoft,
-                      child: Emoji('🤝'),
+                      color: AppColors.surfaceMuted,
+                      size: 44,
+                      child: Emoji('🤝', size: 21),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -221,13 +228,13 @@ class _Result extends ConsumerWidget {
                             _actionTitle(c.nextAction),
                             style: t.titleMedium,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            c.callbackAt != null
-                                ? 'Your ${ref.watch(workflowProvider).humanLabel.toLowerCase()} should call ${Fmt.callbackPhrase(c.callbackAt!)}'
-                                : c.nextAction.label,
-                            style: t.bodySmall,
-                          ),
+                          if (c.callbackAt != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Call back ${Fmt.callbackPhrase(c.callbackAt!)}',
+                              style: t.bodySmall,
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -287,8 +294,7 @@ class _Result extends ConsumerWidget {
                   flex: 6,
                   child: PrimaryButton(
                     label: 'Prepare WhatsApp',
-                    icon: Icons.chat_rounded,
-                    color: AppColors.whatsapp,
+                    icon: Icons.chat_bubble_outline_rounded,
                     onPressed: fuId == null
                         ? () => context.push('/leads/${c.leadId}')
                         : () => context.push('/followups/$fuId'),
@@ -322,14 +328,20 @@ class _Reason extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 4),
     child: Row(
       children: [
-        Text(positive ? '✅' : '⚠️', style: const TextStyle(fontSize: 16)),
-        const SizedBox(width: 10),
+        Icon(
+          positive
+              ? Icons.check_circle_outline_rounded
+              : Icons.error_outline_rounded,
+          size: 18,
+          color: positive ? AppColors.success : AppColors.warmInk,
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Text(
             text,
             style: Theme.of(
               context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.ink),
           ),
         ),
       ],
@@ -345,43 +357,60 @@ class _Detail extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final c = call;
+    final rows = <(String, String)>[
+      ('Status', c.status.label),
+      ('When', Fmt.friendlyFuture(c.startedAt)),
+      if (c.status.isConnected) ('Duration', Fmt.duration(c.duration)),
+      ('Outcome', c.outcome ?? '—'),
+      ('Next', c.nextAction.label),
+    ];
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 32),
+      padding: const EdgeInsets.fromLTRB(AppSpace.page, 8, AppSpace.page, 32),
       children: [
         Center(
           child: Mascot(
             state: c.status.isConnected
                 ? MascotState.success
                 : MascotState.error,
-            size: 140,
+            size: 96,
           ),
         ),
-        const SizedBox(height: 12),
-        Center(child: Text(c.leadName, style: t.headlineSmall)),
+        const SizedBox(height: 16),
         Center(
-          child: Text(PhoneUtils.display(c.leadPhone), style: t.bodyMedium),
+          child: Text(
+            c.leadName,
+            style: t.headlineSmall,
+            textAlign: TextAlign.center,
+          ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 2),
+        Center(
+          child: Text(
+            PhoneUtils.display(c.leadPhone),
+            style: t.bodyMedium?.copyWith(color: AppColors.inkFaint),
+          ),
+        ),
+        const SizedBox(height: 24),
         AppCard(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
           child: Column(
             children: [
-              _kv(t, 'Status', c.status.label),
-              _kv(t, 'When', Fmt.friendlyFuture(c.startedAt)),
-              if (c.status.isConnected)
-                _kv(t, 'Duration', Fmt.duration(c.duration)),
-              _kv(t, 'Outcome', c.outcome ?? '—'),
-              _kv(t, 'Next', c.nextAction.label),
+              for (var i = 0; i < rows.length; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                _kv(t, rows[i].$1, rows[i].$2),
+              ],
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        if (!c.status.isConnected)
+        if (!c.status.isConnected) ...[
+          const SizedBox(height: 16),
           Text(
-            'Your AI employee will try again in the next campaign. You can also call them yourself.',
-            style: t.bodyMedium,
+            'Your AI employee will try again in the next campaign.',
+            style: t.bodySmall,
             textAlign: TextAlign.center,
           ),
-        const SizedBox(height: 16),
+        ],
+        const SizedBox(height: 24),
         SecondaryButton(
           label: 'Open lead',
           onPressed: () => context.push('/leads/${c.leadId}'),
@@ -391,11 +420,21 @@ class _Detail extends StatelessWidget {
   }
 
   Widget _kv(TextTheme t, String k, String v) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
+    padding: const EdgeInsets.symmetric(vertical: 12),
     child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(width: 100, child: Text(k, style: t.bodyMedium)),
-        Expanded(child: Text(v, style: t.titleSmall)),
+        Text(k, style: t.bodyMedium?.copyWith(color: AppColors.inkFaint)),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            v,
+            style: t.titleSmall,
+            textAlign: TextAlign.right,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ],
     ),
   );

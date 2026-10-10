@@ -40,7 +40,10 @@ void main() {
         await tester.pumpWidget(wrap(const WelcomeScreen()));
         await tester.pump(const Duration(milliseconds: 800));
 
-        expect(find.textContaining('Welcome to'), findsOneWidget);
+        expect(
+          find.text('Your AI employee that calls every lead.'),
+          findsOneWidget,
+        );
         expect(find.text('Create My AI Employee'), findsOneWidget);
       });
 
@@ -79,8 +82,8 @@ void main() {
         await tester.pump(const Duration(milliseconds: 400));
 
         expect(find.textContaining(call.leadName), findsWidgets);
-        expect(find.text('Call completed ✓'), findsOneWidget);
-        expect(find.text('AI SUMMARY'), findsOneWidget);
+        expect(find.textContaining('understood'), findsOneWidget);
+        expect(find.text('Lead score'), findsOneWidget);
       });
 
       testWidgets(

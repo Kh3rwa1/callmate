@@ -1,3 +1,4 @@
+import 'package:callpilot/core/utils/format.dart';
 import 'package:callpilot/data/models/models.dart';
 import 'package:callpilot/features/calls/call_result_screen.dart';
 import 'package:callpilot/features/campaign/campaign_screens.dart';
@@ -44,7 +45,7 @@ void main() {
       expect(find.text('5 ready'), findsOneWidget);
       expect(find.text('1 skipped'), findsOneWidget);
       expect(find.text('Riddhi Sen'), findsOneWidget);
-      expect(find.textContaining('⚠️'), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
       expect(find.text('Import 5 leads'), findsOneWidget);
     }, location: '/leads/import');
 
@@ -139,7 +140,7 @@ void main() {
       expect(n.type, NotificationType.followUpReady);
       final banner = find.byType(InAppNotificationBanner);
       expect(banner, findsOneWidget);
-      expect(find.text('💬 Follow-up ready'), findsOneWidget);
+      expect(find.text('Follow-up ready'), findsOneWidget);
 
       await h.tap(
         find.descendant(of: banner, matching: find.byType(FilledButton)),
@@ -151,10 +152,10 @@ void main() {
     appTest('hot lead and callback notifications are recorded', (h) async {
       await _tapListItem(h, find.text('Hot lead notification'));
       expect(h.backend.notifications.first.type, NotificationType.hotLead);
-      expect(find.text('🔥 Hot lead detected'), findsOneWidget);
+      expect(find.text('Hot lead detected'), findsOneWidget);
       await _tapListItem(h, find.text('Callback notification'));
       expect(h.backend.notifications.first.type, NotificationType.callback);
-      expect(find.text('📅 Callback requested'), findsOneWidget);
+      expect(find.text('Callback requested'), findsOneWidget);
     }, location: '/demo');
 
     appTest('replay onboarding resets prefs and restarts the flow', (h) async {
@@ -169,11 +170,11 @@ void main() {
     appTest('shows plan, minutes and upgrade prompt', (h) async {
       final u = h.backend.usage;
       expect(find.byType(UsageScreen), findsOneWidget);
-      expect(find.text(u.subscription.planName.toUpperCase()), findsOneWidget);
+      expect(find.text(u.subscription.planName), findsOneWidget);
       expect(find.text('Calls made'), findsOneWidget);
       expect(find.text('Renews on'), findsOneWidget);
-      expect(find.text('used'), findsOneWidget);
-      expect(find.text('remaining'), findsOneWidget);
+      expect(find.text('${Fmt.number(u.minutesUsed)} used'), findsOneWidget);
+      expect(find.text('minutes remaining'), findsOneWidget);
 
       await _tapListItem(h, find.text('Upgrade'));
       expect(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 import '../motion/motion.dart';
 import '../theme/app_theme.dart';
 
@@ -50,13 +51,13 @@ class AppCard extends StatelessWidget {
   }
 }
 
-/// Uppercase section label – "TODAY'S RESULTS".
+/// Section heading – quiet, sentence case ("Needs your attention").
 class SectionLabel extends StatelessWidget {
   const SectionLabel(
     this.text, {
     super.key,
     this.trailing,
-    this.padding = const EdgeInsets.fromLTRB(4, 28, 4, 12),
+    this.padding = const EdgeInsets.fromLTRB(2, 32, 2, 12),
   });
   final String text;
   final Widget? trailing;
@@ -71,8 +72,12 @@ class SectionLabel extends StatelessWidget {
           child: Semantics(
             header: true,
             child: Text(
-              text.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall,
+              text,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+              ),
             ),
           ),
         ),
@@ -232,7 +237,6 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = !loading && onPressed != null;
-    final bg = color ?? AppColors.ink;
     return Pressable(
       enabled: enabled,
       scale: 0.965,
@@ -241,7 +245,7 @@ class PrimaryButton extends StatelessWidget {
         curve: AppMotion.standard,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.button),
-          boxShadow: enabled && color != null ? AppShadows.glow(bg) : const [],
+          boxShadow: const [],
         ),
         child: FilledButton(
           style: color == null
@@ -355,14 +359,22 @@ class IconBubble extends StatelessWidget {
   );
 }
 
+/// Renders the line icon mapped to [e] (see [AppIcons]); falls back to the
+/// emoji glyph only when no icon exists.
 class Emoji extends StatelessWidget {
-  const Emoji(this.e, {super.key, this.size = 22});
+  const Emoji(this.e, {super.key, this.size = 22, this.color});
   final String e;
   final double size;
+  final Color? color;
   @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-    child: Text(e, style: TextStyle(fontSize: size, height: 1.1)),
-  );
+  Widget build(BuildContext context) {
+    final icon = AppIcons.forEmoji(e);
+    return ExcludeSemantics(
+      child: icon != null
+          ? Icon(icon, size: size, color: color ?? AppColors.ink)
+          : Text(e, style: TextStyle(fontSize: size, height: 1.1)),
+    );
+  }
 }
 
 /// Filter pill: fills with ink when selected; colours crossfade, never snap.
@@ -396,7 +408,7 @@ class AppFilterChip extends StatelessWidget {
         child: AnimatedContainer(
           duration: dur,
           curve: AppMotion.standard,
-          height: 38,
+          height: 36,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: selected ? AppColors.ink : Colors.white,
@@ -405,7 +417,6 @@ class AppFilterChip extends StatelessWidget {
               color: selected ? AppColors.ink : AppColors.border,
               width: 1.2,
             ),
-            boxShadow: selected ? AppShadows.card : const [],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

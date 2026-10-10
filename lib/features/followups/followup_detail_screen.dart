@@ -9,13 +9,12 @@ import '../../core/utils/format.dart';
 import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/lead_widgets.dart';
-import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import 'whatsapp_handoff.dart';
 import 'followup_message_card.dart';
 
-/// "Follow-up ready 💬" – the signature screen.
+/// "Follow-up ready" – the signature screen.
 class FollowUpDetailScreen extends ConsumerStatefulWidget {
   const FollowUpDetailScreen({super.key, required this.followUpId});
   final String followUpId;
@@ -81,7 +80,7 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen>
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Message updated ✓')));
+        ).showSnackBar(const SnackBar(content: Text('Message updated')));
       }
     }
   }
@@ -174,139 +173,114 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen>
               24,
             ),
             children: [
+              const SizedBox(height: 4),
+              Text(
+                opened ? 'WhatsApp opened' : 'Follow-up ready',
+                style: t.labelLarge?.copyWith(color: AppColors.inkFaint),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                fu.leadName,
+                style: t.headlineMedium,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          opened
-                              ? 'WhatsApp opened'
-                              : 'Follow-up ready\u00A0💬',
-                          style: t.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                fu.leadName,
-                                style: t.titleLarge?.copyWith(
-                                  color: AppColors.inkSoft,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            if (fu.scoreValue != null)
-                              ScoreBadge(
-                                score: LeadScore(
-                                  value: fu.scoreValue!,
-                                  temperature: temp,
-                                  intent: LeadIntent.unknown,
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          PhoneUtils.display(fu.leadPhone),
-                          style: t.bodySmall,
-                        ),
-                      ],
+                  if (fu.scoreValue != null) ...[
+                    ScoreBadge(
+                      score: LeadScore(
+                        value: fu.scoreValue!,
+                        temperature: temp,
+                        intent: LeadIntent.unknown,
+                      ),
                     ),
-                  ),
-                  Mascot(
-                    state: opened ? MascotState.success : MascotState.whatsapp,
-                    size: 96,
+                    const SizedBox(width: 10),
+                  ],
+                  Flexible(
+                    child: Text(
+                      PhoneUtils.display(fu.leadPhone),
+                      style: t.bodyMedium?.copyWith(color: AppColors.inkFaint),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
               if (fu.callSummary != null) ...[
-                const SizedBox(height: 18),
+                const SizedBox(height: 20),
                 AppCard(
+                  key: const Key('followup-call-summary'),
                   shadow: false,
                   color: AppColors.surfaceMuted,
-                  padding: const EdgeInsets.all(14),
+                  border: Border.all(color: Colors.transparent),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                  semanticLabel: 'Call summary',
                   onTap: fu.callId == null
                       ? null
                       : () => context.push('/calls/${fu.callId}/result'),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Emoji('📞', size: 18),
-                      const SizedBox(width: 10),
+                      const Icon(
+                        Icons.call_outlined,
+                        size: 18,
+                        color: AppColors.inkSoft,
+                      ),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('CALL SUMMARY', style: t.labelSmall),
-                            const SizedBox(height: 4),
-                            Text(
-                              fu.callSummary!,
-                              style: t.bodyMedium?.copyWith(
-                                color: AppColors.ink,
-                              ),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                        child: Text(
+                          fu.callSummary!,
+                          style: t.bodySmall?.copyWith(
+                            color: AppColors.inkSoft,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      if (fu.callId != null)
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppColors.inkFaint,
+                        ),
                     ],
                   ),
                 ),
               ],
-              const SizedBox(height: 22),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 18,
-                    color: AppColors.brand,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'AI drafted this based on the call',
-                    style: t.titleSmall?.copyWith(color: AppColors.brand),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 28),
               FollowUpMessageCard(
                 controller: _controller,
                 editing: _editing,
                 onTapToEdit: () => setState(() => _editing = true),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
                     Icons.lock_outline_rounded,
-                    size: 14,
+                    size: 13,
                     color: AppColors.inkFaint,
                   ),
                   const SizedBox(width: 6),
-                  Expanded(
+                  Flexible(
                     child: Text(
-                      'Nothing is sent automatically. You tap Send in WhatsApp.',
-                      style: t.bodySmall,
+                      'Nothing sends until you tap Send in WhatsApp',
+                      style: t.bodySmall?.copyWith(fontSize: 12),
                     ),
                   ),
                 ],
               ),
               if (opened) ...[
-                const SizedBox(height: 18),
+                const SizedBox(height: 20),
                 AppCard(
                   color: AppColors.successSoft,
                   shadow: false,
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
                   child: Row(
                     children: [
                       const Icon(
-                        Icons.check_circle_rounded,
+                        Icons.check_circle_outline_rounded,
                         color: AppColors.success,
                       ),
                       const SizedBox(width: 12),
@@ -318,15 +292,15 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen>
                               'WhatsApp opened${fu.openedAt != null ? ' · ${Fmt.relative(fu.openedAt!)}' : ''}',
                               style: t.titleSmall,
                             ),
-                            Text(
-                              'Did you send it? Mark it so ${ref.watch(employeeNameProvider)} knows.',
-                              style: t.bodySmall,
-                            ),
+                            Text('Did you send it?', style: t.bodySmall),
                           ],
                         ),
                       ),
                       if (fu.status != FollowUpStatus.done)
                         TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.success,
+                          ),
                           onPressed: () async {
                             await ref
                                 .read(followUpRepoProvider)
@@ -335,9 +309,7 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen>
                                 );
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Marked as sent by you ✓'),
-                                ),
+                                const SnackBar(content: Text('Marked as sent')),
                               );
                               context.pop();
                             }
@@ -358,42 +330,31 @@ class _FollowUpDetailScreenState extends ConsumerState<FollowUpDetailScreen>
               AppSpace.page,
               12,
               AppSpace.page,
-              10,
+              12,
             ),
             decoration: const BoxDecoration(
               color: AppColors.background,
               border: Border(top: BorderSide(color: AppColors.border)),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: _editing
-                          ? SecondaryButton(
-                              label: 'Save',
-                              icon: Icons.check_rounded,
-                              onPressed: () => _saveEdit(fu),
-                            )
-                          : SecondaryButton(
-                              label: 'Edit Message',
-                              onPressed: () => setState(() => _editing = true),
-                            ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 3,
-                      child: WhatsAppButton(onPressed: () => _open(fu)),
-                    ),
-                  ],
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.ink,
+                    minimumSize: const Size(0, 52),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
+                  onPressed: _editing
+                      ? () => _saveEdit(fu)
+                      : () => setState(() => _editing = true),
+                  icon: Icon(
+                    _editing ? Icons.check_rounded : Icons.edit_outlined,
+                    size: 19,
+                  ),
+                  label: Text(_editing ? 'Save' : 'Edit'),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Opens WhatsApp with the message ready to send.',
-                  style: t.bodySmall,
-                ),
+                const SizedBox(width: 10),
+                Expanded(child: WhatsAppButton(onPressed: () => _open(fu))),
               ],
             ),
           ),

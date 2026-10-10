@@ -37,7 +37,7 @@ class OnboardingChoiceCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.cardSm),
           border: Border.all(
             color: selected ? AppColors.brand : AppColors.border,
-            width: selected ? 2 : 1.5,
+            width: selected ? 1.6 : 1,
           ),
         ),
         child: Material(
@@ -55,7 +55,23 @@ class OnboardingChoiceCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Emoji(emoji, size: 26),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? Colors.white
+                              : AppColors.surfaceMuted,
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        child: Emoji(
+                          emoji,
+                          size: 21,
+                          color: selected ? AppColors.brand : AppColors.ink,
+                        ),
+                      ),
                       const Spacer(),
                       if (selected)
                         Icon(
@@ -68,6 +84,7 @@ class OnboardingChoiceCard extends StatelessWidget {
                         const Icon(
                           Icons.check_box_outline_blank_rounded,
                           color: AppColors.border,
+                          size: 22,
                         ),
                     ],
                   ),
@@ -80,7 +97,10 @@ class OnboardingChoiceCard extends StatelessWidget {
                   if (subtitle != null)
                     Text(
                       subtitle!,
-                      style: t.bodySmall?.copyWith(fontSize: 12),
+                      style: t.bodySmall?.copyWith(
+                        fontSize: 12,
+                        color: AppColors.inkFaint,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),

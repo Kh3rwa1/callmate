@@ -17,9 +17,7 @@ class BusinessTypeScreen extends ConsumerWidget {
     final draft = ref.watch(onboardingProvider);
     return OnboardingScaffold(
       step: 1,
-      title: 'What type of business do you run?',
-      subtitle:
-          'We\'ll set up your AI employee with the right defaults. You can change anything later.',
+      title: 'Type of business',
       cta: PrimaryButton(
         label: 'Continue',
         onPressed: draft.category == null
@@ -33,13 +31,12 @@ class BusinessTypeScreen extends ConsumerWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.45,
+          childAspectRatio: 1.5,
           children: [
             for (final tpl in businessTemplates)
               OnboardingChoiceCard(
                 emoji: tpl.category.emoji,
                 title: tpl.category.label,
-                subtitle: tpl.agent.role,
                 selected: draft.category == tpl.category,
                 onTap: () => ref
                     .read(onboardingProvider.notifier)

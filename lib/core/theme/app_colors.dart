@@ -5,20 +5,20 @@ class AppColors {
   const AppColors._();
 
   // Surfaces
-  static const background = Color(0xFFFAF7F2); // warm off-white
+  static const background = Color(0xFFF6F5F2); // soft neutral paper
   static const surface = Colors.white;
-  static const surfaceMuted = Color(0xFFF3EFE8);
-  static const border = Color(0xFFECE6DC);
-  static const hairline = Color(0x14000000);
+  static const surfaceMuted = Color(0xFFEFEEEA);
+  static const border = Color(0xFFE6E4DF);
+  static const hairline = Color(0x0F000000);
 
   // Text
-  static const ink = Color(0xFF17171C); // almost black
-  static const inkSoft = Color(0xFF55555F);
-  static const inkFaint = Color(0xFF706F78); // 4.6:1 on background (AA)
+  static const ink = Color(0xFF0F0F14); // almost black
+  static const inkSoft = Color(0xFF52525C);
+  static const inkFaint = Color(0xFF6B6A73); // 4.6:1 on background (AA)
 
   // Brand
   static const brand = Color(0xFF4F46E5); // friendly indigo
-  static const brandSoft = Color(0xFFEDECFD);
+  static const brandSoft = Color(0xFFEEEDFC);
   static const brandDeep = Color(0xFF3730A3);
 
   // Semantic

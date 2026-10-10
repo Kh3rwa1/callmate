@@ -56,9 +56,7 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
           );
       _name.clear();
       _phone.clear();
-      _snack(
-        'Lead added ✓ Your AI employee will call them in the next campaign.',
-      );
+      _snack('Lead added ✓');
     } catch (e) {
       _snack(friendlyError(e));
     } finally {
@@ -127,14 +125,14 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Mascot(state: MascotState.success, size: 120),
+                  const Mascot(state: MascotState.success, size: 96),
                   const SizedBox(height: 10),
                   Text('${r.imported} leads imported', style: t.headlineSmall),
                   if (r.skipped + p.skipped > 0)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        '${r.skipped + p.skipped} skipped (duplicates or invalid numbers)',
+                        '${r.skipped + p.skipped} skipped',
                         style: t.bodyMedium,
                       ),
                     ),
@@ -142,7 +140,6 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                   PrimaryButton(
                     label: 'Call them now',
                     icon: Icons.phone_forwarded_rounded,
-                    color: AppColors.brand,
                     onPressed: () {
                       Navigator.pop(ctx);
                       context.pushReplacement('/campaign/new');
@@ -186,17 +183,22 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                 Row(
                   children: [
                     const IconBubble(
-                      color: AppColors.brandSoft,
-                      child: Emoji('📥'),
+                      size: 44,
+                      color: AppColors.surfaceMuted,
+                      child: Icon(
+                        Icons.upload_file_outlined,
+                        color: AppColors.ink,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Import from CSV', style: t.titleMedium),
+                          Text('Import CSV', style: t.titleMedium),
                           Text(
-                            'Columns: Name, Phone, Interest (optional), Source',
+                            'Name, Phone, Interest, Source',
                             style: t.bodySmall,
                           ),
                         ],
@@ -205,11 +207,16 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                PrimaryButton(
-                  label: 'Choose CSV file',
-                  icon: Icons.upload_file_rounded,
-                  onPressed: _busy ? null : _pickCsv,
-                ),
+                if (p == null)
+                  PrimaryButton(
+                    label: 'Choose file',
+                    onPressed: _busy ? null : _pickCsv,
+                  )
+                else
+                  SecondaryButton(
+                    label: 'Choose another file',
+                    onPressed: _busy ? null : _pickCsv,
+                  ),
                 // Sample rows are real-format numbers: against a live backend
                 // they could be dialled, so offer them only in mock mode.
                 if (ref.watch(useMockProvider)) ...[
@@ -225,7 +232,19 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
             ),
           ),
           if (p != null) ...[
-            SectionLabel('Preview · ${_fileName ?? ''}'),
+            SectionLabel(
+              'Preview',
+              trailing: _fileName == null
+                  ? null
+                  : Flexible(
+                      child: Text(
+                        _fileName!,
+                        style: t.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+            ),
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,11 +256,7 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                         color: AppColors.success,
                       ),
                       const SizedBox(width: 8),
-                      if (p.skipped > 0)
-                        Pill(
-                          label: '${p.skipped} skipped',
-                          color: AppColors.hot,
-                        ),
+                      if (p.skipped > 0) Pill(label: '${p.skipped} skipped'),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -250,8 +265,21 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Row(
                         children: [
-                          Expanded(child: Text(l.name, style: t.titleSmall)),
-                          Text(PhoneUtils.display(l.phone), style: t.bodySmall),
+                          Expanded(
+                            child: Text(
+                              l.name,
+                              style: t.titleSmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            PhoneUtils.display(l.phone),
+                            style: t.bodySmall,
+                            maxLines: 1,
+                            softWrap: false,
+                          ),
                         ],
                       ),
                     ),
@@ -260,16 +288,33 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                   for (final e in p.errors)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        '⚠️ $e',
-                        style: t.bodySmall?.copyWith(color: AppColors.hot),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 1),
+                            child: Icon(
+                              Icons.error_outline_rounded,
+                              size: 16,
+                              color: AppColors.hot,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              e,
+                              style: t.bodySmall?.copyWith(
+                                color: AppColors.hot,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   const SizedBox(height: 16),
                   PrimaryButton(
                     label: 'Import ${p.leads.length} leads',
                     loading: _busy,
-                    color: AppColors.success,
                     onPressed: p.leads.isEmpty ? null : _import,
                   ),
                 ],

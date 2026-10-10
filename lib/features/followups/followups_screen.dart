@@ -43,21 +43,9 @@ class FollowUpsScreen extends ConsumerWidget {
                       0,
                     ),
                     sliver: SliverToBoxAdapter(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Semantics(
-                            header: true,
-                            child: Text('Follow-ups', style: t.headlineMedium),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            pending.isEmpty
-                                ? 'Nothing waiting on you.'
-                                : '${pending.length} WhatsApp messages drafted from calls',
-                            style: t.bodyMedium,
-                          ),
-                        ],
+                      child: Semantics(
+                        header: true,
+                        child: Text('Follow-ups', style: t.headlineMedium),
                       ),
                     ),
                   ),
@@ -65,29 +53,42 @@ class FollowUpsScreen extends ConsumerWidget {
                     const SliverFillRemaining(
                       hasScrollBody: false,
                       child: EmptyState(
-                        title: 'All caught up 🎉',
-                        message:
-                            'New WhatsApp drafts appear here after your AI employee\'s calls.',
+                        title: 'All caught up',
+                        message: 'New drafts appear here after calls.',
                         mascot: MascotState.success,
                       ),
                     )
                   else ...[
-                    const SliverPadding(
-                      padding: EdgeInsets.symmetric(horizontal: AppSpace.page),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpace.page,
+                      ),
                       sliver: SliverToBoxAdapter(
-                        child: SectionLabel('Ready to send'),
+                        child: SectionLabel(
+                          'Ready to send',
+                          padding: const EdgeInsets.fromLTRB(2, 20, 2, 12),
+                          trailing: Pill(
+                            key: const Key('followups-pending-count'),
+                            label: '${pending.length}',
+                            color: AppColors.ink,
+                            background: AppColors.surfaceMuted,
+                          ),
+                        ),
                       ),
                     ),
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpace.page,
                       ),
-                      sliver: SliverList.separated(
+                      sliver: SliverList.builder(
                         itemCount: pending.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (_, i) => Reveal(
                           index: i < 8 ? i : 0,
-                          child: _FollowUpCard(fu: pending[i]),
+                          child: _FollowUpRow(
+                            fu: pending[i],
+                            first: i == 0,
+                            last: i == pending.length - 1,
+                          ),
                         ),
                       ),
                     ),
@@ -110,25 +111,39 @@ class FollowUpsScreen extends ConsumerWidget {
                         itemCount: opened.length,
                         itemBuilder: (_, i) {
                           final f = opened[i];
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                            ),
-                            minTileHeight: 60,
-                            onTap: () => context.push('/followups/${f.id}'),
-                            leading: LeadAvatar(
-                              name: f.leadName,
-                              temperature: LeadTemperature.fromScore(
-                                f.scoreValue,
+                          return _Segment(
+                            first: i == 0,
+                            last: i == opened.length - 1,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
                               ),
-                              size: 40,
+                              minTileHeight: 64,
+                              onTap: () => context.push('/followups/${f.id}'),
+                              leading: LeadAvatar(
+                                name: f.leadName,
+                                temperature: LeadTemperature.fromScore(
+                                  f.scoreValue,
+                                ),
+                                size: 40,
+                              ),
+                              title: Text(
+                                f.leadName,
+                                style: t.titleSmall,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                '${f.status.label}${f.openedAt != null ? ' · ${Fmt.relative(f.openedAt!)}' : ''}',
+                                style: t.bodySmall,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: const Icon(
+                                Icons.chevron_right_rounded,
+                                color: AppColors.inkFaint,
+                              ),
                             ),
-                            title: Text(f.leadName, style: t.titleSmall),
-                            subtitle: Text(
-                              '${f.status.label}${f.openedAt != null ? ' · ${Fmt.relative(f.openedAt!)}' : ''}',
-                              style: t.bodySmall,
-                            ),
-                            trailing: const Icon(Icons.chevron_right_rounded),
                           );
                         },
                       ),
@@ -145,9 +160,58 @@ class FollowUpsScreen extends ConsumerWidget {
   }
 }
 
-class _FollowUpCard extends ConsumerWidget {
-  const _FollowUpCard({required this.fu});
+/// White segment of a grouped list card (rounded at the ends, hairline
+/// dividers between rows).
+class _Segment extends StatelessWidget {
+  const _Segment({
+    required this.first,
+    required this.last,
+    required this.child,
+  });
+  final bool first;
+  final bool last;
+  final Widget child;
+
+  static BorderRadius radius(bool first, bool last) {
+    const r = Radius.circular(AppRadius.card);
+    return BorderRadius.vertical(
+      top: first ? r : Radius.zero,
+      bottom: last ? r : Radius.zero,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: AppColors.surface,
+    borderRadius: radius(first, last),
+    clipBehavior: Clip.antiAlias,
+    child: Column(
+      children: [
+        if (!first) const Divider(height: 1, thickness: 1, indent: 70),
+        child,
+      ],
+    ),
+  );
+}
+
+class _FollowUpRow extends ConsumerWidget {
+  const _FollowUpRow({
+    required this.fu,
+    required this.first,
+    required this.last,
+  });
   final FollowUp fu;
+  final bool first;
+  final bool last;
+
+  Future<bool> _handoff(BuildContext context, WidgetRef ref) =>
+      openWhatsAppHandoff(
+        context,
+        ref,
+        phone: fu.leadPhone,
+        message: fu.message,
+        followUp: fu,
+      );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -161,7 +225,7 @@ class _FollowUpCard extends ConsumerWidget {
         padding: const EdgeInsets.only(right: 24),
         decoration: BoxDecoration(
           color: AppColors.whatsapp,
-          borderRadius: BorderRadius.circular(AppRadius.card),
+          borderRadius: _Segment.radius(first, last),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -179,89 +243,79 @@ class _FollowUpCard extends ConsumerWidget {
         ),
       ),
       confirmDismiss: (_) async {
-        await openWhatsAppHandoff(
-          context,
-          ref,
-          phone: fu.leadPhone,
-          message: fu.message,
-          followUp: fu,
-        );
+        await _handoff(context, ref);
         return false; // list refreshes from backend state
       },
-      child: AppCard(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-        onTap: () => context.push('/followups/${fu.id}'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: _Segment(
+        first: first,
+        last: last,
+        child: InkWell(
+          onTap: () => context.push('/followups/${fu.id}'),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+            child: Row(
               children: [
-                LeadAvatar(name: fu.leadName, temperature: temp, size: 42),
-                const SizedBox(width: 12),
+                LeadAvatar(name: fu.leadName, temperature: temp, size: 40),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(fu.leadName, style: t.titleMedium),
                       Text(
-                        'Drafted ${Fmt.relative(fu.createdAt)}',
-                        style: t.bodySmall,
+                        fu.leadName,
+                        style: t.titleSmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          if (fu.scoreValue != null) ...[
+                            ScoreBadge(
+                              score: LeadScore(
+                                value: fu.scoreValue!,
+                                temperature: temp,
+                                intent: LeadIntent.unknown,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Flexible(
+                            child: Text(
+                              Fmt.relative(fu.createdAt),
+                              style: t.bodySmall?.copyWith(
+                                color: AppColors.inkFaint,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        fu.message.replaceAll(RegExp(r'\s+'), ' ').trim(),
+                        style: t.bodySmall?.copyWith(color: AppColors.inkSoft),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                if (fu.scoreValue != null)
-                  ScoreBadge(
-                    score: LeadScore(
-                      value: fu.scoreValue!,
-                      temperature: temp,
-                      intent: LeadIntent.unknown,
-                    ),
+                const SizedBox(width: 8),
+                IconButton.filled(
+                  tooltip: 'Open in WhatsApp',
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.whatsapp,
+                    foregroundColor: Colors.white,
+                    fixedSize: const Size(44, 44),
                   ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.whatsappSoft,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                fu.message.replaceAll(RegExp(r'\n+'), ' '),
-                style: t.bodyMedium?.copyWith(color: AppColors.ink),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.ink,
-                      alignment: Alignment.centerLeft,
-                    ),
-                    onPressed: () => context.push('/followups/${fu.id}'),
-                    child: const Text('Review'),
-                  ),
-                ),
-                WhatsAppButton(
-                  compact: true,
-                  label: 'WhatsApp →',
-                  onPressed: () => openWhatsAppHandoff(
-                    context,
-                    ref,
-                    phone: fu.leadPhone,
-                    message: fu.message,
-                    followUp: fu,
-                  ),
+                  onPressed: () => _handoff(context, ref),
+                  icon: const Icon(Icons.chat_rounded, size: 20),
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );

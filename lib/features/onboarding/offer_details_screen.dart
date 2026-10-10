@@ -97,9 +97,7 @@ class _OfferDetailsScreenState extends ConsumerState<OfferDetailsScreen> {
 
     return OnboardingScaffold(
       step: 4,
-      title: 'What does your business offer?',
-      subtitle:
-          'Your AI employee uses this to answer customer questions on calls.',
+      title: 'What you offer',
       cta: PrimaryButton(label: 'Continue', onPressed: _next),
       children: [
         Form(
@@ -119,14 +117,14 @@ class _OfferDetailsScreenState extends ConsumerState<OfferDetailsScreen> {
               field(
                 'Pricing',
                 _fees,
-                'e.g. Starting from ₹999 · Packages available',
+                'e.g. From ₹999',
                 icon: Icons.currency_rupee_rounded,
                 optional: true,
               ),
               field(
                 'Opening hours',
                 _hours,
-                'e.g. Mon–Sat, 9 AM – 8 PM',
+                'e.g. Mon–Sat, 9–8',
                 icon: Icons.schedule_rounded,
                 optional: true,
               ),
@@ -138,7 +136,7 @@ class _OfferDetailsScreenState extends ConsumerState<OfferDetailsScreen> {
                 optional: true,
               ),
               field(
-                'WhatsApp number',
+                'WhatsApp',
                 _wa,
                 '98300 12345',
                 type: TextInputType.phone,

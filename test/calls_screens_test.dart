@@ -25,10 +25,6 @@ void main() {
   group('CallsScreen', () {
     appTest('lists the AI employee\'s calls', (h) async {
       expect(find.text('AI Calls'), findsOneWidget);
-      expect(
-        find.text('Everything ${h.backend.agent.name} did for you'),
-        findsOneWidget,
-      );
       expect(_visibleCalls(h.tester), isNotEmpty);
       expect(_chipSelected('All'), isTrue);
     }, location: '/calls');
@@ -68,9 +64,12 @@ void main() {
       final call = _visibleCalls(h.tester).first;
       await h.tap(find.byType(CallCard).first);
       expect(h.location, '/calls/${call.id}/result');
-      expect(find.text('Call completed ✓'), findsOneWidget);
-      expect(find.text('AI SUMMARY'), findsOneWidget);
-      expect(find.text('LEAD SCORE'), findsOneWidget);
+      expect(find.text(call.leadName), findsOneWidget);
+      expect(
+        find.text('What ${h.backend.agent.name} understood'),
+        findsOneWidget,
+      );
+      expect(find.text('Lead score'), findsOneWidget);
     }, location: '/calls');
 
     appTest('unanswered call opens the detail view', (h) async {
@@ -147,7 +146,7 @@ void main() {
       expect(find.byType(CallResultScreen), findsOneWidget);
       expect(find.text('Call details'), findsOneWidget);
       expect(find.text('Duration'), findsOneWidget);
-      expect(find.text('Call completed ✓'), findsNothing);
+      expect(find.textContaining('understood'), findsNothing);
     });
 
     appTest('missing call shows a friendly error', (h) async {

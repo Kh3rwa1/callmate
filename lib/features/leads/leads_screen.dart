@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/motion/motion.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/providers.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
@@ -89,6 +88,11 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
     final q = ref.watch(leadQueryProvider);
     final s = ref.watch(leadsListProvider);
     final newCount = ref.watch(dashboardProvider).value?.newLeadsReady ?? 0;
+    final showCta =
+        newCount > 0 &&
+        s.items.isNotEmpty &&
+        (q.filter == LeadFilter.all || q.filter == LeadFilter.newLeads) &&
+        q.search.isEmpty;
 
     return Scaffold(
       body: SafeArea(
@@ -105,10 +109,14 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                       child: Text('Leads', style: t.headlineMedium),
                     ),
                   ),
+                  if (showCta) ...[
+                    CallNewLeadsButton(count: newCount, compact: true),
+                    const SizedBox(width: 4),
+                  ],
                   IconButton(
                     tooltip: 'Add or import leads',
                     onPressed: () => context.push('/leads/import'),
-                    icon: const Icon(Icons.person_add_alt_1_rounded),
+                    icon: const Icon(Icons.person_add_alt_outlined),
                   ),
                 ],
               ),
@@ -164,10 +172,6 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                       child: AppFilterChip(
                         label: label,
                         selected: q.filter == f,
-                        icon: f == LeadFilter.hot
-                            ? Icons.local_fire_department_rounded
-                            : null,
-                        iconColor: AppColors.hot,
                         onSelected: () =>
                             ref.read(leadQueryProvider.notifier).setFilter(f),
                       ),
@@ -175,14 +179,14 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                 ],
               ),
             ),
-            Expanded(child: _body(s, q, newCount)),
+            Expanded(child: _body(s, q)),
           ],
         ),
       ),
     );
   }
 
-  Widget _body(PagedState<Lead> s, LeadQuery q, int newCount) {
+  Widget _body(PagedState<Lead> s, LeadQuery q) {
     if (s.loading && s.items.isEmpty) {
       return const SkeletonList(
         padding: EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 20),
@@ -205,8 +209,7 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
       if (q.filter == LeadFilter.hot) {
         return const EmptyState(
           title: 'No hot leads yet',
-          message:
-              'Your AI employee will flag leads that are ready to buy or book.',
+          message: 'Hot leads show up here after calls.',
           mascot: MascotState.thinking,
         );
       }
@@ -219,32 +222,20 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
       }
       return EmptyState(
         title: 'No leads here',
-        message:
-            'Your AI employee is ready. Add your first leads to start calling.',
+        message: 'Add leads to start calling.',
         actionLabel: 'Add leads',
         onAction: () => context.push('/leads/import'),
       );
     }
-    final showCta =
-        newCount > 0 &&
-        (q.filter == LeadFilter.all || q.filter == LeadFilter.newLeads) &&
-        q.search.isEmpty;
     return RefreshIndicator(
       onRefresh: () =>
           ref.read(leadsListProvider.notifier).refresh(silent: true),
       child: ListView.builder(
         controller: _scroll,
-        padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 28),
-        itemCount: s.items.length + (showCta ? 1 : 0) + 1,
+        padding: const EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 28),
+        itemCount: s.items.length + 1,
         itemBuilder: (context, i) {
-          if (showCta && i == 0) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: CallNewLeadsButton(count: newCount),
-            );
-          }
-          final idx = i - (showCta ? 1 : 0);
-          if (idx == s.items.length) {
+          if (i == s.items.length) {
             return s.hasMore
                 ? const Padding(
                     padding: EdgeInsets.all(20),
@@ -254,12 +245,10 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
                   )
                 : const SizedBox(height: 12);
           }
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Reveal(
-              index: idx < 10 ? idx : 0,
-              child: LeadCard(lead: s.items[idx]),
-            ),
+          final last = i == s.items.length - 1;
+          return Reveal(
+            index: i < 10 ? i : 0,
+            child: LeadCard(lead: s.items[i], first: i == 0, last: last),
           );
         },
       ),

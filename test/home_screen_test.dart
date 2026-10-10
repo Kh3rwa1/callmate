@@ -41,7 +41,7 @@ void main() {
       expect(find.textContaining(b.business.name), findsOneWidget);
       expect(find.text(b.agent.name), findsWidgets);
       expect(find.text('Active'), findsOneWidget);
-      expect(find.text("TODAY'S RESULTS"), findsOneWidget);
+      expect(find.text("Today's results"), findsOneWidget);
 
       final hot = b.leads.values.where((l) => l.isHot).length;
       expect(find.text('$hot hot leads'), findsOneWidget);
@@ -59,7 +59,8 @@ void main() {
     });
 
     appTest('hot leads action opens leads filtered to hot', (h) async {
-      await h.tapText('View hot leads');
+      final hotCount = h.backend.leads.values.where((l) => l.isHot).length;
+      await h.tapText('$hotCount hot leads');
       expect(h.location, '/leads');
       expect(_chipSelected('Hot'), isTrue);
     });
@@ -84,12 +85,17 @@ void main() {
       expect(h.location, '/agent');
 
       await h.go('/home');
-      await h.tapText('Review & send');
+      final pending = h.backend.followUps.values
+          .where((f) => f.isPending)
+          .length;
+      await h.tapText('$pending follow-ups ready');
       expect(h.location, '/followups');
     });
 
     appTest('callbacks card and activity rows navigate', (h) async {
-      await h.tapText('See callbacks');
+      final n = h.container.read(dashboardProvider).value!.callbacksToday;
+      expect(n, greaterThan(0));
+      await h.tapText(n == 1 ? '1 callback' : '$n callbacks');
       expect(h.location, '/callbacks');
 
       await h.go('/home');
@@ -149,13 +155,10 @@ void main() {
           findsOneWidget,
         );
         await h.tapText('Try again');
-        expect(find.text('All caught up 🎉'), findsOneWidget);
+        expect(find.text('All caught up'), findsOneWidget);
         expect(find.text('No hot leads yet'), findsOneWidget);
         // The summary has no activity yet.
-        expect(
-          find.textContaining("hasn't made any calls yet"),
-          findsOneWidget,
-        );
+        expect(find.text('No calls yet'), findsOneWidget);
       },
       overrides: () => [
         dashboardRepoProvider.overrideWithValue(_FlakyDashboard()),

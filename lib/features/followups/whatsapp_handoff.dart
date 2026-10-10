@@ -95,16 +95,16 @@ Future<void> _fallback(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Mascot(state: MascotState.error, size: 110),
-              const SizedBox(height: 10),
+              const Mascot(state: MascotState.error, size: 88),
+              const SizedBox(height: 14),
               Text('WhatsApp isn\'t installed', style: t.titleLarge),
               const SizedBox(height: 6),
               Text(
-                'Copy the message instead, or share it with another app.',
-                style: t.bodyMedium,
+                'Copy or share the message instead.',
+                style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               PrimaryButton(
                 label: 'Copy Message',
                 icon: Icons.copy_rounded,

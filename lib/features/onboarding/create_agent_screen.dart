@@ -130,7 +130,7 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                   const SizedBox(height: 16),
                   Text(
                     isAuth
-                        ? 'Sign In Required'
+                        ? 'Sign in required'
                         : 'We couldn\'t set up your AI employee',
                     style: t.titleLarge,
                     textAlign: TextAlign.center,
@@ -138,7 +138,7 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                   const SizedBox(height: 8),
                   Text(
                     isAuth
-                        ? 'Please sign in or create an account to connect your live AI employee.'
+                        ? 'Sign in to connect your AI employee.'
                         : friendlyError(_error!),
                     style: t.bodyMedium,
                     textAlign: TextAlign.center,
@@ -146,7 +146,7 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                   const SizedBox(height: 24),
                   if (isAuth) ...[
                     PrimaryButton(
-                      label: 'Sign in / Create Account',
+                      label: 'Sign in',
                       onPressed: () => context.go('/login'),
                     ),
                     const SizedBox(height: 12),
@@ -201,12 +201,18 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                         padding: const EdgeInsets.all(AppSpace.page),
                         child: Column(
                           children: [
-                            Text(
-                              'Meet your AI employee 👋',
-                              style: t.headlineSmall,
-                              textAlign: TextAlign.center,
-                            ),
                             const SizedBox(height: 8),
+                            Semantics(
+                              header: true,
+                              child: Text(
+                                'Meet your AI employee',
+                                style: t.titleMedium?.copyWith(
+                                  color: AppColors.inkSoft,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
                             TweenAnimationBuilder<double>(
                               tween: Tween(begin: 0, end: 1),
                               duration: const Duration(milliseconds: 800),
@@ -217,49 +223,53 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                               ),
                               child: Mascot(
                                 state: MascotState.success,
-                                size: 190,
+                                size: 180,
                                 role: roleKind,
                               ),
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 14),
                             ValueListenableBuilder(
                               valueListenable: _name,
                               builder: (_, v, _) => Text(
                                 v.text.isEmpty ? 'Name your employee' : v.text,
                                 style: t.displaySmall,
                                 textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            const SizedBox(height: 2),
                             ValueListenableBuilder(
                               valueListenable: _role,
                               builder: (_, v, _) => Text(
                                 v.text,
                                 style: t.titleMedium?.copyWith(
-                                  color: AppColors.brand,
+                                  color: AppColors.inkSoft,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 6),
+                            Text(
+                              at.languages.join(' · '),
+                              style: t.bodySmall?.copyWith(
+                                color: AppColors.inkFaint,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 28),
                             AppCard(
+                              padding: const EdgeInsets.all(AppSpace.lg),
                               child: Column(
                                 children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextField(
-                                          controller: _name,
-                                          textCapitalization:
-                                              TextCapitalization.words,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Name',
-                                            prefixIcon: Icon(
-                                              Icons.badge_outlined,
-                                            ),
-                                          ),
-                                          onChanged: (_) => setState(() {}),
-                                        ),
-                                      ),
-                                    ],
+                                  TextField(
+                                    controller: _name,
+                                    textCapitalization:
+                                        TextCapitalization.words,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Name',
+                                    ),
+                                    onChanged: (_) => setState(() {}),
                                   ),
                                   const SizedBox(height: 12),
                                   TextField(
@@ -268,32 +278,11 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                                         TextCapitalization.words,
                                     decoration: const InputDecoration(
                                       labelText: 'Role',
-                                      prefixIcon: Icon(
-                                        Icons.work_outline_rounded,
-                                      ),
                                     ),
                                     onChanged: (_) => setState(() {}),
                                   ),
-                                  const Divider(height: 32),
-                                  _Trait(
-                                    label: 'Languages',
-                                    value: at.languages.join(' · '),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  const _Trait(
-                                    label: 'Personality',
-                                    value: 'Friendly · Professional',
-                                  ),
-                                  const SizedBox(height: 14),
-                                  _Trait(label: 'Goal', value: at.goal),
                                 ],
                               ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'Your AI employee always introduces itself as an AI assistant.',
-                              style: t.bodySmall,
-                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
@@ -309,7 +298,6 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                       child: PrimaryButton(
                         label: 'Activate Employee',
                         icon: Icons.bolt_rounded,
-                        color: AppColors.success,
                         loading: _activating,
                         onPressed: _activate,
                       ),
@@ -318,23 +306,6 @@ class _CreateAgentScreenState extends ConsumerState<CreateAgentScreen> {
                 ),
         ),
       ),
-    );
-  }
-}
-
-class _Trait extends StatelessWidget {
-  const _Trait({required this.label, required this.value});
-  final String label;
-  final String value;
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(width: 104, child: Text(label, style: t.bodyMedium)),
-        Expanded(child: Text(value, style: t.titleSmall)),
-      ],
     );
   }
 }

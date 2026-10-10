@@ -34,7 +34,7 @@ class CallbacksScreen extends ConsumerWidget {
           if (upcoming.isEmpty && done.isEmpty) {
             return const EmptyState(
               title: 'No callbacks yet',
-              message: 'When a customer asks for a callback, it shows up here.',
+              message: 'Requested callbacks show up here.',
               mascot: MascotState.thinking,
             );
           }
@@ -46,13 +46,12 @@ class CallbacksScreen extends ConsumerWidget {
               32,
             ),
             children: [
-              Text(
-                'Customers who asked to speak with your team.',
-                style: t.bodyMedium,
+              const SectionLabel(
+                'Upcoming',
+                padding: EdgeInsets.fromLTRB(2, 8, 2, 12),
               ),
-              const SectionLabel('Upcoming'),
               if (upcoming.isEmpty)
-                AppCard(child: Text('All caught up 🎉', style: t.titleSmall)),
+                AppCard(child: Text('All caught up', style: t.titleSmall)),
               for (final c in upcoming)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -96,38 +95,43 @@ class CallbacksScreen extends ConsumerWidget {
                     ),
                     child: AppCard(
                       onTap: () => context.push('/leads/${c.leadId}'),
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                       child: Row(
                         children: [
                           LeadAvatar(
                             name: c.leadName,
                             temperature: LeadTemperature.hot,
+                            size: 42,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(c.leadName, style: t.titleSmall),
-                                Text(c.note ?? 'Callback', style: t.bodySmall),
+                                Text(
+                                  c.leadName,
+                                  style: t.titleSmall,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (c.note != null && c.note!.isNotEmpty)
+                                  Text(
+                                    c.note!,
+                                    style: t.bodySmall,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                               ],
                             ),
                           ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const Icon(
-                                Icons.event_rounded,
-                                size: 18,
-                                color: AppColors.info,
-                              ),
-                              Text(
-                                Fmt.friendlyFuture(c.scheduledAt),
-                                style: t.labelMedium?.copyWith(
-                                  color: AppColors.info,
-                                ),
-                              ),
-                            ],
+                          const SizedBox(width: 12),
+                          Text(
+                            Fmt.friendlyFuture(c.scheduledAt),
+                            maxLines: 1,
+                            softWrap: false,
+                            style: t.labelMedium?.copyWith(
+                              color: AppColors.ink,
+                            ),
                           ),
                         ],
                       ),
@@ -136,23 +140,39 @@ class CallbacksScreen extends ConsumerWidget {
                 ),
               if (upcoming.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text('Swipe left to mark as done', style: t.bodySmall),
+                  padding: const EdgeInsets.only(top: 2, left: 2),
+                  child: Text('Swipe left to mark done', style: t.bodySmall),
                 ),
               if (done.isNotEmpty) ...[
                 const SectionLabel('Done'),
-                for (final c in done.take(10))
-                  ListTile(
-                    leading: const Icon(
-                      Icons.check_circle_rounded,
-                      color: AppColors.success,
-                    ),
-                    title: Text(c.leadName, style: t.titleSmall),
-                    subtitle: Text(
-                      Fmt.friendlyFuture(c.scheduledAt),
-                      style: t.bodySmall,
-                    ),
+                AppCard(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      for (final (i, c) in done.take(10).indexed) ...[
+                        if (i > 0) const Divider(height: 1, indent: 56),
+                        ListTile(
+                          leading: const Icon(
+                            Icons.check_rounded,
+                            color: AppColors.success,
+                          ),
+                          title: Text(
+                            c.leadName,
+                            style: t.titleSmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: Text(
+                            Fmt.friendlyFuture(c.scheduledAt),
+                            maxLines: 1,
+                            softWrap: false,
+                            style: t.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
+                ),
               ],
             ],
           );

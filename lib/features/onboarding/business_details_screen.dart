@@ -62,9 +62,7 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
   Widget build(BuildContext context) {
     return OnboardingScaffold(
       step: 3,
-      title: 'What\'s your business called?',
-      subtitle:
-          'Your AI employee will introduce itself on behalf of this name.',
+      title: 'Your business',
       cta: PrimaryButton(label: 'Continue', onPressed: _next),
       children: [
         Form(
@@ -72,14 +70,14 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const FieldLabel('Business name'),
+              const FieldLabel('Name'),
               TextFormField(
                 controller: _name,
                 autofocus: true,
                 textCapitalization: TextCapitalization.words,
                 style: Theme.of(context).textTheme.titleMedium,
                 decoration: const InputDecoration(
-                  hintText: 'e.g. Sharma Realty, Smile Dental, ABC Coaching',
+                  hintText: 'e.g. Smile Dental',
                 ),
                 validator: (v) => (v ?? '').trim().length < 2
                     ? 'Please enter your business name'
@@ -87,7 +85,7 @@ class _BusinessDetailsScreenState extends ConsumerState<BusinessDetailsScreen> {
                 textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 20),
-              const FieldLabel('Business address', optional: true),
+              const FieldLabel('Address', optional: true),
               TextFormField(
                 controller: _address,
                 textCapitalization: TextCapitalization.sentences,

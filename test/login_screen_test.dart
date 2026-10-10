@@ -149,7 +149,7 @@ void main() {
 
     await tester.tap(find.text('Continue with Google'));
     await settle(tester);
-    expect(find.text('Set Up Your Business'), findsOneWidget);
+    expect(find.text('Set up your business'), findsOneWidget);
     expect(repo.session, isFalse);
 
     await tester.ensureVisible(find.text('Create Account'));
