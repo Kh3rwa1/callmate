@@ -23,6 +23,8 @@ import { voiceApp, handleSarvamWebhook } from './routes/voice';
 import { billingApp, handleRazorpayWebhook } from './routes/billing';
 import { runBillingRenewals } from './services/plans';
 import { legalApp } from './routes/legal';
+import { resultsApp } from './routes/results';
+import { runDailyDigests } from './services/digest';
 import { leadSourcesApp } from './routes/lead_sources';
 import { leadCapturePublicApp } from './routes/lead_capture_public';
 import { handleInstantCallMessages, isInstantCallMessage } from './services/lead_capture';
@@ -183,6 +185,7 @@ protectedApp.route('/', fcApp);
 protectedApp.route('/', knowledgeApp);
 protectedApp.route('/', dashApp);
 protectedApp.route('/', billingApp);
+protectedApp.route('/', resultsApp);
 protectedApp.route('/', leadSourcesApp);
 protectedApp.route('/voice', voiceApp);
 
@@ -222,6 +225,7 @@ export default {
     ctx.waitUntil(runMaintenance(env));
     ctx.waitUntil(runBillingRenewals(env));
     ctx.waitUntil(runAlertChecks(env));
+    ctx.waitUntil(runDailyDigests(env));
   },
 };
 

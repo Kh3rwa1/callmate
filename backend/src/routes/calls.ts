@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, Context } from 'hono';
 import { Env, AuthUser } from '../types';
 import { safeJsonParse } from '../utils/json';
 import { decryptAtRest } from '../utils/crypto_data';
@@ -7,7 +7,8 @@ import { parseLimit } from '../utils/pagination';
 import { PLAN_BLOCKED_BODY } from '../services/plans';
 import { placeLeadCall } from '../services/dial';
 
-const callsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
+type CallsEnv = { Bindings: Env; Variables: { user: AuthUser } };
+const callsApp = new Hono<CallsEnv>();
 
 async function formatCall(row: any, secret?: string) {
   if (!row) return null;
@@ -150,9 +151,13 @@ const BLOCKED_CALL_MESSAGES: Record<string, string> = {
   max_daily_attempts: 'This lead has already been called 3 times today.',
 };
 
-callsApp.post('/leads/:id/call', async (c) => {
+/**
+ * Places one outbound AI call to a lead of the signed-in business, with every guard (calling hours,
+ * DNC, daily attempts, concurrency, plan, minutes). The single dial path for POST /leads/:id/call and
+ * POST /agent/test-call (routes/results.ts).
+ */
+export async function respondWithLeadCall(c: Context<CallsEnv>, leadId: string): Promise<Response> {
   const user = c.get('user');
-  const leadId = c.req.param('id');
   const secret = requireSecret(c.env, 'ENCRYPTION_KEY');
 
   // Guards + dial are shared with the speed-to-lead instant call (services/dial.ts).
@@ -190,6 +195,8 @@ callsApp.post('/leads/:id/call', async (c) => {
     call: await formatCall(created, secret),
     sarvam_dispatched: placed.dispatched,
   });
-});
+}
+
+callsApp.post('/leads/:id/call', (c) => respondWithLeadCall(c, c.req.param('id')));
 
 export { callsApp };

@@ -83,6 +83,13 @@ abstract class CallRepository {
   Future<Call> get(String id);
   Future<List<Call>> forLead(String leadId);
   Future<Call> triggerCall(String leadId);
+
+  /// `GET /agent/test-call` – the owner's number and test calls left today.
+  Future<OwnerTestCallInfo> ownerTestCallInfo();
+
+  /// `POST /agent/test-call` – the AI employee calls the owner's [phone].
+  /// Returns the test calls left today.
+  Future<OwnerTestCallInfo> callOwner(String phone);
 }
 
 enum CallFilter { all, connected, noAnswer, hot }
@@ -130,6 +137,10 @@ abstract class NotificationRepository {
 
 abstract class DashboardRepository {
   Future<DailySummary> today();
+
+  /// `GET /dashboard/results` – what the AI achieved in [range] vs the
+  /// period before.
+  Future<ResultsSummary> results(ResultsRange range);
 }
 
 abstract class VoiceSessionRepository {

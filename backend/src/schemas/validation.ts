@@ -132,6 +132,15 @@ export const patchBusinessSchema = z.object({
   whatsapp_number: z.string().nullable().optional(),
   human_number: z.string().nullable().optional(),
   owner_name: z.string().nullable().optional(),
+  /** Daily 19:00 summary push (services/digest.ts). */
+  digest_enabled: z.boolean().optional(),
+  /** Average sale value for the results card's revenue estimate; null clears it. */
+  avg_deal_value_inr: z.number().int().min(1).max(100_000_000).nullable().optional(),
+});
+
+/** POST /agent/test-call: the owner's own mobile number. */
+export const ownerTestCallSchema = z.object({
+  phone: z.string().min(8).max(20),
 });
 
 export const patchAgentSchema = z.object({

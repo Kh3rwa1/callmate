@@ -59,7 +59,8 @@ leadsApp.get('/leads', async (c) => {
   const limit = parseLimit(c.req.query('limit'), 20, 100);
   const fields = c.req.query('fields');
 
-  let sql = 'SELECT * FROM leads WHERE business_id = ?';
+  // The owner's own test lead (POST /agent/test-call) is not a customer.
+  let sql = 'SELECT * FROM leads WHERE business_id = ? AND is_owner_test = 0';
   const params: any[] = [user.business_id];
 
   if (filter === 'new') {
