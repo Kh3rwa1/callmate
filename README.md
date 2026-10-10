@@ -7,7 +7,7 @@ AI that calls, qualifies, and follows up for your business.
 | Entity | Identifier / Value |
 |---|---|
 | Visible App Name | **CallPilot** |
-| Android `applicationId` / `namespace` | `com.callpilot.app` |
+| Android `applicationId` / `namespace` | `com.echoing.heights` |
 | Dart Package (Internal) | `callpilot` |
 | Platform | **Android** (minSdk 24, targetSdk 36) |
 

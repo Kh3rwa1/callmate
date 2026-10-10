@@ -23,7 +23,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.callpilot.app"
+    namespace = "com.echoing.heights"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -34,7 +34,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.callpilot.app"
+        applicationId = "com.echoing.heights"
         minSdk = maxOf(flutter.minSdkVersion, 23)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -94,7 +94,7 @@ gradle.taskGraph.whenReady {
             throw org.gradle.api.GradleException(
                 "Release build failed: android/app/google-services.json is missing. " +
                 "Without it push notifications and crash reporting are silently disabled. " +
-                "Download it from the Firebase console (package com.callpilot.app)."
+                "Download it from the Firebase console (package com.echoing.heights)."
             )
         }
     }

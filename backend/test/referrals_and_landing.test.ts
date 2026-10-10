@@ -302,7 +302,7 @@ describe('Landing page GET /get', () => {
   it('carries a valid ref into the Play Store referrer', async () => {
     const html = await (await call('/get?ref=abc234')).text();
     expect(playStoreUrl('ABC234')).toBe(
-      'https://play.google.com/store/apps/details?id=com.callpilot.app&referrer=utm_source%3Dlanding%26utm_campaign%3DABC234');
+      'https://play.google.com/store/apps/details?id=com.echoing.heights&referrer=utm_source%3Dlanding%26utm_campaign%3DABC234');
     expect(html).toContain(escapeAmp(playStoreUrl('ABC234')));
     expect(html).toContain('<strong>ABC234</strong>');
   });

@@ -78,7 +78,7 @@ when these repository secrets exist:
 |---|---|
 | `ANDROID_KEYSTORE_BASE64` | `base64 -i upload.jks` |
 | `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | upload key credentials |
-| `GOOGLE_SERVICES_JSON` | `google-services.json` for package `com.callpilot.app` |
+| `GOOGLE_SERVICES_JSON` | `google-services.json` for package `com.echoing.heights` |
 | `PROD_ENV_JSON` | contents of `env/prod.json` with the real `API_BASE_URL` |
 
 Without them, the job still builds a throwaway-signed bundle to prove the

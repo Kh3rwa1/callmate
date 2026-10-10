@@ -4,7 +4,7 @@
 /// CallPilot and are NEVER the product brand. Never hardcode an employee
 /// name in UI – always read it from the Agent.
 ///
-/// Note: the technical package id is `com.callpilot.app` (Android
+/// Note: the technical package id is `com.echoing.heights` (Android
 /// applicationId/namespace + iOS bundle id).
 class Brand {
   const Brand._();

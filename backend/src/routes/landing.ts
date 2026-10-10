@@ -12,7 +12,7 @@ import { escapeHtml } from './legal';
 import { getPlan, PAID_PLAN_IDS, Plan, priceWithGst } from '../services/plans';
 import { normalizeReferralCode, referralBonusMinutes } from '../services/referrals';
 
-export const PLAY_PACKAGE_ID = 'com.callpilot.app';
+export const PLAY_PACKAGE_ID = 'com.echoing.heights';
 
 /** Play Store link whose install referrer carries the landing source and referral code. */
 export function playStoreUrl(ref: string | null): string {

@@ -5,7 +5,7 @@ agent (Antigravity, Claude Code, Cursor, …). Human docs: `README.md`,
 `API.md` (backend contract), `RUNBOOK.md` (deploy/ops), `docs/SARVAM_SETUP.md`.
 
 ## What it is
-Flutter app (`com.callpilot.app`, Dart package `callpilot`) where a business
+Flutter app (`com.echoing.heights`, Dart package `callpilot`) where a business
 "hires" an AI employee that calls leads, scores them, and drafts WhatsApp
 follow-ups the owner reviews and sends. Backend: Cloudflare Worker (Hono) +
 D1 + R2 + Queues in `backend/`, calling Sarvam AI voice agents.
