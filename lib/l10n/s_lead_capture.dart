@@ -1,7 +1,7 @@
 import 's.dart';
 
-/// Speed-to-lead: "Get leads automatically" (enquiry form, webhooks) and
-/// lead source chips.
+/// Speed-to-lead: "Get leads automatically" (enquiry form, webhooks, lead
+/// source integrations) and lead source chips.
 extension SLeadCapture on S {
   String get getLeadsAutomatically => pick(
     'Get leads automatically',
@@ -108,6 +108,9 @@ extension SLeadCapture on S {
   String? leadSourceLabel(String source) => switch (source) {
     'form' => pick('Form', 'फ़ॉर्म', 'ফর্ম'),
     'webhook' => pick('Website', 'वेबसाइट', 'ওয়েবসাইট'),
+    'google_ads' => 'Google Ads',
+    'indiamart' => 'IndiaMART',
+    'meta' => 'Facebook',
     _ => null,
   };
 
@@ -116,5 +119,165 @@ extension SLeadCapture on S {
     'Simulate new form enquiry → auto call',
     'नई फ़ॉर्म पूछताछ → ऑटो कॉल (डेमो)',
     'নতুন ফর্ম খোঁজ → অটো কল (ডেমো)',
+  );
+
+  // Lead-source integrations (Google Ads, IndiaMART, Meta Lead Ads)
+  String get connectLeadSource => pick(
+    'Connect a lead source',
+    'लीड का स्रोत जोड़ें',
+    'লিডের উৎস যুক্ত করুন',
+  );
+  String get connectLeadSourceHint => pick(
+    'Leads from your ads and IndiaMART come in by themselves and get an AI call in about a minute.',
+    'आपके विज्ञापनों और IndiaMART की लीड अपने-आप आएँगी और लगभग एक मिनट में AI कॉल करेगा।',
+    'আপনার বিজ্ঞাপন আর IndiaMART-এর লিড নিজে থেকে আসবে, AI প্রায় এক মিনিটে কল করবে।',
+  );
+  String get googleAdsName => 'Google Ads';
+  String get indiaMartName => 'IndiaMART';
+  String get metaName => pick(
+    'Facebook & Instagram',
+    'Facebook और Instagram',
+    'Facebook ও Instagram',
+  );
+  String get googleAdsTileHint =>
+      pick('Lead form ads', 'लीड फ़ॉर्म वाले विज्ञापन', 'লিড ফর্ম বিজ্ঞাপন');
+  String get indiaMartTileHint => pick(
+    'Buyer enquiries from Lead Manager',
+    'Lead Manager से खरीदारों की पूछताछ',
+    'Lead Manager থেকে ক্রেতাদের খোঁজ',
+  );
+  String get metaTileHint => pick(
+    'Lead Ads instant forms',
+    'Lead Ads इंस्टेंट फ़ॉर्म',
+    'Lead Ads ইনস্ট্যান্ট ফর্ম',
+  );
+  String get connect => pick('Connect', 'जोड़ें', 'যুক্ত করুন');
+  String get connected => pick('Connected', 'जुड़ा हुआ', 'যুক্ত আছে');
+  String get notConnected => pick('Not connected', 'जुड़ा नहीं', 'যুক্ত নেই');
+  String get howToConnect =>
+      pick('How to connect', 'कैसे जोड़ें', 'কীভাবে যুক্ত করবেন');
+
+  List<String> get googleAdsSteps => [
+    pick(
+      'Tap Connect below. You get a webhook URL and a key.',
+      'नीचे "जोड़ें" दबाएँ। आपको एक वेबहुक URL और एक की मिलेगी।',
+      'নিচে "যুক্ত করুন" চাপুন। একটি ওয়েবহুক URL আর একটি কী পাবেন।',
+    ),
+    pick(
+      'In Google Ads, open your lead form, go to "Lead delivery options" → "Webhook integration" and paste both.',
+      'Google Ads में अपना लीड फ़ॉर्म खोलें, "Lead delivery options" → "Webhook integration" में दोनों पेस्ट करें।',
+      'Google Ads-এ আপনার লিড ফর্ম খুলুন, "Lead delivery options" → "Webhook integration"-এ দুটোই পেস্ট করুন।',
+    ),
+    pick(
+      'Tap "Send test data" in Google Ads to check. Test leads are never called.',
+      'जाँचने के लिए Google Ads में "Send test data" दबाएँ। टेस्ट लीड को कभी कॉल नहीं होता।',
+      'যাচাই করতে Google Ads-এ "Send test data" চাপুন। টেস্ট লিডে কখনো কল হয় না।',
+    ),
+  ];
+
+  List<String> get indiaMartSteps => [
+    pick(
+      'On seller.indiamart.com open Lead Manager → ⋮ → Import/Export Leads → Pull API, and tap "Generate Key".',
+      'seller.indiamart.com पर Lead Manager → ⋮ → Import/Export Leads → Pull API खोलें और "Generate Key" दबाएँ।',
+      'seller.indiamart.com-এ Lead Manager → ⋮ → Import/Export Leads → Pull API খুলে "Generate Key" চাপুন।',
+    ),
+    pick(
+      'Paste the key here and tap Connect. We check IndiaMART for new enquiries every few minutes.',
+      'की यहाँ पेस्ट करके "जोड़ें" दबाएँ। हम हर कुछ मिनट में IndiaMART पर नई पूछताछ देखते हैं।',
+      'কী এখানে পেস্ট করে "যুক্ত করুন" চাপুন। আমরা কয়েক মিনিট পরপর IndiaMART-এ নতুন খোঁজ দেখি।',
+    ),
+    pick(
+      'Optional, for instant leads: paste the push URL into IndiaMART\'s Push API (choose "Other").',
+      'वैकल्पिक, तुरंत लीड के लिए: push URL को IndiaMART के Push API में पेस्ट करें ("Other" चुनें)।',
+      'ঐচ্ছিক, সঙ্গে সঙ্গে লিডের জন্য: push URL IndiaMART-এর Push API-তে পেস্ট করুন ("Other" বেছে নিন)।',
+    ),
+  ];
+
+  List<String> get metaSteps => [
+    pick(
+      'Ask your developer to create a Meta app with Webhooks, linked to your Facebook Page.',
+      'अपने डेवलपर से Webhooks वाला एक Meta ऐप बनवाएँ, जो आपके Facebook पेज से जुड़ा हो।',
+      'আপনার ডেভেলপারকে দিয়ে Webhooks-সহ একটি Meta অ্যাপ বানান, যা আপনার Facebook পেজের সঙ্গে যুক্ত।',
+    ),
+    pick(
+      'Paste the App Secret and a Page access token with "leads_retrieval" permission, then tap Connect.',
+      '"leads_retrieval" अनुमति वाला Page access token और App Secret पेस्ट करके "जोड़ें" दबाएँ।',
+      '"leads_retrieval" অনুমতিসহ Page access token আর App Secret পেস্ট করে "যুক্ত করুন" চাপুন।',
+    ),
+    pick(
+      'In the app\'s Webhooks settings choose "Page", paste the callback URL and verify token, and subscribe to "leadgen".',
+      'ऐप की Webhooks सेटिंग में "Page" चुनें, callback URL और verify token पेस्ट करें और "leadgen" सब्सक्राइब करें।',
+      'অ্যাপের Webhooks সেটিংসে "Page" বেছে callback URL আর verify token পেস্ট করুন, তারপর "leadgen" সাবস্ক্রাইব করুন।',
+    ),
+  ];
+
+  String get crmKeyLabel =>
+      pick('IndiaMART CRM key', 'IndiaMART CRM की', 'IndiaMART CRM কী');
+  String get appSecretLabel => 'App Secret';
+  String get pageTokenLabel => 'Page access token';
+  String get crmKeyMissing => pick(
+    'Paste the full IndiaMART CRM key.',
+    'पूरी IndiaMART CRM की पेस्ट करें।',
+    'পুরো IndiaMART CRM কী পেস্ট করুন।',
+  );
+  String get metaSecretsInvalid => pick(
+    'Paste the App Secret (letters and numbers only) and the full page access token.',
+    'App Secret (सिर्फ़ अक्षर और अंक) और पूरा page access token पेस्ट करें।',
+    'App Secret (শুধু অক্ষর আর সংখ্যা) আর পুরো page access token পেস্ট করুন।',
+  );
+  String get integrationShownOnce => pick(
+    'Copy these now. For your safety the key is shown only once.',
+    'इन्हें अभी कॉपी करें। सुरक्षा के लिए की सिर्फ़ एक बार दिखेगी।',
+    'এগুলো এখনই কপি করুন। নিরাপত্তার জন্য কী একবারই দেখানো হবে।',
+  );
+  String get secretsStoredSafely => pick(
+    'Your keys are stored encrypted and never shown again.',
+    'आपकी की एन्क्रिप्ट करके रखी जाती हैं और दोबारा नहीं दिखतीं।',
+    'আপনার কী এনক্রিপ্ট করে রাখা হয়, আর কখনো দেখানো হয় না।',
+  );
+  String get googleKeyLabel => pick('Key', 'की', 'কী');
+  String get callbackUrlLabel => 'Callback URL';
+  String get verifyTokenLabel => 'Verify token';
+  String get pushUrlLabel =>
+      pick('Push URL (optional)', 'Push URL (वैकल्पिक)', 'Push URL (ঐচ্ছিক)');
+  String lastChecked(String when) => pick(
+    'Last checked $when',
+    'आख़िरी बार देखा: $when',
+    'শেষ দেখা হয়েছে: $when',
+  );
+
+  /// Why an integration is not bringing leads in (lead source `last_error`).
+  String sourceProblem(String code) => switch (code) {
+    'invalid_key' => pick(
+      'Your IndiaMART key stopped working. Generate a new key and connect again.',
+      'आपकी IndiaMART की काम नहीं कर रही। नई की बनाकर फिर से जोड़ें।',
+      'আপনার IndiaMART কী কাজ করছে না। নতুন কী বানিয়ে আবার যুক্ত করুন।',
+    ),
+    'meta_token_invalid' => pick(
+      'Facebook stopped sharing leads. Connect again with a new page access token.',
+      'Facebook ने लीड भेजना बंद कर दिया। नए page access token से फिर से जोड़ें।',
+      'Facebook লিড পাঠানো বন্ধ করেছে। নতুন page access token দিয়ে আবার যুক্ত করুন।',
+    ),
+    'rate_limited' => pick(
+      'IndiaMART asked us to slow down. We will try again in a few minutes.',
+      'IndiaMART ने रुकने को कहा। हम कुछ मिनट में फिर कोशिश करेंगे।',
+      'IndiaMART একটু থামতে বলেছে। কয়েক মিনিট পরে আবার চেষ্টা করব।',
+    ),
+    'config_unreadable' => pick(
+      'We could not read your saved keys. Please connect again.',
+      'आपकी सेव की गई की पढ़ी नहीं जा सकीं। कृपया फिर से जोड़ें।',
+      'আপনার সেভ করা কী পড়া যায়নি। দয়া করে আবার যুক্ত করুন।',
+    ),
+    _ => pick(
+      'There was a connection problem. We will keep trying.',
+      'कनेक्शन में दिक्कत आई। हम कोशिश करते रहेंगे।',
+      'সংযোগে সমস্যা হয়েছে। আমরা চেষ্টা চালিয়ে যাব।',
+    ),
+  };
+
+  String get simulateIndiaMartEnquiry => pick(
+    'Simulate IndiaMART enquiry → auto call',
+    'IndiaMART पूछताछ → ऑटो कॉल (डेमो)',
+    'IndiaMART খোঁজ → অটো কল (ডেমো)',
   );
 }

@@ -842,9 +842,23 @@ class MockBackend implements BackendEvents {
     return List.generate(n, (_) => chars[_rnd.nextInt(chars.length)]).join();
   }
 
-  /// Like POST /lead-sources: one form per business; webhooks carry their
-  /// token only in this result.
-  LeadSource createLeadSource(LeadSourceKind kind) {
+  /// Public path of a source, like the backend's `leadSourcePath`.
+  static String leadSourcePath(LeadSourceKind kind, String slug) =>
+      switch (kind) {
+        LeadSourceKind.form => '/f/$slug',
+        LeadSourceKind.webhook => '/hooks/leads/$slug',
+        LeadSourceKind.googleAds => '/hooks/google-ads/$slug',
+        LeadSourceKind.indiaMart => '/hooks/indiamart/$slug',
+        LeadSourceKind.meta => '/hooks/meta/$slug',
+      };
+
+  /// Like POST /lead-sources: one form per business; everything else carries
+  /// its one-time secret only in this result. Integration [secrets] are
+  /// accepted (and, like the server, never shown again).
+  LeadSource createLeadSource(
+    LeadSourceKind kind, {
+    LeadSourceSecrets secrets = const LeadSourceSecrets(),
+  }) {
     if (kind == LeadSourceKind.form) {
       final existing = leadSources.where((s) => s.isForm).firstOrNull;
       if (existing != null) return existing;
@@ -854,25 +868,33 @@ class MockBackend implements BackendEvents {
       id: _nextId('lsrc'),
       kind: kind,
       slug: slug,
-      url: kind == LeadSourceKind.form
-          ? '$_demoBase/f/$slug'
-          : '$_demoBase/hooks/leads/$slug',
+      url: '$_demoBase${leadSourcePath(kind, slug)}',
       autoCall: true,
       createdAt: DateTime.now(),
+      lastSyncedAt: kind == LeadSourceKind.indiaMart ? DateTime.now() : null,
     );
     leadSources.add(source);
     emitChanged('lead-sources');
-    return kind == LeadSourceKind.webhook
-        ? LeadSource(
-            id: source.id,
-            kind: source.kind,
-            slug: source.slug,
-            url: source.url,
-            autoCall: source.autoCall,
-            createdAt: source.createdAt,
-            token: 'cplh_${_token(40)}',
-          )
-        : source;
+    if (kind == LeadSourceKind.form) return source;
+    final token = switch (kind) {
+      LeadSourceKind.googleAds => 'cpga${_token(32)}',
+      LeadSourceKind.indiaMart => 'cpim${_token(32)}',
+      LeadSourceKind.meta => 'cpmv${_token(32)}',
+      _ => 'cplh_${_token(40)}',
+    };
+    return LeadSource(
+      id: source.id,
+      kind: source.kind,
+      slug: source.slug,
+      url: source.url,
+      autoCall: source.autoCall,
+      createdAt: source.createdAt,
+      lastSyncedAt: source.lastSyncedAt,
+      token: token,
+      pushUrl: kind == LeadSourceKind.indiaMart
+          ? '${source.url}?key=$token'
+          : null,
+    );
   }
 
   LeadSource setLeadSourceAutoCall(String id, bool autoCall) {
@@ -895,24 +917,67 @@ class MockBackend implements BackendEvents {
     final form =
         leadSources.where((s) => s.isForm).firstOrNull ??
         createLeadSource(LeadSourceKind.form);
+    return _simulateEnquiry(
+      form,
+      name: _randomName(),
+      interest: brain.pick(verticalFor(business.category).offerings).name,
+      callAfter: callAfter,
+    );
+  }
+
+  /// Demo: a buyer sends an enquiry on IndiaMART and the next pull brings it
+  /// in (connects a demo IndiaMART source first if there is none).
+  Lead simulateIndiaMartEnquiry({
+    Duration callAfter = const Duration(seconds: 3),
+  }) {
+    var source = leadSources
+        .where((s) => s.kind == LeadSourceKind.indiaMart)
+        .firstOrNull;
+    if (source == null) {
+      final id = createLeadSource(
+        LeadSourceKind.indiaMart,
+        secrets: const LeadSourceSecrets(crmKey: 'demo-crm-key'),
+      ).id;
+      source = leadSources.firstWhere((s) => s.id == id);
+    }
+    final product = brain.pick(verticalFor(business.category).offerings).name;
+    return _simulateEnquiry(
+      source,
+      name: _randomName(),
+      interest: 'IndiaMART: $product',
+      callAfter: callAfter,
+    );
+  }
+
+  Lead _simulateEnquiry(
+    LeadSource source, {
+    required String name,
+    required String interest,
+    required Duration callAfter,
+  }) {
     var lead = _makeLead(
-      _randomName(),
+      name,
       _randomPhone(),
-      brain.pick(verticalFor(business.category).offerings).name,
+      interest,
       null,
       DateTime.now(),
-      source: 'form',
+      source: source.kind.wire,
     ).copyWith(consent: 'explicit_opt_in');
-    if (form.autoCall) lead = lead.copyWith(status: LeadStatus.calling);
+    if (source.autoCall) lead = lead.copyWith(status: LeadStatus.calling);
     leads[lead.id] = lead;
-    final i = leadSources.indexWhere((s) => s.id == form.id);
-    leadSources[i] = form.copyWith(leadsCount: form.leadsCount + 1);
+    final i = leadSources.indexWhere((s) => s.id == source.id);
+    leadSources[i] = source.copyWith(
+      leadsCount: source.leadsCount + 1,
+      lastSyncedAt: source.kind == LeadSourceKind.indiaMart
+          ? DateTime.now()
+          : null,
+    );
 
     final n = AppNotification(
       id: _nextId('n'),
       type: NotificationType.newLead,
       title: 'New enquiry from ${lead.firstName}',
-      body: form.autoCall
+      body: source.autoCall
           ? 'Your AI employee is calling them now.'
           : 'Auto-call is off. Open the lead to call them.',
       route: '/leads/${lead.id}',
@@ -922,7 +987,7 @@ class MockBackend implements BackendEvents {
     _events.add(NotificationEvent(n));
     _events.add(const DataChangedEvent('leads'));
 
-    if (form.autoCall) {
+    if (source.autoCall) {
       final id = lead.id;
       _enquiryTimer?.cancel();
       _enquiryTimer = Timer(callAfter, () {

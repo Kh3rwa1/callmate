@@ -314,6 +314,21 @@ extension SLeads on S {
   String consentSource(String v) => switch (v) {
     'form' => pick('Enquiry form', 'पूछताछ फ़ॉर्म', 'জিজ্ঞাসার ফর্ম'),
     'webhook' => pick('Lead source', 'लीड स्रोत', 'লিড সোর্স'),
+    'google_ads' => pick(
+      'Google Ads lead form',
+      'Google Ads लीड फ़ॉर्म',
+      'Google Ads লিড ফর্ম',
+    ),
+    'indiamart' => pick(
+      'IndiaMART enquiry',
+      'IndiaMART पूछताछ',
+      'IndiaMART খোঁজ',
+    ),
+    'meta_lead_ads' => pick(
+      'Facebook / Instagram lead form',
+      'Facebook / Instagram लीड फ़ॉर्म',
+      'Facebook / Instagram লিড ফর্ম',
+    ),
     'import_attestation' => pick(
       'Your import / confirmation',
       'आपका इम्पोर्ट / पुष्टि',

@@ -37,6 +37,8 @@ import { runDailyDigests } from './services/digest';
 import { leadSourcesApp } from './routes/lead_sources';
 import { leadCapturePublicApp } from './routes/lead_capture_public';
 import { playbooksApp } from './routes/playbooks';
+import { leadIntegrationsPublicApp } from './routes/lead_integrations_public';
+import { runIndiaMartPulls } from './services/lead_integrations';
 import { handleInstantCallMessages, isInstantCallMessage } from './services/lead_capture';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -182,6 +184,8 @@ app.route('/get', landingApp);
 app.route('/stop', stopApp);
 // Speed-to-lead: hosted enquiry form (/f/:slug) and lead webhook (/hooks/leads/:slug, bearer token)
 app.route('/', leadCapturePublicApp);
+// Lead integrations: Google Ads lead forms, IndiaMART push, Meta Lead Ads (each verifies its provider)
+app.route('/', leadIntegrationsPublicApp);
 
 // Public Sarvam completed call webhook
 app.post('/webhooks/sarvam', async (c) => {
@@ -262,6 +266,8 @@ export default {
     ctx.waitUntil(runLongCallWatchdog(env));
     ctx.waitUntil(runComplianceCron(env));
     ctx.waitUntil(runDailyDigests(env));
+    // IndiaMART Lead Manager pull (at most once per 5 min per source, tracked in lead_sources).
+    ctx.waitUntil(runIndiaMartPulls(env));
   },
 };
 

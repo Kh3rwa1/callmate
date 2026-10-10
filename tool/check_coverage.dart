@@ -3,9 +3,9 @@ import 'dart:io';
 // Coverage ratchet for `flutter test --coverage` (reads coverage/lcov.info).
 //
 // Thresholds sit ~2 points under the measured baseline so normal churn passes
-// but a real regression fails CI. Baseline measured 2026-10-10 (after playbooks):
-//   lib/data 95.26%, lib/services 56.50%, data+services 85.94%,
-//   lib/ (excl. l10n + generated) 91.45%.
+// but a real regression fails CI. Baseline measured 2026-10-10 (lead integrations):
+//   lib/data 95.16%, lib/services 56.50%, data+services 85.85%,
+//   lib/ (excl. l10n + generated) 91.47%.
 // Raise these when coverage improves; never lower them to land a PR.
 //
 // Run with plain `dart tool/check_coverage.dart` (only needs dart:io).

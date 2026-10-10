@@ -333,6 +333,32 @@ async function run() {
   assert.strictEqual(instantCall.status, 'calling');
   console.log('   ✓ Webhook enquiry created and AI-called via the queue');
 
+  // 11c. Lead integrations: Google Ads lead form webhook (test lead ignored, real lead captured once)
+  console.log('11c. Google Ads lead form webhook...');
+  const gads = await req('/lead-sources', { method: 'POST', headers: authHeader, body: JSON.stringify({ kind: 'google_ads' }) });
+  assert.strictEqual(gads.status, 201, JSON.stringify(gads.data));
+  assert.ok(gads.data.google_key);
+  const gadsLead = (isTest) => JSON.stringify({
+    lead_id: 'e2e-gads-lead-1', google_key: gads.data.google_key, is_test: isTest, campaign_id: 1,
+    user_column_data: [
+      { column_id: 'FULL_NAME', string_value: 'Ads Enquiry' },
+      { column_id: 'PHONE_NUMBER', string_value: '+919830077124' },
+    ],
+  });
+  const gadsTest = await req(`/hooks/google-ads/${gads.data.slug}`, { method: 'POST', body: gadsLead(true) });
+  assert.strictEqual(gadsTest.status, 200);
+  const gadsReal = await req(`/hooks/google-ads/${gads.data.slug}`, { method: 'POST', body: gadsLead(false) });
+  assert.strictEqual(gadsReal.status, 200, JSON.stringify(gadsReal.data));
+  const gadsAgain = await req(`/hooks/google-ads/${gads.data.slug}`, { method: 'POST', body: gadsLead(false) });
+  assert.strictEqual(gadsAgain.status, 200);
+  const gadsBad = await req(`/hooks/google-ads/${gads.data.slug}`, { method: 'POST', body: gadsLead(false).replace(gads.data.google_key, 'wrong') });
+  assert.strictEqual(gadsBad.status, 401);
+  const sourcesAfter = await req('/lead-sources', { headers: authHeader });
+  const gadsListed = sourcesAfter.data.items.find((s) => s.id === gads.data.id);
+  assert.strictEqual(gadsListed.leads_count, 1);
+  assert.strictEqual(gadsListed.google_key, undefined);
+  console.log('   ✓ Google Ads lead captured once; test lead ignored; key never listed');
+
   // 12. Account Deletion (Apple App Store Guideline 5.1.1(v))
   console.log('12. Account Deletion...');
   const delAcc = await req('/auth/account', {

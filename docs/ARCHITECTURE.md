@@ -42,7 +42,8 @@ Related: [`AGENTS.md`](../AGENTS.md) (rules + checks), [`API.md`](../API.md)
 | Voice | Sarvam outbound API | `dialSarvam` in `services/campaign_queue.ts`; per-call agent variables from `services/call_variables.ts`. |
 | Push | FCM HTTP v1 | `services/fcm.ts` (service-account OAuth, per-business throttling, dead-token cleanup). |
 | Billing | Razorpay payment links + webhook | `routes/billing.ts`, `services/plans.ts`, `services/billing.ts`. |
-| Scheduled | `scheduled()` in `index.ts` | `runMaintenance`, `runBillingRenewals`, `runAlertChecks` every 10 min. |
+| Scheduled | `scheduled()` in `index.ts` | `runMaintenance`, `runBillingRenewals`, `runAlertChecks`, IndiaMART lead pulls (`runIndiaMartPulls`) every 10 min. |
+| Lead integrations | `services/lead_integrations.ts`, `routes/lead_integrations_public.ts` | Google Ads / IndiaMART / Meta Lead Ads feed `captureLead` (see [`INTEGRATIONS.md`](INTEGRATIONS.md)). |
 
 ## Lifecycle of a call
 
@@ -98,6 +99,9 @@ Related: [`AGENTS.md`](../AGENTS.md) (rules + checks), [`API.md`](../API.md)
 | `webhook_events` | Webhook idempotency claims | 0005 |
 | `rate_limits`, `otp_rate_limits`, `push_rate_limits`, `voice_proxy_rate_limits` | Sliding-window counters (pruned daily by maintenance) | 0003, 0004, 0005 |
 | `ops_events`, `alert_state` | Operational signals (webhook auth failures, DLQ) and alert de-duplication | 0009 |
+| `lead_sources` | Speed-to-lead sources: hosted form, webhook, Google Ads / IndiaMART / Meta integrations (secret hashes, encrypted integration config, IndiaMART pull state) | 0011, 0016 |
+| `lead_external_ids` | Provider lead ids already captured (Google `lead_id`, IndiaMART `UNIQUE_QUERY_ID`, Meta `leadgen_id`) | 0016 |
+| `consent_events` | Consent evidence trail per lead | 0013, 0016 |
 
 Migration `0002` does not exist (numbering skipped historically); do not
 reuse it.

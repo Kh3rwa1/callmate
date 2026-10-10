@@ -11,11 +11,13 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
+import 'lead_integrations.dart';
 
 /// Customers → "Get leads automatically": the hosted enquiry form (link,
-/// share, QR code), auto-call toggle, and website/Google Forms webhooks whose
-/// secret key is shown once. Every new enquiry is AI-called within about a
-/// minute (backend: services/lead_capture.ts).
+/// share, QR code), auto-call toggle, website/Google Forms webhooks whose
+/// secret key is shown once, and lead-source integrations (Google Ads,
+/// IndiaMART, Facebook & Instagram; lead_integrations.dart). Every new enquiry
+/// is AI-called within about a minute (backend: services/lead_capture.ts).
 class LeadCaptureScreen extends ConsumerStatefulWidget {
   const LeadCaptureScreen({super.key});
 
@@ -119,7 +121,7 @@ class _LeadCaptureScreenState extends ConsumerState<LeadCaptureScreen> {
     final s = context.s;
     final t = Theme.of(context).textTheme;
     final form = list.where((x) => x.isForm).firstOrNull;
-    final hooks = list.where((x) => !x.isForm).toList();
+    final hooks = list.where((x) => x.kind == LeadSourceKind.webhook).toList();
     return ListView(
       padding: const EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 36),
       children: [
@@ -184,6 +186,29 @@ class _LeadCaptureScreenState extends ConsumerState<LeadCaptureScreen> {
           icon: Icons.add_link_rounded,
           onPressed: _creatingHook ? null : _createWebhook,
         ),
+        SectionLabel(s.connectLeadSource),
+        Text(
+          s.connectLeadSourceHint,
+          style: t.bodySmall?.copyWith(color: AppColors.inkSoft),
+        ),
+        const SizedBox(height: 12),
+        for (final kind in integrationKinds) ...[
+          Builder(
+            builder: (context) {
+              final src = list.where((x) => x.kind == kind).lastOrNull;
+              return IntegrationTile(
+                kind: kind,
+                source: src,
+                busy: src != null && _busy.contains(src.id),
+                onConnect: () =>
+                    showIntegrationSheet(context, kind, replaces: src),
+                onAutoCall: (v) => _setAutoCall(src!, v),
+                onRevoke: () => _revoke(src!),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+        ],
       ],
     );
   }

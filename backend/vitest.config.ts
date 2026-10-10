@@ -34,12 +34,12 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
       exclude: ['src/types.ts'],
-      // Ratchet: ~2 points under the measured baseline (2026-10-10, after playbooks + localized pages:
-      // statements 91.63, branches 79.75, functions 94.56, lines 93.18).
+      // Ratchet: ~2 points under the measured baseline (2026-10-10:
+      // statements 91.74, branches 80.21, functions 94.25, lines 93.49).
       // Raise these when coverage improves; never lower them to land a PR.
       thresholds: {
         statements: 89,
-        branches: 77,
+        branches: 78,
         functions: 92,
         lines: 91,
         'src/auth.ts': {

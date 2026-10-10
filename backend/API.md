@@ -174,8 +174,8 @@ Dedupe: one lead per phone per business. The same phone again within 24 h of its
 
 | Method | Path | Request Body | Response |
 |---|---|---|---|
-| `GET` | `/lead-sources` | - | `{"items": [LeadSource]}` (active only). `LeadSource` = `{id, kind: "form"\|"webhook", slug, url, auto_call, leads_count, created_at}` |
-| `POST` | `/lead-sources` | `{"kind": "form"\|"webhook", "auto_call"?: bool}` | Form: the business's active form (`200`) or a new one (`201`). Webhook: `201` `LeadSource` **plus `token`, shown only once** (only its SHA-256 is stored). Max 5 active webhooks (`409 too_many_sources`). |
+| `GET` | `/lead-sources` | - | `{"items": [LeadSource]}` (active only). `LeadSource` = `{id, kind: "form"\|"webhook"\|"google_ads"\|"indiamart"\|"meta", slug, url, auto_call, leads_count, created_at, last_error, last_synced_at?}` (integrations: see below) |
+| `POST` | `/lead-sources` | `{"kind": "form"\|"webhook"\|"google_ads"\|"indiamart"\|"meta", "auto_call"?: bool, …integration secrets}` | Form: the business's active form (`200`) or a new one (`201`). Webhook: `201` `LeadSource` **plus `token`, shown only once** (only its SHA-256 is stored). Max 5 active webhooks (`409 too_many_sources`). |
 | `PATCH` | `/lead-sources/:id` | `{"auto_call": bool}` | Updated `LeadSource`. Turning it off also cancels instant calls still waiting for calling hours. |
 | `POST` | `/lead-sources/:id/revoke` | - | `{"success": true}`. The form link then 404s and the webhook token 401s. |
 
@@ -208,6 +208,33 @@ function onFormSubmit(e) {
 ```
 
 Website: post from **your server** (never put the token in browser JavaScript), or link to / embed the hosted form `https://…/f/<slug>`.
+
+### Lead integrations: Google Ads, IndiaMART, Meta Lead Ads
+
+Three more `lead_sources` kinds feed the **same** pipeline (`captureLead` → consent event → instant call through `services/dial.ts` with every guard; `backend/src/services/lead_integrations.ts`). Leads get `source` = the kind (`google_ads`, `indiamart`, `meta`), `consent: "explicit_opt_in"`, and a consent event with source `google_ads` / `indiamart` / `meta_lead_ads` (text versions `google-ads-lead-form-2026-10`, `indiamart-enquiry-2026-10`, `meta-lead-ads-2026-10`). Each provider lead id (Google `lead_id`, IndiaMART `UNIQUE_QUERY_ID`, Meta `leadgen_id`) becomes a lead at most once per business (`lead_external_ids`), on top of the 24 h phone dedupe. Extra form answers go into `interest`; email / city / company into the lead's `attributes`. Owner setup: [`docs/INTEGRATIONS.md`](../docs/INTEGRATIONS.md).
+
+**Owner APIs** (same endpoints as above):
+
+| Body of `POST /lead-sources` | `201` response (`LeadSource` plus, **once**) |
+|---|---|
+| `{"kind": "google_ads", "auto_call"?}` | `token` = `google_key`: paste into the Google Ads lead form's webhook *Key*; `url` = `…/hooks/google-ads/<slug>` is the webhook URL. |
+| `{"kind": "indiamart", "crm_key": "<IndiaMART CRM / Pull API key>", "auto_call"?}` | `token` and `push_url` = `…/hooks/indiamart/<slug>?key=<token>` (optional IndiaMART Push API listener). The CRM key is stored AES-GCM encrypted. |
+| `{"kind": "meta", "app_secret": "<Meta app secret>", "page_access_token": "<page token with leads_retrieval>", "auto_call"?}` | `token` = `verify_token` for the Meta webhook; `url` = `…/hooks/meta/<slug>` is the callback URL. App secret and page token are stored AES-GCM encrypted. |
+
+- Secrets (`token`, `google_key`, `verify_token`, `push_url`) are never returned again; `crm_key`, `app_secret` and `page_access_token` are never returned at all. Missing / malformed secrets: `400 validation_error` (never send `null`). `503 not_configured` if the server has no `ENCRYPTION_KEY`. At most 5 active sources per kind (`409 too_many_sources`).
+- `LeadSource` gains `last_error` (null, or `invalid_key`, `rate_limited`, `bad_request`, `upstream_error`, `config_unreadable`, `meta_token_invalid`) and, for IndiaMART, `last_synced_at` (UTC, end of the last successful pull). The first time a source hits `invalid_key` / `meta_token_invalid` / `config_unreadable` the owner gets a `lead_source_error` notification (route `/leads/auto`).
+- `PATCH /lead-sources/:id` (`auto_call`) and `POST /lead-sources/:id/revoke` work for every kind; a revoked source's endpoints answer `401` / `403` and IndiaMART stops being pulled.
+
+**Provider endpoints** (public; rate limited 600 / h per IP and per source):
+
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/hooks/google-ads/:slug` | Google Ads lead form webhook JSON (`lead_id`, `user_column_data[{column_id, string_value}]`, `google_key`, `is_test`, `campaign_id`, …). `google_key` checked against the stored SHA-256 in constant time (`401` otherwise). `is_test: true` → `200 {}` and nothing is created or called. Success and duplicates → `200 {}`. No `PHONE_NUMBER` / invalid phone → `400 {"message"}` (permanent for Google). |
+| `POST` | `/hooks/indiamart/:slug?key=<token>` | IndiaMART Push API body (`{"CODE":200,"STATUS":"SUCCESS","RESPONSE":{…lead…}}`). Wrong key → `401`; verified pushes always `200 {"CODE":200,"STATUS":"SUCCESS","captured","skipped"}` (IndiaMART deactivates failing listeners). |
+| `GET` | `/hooks/meta/:slug?hub.mode=subscribe&hub.verify_token=…&hub.challenge=…` | Meta webhook verification: echoes `hub.challenge` (`200 text/plain`) when the verify token matches, else `403`. |
+| `POST` | `/hooks/meta/:slug` | Page `leadgen` events. `X-Hub-Signature-256: sha256=HMAC-SHA256(app secret, raw body)` required (`401`). For each `leadgen_id` the lead is fetched from `https://graph.facebook.com/<META_GRAPH_API_VERSION, default v21.0>/<leadgen_id>?fields=id,created_time,field_data&access_token=<page token>&appsecret_proof=…` and `full_name` / `first_name`+`last_name`, `phone_number`, `email` are mapped. Transient Graph errors → `500` (Meta redelivers; the id is not consumed). A rejected token → `200`, `last_error: meta_token_invalid`. |
+
+**IndiaMART pull (cron).** Every cron run (`*/10`) pulls each active IndiaMART source that is due: at most once per 5 minutes per source (claimed atomically via `last_pulled_at`), `GET https://mapi.indiamart.com/wservce/crm/crmListing/v2/?glusr_crm_key=…&start_time=…&end_time=…` in IST `DD-Mon-YYYYHH:MM:SS`, window = 5 minutes before the previous end (or the source's creation) → now, capped at 7 days. `CODE 200` → leads captured (catalog views `QUERY_TYPE: "BIZ"` and records without a mobile are skipped), `last_cursor` advanced. `204` → no leads, cursor advanced. `429` → `rate_limited` (key blocked: wait 15 min). `401` → `invalid_key`, retried hourly. `400` → cursor reset to now. `5xx` / network → `upstream_error`, retried next run.
 
 ---
 

@@ -275,7 +275,8 @@ class ConsentEvent {
   /// `owner_attested`, `do_not_call` or `do_not_call_removed`.
   final String consentValue;
 
-  /// `form`, `webhook`, `import_attestation`, `manual` or `in_call_opt_out`.
+  /// `form`, `webhook`, `import_attestation`, `manual`, `in_call_opt_out`,
+  /// `google_ads`, `indiamart` or `meta_lead_ads`.
   final String source;
   final String? textVersion;
   final DateTime createdAt;
