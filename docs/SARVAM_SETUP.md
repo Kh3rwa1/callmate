@@ -156,7 +156,7 @@ and that it may be recorded (`COMPLIANCE.md`). With the Worker var
 
 ```json
 "app_overrides": {
-  "initial_bot_message": "Hello Asha, this is Arjun, an AI assistant calling from Bright Future about your enquiry. This call may be recorded for quality. Is this a good time to talk?",
+  "initial_bot_message": "Hello Asha, I'm calling from Bright Future about your enquiry. This is Arjun, an AI assistant. This call may be recorded for quality. Is this a good time to talk?",
   "initial_language_name": "English"
 }
 ```
