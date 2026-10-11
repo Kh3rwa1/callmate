@@ -4,6 +4,7 @@
   "SARVAM_PROXY_PATH": "/voice/sarvam-proxy/",
   "USE_MOCK": false,
   "DEMO_TOOLS": false,
+  "DEMO_LOGIN": true,
   "TERMS_URL": "https://callpilot-backend.dulalkisku0.workers.dev/legal/terms",
   "PRIVACY_URL": "https://callpilot-backend.dulalkisku0.workers.dev/legal/privacy",
   "DELETE_ACCOUNT_URL": "https://callpilot-backend.dulalkisku0.workers.dev/legal/delete-account",

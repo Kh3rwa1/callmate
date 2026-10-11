@@ -41,6 +41,9 @@ export interface Env {
   /** Secret: comma-separated account emails exempt from the voice test-session cap (QA). */
   VOICE_UNLIMITED_EMAILS?: string;
   HEALTH_CHECK_SECRET?: string;
+  /** Secrets: Play review demo account. OTP requests for this phone skip SMS and use this fixed 6-digit code. */
+  REVIEW_LOGIN_PHONE?: string;
+  REVIEW_LOGIN_OTP?: string;
   /** Firebase project whose Auth ID tokens /auth/google accepts. */
   FIREBASE_PROJECT_ID?: string;
   /** Graph API version for Meta Lead Ads lead fetches (e.g. "v21.0", the default). */

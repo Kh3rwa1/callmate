@@ -24,7 +24,7 @@ import '../../services/auth/google_auth_service.dart';
 import 'google_button.dart';
 
 /// Authentication Screen: Google sign-in (default), with phone + OTP behind
-/// `PHONE_OTP_LOGIN`.
+/// `PHONE_OTP_LOGIN` (or `DEMO_LOGIN`, for store reviewers).
 ///
 /// Motion: the mascot pops in and floats, the pitch rises in line by line,
 /// and moving between Google / registration / phone / code crossfades the
@@ -443,7 +443,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 loading: _submitting,
                 onPressed: _continueWithGoogle,
               ),
-              if (AppEnv.phoneOtpLogin) ...[
+              if (AppEnv.phoneOtpLogin || AppEnv.demoLogin) ...[
                 const SizedBox(height: 12),
                 Center(
                   child: TextButton(
@@ -453,7 +453,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             _usePhone = true;
                             _errorMessage = null;
                           }),
-                    child: Text(s.usePhoneInstead),
+                    child: Text(
+                      AppEnv.phoneOtpLogin
+                          ? s.usePhoneInstead
+                          : s.demoAccountSignIn,
+                    ),
                   ),
                 ),
               ],

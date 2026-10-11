@@ -47,6 +47,11 @@ extension SAuth on S {
     'इसके बजाय फ़ोन नंबर से',
     'তার বদলে ফোন নম্বর দিয়ে',
   );
+  String get demoAccountSignIn => pick(
+    'Demo account sign-in',
+    'डेमो अकाउंट से साइन इन',
+    'ডেমো অ্যাকাউন্টে সাইন ইন',
+  );
   String get demoMode => pick('Demo mode', 'डेमो मोड', 'ডেমো মোড');
   String get setUpYourBusiness => pick(
     'Set up your business',

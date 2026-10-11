@@ -93,6 +93,17 @@ async function verifyOtp(c: any, phone: string, otp: string): Promise<Response |
   return null;
 }
 
+/**
+ * The fixed code for the Play review demo account when `phone` is REVIEW_LOGIN_PHONE, else null.
+ * Both secrets must be set and the code must be 6 digits.
+ */
+export function reviewLoginCode(env: Env, phone: string): string | null {
+  const reviewPhone = env.REVIEW_LOGIN_PHONE?.trim();
+  const code = env.REVIEW_LOGIN_OTP?.trim();
+  if (!reviewPhone || !code || !/^\d{6}$/.test(code)) return null;
+  return normalizePhone(reviewPhone) === phone ? code : null;
+}
+
 // POST /auth/otp/request
 // Rate limited: max 3 per 10min per phone, max 10 per 10min per IP
 authApp.post('/otp/request', async (c) => {
@@ -135,10 +146,11 @@ authApp.post('/otp/request', async (c) => {
     return c.json({ message: 'Too many OTP requests from your network. Please wait.', code: 'rate_limited' }, 429);
   }
 
-  // Generate cryptographically secure 6-digit OTP
+  // Play review demo account: fixed code, no SMS. Otherwise a cryptographically secure 6-digit OTP.
+  const demoCode = reviewLoginCode(c.env, phone);
   const randArr = new Uint32Array(1);
   crypto.getRandomValues(randArr);
-  const otpCode = String((randArr[0] % 900000) + 100000); // 100000 - 999999
+  const otpCode = demoCode ?? String((randArr[0] % 900000) + 100000); // 100000 - 999999
   const otpHash = await hashOtp(c.env, phone, otpCode);
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 minutes
 
@@ -148,12 +160,13 @@ authApp.post('/otp/request', async (c) => {
   ).bind(phone, otpHash, expiresAt).run();
 
   // Dispatch via SMS provider
-  const smsProvider = getSmsProvider(c.env);
-  let delivered = false;
-  try {
-    delivered = await smsProvider.sendOtp(phone, otpCode);
-  } catch {
-    delivered = false;
+  let delivered = demoCode !== null;
+  if (!delivered) {
+    try {
+      delivered = await getSmsProvider(c.env).sendOtp(phone, otpCode);
+    } catch {
+      delivered = false;
+    }
   }
   if (!delivered) {
     // Don't leave a code the user never received; they can retry immediately.

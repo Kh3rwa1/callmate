@@ -40,6 +40,14 @@ class AppEnv {
     defaultValue: false,
   );
 
+  /// Offers a "Demo account sign-in" link (the phone + OTP form) for app
+  /// store reviewers. The backend's REVIEW_LOGIN_PHONE gets a fixed code
+  /// without SMS; any other number still needs an SMS provider.
+  static const bool demoLogin = bool.fromEnvironment(
+    'DEMO_LOGIN',
+    defaultValue: false,
+  );
+
   /// Shows the demo control panel.
   static const bool demoTools = bool.fromEnvironment(
     'DEMO_TOOLS',
