@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Referenced only by name from Dart, so resource shrinking can't see it. -->
+<!-- Referenced only by name (from Dart, or by plugins via getIdentifier), so resource shrinking
+     can't see them. default_web_client_id is google_sign_in's serverClientId: without it release
+     builds fail Google sign-in with "serverClientId must be provided on Android". -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/ic_stat_notify" />
+    tools:keep="@drawable/ic_stat_notify,@string/default_web_client_id" />
