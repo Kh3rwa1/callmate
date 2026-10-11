@@ -10,6 +10,28 @@ import { placeLeadCall } from '../services/dial';
 type CallsEnv = { Bindings: Env; Variables: { user: AuthUser } };
 const callsApp = new Hono<CallsEnv>();
 
+/**
+ * The stored transcript in the app's shape: { lines: [{ speaker: 'agent' | 'lead', text, offset_ms? }] }.
+ * Sarvam's webhook sends `interaction_transcript` as [{ role: 'agent' | 'user', en_text }]; older
+ * rows may already be { lines: [...] } or use speaker/text. Lines without text are dropped.
+ */
+export function normalizeTranscript(parsed: any): { lines: any[]; language?: string } {
+  const items: any[] = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.lines) ? parsed.lines : [];
+  const lines = items.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const rawText = item.text ?? item.en_text ?? item.content ?? item.message ?? '';
+    const text = typeof rawText === 'string' ? rawText.trim() : '';
+    if (!text) return [];
+    const who = String(item.speaker ?? item.role ?? '').toLowerCase();
+    const speaker = who === 'lead' || who === 'user' || who === 'customer' ? 'lead' : 'agent';
+    return [{ speaker, text, ...(typeof item.offset_ms === 'number' ? { offset_ms: item.offset_ms } : {}) }];
+  });
+  return {
+    lines,
+    ...(!Array.isArray(parsed) && typeof parsed?.language === 'string' ? { language: parsed.language } : {}),
+  };
+}
+
 async function formatCall(row: any, secret?: string) {
   if (!row) return null;
 
@@ -28,12 +50,7 @@ async function formatCall(row: any, secret?: string) {
   if (row.transcript) {
     try {
       const decrypted = await decryptAtRest(row.transcript, secret);
-      const parsed = safeJsonParse(decrypted, []);
-      if (Array.isArray(parsed)) {
-        transcriptObj = { lines: parsed };
-      } else {
-        transcriptObj = parsed;
-      }
+      transcriptObj = normalizeTranscript(safeJsonParse(decrypted, []));
     } catch {
       transcriptObj = { lines: [] };
     }

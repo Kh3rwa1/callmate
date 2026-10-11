@@ -61,18 +61,19 @@ export function disclosureMessage(lang: VoiceLang, names: DisclosureNames): stri
   const lead = safeSpokenName(names.lead, '');
   const agent = safeSpokenName(names.agent, lang === 'en' ? 'Assistant' : lang === 'hi' ? 'सहायक' : 'সহকারী');
   const business = safeSpokenName(names.business, lang === 'en' ? 'our team' : lang === 'hi' ? 'हमारी टीम' : 'আমাদের টিম');
+  // The business comes first so the lead knows who is calling before anything else.
   switch (lang) {
     case 'hi':
-      return `नमस्ते${lead ? ` ${lead}` : ''}, मैं ${agent} हूँ, ${business} की ओर से एक AI सहायक। `
-        + 'आपकी पूछताछ के बारे में बात करनी थी। गुणवत्ता के लिए यह कॉल रिकॉर्ड की जा सकती है। '
+      return `नमस्ते${lead ? ` ${lead}` : ''}, ${business} की ओर से आपकी पूछताछ के बारे में कॉल है। `
+        + `मैं ${agent} हूँ, एक AI सहायक। गुणवत्ता के लिए यह कॉल रिकॉर्ड की जा सकती है। `
         + 'क्या अभी बात करने का सही समय है?';
     case 'bn':
-      return `নমস্কার${lead ? ` ${lead}` : ''}, আমি ${agent}, ${business}-এর পক্ষ থেকে একজন AI সহকারী, `
-        + 'আপনার জিজ্ঞাসার বিষয়ে ফোন করছি। মান বজায় রাখতে এই কলটি রেকর্ড করা হতে পারে। '
+      return `নমস্কার${lead ? ` ${lead}` : ''}, ${business} থেকে আপনার জিজ্ঞাসার বিষয়ে ফোন করছি। `
+        + `আমি ${agent}, একজন AI সহকারী। মান বজায় রাখতে এই কলটি রেকর্ড করা হতে পারে। `
         + 'এখন কি কথা বলার সুবিধাজনক সময়?';
     default:
-      return `Hello${lead ? ` ${lead}` : ''}, this is ${agent}, an AI assistant calling from ${business} `
-        + 'about your enquiry. This call may be recorded for quality. Is this a good time to talk?';
+      return `Hello${lead ? ` ${lead}` : ''}, I'm calling from ${business} about your enquiry. `
+        + `This is ${agent}, an AI assistant. This call may be recorded for quality. Is this a good time to talk?`;
   }
 }
 

@@ -65,3 +65,18 @@ describe('Sarvam instant-outbound webhook (real payload, URL token auth)', () =>
     expect(lead).toMatchObject({ status: 'called', score: 82 });
   });
 });
+
+describe('call transcript for the app', () => {
+  it("maps Sarvam's {role, en_text} turns to {speaker, text} lines", async () => {
+    const { normalizeTranscript } = await import('../src/routes/calls');
+    expect(normalizeTranscript([
+      { role: 'agent', en_text: 'Hello Rahul' },
+      { role: 'user', en_text: ' Hi ' },
+      { role: 'user', en_text: '' },
+    ])).toEqual({ lines: [{ speaker: 'agent', text: 'Hello Rahul' }, { speaker: 'lead', text: 'Hi' }] });
+    // Already in the app's shape: kept, including offsets and language.
+    expect(normalizeTranscript({ lines: [{ speaker: 'lead', text: 'Yes', offset_ms: 1200 }], language: 'hi' }))
+      .toEqual({ lines: [{ speaker: 'lead', text: 'Yes', offset_ms: 1200 }], language: 'hi' });
+    expect(normalizeTranscript(null)).toEqual({ lines: [] });
+  });
+});

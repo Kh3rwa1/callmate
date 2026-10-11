@@ -176,21 +176,22 @@ describe('AI + recording disclosure (app_overrides)', () => {
   it('writes the disclosure in English, Hindi and Bengali', () => {
     const names = { lead: 'Asha', agent: 'Arjun', business: 'Bright Future' };
     expect(disclosureMessage('en', names)).toBe(
-      'Hello Asha, this is Arjun, an AI assistant calling from Bright Future about your enquiry. '
-      + 'This call may be recorded for quality. Is this a good time to talk?');
+      "Hello Asha, I'm calling from Bright Future about your enquiry. "
+      + 'This is Arjun, an AI assistant. This call may be recorded for quality. Is this a good time to talk?');
     const hi = disclosureMessage('hi', names);
     expect(hi).toContain('AI सहायक');
     expect(hi).toContain('रिकॉर्ड');
-    expect(hi).toContain('Bright Future');
+    expect(hi).toMatch(/^नमस्ते Asha, Bright Future की ओर से/);
     const bn = disclosureMessage('bn', names);
     expect(bn).toContain('AI সহকারী');
     expect(bn).toContain('রেকর্ড');
+    expect(bn).toMatch(/^নমস্কার Asha, Bright Future থেকে/);
     // Missing names fall back without leaving gaps.
     expect(disclosureMessage('en', {})).toBe(
-      'Hello, this is Assistant, an AI assistant calling from our team about your enquiry. '
-      + 'This call may be recorded for quality. Is this a good time to talk?');
-    expect(disclosureMessage('hi', {})).toMatch(/^नमस्ते, मैं सहायक हूँ, हमारी टीम/);
-    expect(disclosureMessage('bn', {})).toMatch(/^নমস্কার, আমি সহকারী, আমাদের টিম/);
+      "Hello, I'm calling from our team about your enquiry. "
+      + 'This is Assistant, an AI assistant. This call may be recorded for quality. Is this a good time to talk?');
+    expect(disclosureMessage('hi', {})).toMatch(/^नमस्ते, हमारी टीम की ओर से .* मैं सहायक हूँ/);
+    expect(disclosureMessage('bn', {})).toMatch(/^নমস্কার, আমাদের টিম থেকে .* আমি সহকারী/);
   });
 
   it('picks the language from the employee\'s first language and speaks only the lead\'s first name', () => {
@@ -205,9 +206,9 @@ describe('AI + recording disclosure (app_overrides)', () => {
     });
   });
 
-  it('manual dial sends no app_overrides by default', async () => {
+  it('manual dial sends no app_overrides when the override is off', async () => {
     const cap = captureDial();
-    const res = await manualDial(live(), (await seedLead()).id);
+    const res = await manualDial(live({ SARVAM_DISCLOSURE_OVERRIDE: undefined }), (await seedLead()).id);
     expect(res.status).toBe(200);
     expect(cap.body().app_config).not.toHaveProperty('app_overrides');
   });
@@ -616,7 +617,7 @@ describe('DLT 140/160 caller-ID check', () => {
   it('/health/deep reports caller_ids_dlt_series and the disclosure flag', async () => {
     const probe = (extra: Record<string, unknown>) => worker.fetch(new Request('http://localhost/health/deep', { headers: { 'x-health-key': 'hk' } }),
       { ...env, HEALTH_CHECK_SECRET: 'hk', SARVAM_ORG_ID: 'o', SARVAM_WORKSPACE_ID: 'w', SARVAM_ADMISSIONS_APP_ID: 'a', ...extra } as any);
-    const bad = (await (await probe({ SARVAM_AGENT_PHONE_NUMBERS: '+917971442975' })).json()) as any;
+    const bad = (await (await probe({ SARVAM_AGENT_PHONE_NUMBERS: '+917971442975', SARVAM_DISCLOSURE_OVERRIDE: undefined })).json()) as any;
     expect(bad.compliance).toEqual({ caller_ids_dlt_series: false, disclosure_override: false });
     const good = (await (await probe({ SARVAM_AGENT_PHONE_NUMBERS: '+911601234567', SARVAM_DISCLOSURE_OVERRIDE: 'true' })).json()) as any;
     expect(good.compliance).toEqual({ caller_ids_dlt_series: true, disclosure_override: true });
