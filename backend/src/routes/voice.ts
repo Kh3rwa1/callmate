@@ -18,6 +18,7 @@ import { defaultFollowupDraft } from '../services/playbooks';
 import { requireSecret } from '../utils/secrets';
 import { timingSafeEqual } from '../utils/compare';
 import { jsonErrorHandler } from '../utils/errors';
+import { testGreeting } from '../services/disclosure';
 import { VoiceGender, auraVoice, sarvamLanguageCode, sarvamSpeaker, voiceAgentVariables, voiceGender, voiceLang } from '../services/voice_persona';
 
 const voiceApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -104,6 +105,8 @@ voiceApp.post('/test-session', async (c) => {
     proxy_base_url: proxyBaseUrl,
     greeting_text: greetingText,
     greeting_audio_base64: greetingAudioBase64,
+    // Replaces the Sarvam agent's default opening line (initial_bot_message, initial_language_name).
+    ...testGreeting(lang, { agent: agentName, business: businessName }),
     agent_variables: {
       business_name: businessName,
       agent_name: agentName,
