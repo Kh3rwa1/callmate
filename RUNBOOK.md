@@ -63,7 +63,7 @@ waits for `production` environment approval, applies pending migrations,
 deploys and smoke-tests `PROD_HEALTH_URL`. Manual equivalent:
 ```bash
 cd backend
-npx wrangler d1 export callpilot-db --remote --output=./backup_$(date +%Y%m%d_%H%M%S).sql
+npx wrangler d1 time-travel info callpilot-db   # note the bookmark: your restore point
 npm run db:migrate:prod
 npm run deploy
 curl -f https://<your api domain>/health
@@ -96,12 +96,13 @@ Firebase config is missing.
 
 Cloudflare D1 is SQLite at the edge. To roll back an accidental or failing migration:
 
-### 2.1 Export Current Database Backup
-Every **Deploy Production** run exports the database before migrating and keeps it
-for 30 days as the workflow artifact `d1-backup-<run id>` (`backup-<sha>.sql`).
-Always capture an immediate snapshot before any rollback operations:
+### 2.1 Restore Point
+Every **Deploy Production** run records a D1 Time Travel bookmark before migrating
+(see the run summary). `wrangler d1 export` can't export this database (it has FTS5
+tables), so use Time Travel, which keeps 30 days of history:
 ```bash
-npx wrangler d1 export callpilot-db --remote --output=./backup_$(date +%Y%m%d_%H%M%S).sql
+npx wrangler d1 time-travel info callpilot-db                      # bookmark for "now"
+npx wrangler d1 time-travel restore callpilot-db --bookmark=<bookmark>   # or --timestamp=<RFC3339>
 ```
 
 ### 2.2 Reversing Additive Schema Changes
@@ -116,11 +117,7 @@ DROP INDEX IF EXISTS idx_leads_biz_phone;
 ```bash
 npx wrangler d1 execute callpilot-db --remote --file=./migrations/down_0004.sql
 ```
-3. If restoring from a previous full snapshot:
-```bash
-# In emergency only: restore previous snapshot
-npx wrangler d1 execute callpilot-db --remote --file=./backup_previous_stable.sql
-```
+3. If that isn't enough, restore the whole database to the bookmark from §2.1.
 
 ---
 

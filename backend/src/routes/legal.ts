@@ -120,7 +120,7 @@ export function privacyPage(v: LegalVars): string {
   <li><strong>Calls:</strong> call status, time and duration; audio recordings and transcripts of AI calls; AI-generated summaries, lead scores and suggested follow-ups.</li>
   <li><strong>Microphone:</strong> when you use “talk to your AI employee” to test it, your voice is streamed to our speech provider for that live conversation. We do not use it for anything else.</li>
   <li><strong>Knowledge you add:</strong> website addresses, documents and text you give the AI employee to learn from.</li>
-  <li><strong>Device and usage:</strong> a push-notification token, app version, minutes used and technical logs (IP address, request times, errors) that keep the service secure and working.</li>
+  <li><strong>Device and usage:</strong> a push-notification token, app version, minutes used, crash reports (device model, OS version and the error when the app crashes) and technical logs (IP address, request times, errors) that keep the service secure and working.</li>
 </ul>
 
 <h2>3. Why we use it</h2>
@@ -141,7 +141,7 @@ export function privacyPage(v: LegalVars): string {
 <ul>
   <li><strong>Cloudflare</strong> (hosting, database, file storage, queues and AI models) — our backend runs on Cloudflare.</li>
   <li><strong>Sarvam AI</strong> — telephony, the AI voice agent, speech recognition and speech synthesis for calls and voice tests.</li>
-  <li><strong>Google Firebase</strong> — Google Sign-In and push notifications.</li>
+  <li><strong>Google Firebase</strong> — Google Sign-In, push notifications and crash reporting (Crashlytics).</li>
   <li>Our payment processor, if you buy a paid plan (we never see full card details).</li>
 </ul>
 <p>These providers act on our instructions under their own security and privacy terms. Some of them may process data outside India; where they do, we rely on the safeguards the DPDP Act allows.</p>
