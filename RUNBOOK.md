@@ -63,7 +63,7 @@ waits for `production` environment approval, applies pending migrations,
 deploys and smoke-tests `PROD_HEALTH_URL`. Manual equivalent:
 ```bash
 cd backend
-npx wrangler d1 export callpilot-db --remote --output=./backup_$(date +%Y%m%d_%H%M%S).sql
+npx wrangler d1 time-travel info callpilot-db   # note the bookmark: your restore point
 npm run db:migrate:prod
 npm run deploy
 curl -f https://<your api domain>/health
