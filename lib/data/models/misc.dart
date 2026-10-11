@@ -505,6 +505,8 @@ class VoiceTestSession {
     this.userIdentifier = 'owner',
     this.greetingText,
     this.greetingAudioBase64,
+    this.initialBotMessage,
+    this.initialLanguageName,
     this.sessionId,
   });
 
@@ -519,6 +521,11 @@ class VoiceTestSession {
   final String userIdentifier;
   final String? greetingText;
   final String? greetingAudioBase64;
+
+  /// The agent's first line and language, replacing the default greeting
+  /// set in the Sarvam dashboard.
+  final String? initialBotMessage;
+  final String? initialLanguageName;
 
   /// Server-side session row; ended via [VoiceSessionRepository.endTestSession]
   /// so it stops counting against the business's concurrent-session cap.
@@ -535,6 +542,8 @@ class VoiceTestSession {
     userIdentifier: jStr(j, 'user_identifier', 'owner'),
     greetingText: jStrN(j, 'greeting_text'),
     greetingAudioBase64: jStrN(j, 'greeting_audio_base64'),
+    initialBotMessage: jStrN(j, 'initial_bot_message'),
+    initialLanguageName: jStrN(j, 'initial_language_name'),
     sessionId: jStrN(j, 'session_id'),
   );
 }

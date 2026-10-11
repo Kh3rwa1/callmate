@@ -186,6 +186,10 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       userIdentifierType: UserIdentifierType.custom,
       interactionType: InteractionType.call,
       sampleRate: 16000,
+      initialBotMessage: session.initialBotMessage,
+      initialLanguageName: session.initialLanguageName == null
+          ? null
+          : SarvamToolLanguageName.fromString(session.initialLanguageName!),
       agentVariables: {
         // Fallbacks only; the server and the caller pass the employee's own
         // voice. "meera" is not a Bulbul v4 voice.

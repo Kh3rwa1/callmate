@@ -77,6 +77,22 @@ export function disclosureMessage(lang: VoiceLang, names: DisclosureNames): stri
   }
 }
 
+/**
+ * The first thing the agent says in the owner's in-app test ("Talk to <agent>"), passed to the Sarvam
+ * SDK as initial_bot_message so it replaces the agent's default greeting from the Sarvam dashboard.
+ * Business first, like the outbound disclosure.
+ */
+export function testGreeting(lang: VoiceLang, names: Pick<DisclosureNames, 'agent' | 'business'>): SarvamAppOverrides {
+  const agent = safeSpokenName(names.agent, lang === 'en' ? 'Assistant' : lang === 'hi' ? 'सहायक' : 'সহকারী');
+  const business = safeSpokenName(names.business, lang === 'en' ? 'our team' : lang === 'hi' ? 'हमारी टीम' : 'আমাদের টিম');
+  const message = lang === 'hi'
+    ? `नमस्ते, ${business} की ओर से। मैं ${agent} हूँ, AI सहायक। बताइए, मैं आपकी क्या मदद करूँ?`
+    : lang === 'bn'
+      ? `নমস্কার, ${business} থেকে বলছি। আমি ${agent}, AI সহকারী। বলুন, কীভাবে সাহায্য করতে পারি?`
+      : `Hello, this is ${business}. I'm ${agent}, the AI assistant. How can I help you today?`;
+  return { initial_bot_message: message, initial_language_name: LANGUAGE_NAMES[lang] };
+}
+
 export interface DisclosureInput {
   agent?: { name?: string | null; languages?: string | string[] | null } | null;
   business?: { name?: string | null } | null;

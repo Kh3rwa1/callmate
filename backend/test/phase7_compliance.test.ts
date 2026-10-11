@@ -234,6 +234,9 @@ describe('Phase 7: Compliance, Opt-Out Detection, Consent Defaults & Attestation
       expect(res.status).toBe(200);
       const data: any = await res.json();
       expect(data.greeting_text).toBe("Hello, I'm Maya, an AI assistant from Apex Academy. How can I assist you today?");
+      // The Sarvam agent opens with our line, business first, instead of its dashboard default.
+      expect(data.initial_bot_message).toBe("Hello, this is Apex Academy. I'm Maya, the AI assistant. How can I help you today?");
+      expect(data.initial_language_name).toBe('English');
     });
   });
 });
