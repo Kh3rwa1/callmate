@@ -367,7 +367,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       key: key,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Reveal(child: Center(child: BrandWordmark(size: 20))),
+        // Text-only wordmark: the big bird below is the logo here.
+        const Reveal(
+          child: Center(child: BrandWordmark(size: 22, showMark: false)),
+        ),
         const SizedBox(height: 20),
         const Center(
           child: PopIn(
@@ -487,7 +490,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: PopIn(child: Mascot(state: MascotState.waving, size: 96)),
         ),
         const SizedBox(height: 12),
-        const Center(child: BrandWordmark(size: 22)),
+        const Center(child: BrandWordmark(size: 22, showMark: false)),
         const SizedBox(height: 28),
         AppCard(
           padding: const EdgeInsets.all(22),
