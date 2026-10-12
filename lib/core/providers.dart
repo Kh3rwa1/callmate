@@ -334,6 +334,31 @@ final crashReportingProvider = Provider<CrashReportingService>(
 final analyticsProvider = Provider<AnalyticsService>(
   (_) => DebugAnalyticsService(),
 );
+
+/// Tells the server which language the owner reads the app in, so alerts
+/// and pushes arrive in Hindi/Bengali too. Sent only when it changes (or
+/// after a new sign-in), never on an ordinary launch.
+final appLanguageSyncProvider = Provider<void>((ref) {
+  if (ref.watch(sessionProvider).value != true) return;
+  final lang =
+      ref.watch(languageProvider) ??
+      AppLang.fromCode(PlatformDispatcher.instance.locale.languageCode);
+  LocalPrefs? prefs;
+  try {
+    prefs = ref.watch(localPrefsProvider);
+  } catch (_) {}
+  if (prefs == null || prefs.syncedAppLanguage == lang.code) return;
+  final repo = ref.read(businessRepoProvider);
+  unawaited(() async {
+    try {
+      await repo.setAppLanguage(lang.code);
+      await prefs!.setSyncedAppLanguage(lang.code);
+    } catch (_) {
+      // Offline: tried again next time the language or session changes.
+    }
+  }());
+});
+
 final notificationServiceProvider = Provider<NotificationService>(
   (ref) => NotificationService(
     // The owner's choice, else the phone's language (as the app does).

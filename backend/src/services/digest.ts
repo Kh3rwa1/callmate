@@ -13,6 +13,7 @@
 
 import { Env } from '../types';
 import { sendBusinessPushNotification } from './fcm';
+import { asOwnerLang, ownerText, type OwnerLang } from './owner_text';
 import { logInfo, logWarn } from '../utils/logger';
 import { DEFAULT_BUSINESS_TIMEZONE, callbacksDue, localDateAndHour, localMidnightUtc, periodResults, PeriodResults } from './results';
 
@@ -27,24 +28,21 @@ export interface DigestContent {
   route: string;
 }
 
-function plural(n: number, one: string, many: string): string {
-  return `${n} ${n === 1 ? one : many}`;
-}
-
 /** Push text for a day's results; null when there is nothing worth telling the owner. */
-export function buildDigest(r: PeriodResults, callbacksTomorrow: number): DigestContent | null {
+export function buildDigest(r: PeriodResults, callbacksTomorrow: number, lang: OwnerLang = 'en'): DigestContent | null {
   if (r.enquiries === 0 && r.calls === 0) return null;
+  const t = ownerText(lang);
   const parts: string[] = [];
-  if (r.calls > 0) parts.push(plural(r.calls, 'call', 'calls'));
-  if (r.ready_to_buy > 0) parts.push(`${r.ready_to_buy} ready to buy`);
-  else if (r.interested > 0) parts.push(`${r.interested} interested`);
-  if (r.enquiries > 0 && (r.calls === 0 || r.ready_to_buy === 0)) parts.push(plural(r.enquiries, 'new enquiry', 'new enquiries'));
-  if (callbacksTomorrow > 0) parts.push(plural(callbacksTomorrow, 'callback tomorrow', 'callbacks tomorrow'));
+  if (r.calls > 0) parts.push(t.digestCalls(r.calls));
+  if (r.ready_to_buy > 0) parts.push(t.digestReady(r.ready_to_buy));
+  else if (r.interested > 0) parts.push(t.digestInterested(r.interested));
+  if (r.enquiries > 0 && (r.calls === 0 || r.ready_to_buy === 0)) parts.push(t.digestEnquiries(r.enquiries));
+  if (callbacksTomorrow > 0) parts.push(t.digestCallbacks(callbacksTomorrow));
   const route = r.ready_to_buy > 0 ? '/leads?filter=hot' : (r.interested > 0 ? '/leads?filter=warm' : '/leads');
-  const cta = r.ready_to_buy > 0 ? 'tap to see them' : 'tap to see more';
+  const cta = r.ready_to_buy > 0 ? t.digestSeeThem : t.digestSeeMore;
   return {
-    title: 'Your day with CallPilot',
-    body: `Today: ${parts.join(', ')} — ${cta}`,
+    title: t.digestTitle,
+    body: t.digestBody(parts, cta),
     route,
   };
 }
@@ -68,18 +66,19 @@ export async function runDailyDigests(env: Env, now: Date = new Date()): Promise
   let skipped = 0;
   try {
     const { results: businesses } = await env.DB.prepare(
-      `SELECT b.id FROM businesses b
+      `SELECT b.id, b.app_language FROM businesses b
        WHERE b.digest_enabled = 1
          AND EXISTS (SELECT 1 FROM devices d WHERE d.business_id = b.id)
          AND NOT EXISTS (SELECT 1 FROM digest_log g WHERE g.business_id = b.id AND g.date = ?)
        LIMIT ?`
-    ).bind(date, DIGEST_BATCH_LIMIT).all<{ id: string }>();
+    ).bind(date, DIGEST_BATCH_LIMIT).all<{ id: string; app_language?: string }>();
 
     for (const b of businesses ?? []) {
       try {
         const today = await periodResults(env.DB, b.id, dayStart, now);
         const callbacks = await callbacksDue(env.DB, b.id, tomorrowStart, dayAfter);
-        const content = buildDigest(today, callbacks);
+        const lang = asOwnerLang(b.app_language);
+        const content = buildDigest(today, callbacks, lang);
         if (!content) {
           skipped++;
           continue;
@@ -88,8 +87,8 @@ export async function runDailyDigests(env: Env, now: Date = new Date()): Promise
 
         await env.DB.prepare(
           `INSERT INTO notifications (id, business_id, type, title, body, route, action_label, is_read, created_at)
-           VALUES (?, ?, 'daily_digest', ?, ?, ?, 'See results', 0, datetime('now'))`
-        ).bind(`notif_${crypto.randomUUID().slice(0, 12)}`, b.id, content.title, content.body, content.route).run();
+           VALUES (?, ?, 'daily_digest', ?, ?, ?, ?, 0, datetime('now'))`
+        ).bind(`notif_${crypto.randomUUID().slice(0, 12)}`, b.id, content.title, content.body, content.route, ownerText(lang).seeResults).run();
         await sendBusinessPushNotification(env, b.id, { type: 'daily_digest', ...content });
         sent++;
       } catch (err: any) {

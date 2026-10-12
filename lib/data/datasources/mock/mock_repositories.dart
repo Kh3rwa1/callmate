@@ -69,6 +69,8 @@ class MockBusinessRepository implements BusinessRepository {
     return business;
   });
   @override
+  Future<void> setAppLanguage(String code) async {}
+  @override
   Future<Agent?> getAgent() => _lag(() => b.agent, 150);
   @override
   Future<Agent> saveAgent(Agent agent) => _lag(() {

@@ -152,6 +152,8 @@ export const patchBusinessSchema = z.object({
   digest_enabled: z.boolean().optional(),
   /** Average sale value for the results card's revenue estimate; null clears it. */
   avg_deal_value_inr: z.number().int().min(1).max(100_000_000).nullable().optional(),
+  /** Language the owner reads the app in; notifications and pushes follow it. */
+  app_language: z.enum(['en', 'hi', 'bn']).optional(),
 });
 
 /** POST /agent/test-call: the owner's own mobile number. */
