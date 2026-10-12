@@ -17,6 +17,7 @@ import { normalizePhone } from '../utils/phone';
 import { placeLeadCall } from './dial';
 import { clampDelay, retryDelaySeconds, MAX_DIAL_ATTEMPTS } from './campaign_queue';
 import { sendBusinessPushNotification } from './fcm';
+import { ownerLanguage, ownerText, type EnquiryNotice, type OwnerLang } from './owner_text';
 
 export const INSTANT_CALL_KIND = 'instant_call';
 
@@ -258,23 +259,17 @@ export async function enqueueInstantCall(
 }
 
 /** What the owner is told about an enquiry. */
-export type EnquiryNotice = 'calling' | 'scheduled' | 'manual' | 'not_called_dnc' | 'not_called_minutes' | 'not_called_failed';
+export type { EnquiryNotice } from './owner_text';
 
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] || name;
 }
 
-export function enquiryNoticeText(kind: EnquiryNotice, leadName: string): { title: string; body: string } {
-  const title = `New enquiry from ${firstName(leadName)}`;
-  const body = {
-    calling: 'Your AI employee is calling them now.',
-    scheduled: 'Your AI employee will call them when calling hours start.',
-    manual: 'Auto-call is off. Open the lead to call them.',
-    not_called_dnc: 'Not called: this number is on your do-not-call list.',
-    not_called_minutes: 'Not called: add calling minutes to auto-call new enquiries.',
-    not_called_failed: 'The AI call could not be placed. Open the lead to try again.',
-  }[kind];
-  return { title, body };
+export function enquiryNoticeText(
+  kind: EnquiryNotice, leadName: string, lang: OwnerLang = 'en',
+): { title: string; body: string } {
+  const t = ownerText(lang);
+  return { title: t.enquiryTitle(firstName(leadName)), body: t.enquiryBody(kind) };
 }
 
 /** In-app notification row + push ("New enquiry from X — calling now"). Best effort. */
@@ -282,13 +277,14 @@ export async function notifyOwner(
   env: Env, businessId: string, leadId: string, leadName: string, kind: EnquiryNotice,
   waitUntil?: (p: Promise<unknown>) => void,
 ): Promise<void> {
-  const { title, body } = enquiryNoticeText(kind, leadName);
+  const lang = await ownerLanguage(env, businessId);
+  const { title, body } = enquiryNoticeText(kind, leadName, lang);
   const route = `/leads/${leadId}`;
   try {
     await env.DB.prepare(
       `INSERT INTO notifications (id, business_id, type, title, body, route, action_label, is_read, created_at)
-       VALUES (?, ?, 'new_lead', ?, ?, ?, 'View', 0, datetime('now'))`
-    ).bind(`notif_${crypto.randomUUID().slice(0, 12)}`, businessId, title, body, route).run();
+       VALUES (?, ?, 'new_lead', ?, ?, ?, ?, 0, datetime('now'))`
+    ).bind(`notif_${crypto.randomUUID().slice(0, 12)}`, businessId, title, body, route, ownerText(lang).view).run();
   } catch (err: any) {
     console.error(JSON.stringify({ msg: 'enquiry_notification_failed', error: err?.message }));
   }

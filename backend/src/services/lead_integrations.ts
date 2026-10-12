@@ -16,6 +16,7 @@
  * Providers redeliver and IndiaMART pull windows overlap, so each provider lead id is claimed once
  * in lead_external_ids before capture (and released again if capture crashes, so a retry works).
  */
+import { ownerLanguage, ownerText } from './owner_text';
 import { Env } from '../types';
 import { encryptAtRest, decryptAtRest } from '../utils/crypto_data';
 import { timingSafeEqual } from '../utils/compare';
@@ -93,13 +94,15 @@ export async function setSourceError(env: Env, source: LeadSourceRow, code: stri
   if (code && code !== previous && OWNER_ACTION_ERRORS.has(code)) {
     const name = source.kind === 'indiamart' ? 'IndiaMART' : source.kind === 'meta' ? 'Facebook & Instagram' : 'Google Ads';
     try {
+      const t = ownerText(await ownerLanguage(env, source.business_id));
       await env.DB.prepare(
         `INSERT INTO notifications (id, business_id, type, title, body, route, action_label, is_read, created_at)
-         VALUES (?, ?, 'lead_source_error', ?, ?, '/leads/auto', 'Fix', 0, datetime('now'))`
+         VALUES (?, ?, 'lead_source_error', ?, ?, '/leads/auto', ?, 0, datetime('now'))`
       ).bind(
         `notif_${crypto.randomUUID().slice(0, 12)}`, source.business_id,
-        `${name} connection stopped working`,
-        'New leads are not coming in. Open "Get leads automatically" and connect it again.',
+        t.sourceErrorTitle(name),
+        t.sourceErrorBody,
+        t.fix,
       ).run();
     } catch (err: any) {
       console.error(JSON.stringify({ msg: 'lead_source_error_notification_failed', error: err?.message }));

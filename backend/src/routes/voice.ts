@@ -10,6 +10,7 @@ import { billableMinutes, claimWebhookEvent, releaseWebhookEvent, recordCallUsag
 import { MAX_DIAL_ATTEMPTS, requeueLead, maybeCompleteCampaign, sarvamWebhookToken } from '../services/campaign_queue';
 import { RETRY_SPACING_SECONDS, isInvalidNumberOutcome, isRetryableOutcome, keepsLeadRating } from '../services/call_outcomes';
 import { callDurationSeconds } from '../services/economics';
+import { ownerLanguage, ownerText } from '../services/owner_text';
 import { isAllowedSarvamPath } from '../services/sarvam_proxy_guard';
 import { hitRateLimit } from '../utils/rate_limit';
 import { retrieveKnowledge } from '../services/knowledge';
@@ -805,17 +806,22 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
       );
     }
 
+    // Owner-facing words follow the language they use the app in.
+    const ownerT = ownerText(await ownerLanguage(c.env, businessId));
+
     // Create Notification for Hot Lead
     if (isConnected && norm.temperature === 'hot') {
       const notifId = `notif_${crypto.randomUUID().slice(0, 12)}`;
       statements.push(
         c.env.DB.prepare(
           `INSERT INTO notifications (id, business_id, type, title, body, route, action_label, is_read, created_at)
-           VALUES (?, ?, 'hot_lead', 'Hot Lead Alert', ?, ?, 'View Result', 0, datetime('now'))`
+           VALUES (?, ?, 'hot_lead', ?, ?, ?, ?, 0, datetime('now'))`
         ).bind(
           notifId, businessId,
-          `${leadName} is very interested (${norm.score}/100)`,
-          `/calls/${callId}/result`
+          ownerT.hotLeadTitle,
+          ownerT.hotLeadBody(leadName, norm.score),
+          `/calls/${callId}/result`,
+          ownerT.viewResult,
         )
       );
     }
@@ -889,8 +895,8 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
       safeWaitUntil(
         sendBusinessPushNotification(c.env, businessId, {
           type: 'hot_lead',
-          title: 'Hot Lead Alert',
-          body: `${leadName} is very interested (${norm.score}/100)`,
+          title: ownerT.hotLeadTitle,
+          body: ownerT.hotLeadBody(leadName, norm.score),
           route: `/leads/${leadId}`,
         })
       );
@@ -900,8 +906,8 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
       safeWaitUntil(
         sendBusinessPushNotification(c.env, businessId, {
           type: 'callback',
-          title: 'Callback Scheduled',
-          body: `Callback scheduled with ${leadName}`,
+          title: ownerT.callbackTitle,
+          body: ownerT.callbackBody(leadName),
           route: `/callbacks`,
         })
       );
@@ -912,8 +918,8 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
       safeWaitUntil(
         sendBusinessPushNotification(c.env, businessId, {
           type: 'follow_up_ready',
-          title: 'Follow-up Ready',
-          body: `Follow-up message ready for ${leadName}`,
+          title: ownerT.followUpTitle,
+          body: ownerT.followUpBody(leadName),
           route: `/followups/${followUpId}`,
         })
       );

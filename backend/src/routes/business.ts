@@ -23,6 +23,7 @@ function formatBusiness(row: any) {
     owner_name: row.owner_name,
     digest_enabled: row.digest_enabled === undefined || row.digest_enabled === null ? true : row.digest_enabled === 1,
     avg_deal_value_inr: row.avg_deal_value_inr ?? null,
+    app_language: row.app_language ?? 'en',
   };
 }
 
@@ -86,17 +87,18 @@ businessApp.patch('/business', async (c) => {
   const ownerName = body.owner_name !== undefined ? body.owner_name : existing.owner_name;
   const digestEnabled = body.digest_enabled !== undefined ? (body.digest_enabled ? 1 : 0) : (existing.digest_enabled ?? 1);
   const avgDealValue = body.avg_deal_value_inr !== undefined ? body.avg_deal_value_inr : (existing.avg_deal_value_inr ?? null);
+  const appLanguage = body.app_language ?? existing.app_language ?? 'en';
 
   await c.env.DB.prepare(
     `UPDATE businesses SET
       name = ?, category = ?, address = ?, offerings = ?, pricing = ?,
       opening_hours = ?, location = ?, whatsapp_number = ?, human_number = ?,
-      owner_name = ?, digest_enabled = ?, avg_deal_value_inr = ?, updated_at = datetime('now')
+      owner_name = ?, digest_enabled = ?, avg_deal_value_inr = ?, app_language = ?, updated_at = datetime('now')
      WHERE id = ?`
   ).bind(
     name, category, address, offerings, pricing,
     openingHours, location, whatsappNumber, humanNumber,
-    ownerName, digestEnabled, avgDealValue, user.business_id
+    ownerName, digestEnabled, avgDealValue, appLanguage, user.business_id
   ).run();
 
   const updated = await c.env.DB.prepare('SELECT * FROM businesses WHERE id = ?').bind(user.business_id).first();

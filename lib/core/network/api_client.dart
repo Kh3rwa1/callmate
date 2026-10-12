@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../config/app_env.dart';
 import '../storage/local_prefs.dart';
 import '../storage/secure_store.dart';
+import 'response_cache.dart';
 
 /// User-presentable API error. Screens show [message]; details stay in logs.
 class ApiException implements Exception {
@@ -27,6 +28,7 @@ class ApiClient {
     LocalPrefs? prefs,
     this.onAuthFailure,
     this.onMutation,
+    this.cache,
   }) : dio = Dio(
          BaseOptions(
            baseUrl:
@@ -112,6 +114,10 @@ class ApiClient {
   /// Called with the request path after every successful POST/PATCH/DELETE,
   /// so open screens can refresh.
   final void Function(String path)? onMutation;
+
+  /// Saved answers for reads, so screens open instantly and survive a bad
+  /// network. Null in tests and the offline demo.
+  final ResponseCache? cache;
 
   /// Pause before retrying a GET that failed on the network.
   @visibleForTesting
@@ -235,7 +241,29 @@ class ApiClient {
     String path,
     T Function(dynamic) map, {
     Map<String, dynamic>? query,
-  }) => _wrap(() => dio.get(path, queryParameters: query), map);
+  }) async {
+    final c = cache;
+    if (c == null || !ResponseCache.cacheable(path)) {
+      return _wrap(() => dio.get(path, queryParameters: query), map);
+    }
+    Object? raw;
+    try {
+      raw = await c.get(
+        ResponseCache.keyFor(path, query),
+        () async => (await dio.get(path, queryParameters: query)).data,
+        isOffline: (e) => e is DioException && _toApi(e).isNetwork,
+      );
+    } on DioException catch (e) {
+      throw _toApi(e);
+    }
+    try {
+      return map(raw);
+    } catch (_) {
+      // A saved copy from an older app version that no longer parses:
+      // ask the server directly.
+      return _wrap(() => dio.get(path, queryParameters: query), map);
+    }
+  }
 
   Future<T> post<T>(String path, T Function(dynamic) map, {Object? data}) =>
       _mutate(path, () => _wrap(() => dio.post(path, data: data), map));
@@ -248,6 +276,7 @@ class ApiClient {
 
   Future<T> _mutate<T>(String path, Future<T> Function() send) async {
     final result = await send();
+    cache?.markStale();
     onMutation?.call(path);
     return result;
   }

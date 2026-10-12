@@ -38,6 +38,10 @@ abstract class BusinessRepository {
   Future<Business> saveBusiness(Business business);
   Future<Agent?> getAgent();
   Future<Agent> saveAgent(Agent agent);
+
+  /// The language the owner reads the app in ('en', 'hi', 'bn'), so the
+  /// server writes notifications and pushes in it.
+  Future<void> setAppLanguage(String code);
 }
 
 abstract class KnowledgeRepository {

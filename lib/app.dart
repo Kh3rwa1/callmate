@@ -87,6 +87,8 @@ class _CallPilotAppState extends ConsumerState<CallPilotApp> {
     ref.watch(pushServiceInitializerProvider);
     // Keep the live campaign listener alive app-wide.
     ref.watch(activeCampaignProvider);
+    // Alerts and pushes follow the language the owner picked.
+    ref.watch(appLanguageSyncProvider);
     return MaterialApp.router(
       title: Brand.appName,
       debugShowCheckedModeBanner: false,

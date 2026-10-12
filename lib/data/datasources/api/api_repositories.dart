@@ -134,6 +134,9 @@ class ApiBusinessRepository implements BusinessRepository {
   Future<Business> saveBusiness(Business b) =>
       api.patch('/business', (d) => Business.fromJson(_j(d)), data: b.toJson());
   @override
+  Future<void> setAppLanguage(String code) =>
+      api.patch('/business', (_) {}, data: {'app_language': code});
+  @override
   Future<Agent?> getAgent() =>
       api.get('/agent', (d) => d == null ? null : Agent.fromJson(_j(d)));
   @override

@@ -65,6 +65,12 @@ class LocalPrefs {
   Future<void> setLanguage(String? v) =>
       v == null ? _p.remove(_language) : _p.setString(_language, v);
 
+  /// Last app language sent to the server (see appLanguageSyncProvider).
+  static const _syncedLanguage = 'sync.app_language';
+  String? get syncedAppLanguage => _p.getString(_syncedLanguage);
+  Future<void> setSyncedAppLanguage(String v) =>
+      _p.setString(_syncedLanguage, v);
+
   static const _installRefChecked = 'attribution.install_referrer_checked';
   static const _installRefCode = 'attribution.install_referral_code';
 
@@ -93,5 +99,6 @@ class LocalPrefs {
     await _p.remove(_agentTested);
     await _p.remove(_heardAi);
     await _p.remove(_checklistDismissed);
+    await _p.remove(_syncedLanguage);
   }
 }
