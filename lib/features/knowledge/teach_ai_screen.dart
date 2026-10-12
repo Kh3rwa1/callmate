@@ -125,6 +125,7 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
   void _openAddSheet() {
     final s = context.s;
     showModalBottomSheet<void>(
+      useRootNavigator: true,
       context: context,
       useSafeArea: true,
       builder: (ctx) => SafeArea(

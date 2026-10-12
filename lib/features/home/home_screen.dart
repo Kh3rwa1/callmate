@@ -69,11 +69,12 @@ class HomeScreen extends ConsumerWidget {
                                     style: AppTheme.eyebrow(color: world.soft),
                                   ),
                                   const SizedBox(height: 6),
-                                  // Up to two lines, never cut short: the
-                                  // name tops out at 1.4× so a typical
-                                  // 20-letter name fits at the biggest size.
+                                  // Never cut short: the serif is already
+                                  // poster-sized, so it only grows to 1.15×
+                                  // and may take a third line when the
+                                  // owner picks a big text size.
                                   MediaQuery.withClampedTextScaling(
-                                    maxScaleFactor: 1.4,
+                                    maxScaleFactor: 1.15,
                                     child: SwapFade(
                                       child: Text(
                                         biz?.name ?? s.homeWelcome,
@@ -83,7 +84,7 @@ class HomeScreen extends ConsumerWidget {
                                           color: world.fg,
                                           height: 1.02,
                                         ),
-                                        maxLines: 2,
+                                        maxLines: 3,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),

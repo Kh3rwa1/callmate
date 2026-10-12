@@ -123,7 +123,7 @@ class TranscriptBubble extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: t.labelMedium?.copyWith(
-                      color: isAgent ? AppColors.brand : AppColors.inkSoft,
+                      color: isAgent ? AppColors.ink : AppColors.inkSoft,
                       fontSize: 13,
                     ),
                   ),

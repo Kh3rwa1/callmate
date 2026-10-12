@@ -325,7 +325,7 @@ class _Step extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: done ? AppColors.successSoft : AppColors.brandSoft,
+                    color: done ? AppColors.successSoft : AppColors.accentSoft,
                   ),
                   child: done
                       ? Icon(
@@ -335,9 +335,7 @@ class _Step extends StatelessWidget {
                         )
                       : Text(
                           '$n',
-                          style: t.titleLarge?.copyWith(
-                            color: AppColors.brandDeep,
-                          ),
+                          style: t.titleLarge?.copyWith(color: AppColors.ink),
                         ),
                 ),
                 const SizedBox(width: AppSpace.md),

@@ -125,6 +125,7 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
         _busy = false;
       });
       await showModalBottomSheet<void>(
+        useRootNavigator: true,
         context: context,
         useSafeArea: true,
         builder: (ctx) {

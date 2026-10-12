@@ -568,12 +568,16 @@ class _NavRow extends StatelessWidget {
                           tween: Tween(begin: 0, end: progress!),
                           duration: AppMotion.of(context, AppMotion.slow),
                           curve: AppMotion.emphasized,
-                          builder: (_, v, _) => LinearProgressIndicator(
-                            value: v,
-                            minHeight: 4,
-                            borderRadius: BorderRadius.circular(9),
-                            backgroundColor: AppColors.surfaceMuted,
-                            color: progressColor ?? AppColors.ink,
+                          // The row's title already says what is left; the bar
+                          // alone would be read out as a bare "64".
+                          builder: (_, v, _) => ExcludeSemantics(
+                            child: LinearProgressIndicator(
+                              value: v,
+                              minHeight: 4,
+                              borderRadius: BorderRadius.circular(9),
+                              backgroundColor: AppColors.surfaceMuted,
+                              color: progressColor ?? AppColors.ink,
+                            ),
                           ),
                         ),
                       ],
@@ -583,6 +587,9 @@ class _NavRow extends StatelessWidget {
                 if (value != null && !stacked) ...[
                   const SizedBox(width: 12),
                   Flexible(
+                    // Fill the slot so the chevron always lines up on the
+                    // right edge, however short the value is.
+                    fit: FlexFit.tight,
                     child: Text(
                       keepNumbersTogether(value!),
                       textAlign: TextAlign.end,

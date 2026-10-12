@@ -18,6 +18,7 @@ Future<Callback?> showCallbackSheet(
   DateTime? suggested,
 }) {
   return showModalBottomSheet<Callback>(
+    useRootNavigator: true,
     context: context,
     useSafeArea: true,
     isScrollControlled: true,

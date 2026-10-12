@@ -160,7 +160,7 @@ void main() {
         await _scrollTo(h, find.text('Upgrade'));
         await h.tap(find.text('Upgrade'));
         expect(_inSheet(find.text('Choose a plan')), findsOneWidget);
-        expect(_inSheet(find.text('Yearly · 2 months free')), findsOneWidget);
+        expect(_inSheet(find.text('2 months free')), findsOneWidget);
         // Starter preselected: ₹4,999 + ₹900 GST.
         expect(_inSheet(find.text('Pay ₹5,899')), findsOneWidget);
         expect(_inSheet(find.text('GST (18%)')), findsOneWidget);
@@ -169,7 +169,7 @@ void main() {
         expect(_inSheet(find.text('₹2,160')), findsOneWidget);
         expect(_inSheet(find.text('₹14,159')), findsOneWidget);
 
-        await h.tap(find.text('Yearly · 2 months free'));
+        await h.tap(find.text('2 months free'));
         expect(
           find.byKey(const ValueKey('checkout-option-growth_annual')),
           findsOneWidget,

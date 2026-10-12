@@ -73,6 +73,7 @@ Future<void> _fallback(
 ) {
   final s = context.s;
   return showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     useSafeArea: true,
     builder: (ctx) {

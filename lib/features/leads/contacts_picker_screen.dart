@@ -139,6 +139,7 @@ class _ContactsPickerScreenState extends ConsumerState<ContactsPickerScreen> {
   Future<void> _done(LeadImportResult r) {
     final s = context.s;
     return showModalBottomSheet<void>(
+      useRootNavigator: true,
       context: context,
       useSafeArea: true,
       builder: (ctx) {

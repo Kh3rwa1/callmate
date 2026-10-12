@@ -398,6 +398,21 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         showCheckmark: false,
       ),
+      // Selected segment is ink like a selected chip, never a lavender tint.
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (st) => st.contains(WidgetState.selected) ? p.ink : p.surface,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (st) => st.contains(WidgetState.selected) ? p.surface : p.ink,
+          ),
+          side: WidgetStatePropertyAll(BorderSide(color: p.border)),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          ),
+        ),
+      ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: p.background,
         surfaceTintColor: Colors.transparent,

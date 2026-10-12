@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -178,13 +180,36 @@ class BigStat extends StatelessWidget {
             Flexible(
               child: Padding(
                 padding: EdgeInsets.only(bottom: size * 0.07),
-                child: Text(
-                  label.toUpperCase(),
-                  maxLines: 2,
-                  style: AppTheme.eyebrow(
-                    color: labelColor ?? color,
-                    size: 15,
-                  ).copyWith(height: 1.15, letterSpacing: 1.4),
+                child: LayoutBuilder(
+                  builder: (context, c) {
+                    final text = label.toUpperCase();
+                    final style = AppTheme.eyebrow(
+                      color: labelColor ?? color,
+                      size: 15,
+                    ).copyWith(height: 1.15, letterSpacing: 1.4);
+                    // Shrink just enough that the longest word fits, so a
+                    // big text size never breaks "TODAY" into "TODA".
+                    final scaler = MediaQuery.textScalerOf(context);
+                    var widest = 0.0;
+                    for (final w in text.split(' ')) {
+                      final tp = TextPainter(
+                        text: TextSpan(text: w, style: style),
+                        textScaler: scaler,
+                        textDirection: Directionality.of(context),
+                        maxLines: 1,
+                      )..layout();
+                      widest = math.max(widest, tp.width);
+                      tp.dispose();
+                    }
+                    final k = widest > c.maxWidth && widest > 0
+                        ? c.maxWidth / widest
+                        : 1.0;
+                    return Text(
+                      text,
+                      maxLines: 2,
+                      style: style.copyWith(fontSize: 15 * k),
+                    );
+                  },
                 ),
               ),
             ),

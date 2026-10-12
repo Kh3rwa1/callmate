@@ -109,7 +109,7 @@ class WeekFunnelCard extends StatelessWidget {
     final prev = [p.enquiries, p.callsConnected, p.interested, p.readyToBuy];
     final widths = funnelFractions(counts);
     final stages = [
-      (s.statEnquiries, AppColors.brand.withValues(alpha: 0.35), '/leads'),
+      (s.statEnquiries, AppColors.ink, '/leads'),
       (s.funnelTalked, AppColors.brand, '/calls?filter=connected'),
       (s.statInterested, AppColors.warm, '/leads?filter=warm'),
       (s.statHot, AppColors.hot, '/leads?filter=hot'),

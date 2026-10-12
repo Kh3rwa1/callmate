@@ -391,6 +391,7 @@ class _WebhookCard extends StatelessWidget {
 /// again, so the sheet says so and offers one-tap copies.
 Future<void> showWebhookTokenSheet(BuildContext context, LeadSource source) {
   return showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

@@ -176,6 +176,7 @@ Future<void> showIntegrationSheet(
   LeadSource? replaces,
 }) {
   return showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

@@ -15,6 +15,7 @@ import 'app_card.dart';
 Future<void> showLanguageSheet(BuildContext context, WidgetRef ref) {
   final s = context.s;
   return showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     useSafeArea: true,
     builder: (ctx) {
@@ -63,6 +64,7 @@ Future<void> showLanguageSheet(BuildContext context, WidgetRef ref) {
 Future<void> showAppearanceSheet(BuildContext context, WidgetRef ref) {
   final s = context.s;
   return showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     useSafeArea: true,
     builder: (ctx) {
@@ -188,6 +190,7 @@ Future<void> showHelpSheet(BuildContext context) =>
 Future<void> showTextSizeSheet(BuildContext context, WidgetRef ref) {
   final s = context.s;
   return showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
@@ -244,6 +247,7 @@ Future<void> _showLinkSheet(
 ) {
   final s = context.s;
   return showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     useSafeArea: true,
     isScrollControlled: true,

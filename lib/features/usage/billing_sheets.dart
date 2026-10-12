@@ -15,6 +15,7 @@ import 'billing_actions.dart';
 /// opened or the (mock) payment went through; errors stay inside the sheet.
 Future<CheckoutOutcome?> showPlanPickerSheet(BuildContext context, Usage u) =>
     showModalBottomSheet<CheckoutOutcome>(
+      useRootNavigator: true,
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
@@ -24,6 +25,7 @@ Future<CheckoutOutcome?> showPlanPickerSheet(BuildContext context, Usage u) =>
 /// "Buy more minutes": top-up packs for an active plan.
 Future<CheckoutOutcome?> showTopupSheet(BuildContext context, Usage u) =>
     showModalBottomSheet<CheckoutOutcome>(
+      useRootNavigator: true,
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
@@ -210,7 +212,18 @@ class _CycleToggle extends StatelessWidget {
         ButtonSegment(value: false, label: Text(s.billingMonthly)),
         ButtonSegment(
           value: true,
-          label: Text('${s.billingYearly} · ${s.twoMonthsFree}'),
+          // Two short lines read better than one that wraps mid-phrase.
+          label: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(s.billingYearly, maxLines: 1),
+              Text(
+                s.twoMonthsFree,
+                maxLines: 1,
+                style: const TextStyle(fontSize: 12.5),
+              ),
+            ],
+          ),
         ),
       ],
       selected: {yearly},

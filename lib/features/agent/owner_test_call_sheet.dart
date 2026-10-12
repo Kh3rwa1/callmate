@@ -21,6 +21,7 @@ import '../../l10n/l10n.dart';
 /// calling hours it offers the in-app voice test instead.
 Future<void> showOwnerTestCallSheet(BuildContext context) {
   return showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
