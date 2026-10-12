@@ -33,8 +33,10 @@ Finder _hint(String hint) => find.byWidgetPredicate(
   (w) => w is TextField && w.decoration?.hintText == hint,
 );
 
-Finder _navItem(String label) =>
-    find.descendant(of: find.byType(AppNavBar), matching: find.text(label));
+Finder _navItem(String label) => find.descendant(
+  of: find.byType(AppNavBar),
+  matching: find.byTooltip(label),
+);
 
 void main() {
   group('ImportLeadsScreen', () {

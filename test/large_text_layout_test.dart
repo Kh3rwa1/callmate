@@ -36,40 +36,21 @@ void main() {
       expect(find.byKey(const Key('home-hero')), findsOneWidget);
       expect(h.tester.takeException(), isNull);
 
-      // Tab labels: one line each, never split inside a word, and never
-      // wider than their tab.
-      final tabWidth = 412 / 5;
+      // Tab bar: icons only (each screen has its name up top), but every
+      // tab still has its name for screen readers and on long-press.
       final bar = find.byType(AppNavBar);
-      final labels = find.descendant(
+      final words = find.descendant(
         of: bar,
         matching: find.byWidgetPredicate(
-          (w) =>
-              w is Text &&
-              w.key is ValueKey<String> &&
-              (w.key! as ValueKey<String>).value.startsWith('nav-label-'),
+          (w) => w is Text && !RegExp(r'^\d+\+?$').hasMatch(w.data ?? ''),
         ),
       );
-      expect(labels, findsNWidgets(5));
-      for (final e in labels.evaluate()) {
-        final text = e.widget as Text;
-        expect(text.maxLines, 1);
-        final box = h.tester.getRect(
-          find.ancestor(
-            of: find.byWidget(text),
-            matching: find.byType(FittedBox),
-          ),
-        );
-        expect(box.width, lessThanOrEqualTo(tabWidth), reason: text.data);
-        final p = h.tester.renderObject<RenderParagraph>(
-          find.descendant(
-            of: find.byWidget(text),
-            matching: find.byType(RichText),
-          ),
-        );
-        expect(p.didExceedMaxLines, isFalse, reason: text.data);
-      }
-      // Labels stay at least 12.5 at normal size.
-      expect(AppNavBar.labelFontSize, greaterThanOrEqualTo(12.5));
+      expect(words, findsNothing, reason: 'no tab captions');
+      expect(
+        find.descendant(of: bar, matching: find.byType(Tooltip)),
+        findsNWidgets(5),
+      );
+      expect(h.tester.getSize(bar).height, greaterThanOrEqualTo(64));
     });
   }
 

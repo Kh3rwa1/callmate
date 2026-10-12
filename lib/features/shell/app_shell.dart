@@ -77,17 +77,9 @@ class AppNavBar extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final Map<int, int> badges;
 
-  /// Tab labels stop growing here so five tabs still fit side by side.
-  static const _maxLabelScale = 1.3;
-  static const labelFontSize = 12.5;
-
-  /// The text scaler for tab labels.
-  static TextScaler labelScaler(BuildContext context) =>
-      MediaQuery.textScalerOf(context).clamp(maxScaleFactor: _maxLabelScale);
-
-  /// Height of one line of tab label.
-  static double labelLine(BuildContext context) =>
-      labelScaler(context).scale(labelFontSize) * 1.25;
+  /// Height of the capsule. Icons only: every screen already shows its
+  /// name in big letters at the top, so words here would just repeat it.
+  static const barHeight = 64.0;
 
   @override
   Widget build(BuildContext context) {
@@ -102,10 +94,7 @@ class AppNavBar extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
           child: Container(
-            // One line per label, never split inside a word: labels grow
-            // with the owner's text size up to [_maxLabelScale] and shrink
-            // to fit their tab if a long word ("मेरा कर्मचारी") won't fit.
-            height: 26 + 4 + 18 + labelLine(context),
+            height: barHeight,
             padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
               color: AppColors.surface,
@@ -178,8 +167,6 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.s;
-    final t = Theme.of(context).textTheme;
-    final dur = AppMotion.of(context, AppMotion.base);
     final count = badge ?? 0;
     final fg = selected ? selectedColor : AppColors.inkFaint;
     final icon = PopSwitcher(
@@ -187,74 +174,45 @@ class _NavItem extends StatelessWidget {
       child: AppGlyph(
         data.glyph,
         key: ValueKey('$selected-$fg'),
-        size: 23,
+        size: 27,
         color: fg,
       ),
     );
-    return Semantics(
-      selected: selected,
-      button: true,
-      label: count > 0 ? s.navPending(data.label, count) : data.label,
-      excludeSemantics: true,
-      child: Pressable(
-        onTap: onTap,
-        haptic: false,
-        scale: 0.9,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              height: 26,
-              child: Center(
-                child: badge == null
-                    ? icon
-                    : Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          icon,
-                          Positioned(
-                            right: -11,
-                            top: -6,
-                            child: PopSwitcher(
-                              child: count == 0
-                                  ? const SizedBox.shrink(key: ValueKey(0))
-                                  : _Badge(
-                                      key: ValueKey(count),
-                                      text: count > 99 ? '99+' : '$count',
-                                    ),
-                            ),
-                          ),
-                        ],
+    return Tooltip(
+      // Long-press says the name, for anyone unsure what an icon means.
+      message: data.label,
+      excludeFromSemantics: true,
+      child: Semantics(
+        selected: selected,
+        button: true,
+        label: count > 0 ? s.navPending(data.label, count) : data.label,
+        excludeSemantics: true,
+        child: Pressable(
+          onTap: onTap,
+          haptic: false,
+          scale: 0.9,
+          child: Center(
+            child: badge == null
+                ? icon
+                : Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      icon,
+                      Positioned(
+                        right: -11,
+                        top: -6,
+                        child: PopSwitcher(
+                          child: count == 0
+                              ? const SizedBox.shrink(key: ValueKey(0))
+                              : _Badge(
+                                  key: ValueKey(count),
+                                  text: count > 99 ? '99+' : '$count',
+                                ),
+                        ),
                       ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            AnimatedDefaultTextStyle(
-              duration: dur,
-              curve: AppMotion.standard,
-              style: (t.labelSmall ?? const TextStyle()).copyWith(
-                fontSize: AppNavBar.labelFontSize,
-                height: 1.2,
-                letterSpacing: 0,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? selectedColor : AppColors.inkFaint,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    data.label,
-                    key: ValueKey('nav-label-${data.label}'),
-                    maxLines: 1,
-                    softWrap: false,
-                    textAlign: TextAlign.center,
-                    textScaler: AppNavBar.labelScaler(context),
+                    ],
                   ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

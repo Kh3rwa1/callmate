@@ -171,6 +171,9 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
                         size: 64,
                       ),
                     ),
+                    // Breathing room so "CALLS TODAY" never touches the
+                    // next number.
+                    const SizedBox(width: 18),
                     Expanded(
                       child: BigStat(
                         value: dash?.connected,
