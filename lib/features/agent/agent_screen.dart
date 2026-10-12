@@ -31,19 +31,22 @@ class AgentScreen extends ConsumerWidget {
     final s = context.s;
     final agent = ref.watch(agentProvider);
     return Scaffold(
-      body: SafeArea(
-        top: false,
-        bottom: false,
-        child: AsyncView<Agent?>(
-          value: agent,
-          onRetry: () => ref.invalidate(agentProvider),
-          data: (a) => a == null
-              ? EmptyState(
-                  title: s.noAgentYet,
-                  actionLabel: s.createMyAiEmployee,
-                  onAction: () => context.go('/onboarding'),
-                )
-              : _Body(agent: a),
+      body: WorldStatusBar(
+        world: AppWorld.agent,
+        child: SafeArea(
+          top: false,
+          bottom: false,
+          child: AsyncView<Agent?>(
+            value: agent,
+            onRetry: () => ref.invalidate(agentProvider),
+            data: (a) => a == null
+                ? EmptyState(
+                    title: s.noAgentYet,
+                    actionLabel: s.createMyAiEmployee,
+                    onAction: () => context.go('/onboarding'),
+                  )
+                : _Body(agent: a),
+          ),
         ),
       ),
     );

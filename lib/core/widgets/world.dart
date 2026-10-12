@@ -328,3 +328,39 @@ class WorldButton extends StatelessWidget {
     );
   }
 }
+
+/// Keeps the status bar painted in the tab's world colour while the page
+/// scrolls, so content never slides under the clock and the status-bar
+/// icons keep the right contrast after the [WorldHeader] has left.
+class WorldStatusBar extends StatelessWidget {
+  const WorldStatusBar({super.key, required this.world, required this.child});
+
+  final AppWorld world;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final top = MediaQuery.paddingOf(context).top;
+    return Stack(
+      children: [
+        child,
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: top,
+          child: IgnorePointer(
+            child: AnnotatedRegion<SystemUiOverlayStyle>(
+              value:
+                  (world.isDarkBg
+                          ? SystemUiOverlayStyle.light
+                          : SystemUiOverlayStyle.dark)
+                      .copyWith(statusBarColor: Colors.transparent),
+              child: ColoredBox(color: world.paint),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

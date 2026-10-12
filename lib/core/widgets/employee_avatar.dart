@@ -113,20 +113,15 @@ class _EmployeeAvatarState extends State<EmployeeAvatar>
   Widget build(BuildContext context) {
     final size = widget.size;
     final letters = EmployeeAvatar.initials(widget.name);
-    final fill = widget.onDark ? Colors.white : AppColors.brandFill;
-    final ink = widget.onDark ? AppColors.brandFill : Colors.white;
+    // Riya wears her world's marigold everywhere, so she reads as one
+    // person on paper, on cobalt and in the dark.
+    final fill = AppWorld.agent.bg;
+    final ink = AppWorld.agent.fg;
     final disc = Container(
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [fill, Color.lerp(fill, Colors.black, 0.16)!],
-        ),
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: fill),
       child: letters.isEmpty
           ? Icon(Icons.support_agent_rounded, size: size * 0.48, color: ink)
           : Text(

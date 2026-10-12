@@ -454,9 +454,9 @@ class _ContactRow extends StatelessWidget {
           onTap: onTap,
           shadow: false,
           padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
-          color: selected ? AppColors.brandSoft : AppColors.surface,
+          color: selected ? AppColors.accentSoft : AppColors.surface,
           border: Border.all(
-            color: selected ? AppColors.brand : AppColors.border,
+            color: selected ? AppColors.ink : AppColors.border,
             width: selected ? 1.6 : 1,
           ),
           child: Row(

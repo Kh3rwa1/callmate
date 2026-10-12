@@ -99,7 +99,11 @@ class TranscriptBubble extends StatelessWidget {
         duration: AppMotion.of(context, AppMotion.base),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: isAgent ? AppColors.brandSoft : AppColors.surfaceMuted,
+          color: isAgent
+              ? AppWorld.agent.bg.withValues(
+                  alpha: AppColors.isDark ? 0.2 : 0.32,
+                )
+              : AppColors.surfaceMuted,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(18),
             topRight: const Radius.circular(18),

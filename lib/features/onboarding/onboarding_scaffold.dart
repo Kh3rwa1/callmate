@@ -193,7 +193,7 @@ class OnboardingProgress extends StatelessWidget {
                 width: i == step ? 30 : 12,
                 height: 12,
                 decoration: BoxDecoration(
-                  color: i <= step ? AppColors.brand : AppColors.border,
+                  color: i <= step ? AppColors.ink : AppColors.border,
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),
