@@ -107,8 +107,8 @@ class ResponseCache {
   /// Called after background refreshes brought new data.
   VoidCallback? onRefreshed;
 
-  /// How long a just-fetched answer is reused without asking again (covers
-  /// the repaint that [onRefreshed] triggers).
+  /// How long a background-refreshed answer waits for the repaint that
+  /// [onRefreshed] triggers.
   final Duration freshFor;
   final Duration debounce;
 
@@ -138,7 +138,10 @@ class ResponseCache {
     Future<Object?> Function() fetch, {
     required bool Function(Object error) isOffline,
   }) async {
-    final hit = _fresh[key];
+    // Handed over once, to the repaint a background refresh asked for.
+    // Every other read is real, so polling (an upload processing, a live
+    // campaign) always sees the server's latest answer.
+    final hit = _fresh.remove(key);
     if (hit != null && DateTime.now().difference(hit.$1) < freshFor) {
       return hit.$2;
     }
@@ -192,9 +195,6 @@ class ResponseCache {
     if (running != null && running.$1 == epoch) return running.$2;
     final f = fetch()
         .then((data) {
-          // A write landed while this was in flight: don't let the older
-          // answer pose as fresh.
-          if (epoch == _epoch) _fresh[key] = (DateTime.now(), data);
           _save(key, data);
           return data;
         })
@@ -218,8 +218,12 @@ class ResponseCache {
     Future<Object?> Function() fetch,
     (String, Object?) saved,
   ) {
+    final epoch = _epoch;
     _network(key, fetch)
         .then((data) {
+          // A write landed meanwhile: the next read will be real anyway.
+          if (epoch != _epoch) return;
+          _fresh[key] = (DateTime.now(), data);
           String? now;
           try {
             now = jsonEncode(data);

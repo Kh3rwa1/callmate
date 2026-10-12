@@ -94,15 +94,35 @@ void main() {
     );
   });
 
-  test('after an edit the next read goes to the network', () async {
+  test('polling always reaches the server (uploads, live campaigns)', () async {
     var n = 0;
     Future<Object?> fetch() async => {'n': ++n};
-    expect(await cache.get('/agent', fetch, isOffline: _isOffline), {'n': 1});
-    expect(await cache.get('/agent', fetch, isOffline: _isOffline), {
+    expect(await cache.get('/knowledge/k1', fetch, isOffline: _isOffline), {
       'n': 1,
-    }, reason: 'fresh copy reused for a moment');
-    cache.markStale();
-    expect(await cache.get('/agent', fetch, isOffline: _isOffline), {'n': 2});
+    });
+    expect(await cache.get('/knowledge/k1', fetch, isOffline: _isOffline), {
+      'n': 2,
+    });
+    expect(await cache.get('/knowledge/k1', fetch, isOffline: _isOffline), {
+      'n': 3,
+    });
+  });
+
+  test('an edit during a background refresh is not hidden by it', () async {
+    store.data['/agent'] = jsonEncode({'v': 'saved'});
+    final net = Completer<Object?>();
+    await cache.get('/agent', () => net.future, isOffline: _isOffline);
+    cache.markStale(); // the owner saved a change
+    net.complete({'v': 'before edit'});
+    await pumpEventQueue();
+    expect(
+      await cache.get(
+        '/agent',
+        () async => {'v': 'after edit'},
+        isOffline: _isOffline,
+      ),
+      {'v': 'after edit'},
+    );
   });
 
   test('two screens asking at once share one request', () async {
