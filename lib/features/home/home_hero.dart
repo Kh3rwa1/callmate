@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/mascot.dart';
+import '../../core/widgets/world.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 
@@ -133,9 +134,10 @@ final liveCallNameProvider = FutureProvider<String?>((ref) async {
   return null;
 });
 
-/// Home hero: "Your employee today". One deep-indigo card with the mascot
-/// (whose pose follows what is happening), one live status line, today's
-/// call count and the single most important thing to do next.
+/// Home hero: "Your employee today". Sits inside Home's cobalt world: the
+/// mascot (whose pose follows what is happening), one live status line,
+/// today's call count as a poster-sized number and the single most
+/// important thing to do next.
 class HomeHeroCard extends ConsumerWidget {
   const HomeHeroCard({super.key});
 
@@ -194,164 +196,72 @@ class HeroView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.s;
-    final t = Theme.of(context).textTheme;
-    final soft = AppColors.onStrongSoft;
+    const world = AppWorld.home;
     final live = model.mode == HeroFocus.live;
-    return Container(
+    return Column(
       key: const Key('home-hero'),
-      decoration: BoxDecoration(
-        color: AppColors.strong,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: AppColors.isDark
-            ? Border.all(color: Colors.white.withValues(alpha: 0.08))
-            : null,
-        boxShadow: AppShadows.raised,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        child: Stack(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // One poster number with the bird beside it, one line saying
+        // what matters, one button. Riya's name lives on her own tab.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // One soft light behind the mascot for depth (no gradients on
-            // text or buttons).
-            Positioned(
-              left: -70,
-              top: -80,
-              child: IgnorePointer(
-                child: Container(
-                  width: 260,
-                  height: 260,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.10),
-                        Colors.white.withValues(alpha: 0),
-                      ],
-                    ),
+            Expanded(
+              child: BigStat(
+                countKey: const Key('hero-calls'),
+                value: callsToday,
+                label: s.callsToday,
+                color: world.fg,
+                labelColor: world.soft,
+                size: 96,
+                countUp: true,
+                semanticsLabel: callsToday == null
+                    ? null
+                    : '${Fmt.number(callsToday!)} ${s.callsToday}',
+              ),
+            ),
+            Semantics(
+              button: onOpenEmployee != null,
+              label: employeeName,
+              excludeSemantics: true,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onOpenEmployee,
+                child: SwapFade(
+                  child: Mascot(
+                    key: ValueKey(model.mascot),
+                    state: model.mascot,
+                    size: 72,
+                    haloColor: Colors.white.withValues(alpha: 0.12),
+                    semanticLabel: employeeName,
                   ),
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpace.lg,
-                AppSpace.lg,
-                AppSpace.lg + 4,
-                AppSpace.lg + 4,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Semantics(
-                    button: onOpenEmployee != null,
-                    label: '${s.heroEyebrow}. $employeeName. ${model.status}',
-                    excludeSemantics: true,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: onOpenEmployee,
-                      child: Row(
-                        children: [
-                          SwapFade(
-                            child: Mascot(
-                              key: ValueKey(model.mascot),
-                              state: model.mascot,
-                              size: 88,
-                              haloColor: Colors.white.withValues(alpha: 0.09),
-                              semanticLabel: employeeName,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpace.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  s.heroEyebrow,
-                                  style: t.labelSmall?.copyWith(
-                                    color: soft,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  employeeName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: t.titleLarge?.copyWith(
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(height: AppSpace.xs + 2),
-                                SwapFade(
-                                  child: _StatusLine(
-                                    key: ValueKey(model.status),
-                                    text: model.status,
-                                    live: live,
-                                    hot: model.mode == HeroFocus.hot,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpace.lg),
-                  Semantics(
-                    label: callsToday == null
-                        ? null
-                        : '${Fmt.number(callsToday!)} ${s.callsToday}',
-                    excludeSemantics: true,
-                    child: Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.end,
-                      spacing: AppSpace.sm,
-                      children: [
-                        if (callsToday == null)
-                          // Still loading: a quiet placeholder, never a
-                          // misleading "0".
-                          Container(
-                            width: 88,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(AppRadius.sm),
-                            ),
-                          )
-                        else
-                          AnimatedCount(
-                            key: const Key('hero-calls'),
-                            value: callsToday!,
-                            countUp: true,
-                            format: Fmt.number,
-                            style: t.displayLarge?.copyWith(
-                              color: Colors.white,
-                              height: 1,
-                            ),
-                          ),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 5),
-                          child: Text(
-                            s.callsToday,
-                            style: t.bodyLarge?.copyWith(color: soft),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpace.lg),
-                  PrimaryButton(
-                    key: const Key('hero-action'),
-                    label: model.actionLabel,
-                    iconWidget: AppGlyph(model.action.glyph),
-                    onPressed: onAction,
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
-      ),
+        const SizedBox(height: AppSpace.md),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: SwapFade(
+            child: _StatusLine(
+              key: ValueKey(model.status),
+              text: model.status,
+              live: live,
+              hot: model.mode == HeroFocus.hot,
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpace.lg),
+        WorldButton(
+          key: const Key('hero-action'),
+          world: world,
+          label: model.actionLabel,
+          iconWidget: AppGlyph(model.action.glyph),
+          onPressed: onAction,
+        ),
+      ],
     );
   }
 }
@@ -371,8 +281,8 @@ class _StatusLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final style = t.bodyLarge?.copyWith(
-      color: hot ? AppColors.accent : Colors.white,
-      fontWeight: FontWeight.w600,
+      color: hot ? AppWorld.home.cta : AppWorld.home.fg,
+      fontWeight: FontWeight.w700,
       height: 1.3,
     );
     if (!live) {

@@ -18,6 +18,7 @@ Future<Callback?> showCallbackSheet(
   DateTime? suggested,
 }) {
   return showModalBottomSheet<Callback>(
+    useRootNavigator: true,
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
@@ -216,10 +217,10 @@ class _Option extends StatelessWidget {
         shadow: false,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: Border.all(
-          color: selected ? AppColors.brand : AppColors.border,
+          color: selected ? AppColors.ink : AppColors.border,
           width: selected ? 1.6 : 1.2,
         ),
-        color: selected ? AppColors.brandSoft : AppColors.surface,
+        color: selected ? AppColors.accentSoft : AppColors.surface,
         child: Row(
           children: [
             Icon(
@@ -229,8 +230,8 @@ class _Option extends StatelessWidget {
                       : Icons.schedule_outlined),
               size: 21,
               color: selected
-                  ? AppColors.brand
-                  : (highlight ? AppColors.brand : AppColors.inkFaint),
+                  ? AppColors.ink
+                  : (highlight ? AppColors.ink : AppColors.inkFaint),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -247,7 +248,7 @@ class _Option extends StatelessWidget {
                   ? Icon(
                       Icons.check_circle_rounded,
                       key: const ValueKey('on'),
-                      color: AppColors.brand,
+                      color: AppColors.ink,
                       size: 22,
                     )
                   : const SizedBox(key: ValueKey('off'), width: 22),

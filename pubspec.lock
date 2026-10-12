@@ -951,10 +951,9 @@ packages:
   sarvamconv_ai_sdk:
     dependency: "direct main"
     description:
-      name: sarvamconv_ai_sdk
-      sha256: da4cfd92e17f0bd4360ca3635a460651d8d0a6ade4d9b721a05fd7598ce0f4d6
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/sarvamconv_ai_sdk"
+      relative: true
+    source: path
     version: "1.0.2"
   share_plus:
     dependency: "direct main"

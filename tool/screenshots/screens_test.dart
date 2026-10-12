@@ -58,9 +58,14 @@ Future<void> _loadFonts() async {
     'SemiBold',
     'Bold',
   ]);
+  await _loadFamily('Anton', 'Anton', ['Regular']);
+  await _loadFamily('InstrumentSerif', 'InstrumentSerif', [
+    'Regular',
+    'Italic',
+  ]);
   // Devanagari and Bengali fallbacks.
   const indic = ['Regular', 'Medium', 'SemiBold', 'Bold'];
-  await _loadFamily('Hind', 'Hind', indic);
+  await _loadFamily('Mukta', 'Mukta', indic);
   await _loadFamily('HindSiliguri', 'HindSiliguri', indic);
   final flutterRoot = Platform.environment['FLUTTER_ROOT']!;
   final icons = FontLoader('MaterialIcons')

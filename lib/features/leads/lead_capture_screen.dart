@@ -277,7 +277,7 @@ class _FormCard extends StatelessWidget {
               decoration: BoxDecoration(
                 // QR codes need dark-on-light to scan, in both themes.
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(AppRadius.button),
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Semantics(
                 label: s.showQr,
@@ -391,6 +391,7 @@ class _WebhookCard extends StatelessWidget {
 /// again, so the sheet says so and offers one-tap copies.
 Future<void> showWebhookTokenSheet(BuildContext context, LeadSource source) {
   return showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
@@ -467,7 +468,7 @@ class _WebhookTokenSheetState extends State<_WebhookTokenSheet> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.warmSoft,
-                  borderRadius: BorderRadius.circular(AppRadius.button),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Text(
                   s.tokenShownOnce,

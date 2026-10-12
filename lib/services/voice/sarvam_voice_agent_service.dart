@@ -287,12 +287,42 @@ class SarvamVoiceAgentService implements VoiceAgentService {
       _set(VoiceConnectionState.listening);
     } else if (e is ServerInteractionEndEvent) {
       await _teardown(VoiceConnectionState.disconnected);
+    } else if (e is ServerRawEvent &&
+        e.rawType == 'server.event.transcription') {
+      _onTranscription(e.data);
+    }
+  }
+
+  /// Live transcript from the server:
+  /// `{"role": "user" | "bot", "content": "..."}`. This is the only place
+  /// Riya's replies arrive as text in voice sessions.
+  void _onTranscription(Map<String, dynamic> data) {
+    final text = (data['content'] as String? ?? '').trim();
+    if (text.isEmpty) return;
+    final isAgent = data['role'] != 'user';
+    final last = _entries.isNotEmpty ? _entries.last : null;
+    // A typed question is already on screen; don't show it twice.
+    if (last != null && last.isAgent == isAgent && last.text == text) return;
+    _entries.add(
+      VoiceTranscriptEntry(
+        id: '${isAgent ? 'a' : 'u'}${_seq++}',
+        isAgent: isAgent,
+        text: text,
+      ),
+    );
+    _emit();
+    if (!isAgent && _current == VoiceConnectionState.listening) {
+      _set(VoiceConnectionState.thinking);
     }
   }
 
   void _onAgentAudio(Uint8List pcm) {
+    final level = _rms(pcm);
+    // The server streams near-silent frames between turns; only real
+    // speech should flip the status to "Speaking".
+    if (level < 0.03) return;
     _set(VoiceConnectionState.speaking);
-    if (!_level.isClosed) _level.add(_rms(pcm));
+    if (!_level.isClosed) _level.add(level);
     _speakingDecay?.cancel();
     _speakingDecay = Timer(const Duration(milliseconds: 700), () {
       if (_current == VoiceConnectionState.speaking) {

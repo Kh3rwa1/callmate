@@ -134,7 +134,7 @@ class IntegrationTile extends StatelessWidget {
                 margin: const EdgeInsets.only(right: 8),
                 decoration: BoxDecoration(
                   color: AppColors.warmSoft,
-                  borderRadius: BorderRadius.circular(AppRadius.button),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Text(
                   s.sourceProblem(src.lastError!),
@@ -176,6 +176,7 @@ Future<void> showIntegrationSheet(
   LeadSource? replaces,
 }) {
   return showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
@@ -405,7 +406,7 @@ class _IntegrationSheetState extends ConsumerState<IntegrationSheet> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: AppColors.successSoft,
-          borderRadius: BorderRadius.circular(AppRadius.button),
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         child: Text(
           '${s.connected}. ${s.integrationShownOnce}',

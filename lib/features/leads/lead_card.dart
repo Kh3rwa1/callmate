@@ -86,6 +86,8 @@ class LeadCard extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // Name gets the whole line; status and interest
+                            // share the second one.
                             Row(
                               children: [
                                 Flexible(
@@ -102,45 +104,38 @@ class LeadCard extends ConsumerWidget {
                                 ],
                               ],
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              meta,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.bodySmall?.copyWith(
-                                color: AppColors.inkSoft,
-                              ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                _Status(lead: l),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    meta,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: t.bodySmall?.copyWith(
+                                      color: AppColors.inkSoft,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: _Status(lead: l),
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _QuickAction(
-                                glyph: AppGlyphs.message,
-                                tooltip: s.whatsapp,
-                                color: AppColors.whatsapp,
-                                onTap: () => _whatsapp(context, ref),
-                              ),
-                              _QuickAction(
-                                glyph: AppGlyphs.call,
-                                tooltip: s.call,
-                                color: AppColors.inkSoft,
-                                onTap: () => _call(context),
-                              ),
-                            ],
-                          ),
-                        ],
+                      const SizedBox(width: 4),
+                      _QuickAction(
+                        glyph: AppGlyphs.message,
+                        tooltip: s.whatsapp,
+                        color: AppColors.whatsapp,
+                        onTap: () => _whatsapp(context, ref),
+                      ),
+                      _QuickAction(
+                        glyph: AppGlyphs.call,
+                        tooltip: s.call,
+                        color: AppColors.inkSoft,
+                        onTap: () => _call(context),
                       ),
                     ],
                   ),

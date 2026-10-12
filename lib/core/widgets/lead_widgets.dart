@@ -211,6 +211,7 @@ class LeadAvatar extends StatelessWidget {
         (first.isNotEmpty ? first.first : '?') +
         (last != null && last.isNotEmpty ? last.first : '');
     final style = TempStyle.of(temperature);
+    final hot = temperature == LeadTemperature.hot;
     return ExcludeSemantics(
       child: AnimatedContainer(
         duration: AppMotion.of(context, AppMotion.base),
@@ -218,19 +219,18 @@ class LeadAvatar extends StatelessWidget {
         height: size,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: style.bg,
+          // Ready-to-buy leads are a solid red disc so they jump out of a
+          // list even for owners who don't read colour well.
+          color: hot ? AppColors.hotFill : style.bg,
           shape: BoxShape.circle,
-          // Ready-to-buy leads get a thin ring so they stand out in a list
-          // even for owners who don't read colour well.
-          border: temperature == LeadTemperature.hot
-              ? Border.all(color: style.fg.withValues(alpha: 0.45), width: 1.5)
-              : null,
         ),
         child: Text(
           initials.toUpperCase(),
           style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: temperature == LeadTemperature.unknown
+            fontWeight: FontWeight.w700,
+            color: hot
+                ? Colors.white
+                : temperature == LeadTemperature.unknown
                 ? AppColors.inkSoft
                 : style.fg,
             fontSize: size * 0.34,

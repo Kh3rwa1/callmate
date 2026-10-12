@@ -217,10 +217,10 @@ class _VoiceTile extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 96),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
           decoration: BoxDecoration(
-            color: selected ? AppColors.brandSoft : AppColors.surface,
+            color: selected ? AppColors.accentSoft : AppColors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: selected ? AppColors.brand : AppColors.border,
+              color: selected ? AppColors.ink : AppColors.border,
               width: selected ? 2 : 1.2,
             ),
           ),
@@ -230,14 +230,14 @@ class _VoiceTile extends StatelessWidget {
               Icon(
                 icon,
                 size: 36,
-                color: selected ? AppColors.brand : AppColors.inkSoft,
+                color: selected ? AppColors.ink : AppColors.inkSoft,
               ),
               const SizedBox(height: 8),
               Text(
                 label,
                 textAlign: TextAlign.center,
                 style: t.titleMedium?.copyWith(
-                  color: selected ? AppColors.brandDeep : AppColors.ink,
+                  color: selected ? AppColors.ink : AppColors.ink,
                 ),
               ),
             ],

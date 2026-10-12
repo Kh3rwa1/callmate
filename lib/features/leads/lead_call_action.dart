@@ -22,6 +22,7 @@ Future<bool> handleLeadCall(
 ) async {
   final s = context.s;
   final action = await showModalBottomSheet<String>(
+    useRootNavigator: true,
     context: context,
     builder: (ctx) {
       final t = Theme.of(ctx).textTheme;

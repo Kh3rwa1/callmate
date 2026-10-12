@@ -243,7 +243,6 @@ void main() {
           scrollable: find.byType(Scrollable).first,
         );
         await h.tester.pump();
-        expect(find.text('Coaching & education'), findsOneWidget);
         await h.tap(row);
         expect(h.location, '/agent/playbook');
         expect(find.byType(PlaybookScreen), findsOneWidget);

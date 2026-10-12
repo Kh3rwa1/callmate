@@ -108,7 +108,9 @@ void main() {
       for (final p in [AppPalette.light, AppPalette.dark]) {
         final theme = p.isDark ? AppTheme.dark() : AppTheme.light();
         final t = theme.textTheme;
-        expect(t.displayLarge!.fontSize, inInclusiveRange(40, 48));
+        // Poster-sized numbers in the condensed display face.
+        expect(t.displayLarge!.fontSize, inInclusiveRange(64, 96));
+        expect(t.displayLarge!.fontFamily, AppTheme.displayFamily);
         final sizes = [
           t.displayLarge,
           t.displayMedium,

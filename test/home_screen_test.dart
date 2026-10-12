@@ -5,6 +5,7 @@ import 'package:callpilot/features/campaign/campaign_screens.dart';
 import 'package:callpilot/features/home/home_widgets.dart';
 import 'package:callpilot/core/widgets/app_card.dart';
 import 'package:flutter/material.dart';
+import 'package:callpilot/core/widgets/mascot.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers/app_harness.dart';
@@ -43,13 +44,11 @@ void main() {
     appTest('shows business, the hero and what needs attention', (h) async {
       final b = h.backend;
       expect(find.textContaining(b.business.name), findsOneWidget);
-      expect(find.text(b.agent.name), findsWidgets);
-      expect(find.text('Your employee today'), findsOneWidget);
       expect(find.text('This week'), findsOneWidget);
 
       final hot = b.leads.values.where((l) => l.isHot).length;
-      // Hero status line and the attention row.
-      expect(find.text('$hot ready to buy'), findsNWidgets(2));
+      // Said once, in the hero; the attention list doesn't repeat it.
+      expect(find.text('$hot ready to buy'), findsOneWidget);
       expect(find.text('See who is ready'), findsOneWidget);
 
       final pending = b.followUps.values.where((f) => f.isPending).length;
@@ -94,7 +93,7 @@ void main() {
       await h.tap(
         find.descendant(
           of: find.byKey(const Key('home-hero')),
-          matching: find.text(h.backend.agent.name),
+          matching: find.byType(Mascot),
         ),
       );
       expect(h.location, '/agent');

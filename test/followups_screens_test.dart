@@ -36,7 +36,6 @@ void main() {
   group('FollowUpsScreen', () {
     appTest('lists pending drafts and opened ones', (h) async {
       final pending = _pending(h.backend);
-      expect(find.text('Ready to send'), findsOneWidget);
       expect(
         find.descendant(
           of: find.byKey(const Key('followups-pending-count')),
@@ -90,7 +89,7 @@ void main() {
       'empty inbox says all caught up',
       (h) async {
         expect(find.text('All caught up'), findsOneWidget);
-        expect(find.text('Ready to send'), findsNothing);
+        expect(find.byKey(const Key('followups-pending-count')), findsNothing);
       },
       location: '/followups',
       backend: () {

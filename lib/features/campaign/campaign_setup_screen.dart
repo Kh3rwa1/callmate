@@ -47,6 +47,7 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
         leads.length - blocked - (consentAttestation ? 0 : skippedNoConsent);
 
     final ok = await showModalBottomSheet<bool>(
+      useRootNavigator: true,
       context: context,
       useSafeArea: true,
       isScrollControlled: true,

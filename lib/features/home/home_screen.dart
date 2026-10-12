@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/config/app_env.dart';
 import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
@@ -19,7 +18,7 @@ import 'home_widgets.dart';
 import 'home_hero.dart';
 import 'results_card.dart';
 import 'week_funnel.dart';
-import '../../core/widgets/brand_widgets.dart';
+import '../../core/widgets/world.dart';
 import '../usage/plan_banner.dart';
 
 /// Home – "What happened today?"
@@ -36,9 +35,10 @@ class HomeScreen extends ConsumerWidget {
         ref.watch(notificationsProvider).value?.where((n) => !n.read).length ??
         0;
 
+    const world = AppWorld.home;
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
+      body: WorldStatusBar(
+        world: world,
         child: RefreshIndicator(
           color: AppColors.brand,
           backgroundColor: AppColors.surface,
@@ -48,102 +48,102 @@ class HomeScreen extends ConsumerWidget {
           },
           child: CustomScrollView(
             slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(AppSpace.page, 14, 10, 0),
-                sliver: SliverToBoxAdapter(
-                  child: Row(
+              SliverToBoxAdapter(
+                child: WorldHeader(
+                  world: world,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s.greeting(),
-                              style: t.bodyMedium?.copyWith(
-                                color: AppColors.inkFaint,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            // Up to two lines, never cut short: the name
-                            // tops out at 1.5× so a typical 20-letter name
-                            // fits even at the biggest text size.
-                            MediaQuery.withClampedTextScaling(
-                              maxScaleFactor: 1.5,
-                              child: SwapFade(
-                                child: GradientText(
-                                  biz?.name ?? s.homeWelcome,
-                                  key: ValueKey(biz?.name),
-                                  style: t.headlineSmall?.copyWith(
-                                    fontSize: 26,
-                                    letterSpacing: -0.6,
-                                    height: 1.15,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    s.greeting(),
+                                    style: AppTheme.eyebrow(color: world.soft),
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                  const SizedBox(height: 6),
+                                  // Never cut short: the serif is already
+                                  // poster-sized, so it only grows to 1.15×
+                                  // and may take a third line when the
+                                  // owner picks a big text size.
+                                  MediaQuery.withClampedTextScaling(
+                                    maxScaleFactor: 1.15,
+                                    child: SwapFade(
+                                      child: Text(
+                                        biz?.name ?? s.homeWelcome,
+                                        key: ValueKey(biz?.name),
+                                        style: AppTheme.serif(
+                                          30,
+                                          color: world.fg,
+                                          height: 1.02,
+                                        ),
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                      if (AppEnv.showDemoTools)
-                        IconButton(
-                          tooltip: s.demoControls,
-                          color: AppColors.inkFaint,
-                          onPressed: () => context.push('/demo'),
-                          icon: const Icon(Icons.science_outlined, size: 22),
-                        ),
-                      TopBarAction(
-                        key: const Key('home-help'),
-                        icon: const AppGlyph(AppGlyphs.help, size: 26),
-                        label: s.help,
-                        onTap: () => showHelpSheet(context),
-                      ),
-                      TopBarAction(
-                        key: const Key('home-alerts'),
-                        semanticsLabel: unread > 0
-                            ? s.newNotifications(unread)
-                            : s.notifications,
-                        label: s.alertsShort,
-                        onTap: () => context.push('/notifications'),
-                        icon: Badge(
-                          isLabelVisible: unread > 0,
-                          label: Text('$unread'),
-                          backgroundColor: AppColors.hotFill,
-                          largeSize: 18,
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
-                          textStyle: t.labelSmall?.copyWith(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0,
                           ),
-                          offset: const Offset(5, -4),
-                          child: const AppGlyph(AppGlyphs.alerts, size: 26),
-                        ),
+                          WorldAction(
+                            key: const Key('home-help'),
+                            world: world,
+                            icon: const AppGlyph(AppGlyphs.help, size: 22),
+                            label: s.help,
+                            onTap: () => showHelpSheet(context),
+                          ),
+                          WorldAction(
+                            key: const Key('home-alerts'),
+                            world: world,
+                            semanticsLabel: unread > 0
+                                ? s.newNotifications(unread)
+                                : s.notifications,
+                            label: s.alertsShort,
+                            onTap: () => context.push('/notifications'),
+                            icon: Badge(
+                              isLabelVisible: unread > 0,
+                              label: Text('$unread'),
+                              backgroundColor: AppColors.hotFill,
+                              largeSize: 18,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                              ),
+                              textStyle: t.labelSmall?.copyWith(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0,
+                              ),
+                              offset: const Offset(7, -6),
+                              child: const AppGlyph(AppGlyphs.alerts, size: 22),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpace.lg),
+                      const Reveal(
+                        id: 'home-hero',
+                        index: 1,
+                        child: HomeHeroCard(),
                       ),
                     ],
                   ),
                 ),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
+              // New owners: three first steps, ticked from real data.
+              const SliverPadding(
+                padding: EdgeInsets.fromLTRB(
                   AppSpace.page,
                   AppSpace.lg,
                   AppSpace.page,
                   0,
                 ),
-                sliver: const SliverToBoxAdapter(
-                  child: Reveal(
-                    id: 'home-hero',
-                    index: 1,
-                    child: HomeHeroCard(),
-                  ),
-                ),
-              ),
-              // New owners: three first steps, ticked from real data.
-              const SliverPadding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpace.page),
                 sliver: SliverToBoxAdapter(child: GettingStartedCard()),
               ),
               // Payment due / trial running low.
@@ -207,8 +207,9 @@ class _HomeBody extends ConsumerWidget {
           null,
           (a, b) => a == null || b.scheduledAt.isBefore(a.scheduledAt) ? b : a,
         );
+    final heroShowsLive = ref.watch(activeCampaignProvider)?.isActive == true;
     final heroCallsNew =
-        ref.watch(activeCampaignProvider)?.isActive != true &&
+        !heroShowsLive &&
         d.hot == 0 &&
         d.followUpsReady == 0 &&
         d.leads > 0 &&
@@ -225,7 +226,9 @@ class _HomeBody extends ConsumerWidget {
         SectionLabel(s.needsAttention),
         HomeActionGroup(
           rows: [
-            if (d.hot > 0)
+            // The hero already leads with "N ready to buy" unless a live
+            // call has taken its place.
+            if (d.hot > 0 && heroShowsLive)
               HomeActionRow(
                 glyph: AppGlyphs.hot,
                 color: AppColors.hot,
@@ -234,7 +237,7 @@ class _HomeBody extends ConsumerWidget {
                 label: s.hotLeadsLabel,
                 onTap: () => context.go('/leads?filter=hot'),
               )
-            else
+            else if (d.hot == 0)
               HomeActionRow(
                 glyph: AppGlyphs.hot,
                 color: AppColors.inkFaint,

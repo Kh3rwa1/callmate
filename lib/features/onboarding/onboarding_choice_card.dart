@@ -156,10 +156,10 @@ class _OnboardingChoiceCardState extends State<OnboardingChoiceCard>
             curve: AppMotion.standard,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: selected ? AppColors.brandSoft : AppColors.surface,
+              color: selected ? AppColors.accentSoft : AppColors.surface,
               borderRadius: BorderRadius.circular(AppRadius.cardSm),
               border: Border.all(
-                color: selected ? AppColors.brand : AppColors.border,
+                color: selected ? AppColors.ink : AppColors.border,
                 width: selected ? 1.6 : 1,
               ),
             ),
@@ -183,13 +183,13 @@ class _OnboardingChoiceCardState extends State<OnboardingChoiceCard>
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: selected
-                              ? AppColors.brandFill
+                              ? AppColors.ink
                               : AppColors.surfaceMuted,
                           borderRadius: BorderRadius.circular(13),
                         ),
                         child: TweenAnimationBuilder<Color?>(
                           tween: ColorTween(
-                            end: selected ? Colors.white : AppColors.ink,
+                            end: selected ? AppColors.surface : AppColors.ink,
                           ),
                           duration: d,
                           builder: (_, c, _) =>
@@ -206,8 +206,9 @@ class _OnboardingChoiceCardState extends State<OnboardingChoiceCard>
                           painter: _TickPainter(
                             progress: _tick.value,
                             square: widget.multi,
-                            fill: AppColors.brandFill,
+                            fill: AppColors.ink,
                             border: AppColors.border,
+                            mark: AppColors.surface,
                           ),
                         ),
                       ),
@@ -253,11 +254,13 @@ class _TickPainter extends CustomPainter {
     required this.square,
     required this.fill,
     required this.border,
+    required this.mark,
   });
   final double progress;
   final bool square;
   final Color fill;
   final Color border;
+  final Color mark;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -301,7 +304,7 @@ class _TickPainter extends CustomPainter {
     canvas.drawPath(
       metric.extractPath(0, metric.length * draw),
       Paint()
-        ..color = Colors.white
+        ..color = mark
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.2
         ..strokeCap = StrokeCap.round
@@ -314,5 +317,6 @@ class _TickPainter extends CustomPainter {
       old.progress != progress ||
       old.square != square ||
       old.fill != fill ||
-      old.border != border;
+      old.border != border ||
+      old.mark != mark;
 }

@@ -11,6 +11,7 @@ Future<KnowledgeInput?> showKnowledgeInputSheet(
   KnowledgeType type,
 ) {
   return showModalBottomSheet<KnowledgeInput>(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

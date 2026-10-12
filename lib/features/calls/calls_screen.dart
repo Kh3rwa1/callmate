@@ -15,7 +15,7 @@ import '../../data/models/models.dart';
 import '../../data/repositories/repositories.dart';
 import '../../l10n/l10n.dart';
 import '../leads/leads_controller.dart';
-import '../../core/widgets/brand_widgets.dart';
+import '../../core/widgets/world.dart';
 
 final callFilterProvider = NotifierProvider<CallFilterController, CallFilter>(
   CallFilterController.new,
@@ -133,7 +133,6 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
   @override
   Widget build(BuildContext context) {
     final s = context.s;
-    final t = Theme.of(context).textTheme;
     final f = ref.watch(callFilterProvider);
     final st = ref.watch(callsListProvider);
     final agent = ref.watch(agentProvider).value;
@@ -144,56 +143,70 @@ class _CallsScreenState extends ConsumerState<CallsScreen> {
       (CallFilter.hot, s.filterHot, Icons.local_fire_department_rounded),
     ];
 
+    const world = AppWorld.calls;
+    final dash = ref.watch(dashboardProvider).value;
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpace.page,
-                12,
-                AppSpace.page,
-                0,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Semantics(
-                      header: true,
-                      child: GradientText(
-                        s.aiCallsTitle,
-                        style: t.headlineMedium,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          WorldHeader(
+            world: world,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                WorldTitle(
+                  world: world,
+                  title: s.aiCallsTitle,
+                  eyebrow: s.callsEyebrow,
+                ),
+                const SizedBox(height: AppSpace.lg),
+                Row(
+                  children: [
+                    Expanded(
+                      child: BigStat(
+                        value: dash?.callsToday,
+                        label: s.callsToday,
+                        color: world.fg,
+                        labelColor: world.soft,
+                        size: 64,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
-            FilterChipRow(
-              children: [
-                for (final (v, label, icon) in filters)
-                  AppFilterChip(
-                    label: label,
-                    selected: f == v,
-                    icon: icon,
-                    iconColor: AppColors.hot,
-                    onSelected: () =>
-                        ref.read(callFilterProvider.notifier).set(v),
-                  ),
+                    Expanded(
+                      child: BigStat(
+                        value: dash?.connected,
+                        label: s.talkedToday,
+                        color: world.fg,
+                        labelColor: world.soft,
+                        size: 64,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: AppMotion.of(context, AppMotion.base),
-                switchInCurve: AppMotion.standard,
-                child: _list(context, st, f, s.employeeName(agent?.name)),
-              ),
+          ),
+          const SizedBox(height: 6),
+          FilterChipRow(
+            children: [
+              for (final (v, label, icon) in filters)
+                AppFilterChip(
+                  label: label,
+                  selected: f == v,
+                  icon: icon,
+                  iconColor: AppColors.hot,
+                  onSelected: () =>
+                      ref.read(callFilterProvider.notifier).set(v),
+                ),
+            ],
+          ),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: AppMotion.of(context, AppMotion.base),
+              switchInCurve: AppMotion.standard,
+              child: _list(context, st, f, s.employeeName(agent?.name)),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

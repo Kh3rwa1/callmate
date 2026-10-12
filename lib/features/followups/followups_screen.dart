@@ -13,7 +13,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import 'whatsapp_handoff.dart';
-import '../../core/widgets/brand_widgets.dart';
+import '../../core/widgets/world.dart';
 
 /// Follow-ups – "Who needs a message?"
 class FollowUpsScreen extends ConsumerWidget {
@@ -25,169 +25,173 @@ class FollowUpsScreen extends ConsumerWidget {
     final t = Theme.of(context).textTheme;
     final fus = ref.watch(followUpsProvider);
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: AsyncView<List<FollowUp>>(
-          value: fus,
-          onRetry: () => ref.invalidate(followUpsProvider),
-          data: (all) {
-            final pending = all.where((f) => f.isPending).toList();
-            final opened = all.where((f) => !f.isPending).take(20).toList();
-            return RefreshIndicator(
-              color: AppColors.brand,
-              backgroundColor: AppColors.surface,
-              onRefresh: () async => ref.invalidate(followUpsProvider),
-              child: CustomScrollView(
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpace.page,
-                      12,
-                      AppSpace.page,
-                      0,
-                    ),
-                    sliver: SliverToBoxAdapter(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Semantics(
-                            header: true,
-                            child: GradientText(
-                              s.followUpsTitle,
-                              style: t.headlineMedium,
-                            ),
-                          ),
-                          if (pending.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(s.followUpsSubtitle, style: t.bodyMedium),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (pending.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: EmptyState(
-                        title: s.allCaughtUp,
-                        message: s.newDraftsAppear,
-                        mascot: MascotState.celebrating,
-                      ),
-                    )
-                  else ...[
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpace.page,
-                      ),
-                      sliver: SliverToBoxAdapter(
-                        child: SectionLabel(
-                          s.readyToSend,
-                          padding: const EdgeInsets.fromLTRB(2, 20, 2, 12),
-                          trailing: PopSwitcher(
-                            child: Pill(
-                              key: const Key('followups-pending-count'),
-                              label: '${pending.length}',
-                              color: AppColors.ink,
-                              background: AppColors.surfaceMuted,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpace.page,
-                      ),
-                      sliver: SliverList.builder(
-                        itemCount: pending.length,
-                        itemBuilder: (_, i) => Reveal(
-                          key: ValueKey(pending[i].id),
-                          id: 'fu-${pending[i].id}',
-                          index: i < 8 ? i : 0,
-                          child: _FollowUpRow(
-                            fu: pending[i],
-                            first: i == 0,
-                            last: i == pending.length - 1,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (pending.isNotEmpty)
+      body: WorldStatusBar(
+        world: AppWorld.messages,
+        child: SafeArea(
+          top: false,
+          bottom: false,
+          child: AsyncView<List<FollowUp>>(
+            value: fus,
+            onRetry: () => ref.invalidate(followUpsProvider),
+            data: (all) {
+              final pending = all.where((f) => f.isPending).toList();
+              final opened = all.where((f) => !f.isPending).take(20).toList();
+              return RefreshIndicator(
+                color: AppColors.brand,
+                backgroundColor: AppColors.surface,
+                onRefresh: () async => ref.invalidate(followUpsProvider),
+                child: CustomScrollView(
+                  slivers: [
                     SliverToBoxAdapter(
-                      child: Padding(
+                      child: WorldHeader(
+                        world: AppWorld.messages,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            WorldTitle(
+                              world: AppWorld.messages,
+                              title: s.followUpsTitle,
+                            ),
+                            const SizedBox(height: AppSpace.lg),
+                            if (pending.isNotEmpty) ...[
+                              BigStat(
+                                countKey: const Key('followups-pending-count'),
+                                value: pending.length,
+                                label: s.readyToSendShort,
+                                color: AppWorld.messages.fg,
+                                labelColor: AppWorld.messages.soft,
+                                size: 72,
+                              ),
+                              const SizedBox(height: AppSpace.md),
+                              Text(
+                                s.followUpsSubtitle,
+                                style: t.bodyLarge?.copyWith(
+                                  color: AppWorld.messages.soft,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ] else
+                              Text(
+                                s.allSentToday,
+                                style: AppTheme.serif(
+                                  30,
+                                  color: AppWorld.messages.fg,
+                                  italic: true,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (pending.isEmpty)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: EmptyState(
+                          title: s.allCaughtUp,
+                          message: s.newDraftsAppear,
+                          mascot: MascotState.celebrating,
+                        ),
+                      )
+                    else ...[
+                      // The header already says how many are waiting.
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: AppSpace.lg),
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpace.page,
+                        ),
+                        sliver: SliverList.builder(
+                          itemCount: pending.length,
+                          itemBuilder: (_, i) => Reveal(
+                            key: ValueKey(pending[i].id),
+                            id: 'fu-${pending[i].id}',
+                            index: i < 8 ? i : 0,
+                            child: _FollowUpRow(
+                              fu: pending[i],
+                              first: i == 0,
+                              last: i == pending.length - 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (pending.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpace.page + 2,
+                            8,
+                            AppSpace.page,
+                            0,
+                          ),
+                          child: Text(s.swipeToOpenHint, style: t.bodySmall),
+                        ),
+                      ),
+                    if (opened.isNotEmpty) ...[
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpace.page,
+                        ),
+                        sliver: SliverToBoxAdapter(
+                          child: SectionLabel(s.whatsappOpened),
+                        ),
+                      ),
+                      SliverPadding(
                         padding: const EdgeInsets.fromLTRB(
-                          AppSpace.page + 2,
-                          8,
                           AppSpace.page,
                           0,
+                          AppSpace.page,
+                          28,
                         ),
-                        child: Text(s.swipeToOpenHint, style: t.bodySmall),
-                      ),
-                    ),
-                  if (opened.isNotEmpty) ...[
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpace.page,
-                      ),
-                      sliver: SliverToBoxAdapter(
-                        child: SectionLabel(s.whatsappOpened),
-                      ),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpace.page,
-                        0,
-                        AppSpace.page,
-                        28,
-                      ),
-                      sliver: SliverList.builder(
-                        itemCount: opened.length,
-                        itemBuilder: (_, i) {
-                          final f = opened[i];
-                          return _Segment(
-                            first: i == 0,
-                            last: i == opened.length - 1,
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              minTileHeight: 64,
-                              onTap: () => context.push('/followups/${f.id}'),
-                              leading: LeadAvatar(
-                                name: f.leadName,
-                                temperature: LeadTemperature.fromScore(
-                                  f.scoreValue,
+                        sliver: SliverList.builder(
+                          itemCount: opened.length,
+                          itemBuilder: (_, i) {
+                            final f = opened[i];
+                            return _Segment(
+                              first: i == 0,
+                              last: i == opened.length - 1,
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
                                 ),
-                                size: 40,
+                                minTileHeight: 64,
+                                onTap: () => context.push('/followups/${f.id}'),
+                                leading: LeadAvatar(
+                                  name: f.leadName,
+                                  temperature: LeadTemperature.fromScore(
+                                    f.scoreValue,
+                                  ),
+                                  size: 40,
+                                ),
+                                title: Text(
+                                  f.leadName,
+                                  style: t.titleSmall,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  '${s.followUpStatus(f.status)}${f.openedAt != null ? ' · ${s.relative(f.openedAt!)}' : ''}',
+                                  style: t.bodySmall,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: AppColors.inkFaint,
+                                ),
                               ),
-                              title: Text(
-                                f.leadName,
-                                style: t.titleSmall,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: Text(
-                                '${s.followUpStatus(f.status)}${f.openedAt != null ? ' · ${s.relative(f.openedAt!)}' : ''}',
-                                style: t.bodySmall,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: Icon(
-                                Icons.chevron_right_rounded,
-                                color: AppColors.inkFaint,
-                              ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                  ] else
-                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
-                ],
-              ),
-            );
-          },
+                    ] else
+                      const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -305,34 +309,25 @@ class _FollowUpRow extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        fu.leadName,
-                        style: t.titleSmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
+                      // Name and time on one line; the red avatar already
+                      // says this customer wants to buy.
                       Row(
                         children: [
-                          if (fu.scoreValue != null) ...[
-                            ScoreBadge(
-                              score: LeadScore(
-                                value: fu.scoreValue!,
-                                temperature: temp,
-                                intent: LeadIntent.unknown,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Flexible(
+                          Expanded(
                             child: Text(
-                              s.relative(fu.createdAt),
-                              style: t.bodySmall?.copyWith(
-                                color: AppColors.inkFaint,
-                              ),
+                              fu.leadName,
+                              style: t.titleSmall,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            s.relative(fu.createdAt),
+                            style: t.bodySmall?.copyWith(
+                              color: AppColors.inkFaint,
+                            ),
+                            maxLines: 1,
                           ),
                         ],
                       ),

@@ -1,0 +1,29 @@
+name: sarvamconv_ai_sdk
+description: Flutter SDK for Sarvam Conversational AI - Real-time voice and text interactions
+version: 1.0.2
+homepage: https://sarvam.ai
+repository: https://github.com/ram-sarvam/sarvam_app_demo
+issue_tracker: https://github.com/ram-sarvam/sarvam_app_demo/issues
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  web_socket_channel: ^3.0.2
+  http: ^1.2.2
+  json_annotation: ^4.9.0
+  uuid: ^4.5.1
+  permission_handler: ^11.3.1
+  record: ^6.1.2
+  flutter_sound: ^9.16.3  # For iOS streaming
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  json_serializable: ^6.8.0
+  build_runner: ^2.4.13
+

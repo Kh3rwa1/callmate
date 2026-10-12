@@ -51,6 +51,7 @@ class HearYourAiCard extends ConsumerWidget {
 /// Sets (or removes) the business's average sale value.
 Future<void> showAvgSaleSheet(BuildContext context) {
   return showModalBottomSheet<void>(
+    useRootNavigator: true,
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
