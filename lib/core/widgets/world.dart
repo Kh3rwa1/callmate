@@ -201,13 +201,17 @@ class BigStat extends StatelessWidget {
                       widest = math.max(widest, tp.width);
                       tp.dispose();
                     }
-                    final k = widest > c.maxWidth && widest > 0
-                        ? c.maxWidth / widest
-                        : 1.0;
+                    // A little slack: glyph advances round differently at
+                    // the shrunken size.
+                    final room = c.maxWidth - 2;
+                    final k = widest > room && widest > 0 ? room / widest : 1.0;
                     return Text(
                       text,
                       maxLines: 2,
-                      style: style.copyWith(fontSize: 15 * k),
+                      style: style.copyWith(
+                        fontSize: 15 * k,
+                        letterSpacing: 1.4 * k,
+                      ),
                     );
                   },
                 ),
