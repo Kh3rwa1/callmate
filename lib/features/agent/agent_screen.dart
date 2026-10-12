@@ -17,7 +17,6 @@ import '../../core/widgets/settings_sheets.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
-import '../../services/voice/voice_persona.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/world.dart';
 import 'owner_test_call_sheet.dart';
@@ -146,7 +145,6 @@ class _Body extends ConsumerWidget {
     final usage = ref.watch(usageProvider).value;
     final knowledge = ref.watch(knowledgeProvider).value;
     final referralBonus = ref.watch(referralsProvider).value?.bonusMinutes;
-    final category = ref.watch(businessProvider).value?.category;
     final lang = ref.watch(languageProvider);
     final mode = ref.watch(themeModeProvider);
     final textSize = ref.watch(textSizeProvider);
@@ -190,17 +188,12 @@ class _Body extends ConsumerWidget {
                     _NavRow(
                       icon: Icons.checklist_rounded,
                       title: s.playbookTitle,
-                      value: category == null
-                          ? null
-                          : s.playbookName(playbookVerticalFor(category)),
                       onTap: () => context.push('/agent/playbook'),
                     ),
                     _NavRow(
+                      key: const Key('agent-edit'),
                       icon: Icons.tune_rounded,
                       title: s.editAiEmployee,
-                      value: isMaleVoice(a.voice)
-                          ? s.obVoiceMale
-                          : s.obVoiceFemale,
                       onTap: () => context.push('/agent/edit'),
                     ),
                   ],
@@ -432,58 +425,12 @@ class _Hero extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpace.xl),
-          Row(
-            children: [
-              Expanded(
-                child: WorldButton(
-                  world: world,
-                  label: s.talkTo(a.name),
-                  iconWidget: const Icon(Icons.mic_rounded),
-                  onPressed: () => context.push('/voice-test'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Semantics(
-                button: true,
-                label: s.editAiEmployee,
-                excludeSemantics: true,
-                child: Pressable(
-                  scale: 0.92,
-                  onTap: () => context.push('/agent/edit'),
-                  child: Container(
-                    key: const Key('agent-edit'),
-                    constraints: const BoxConstraints(
-                      minWidth: 72,
-                      minHeight: 56,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: world.fg, width: 1.6),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.tune_rounded, color: world.fg, size: 20),
-                        const SizedBox(width: 6),
-                        Text(
-                          s.edit,
-                          style: t.labelLarge?.copyWith(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: world.fg,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          // One button; editing lives in "Edit AI Employee" just below.
+          WorldButton(
+            world: world,
+            label: s.talkTo(a.name),
+            iconWidget: const Icon(Icons.mic_rounded),
+            onPressed: () => context.push('/voice-test'),
           ),
         ],
       ),
@@ -586,10 +533,12 @@ class _NavRow extends StatelessWidget {
                 ),
                 if (value != null && !stacked) ...[
                   const SizedBox(width: 12),
-                  Flexible(
-                    // Fill the slot so the chevron always lines up on the
-                    // right edge, however short the value is.
-                    fit: FlexFit.tight,
+                  // The title keeps most of the row (no two-line titles);
+                  // the quiet value gets at most 30% and ellipsizes.
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.sizeOf(context).width * 0.3,
+                    ),
                     child: Text(
                       keepNumbersTogether(value!),
                       textAlign: TextAlign.end,

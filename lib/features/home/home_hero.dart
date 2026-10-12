@@ -202,70 +202,58 @@ class HeroView extends StatelessWidget {
       key: const Key('home-hero'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Semantics(
-          button: onOpenEmployee != null,
-          label: '${s.heroEyebrow}. $employeeName. ${model.status}',
-          excludeSemantics: true,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onOpenEmployee,
-            child: Row(
-              children: [
-                SwapFade(
+        // One poster number with the bird beside it, one line saying
+        // what matters, one button. Riya's name lives on her own tab.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: BigStat(
+                countKey: const Key('hero-calls'),
+                value: callsToday,
+                label: s.callsToday,
+                color: world.fg,
+                labelColor: world.soft,
+                size: 96,
+                countUp: true,
+                semanticsLabel: callsToday == null
+                    ? null
+                    : '${Fmt.number(callsToday!)} ${s.callsToday}',
+              ),
+            ),
+            Semantics(
+              button: onOpenEmployee != null,
+              label: employeeName,
+              excludeSemantics: true,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onOpenEmployee,
+                child: SwapFade(
                   child: Mascot(
                     key: ValueKey(model.mascot),
                     state: model.mascot,
-                    size: 76,
+                    size: 72,
                     haloColor: Colors.white.withValues(alpha: 0.12),
                     semanticLabel: employeeName,
                   ),
                 ),
-                const SizedBox(width: AppSpace.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        s.heroEyebrow,
-                        style: AppTheme.eyebrow(color: world.soft, size: 12),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        employeeName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTheme.serif(30, color: world.fg),
-                      ),
-                      const SizedBox(height: AppSpace.xs),
-                      SwapFade(
-                        child: _StatusLine(
-                          key: ValueKey(model.status),
-                          text: model.status,
-                          live: live,
-                          hot: model.mode == HeroFocus.hot,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpace.md),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: SwapFade(
+            child: _StatusLine(
+              key: ValueKey(model.status),
+              text: model.status,
+              live: live,
+              hot: model.mode == HeroFocus.hot,
             ),
           ),
         ),
-        const SizedBox(height: AppSpace.xl),
-        BigStat(
-          countKey: const Key('hero-calls'),
-          value: callsToday,
-          label: s.callsToday,
-          color: world.fg,
-          labelColor: world.soft,
-          size: 104,
-          countUp: true,
-          semanticsLabel: callsToday == null
-              ? null
-              : '${Fmt.number(callsToday!)} ${s.callsToday}',
-        ),
-        const SizedBox(height: AppSpace.xl),
+        const SizedBox(height: AppSpace.lg),
         WorldButton(
           key: const Key('hero-action'),
           world: world,

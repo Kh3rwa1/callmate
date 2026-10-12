@@ -55,6 +55,7 @@ class FollowUpsScreen extends ConsumerWidget {
                             const SizedBox(height: AppSpace.lg),
                             if (pending.isNotEmpty) ...[
                               BigStat(
+                                countKey: const Key('followups-pending-count'),
                                 value: pending.length,
                                 label: s.readyToSendShort,
                                 color: AppWorld.messages.fg,
@@ -92,24 +93,9 @@ class FollowUpsScreen extends ConsumerWidget {
                         ),
                       )
                     else ...[
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpace.page,
-                        ),
-                        sliver: SliverToBoxAdapter(
-                          child: SectionLabel(
-                            s.readyToSend,
-                            padding: const EdgeInsets.fromLTRB(2, 20, 2, 12),
-                            trailing: PopSwitcher(
-                              child: Pill(
-                                key: const Key('followups-pending-count'),
-                                label: '${pending.length}',
-                                color: AppColors.ink,
-                                background: AppColors.surfaceMuted,
-                              ),
-                            ),
-                          ),
-                        ),
+                      // The header already says how many are waiting.
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: AppSpace.lg),
                       ),
                       SliverPadding(
                         padding: const EdgeInsets.symmetric(
@@ -323,34 +309,25 @@ class _FollowUpRow extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        fu.leadName,
-                        style: t.titleSmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
+                      // Name and time on one line; the red avatar already
+                      // says this customer wants to buy.
                       Row(
                         children: [
-                          if (fu.scoreValue != null) ...[
-                            ScoreBadge(
-                              score: LeadScore(
-                                value: fu.scoreValue!,
-                                temperature: temp,
-                                intent: LeadIntent.unknown,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Flexible(
+                          Expanded(
                             child: Text(
-                              s.relative(fu.createdAt),
-                              style: t.bodySmall?.copyWith(
-                                color: AppColors.inkFaint,
-                              ),
+                              fu.leadName,
+                              style: t.titleSmall,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            s.relative(fu.createdAt),
+                            style: t.bodySmall?.copyWith(
+                              color: AppColors.inkFaint,
+                            ),
+                            maxLines: 1,
                           ),
                         ],
                       ),

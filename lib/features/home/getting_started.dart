@@ -8,7 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_glyphs.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/mascot.dart';
+
 import '../../l10n/l10n.dart';
 import '../agent/owner_test_call_sheet.dart';
 
@@ -148,7 +148,16 @@ class _AllSet extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          const Mascot(state: MascotState.celebrating, size: 72),
+          // The bird already sits in the hero above; one is enough.
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.successSoft,
+            ),
+            child: Icon(Icons.check_rounded, color: AppColors.success),
+          ),
           const SizedBox(width: AppSpace.md),
           Expanded(
             child: Column(
@@ -248,28 +257,33 @@ class _Card extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSpace.xs),
-          _Step(
-            n: 1,
-            done: g.hasCustomers,
-            title: s.gsContacts,
-            glyph: AppGlyphs.customers,
-            onTap: () => context.push('/leads/contacts'),
-          ),
-          _Step(
-            n: 2,
-            done: g.heardAi,
-            title: s.gsHear,
-            glyph: AppGlyphs.call,
-            onTap: () => showOwnerTestCallSheet(context),
-          ),
-          _Step(
-            n: 3,
-            done: g.formShared,
-            title: s.gsForm,
-            subtitle: s.getCustomersAutoSub,
-            glyph: AppGlyphs.qr,
-            onTap: () => context.push('/leads/auto'),
-          ),
+          // Only what's left: finished steps are already counted in the
+          // bar above, so they don't crowd the card.
+          if (!g.hasCustomers)
+            _Step(
+              n: 1,
+              done: g.hasCustomers,
+              title: s.gsContacts,
+              glyph: AppGlyphs.customers,
+              onTap: () => context.push('/leads/contacts'),
+            ),
+          if (!g.heardAi)
+            _Step(
+              n: 2,
+              done: g.heardAi,
+              title: s.gsHear,
+              glyph: AppGlyphs.call,
+              onTap: () => showOwnerTestCallSheet(context),
+            ),
+          if (!g.formShared)
+            _Step(
+              n: 3,
+              done: g.formShared,
+              title: s.gsForm,
+              subtitle: s.getCustomersAutoSub,
+              glyph: AppGlyphs.qr,
+              onTap: () => context.push('/leads/auto'),
+            ),
         ],
       ),
     );

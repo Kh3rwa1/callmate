@@ -204,10 +204,10 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
             ),
           ),
           const Padding(
-            padding: EdgeInsets.fromLTRB(AppSpace.page, 10, AppSpace.page, 0),
+            padding: EdgeInsets.fromLTRB(AppSpace.page, 8, AppSpace.page, 0),
             child: _AutoLeadsCard(),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
           FilterChipRow(
             children: [
               for (final (f, label, icon) in filters)
@@ -342,12 +342,14 @@ class _AutoLeadsCard extends StatelessWidget {
         shadow: false,
         color: AppColors.accentSoft,
         border: Border.all(color: Colors.transparent),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        // One slim line, so it points the way without pushing the list
+        // down; the screen it opens explains the rest.
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 30,
+              height: 30,
               decoration: BoxDecoration(
                 color: AppColors.accent,
                 shape: BoxShape.circle,
@@ -355,23 +357,19 @@ class _AutoLeadsCard extends StatelessWidget {
               child: Icon(
                 Icons.bolt_rounded,
                 color: AppColors.onAccent,
-                size: 24,
+                size: 19,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    s.getCustomersAuto,
-                    style: t.titleMedium?.copyWith(color: AppColors.ink),
-                  ),
-                  Text(
-                    s.getCustomersAutoSub,
-                    style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
-                  ),
-                ],
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  s.getCustomersAuto,
+                  maxLines: 1,
+                  style: t.titleSmall?.copyWith(color: AppColors.ink),
+                ),
               ),
             ),
             Icon(Icons.chevron_right_rounded, color: AppColors.ink),

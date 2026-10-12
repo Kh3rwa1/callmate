@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/config/app_env.dart';
 import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
@@ -80,7 +79,7 @@ class HomeScreen extends ConsumerWidget {
                                         biz?.name ?? s.homeWelcome,
                                         key: ValueKey(biz?.name),
                                         style: AppTheme.serif(
-                                          34,
+                                          30,
                                           color: world.fg,
                                           height: 1.02,
                                         ),
@@ -93,16 +92,6 @@ class HomeScreen extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          if (AppEnv.showDemoTools)
-                            IconButton(
-                              tooltip: s.demoControls,
-                              color: world.soft,
-                              onPressed: () => context.push('/demo'),
-                              icon: const Icon(
-                                Icons.science_outlined,
-                                size: 22,
-                              ),
-                            ),
                           WorldAction(
                             key: const Key('home-help'),
                             world: world,
@@ -137,7 +126,7 @@ class HomeScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: AppSpace.xl),
+                      const SizedBox(height: AppSpace.lg),
                       const Reveal(
                         id: 'home-hero',
                         index: 1,
@@ -218,8 +207,9 @@ class _HomeBody extends ConsumerWidget {
           null,
           (a, b) => a == null || b.scheduledAt.isBefore(a.scheduledAt) ? b : a,
         );
+    final heroShowsLive = ref.watch(activeCampaignProvider)?.isActive == true;
     final heroCallsNew =
-        ref.watch(activeCampaignProvider)?.isActive != true &&
+        !heroShowsLive &&
         d.hot == 0 &&
         d.followUpsReady == 0 &&
         d.leads > 0 &&
@@ -236,7 +226,9 @@ class _HomeBody extends ConsumerWidget {
         SectionLabel(s.needsAttention),
         HomeActionGroup(
           rows: [
-            if (d.hot > 0)
+            // The hero already leads with "N ready to buy" unless a live
+            // call has taken its place.
+            if (d.hot > 0 && heroShowsLive)
               HomeActionRow(
                 glyph: AppGlyphs.hot,
                 color: AppColors.hot,
@@ -245,7 +237,7 @@ class _HomeBody extends ConsumerWidget {
                 label: s.hotLeadsLabel,
                 onTap: () => context.go('/leads?filter=hot'),
               )
-            else
+            else if (d.hot == 0)
               HomeActionRow(
                 glyph: AppGlyphs.hot,
                 color: AppColors.inkFaint,
