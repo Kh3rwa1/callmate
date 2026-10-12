@@ -65,6 +65,16 @@ flutter:
           weight: 600
         - asset: assets/fonts/Geist-Bold.ttf
           weight: 700
+    # Big numbers and shouty labels (condensed). Licence: OFL-Anton.txt.
+    - family: Anton
+      fonts:
+        - asset: assets/fonts/Anton-Regular.ttf
+    # Editorial page titles. Licence: OFL-InstrumentSerif.txt.
+    - family: InstrumentSerif
+      fonts:
+        - asset: assets/fonts/InstrumentSerif-Regular.ttf
+        - asset: assets/fonts/InstrumentSerif-Italic.ttf
+          style: italic
     # Devanagari (Hindi) and Bengali fallbacks – see AppTheme.fontFallback.
     # Both are subset to their own script (+ ₹, dashes, ZWJ/ZWNJ) with every
     # OpenType layout feature kept, since Geist draws all Latin text.

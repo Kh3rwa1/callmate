@@ -19,7 +19,7 @@ import 'home_widgets.dart';
 import 'home_hero.dart';
 import 'results_card.dart';
 import 'week_funnel.dart';
-import '../../core/widgets/brand_widgets.dart';
+import '../../core/widgets/world.dart';
 import '../usage/plan_banner.dart';
 
 /// Home – "What happened today?"
@@ -36,150 +36,152 @@ class HomeScreen extends ConsumerWidget {
         ref.watch(notificationsProvider).value?.where((n) => !n.read).length ??
         0;
 
+    const world = AppWorld.home;
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          color: AppColors.brand,
-          backgroundColor: AppColors.surface,
-          onRefresh: () async {
-            ref.read(dataVersionProvider.notifier).bump();
-            await ref.read(dashboardProvider.future);
-          },
-          child: CustomScrollView(
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(AppSpace.page, 14, 10, 0),
-                sliver: SliverToBoxAdapter(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s.greeting(),
-                              style: t.bodyMedium?.copyWith(
-                                color: AppColors.inkFaint,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            // Up to two lines, never cut short: the name
-                            // tops out at 1.5× so a typical 20-letter name
-                            // fits even at the biggest text size.
-                            MediaQuery.withClampedTextScaling(
-                              maxScaleFactor: 1.5,
-                              child: SwapFade(
-                                child: GradientText(
-                                  biz?.name ?? s.homeWelcome,
-                                  key: ValueKey(biz?.name),
-                                  style: t.headlineSmall?.copyWith(
-                                    fontSize: 26,
-                                    letterSpacing: -0.6,
-                                    height: 1.15,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+      body: RefreshIndicator(
+        color: AppColors.brand,
+        backgroundColor: AppColors.surface,
+        onRefresh: () async {
+          ref.read(dataVersionProvider.notifier).bump();
+          await ref.read(dashboardProvider.future);
+        },
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: WorldHeader(
+                world: world,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  s.greeting(),
+                                  style: AppTheme.eyebrow(color: world.soft),
                                 ),
-                              ),
+                                const SizedBox(height: 6),
+                                // Up to two lines, never cut short: the
+                                // name tops out at 1.4× so a typical
+                                // 20-letter name fits at the biggest size.
+                                MediaQuery.withClampedTextScaling(
+                                  maxScaleFactor: 1.4,
+                                  child: SwapFade(
+                                    child: Text(
+                                      biz?.name ?? s.homeWelcome,
+                                      key: ValueKey(biz?.name),
+                                      style: AppTheme.serif(
+                                        34,
+                                        color: world.fg,
+                                        height: 1.02,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                      if (AppEnv.showDemoTools)
-                        IconButton(
-                          tooltip: s.demoControls,
-                          color: AppColors.inkFaint,
-                          onPressed: () => context.push('/demo'),
-                          icon: const Icon(Icons.science_outlined, size: 22),
-                        ),
-                      TopBarAction(
-                        key: const Key('home-help'),
-                        icon: const AppGlyph(AppGlyphs.help, size: 26),
-                        label: s.help,
-                        onTap: () => showHelpSheet(context),
-                      ),
-                      TopBarAction(
-                        key: const Key('home-alerts'),
-                        semanticsLabel: unread > 0
-                            ? s.newNotifications(unread)
-                            : s.notifications,
-                        label: s.alertsShort,
-                        onTap: () => context.push('/notifications'),
-                        icon: Badge(
-                          isLabelVisible: unread > 0,
-                          label: Text('$unread'),
-                          backgroundColor: AppColors.hotFill,
-                          largeSize: 18,
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
-                          textStyle: t.labelSmall?.copyWith(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0,
                           ),
-                          offset: const Offset(5, -4),
-                          child: const AppGlyph(AppGlyphs.alerts, size: 26),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpace.page,
-                  AppSpace.lg,
-                  AppSpace.page,
-                  0,
-                ),
-                sliver: const SliverToBoxAdapter(
-                  child: Reveal(
-                    id: 'home-hero',
-                    index: 1,
-                    child: HomeHeroCard(),
-                  ),
-                ),
-              ),
-              // New owners: three first steps, ticked from real data.
-              const SliverPadding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpace.page),
-                sliver: SliverToBoxAdapter(child: GettingStartedCard()),
-              ),
-              // Payment due / trial running low.
-              SliverToBoxAdapter(
-                child: AnimatedSize(
-                  duration: AppMotion.of(context, AppMotion.slow),
-                  curve: AppMotion.emphasized,
-                  alignment: Alignment.topCenter,
-                  child: const PlanBanner(
-                    padding: EdgeInsets.fromLTRB(
-                      AppSpace.page,
-                      14,
-                      AppSpace.page,
-                      0,
+                        if (AppEnv.showDemoTools)
+                          IconButton(
+                            tooltip: s.demoControls,
+                            color: world.soft,
+                            onPressed: () => context.push('/demo'),
+                            icon: const Icon(Icons.science_outlined, size: 22),
+                          ),
+                        WorldAction(
+                          key: const Key('home-help'),
+                          world: world,
+                          icon: const AppGlyph(AppGlyphs.help, size: 22),
+                          label: s.help,
+                          onTap: () => showHelpSheet(context),
+                        ),
+                        WorldAction(
+                          key: const Key('home-alerts'),
+                          world: world,
+                          semanticsLabel: unread > 0
+                              ? s.newNotifications(unread)
+                              : s.notifications,
+                          label: s.alertsShort,
+                          onTap: () => context.push('/notifications'),
+                          icon: Badge(
+                            isLabelVisible: unread > 0,
+                            label: Text('$unread'),
+                            backgroundColor: AppColors.hotFill,
+                            largeSize: 18,
+                            padding: const EdgeInsets.symmetric(horizontal: 5),
+                            textStyle: t.labelSmall?.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0,
+                            ),
+                            offset: const Offset(7, -6),
+                            child: const AppGlyph(AppGlyphs.alerts, size: 22),
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: AppSpace.xl),
+                    const Reveal(
+                      id: 'home-hero',
+                      index: 1,
+                      child: HomeHeroCard(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // New owners: three first steps, ticked from real data.
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpace.page,
+                AppSpace.lg,
+                AppSpace.page,
+                0,
+              ),
+              sliver: SliverToBoxAdapter(child: GettingStartedCard()),
+            ),
+            // Payment due / trial running low.
+            SliverToBoxAdapter(
+              child: AnimatedSize(
+                duration: AppMotion.of(context, AppMotion.slow),
+                curve: AppMotion.emphasized,
+                alignment: Alignment.topCenter,
+                child: const PlanBanner(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpace.page,
+                    14,
+                    AppSpace.page,
+                    0,
                   ),
                 ),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpace.page,
-                  0,
-                  AppSpace.page,
-                  32,
-                ),
-                sliver: SliverToBoxAdapter(
-                  child: AsyncView<DailySummary>(
-                    value: dash,
-                    onRetry: () => ref.invalidate(dashboardProvider),
-                    loading: const HomeSkeleton(),
-                    data: (d) => _HomeBody(d: d),
-                  ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.page,
+                0,
+                AppSpace.page,
+                32,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: AsyncView<DailySummary>(
+                  value: dash,
+                  onRetry: () => ref.invalidate(dashboardProvider),
+                  loading: const HomeSkeleton(),
+                  data: (d) => _HomeBody(d: d),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

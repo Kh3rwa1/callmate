@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 /// Every colour the app uses, for one brightness.
 ///
 /// The system has three layers:
-/// * **Neutrals** – cool paper/ink with a hint of indigo, so the app reads
-///   calm and expensive instead of "default blue".
-/// * **Brand** – one deep indigo for structure: links, selected tabs and
-///   chips, the hero surface.
-/// * **Signature** – one warm marigold ([accent]) reserved for wins and the
-///   single primary action on a screen. It always carries dark text
-///   ([onAccent]); white on marigold fails contrast.
+/// * **Neutrals** – warm paper and ink, like a printed page, so the colour
+///   in the app comes from the product, not the chrome.
+/// * **Brand** – one cobalt (the mascot's blue) for links and the Home
+///   world. Selected chips and filled buttons are plain ink.
+/// * **Signature** – one acid lime ([accent]) for the single loudest action
+///   on a coloured world and for wins. It always carries ink text
+///   ([onAccent]).
+///
+/// Each tab also lives in its own colour world – see [AppWorld].
 ///
 /// Semantic colours are fixed in meaning everywhere: [hot] = ready to buy,
 /// [warm] = interested, [success] = done/checked, [cold] = neutral. Change
@@ -136,90 +138,90 @@ class AppPalette {
 
   static const light = AppPalette(
     brightness: Brightness.light,
-    background: Color(0xFFF6F6FA),
-    surface: Color(0xFFFFFFFF),
-    surfaceMuted: Color(0xFFEFEFF6),
-    border: Color(0xFFE3E3EE),
-    hairline: Color(0x14161640),
-    ink: Color(0xFF15163A),
-    inkSoft: Color(0xFF46476A),
-    inkFaint: Color(0xFF5B5C7C),
-    brand: Color(0xFF3D35C8),
-    brandSoft: Color(0xFFECEBFD),
-    brandDeep: Color(0xFF2B249A),
-    brandFill: Color(0xFF3D35C8),
-    accent: Color(0xFFF5A524),
-    onAccent: Color(0xFF1C1405),
-    accentSoft: Color(0xFFFFF3DC),
-    accentInk: Color(0xFF8A5200),
-    success: Color(0xFF137336),
-    successSoft: Color(0xFFE6F4EA),
-    warm: Color(0xFFEA580C),
-    warmSoft: Color(0xFFFFEDE0),
-    warmInk: Color(0xFFAD3E06),
-    hot: Color(0xFFC8222B),
-    hotSoft: Color(0xFFFDECEC),
-    hotFill: Color(0xFFC8222B),
-    cold: Color(0xFF5E5F7E),
-    coldSoft: Color(0xFFEFEFF6),
-    info: Color(0xFF0369A1),
-    infoSoft: Color(0xFFE3F4FC),
-    whatsapp: Color(0xFF0F7A3F),
-    whatsappSoft: Color(0xFFE3F6EA),
+    background: Color(0xFFF3EEE4),
+    surface: Color(0xFFFFFCF6),
+    surfaceMuted: Color(0xFFEAE3D5),
+    border: Color(0xFFDDD4C3),
+    hairline: Color(0x1A2A2010),
+    ink: Color(0xFF1A1814),
+    inkSoft: Color(0xFF48423A),
+    inkFaint: Color(0xFF5E574B),
+    brand: Color(0xFF2440D8),
+    brandSoft: Color(0xFFE3E7FF),
+    brandDeep: Color(0xFF1A2C9E),
+    brandFill: Color(0xFF2440D8),
+    accent: Color(0xFFCDEB3F),
+    onAccent: Color(0xFF1A1814),
+    accentSoft: Color(0xFFEEF6C6),
+    accentInk: Color(0xFF475400),
+    success: Color(0xFF1B7136),
+    successSoft: Color(0xFFE0EFDC),
+    warm: Color(0xFFE2560E),
+    warmSoft: Color(0xFFFCE6D4),
+    warmInk: Color(0xFFA3400A),
+    hot: Color(0xFFBC2519),
+    hotSoft: Color(0xFFFBE3DC),
+    hotFill: Color(0xFFCF3523),
+    cold: Color(0xFF5B5549),
+    coldSoft: Color(0xFFEAE3D5),
+    info: Color(0xFF0A5F95),
+    infoSoft: Color(0xFFDDECF5),
+    whatsapp: Color(0xFF0E7038),
+    whatsappSoft: Color(0xFFDDF1E2),
     whatsappFill: Color(0xFF0F7A3F),
-    mascotHalo: Color(0xFFE6ECFF),
-    inverse: Color(0xFF3D35C8),
-    onInverse: Color(0xFFFFFFFF),
-    strong: Color(0xFF1E1B5C),
-    onStrongSoft: Color(0xFFC9C7EE),
-    bubble: Color(0xFFE7F8DD),
-    bubbleBorder: Color(0xFFCDEBC0),
-    shadow: Color(0xFF15163A),
-    skeletonHighlight: Color(0xFFF8F8FC),
+    mascotHalo: Color(0xFFE3E7FF),
+    inverse: Color(0xFF1A1814),
+    onInverse: Color(0xFFFFFCF6),
+    strong: Color(0xFF2440D8),
+    onStrongSoft: Color(0xFFDCE1FF),
+    bubble: Color(0xFFE4F5D6),
+    bubbleBorder: Color(0xFFC9E6B5),
+    shadow: Color(0xFF1A1814),
+    skeletonHighlight: Color(0xFFF8F4EC),
   );
 
   static const dark = AppPalette(
     brightness: Brightness.dark,
-    background: Color(0xFF0B0B17),
-    surface: Color(0xFF14142A),
-    surfaceMuted: Color(0xFF1C1C38),
-    border: Color(0xFF2A2A4A),
+    background: Color(0xFF121110),
+    surface: Color(0xFF1C1A17),
+    surfaceMuted: Color(0xFF26231F),
+    border: Color(0xFF35312B),
     hairline: Color(0x14FFFFFF),
-    ink: Color(0xFFEEEEF9),
-    inkSoft: Color(0xFFB9B9D3),
-    inkFaint: Color(0xFF9A9AB9),
-    brand: Color(0xFFABA6FF),
-    brandSoft: Color(0xFF221F55),
-    brandDeep: Color(0xFFD0CDFF),
-    brandFill: Color(0xFF4B44DB),
-    accent: Color(0xFFF5A524),
-    onAccent: Color(0xFF1C1405),
-    accentSoft: Color(0xFF3A2A0A),
-    accentInk: Color(0xFFFFC15C),
-    success: Color(0xFF4ADE80),
-    successSoft: Color(0xFF12301F),
+    ink: Color(0xFFF3EEE4),
+    inkSoft: Color(0xFFCBC3B4),
+    inkFaint: Color(0xFFA59D8E),
+    brand: Color(0xFF9DABFF),
+    brandSoft: Color(0xFF1D2350),
+    brandDeep: Color(0xFFCBD2FF),
+    brandFill: Color(0xFF3350E6),
+    accent: Color(0xFFCDEB3F),
+    onAccent: Color(0xFF1A1814),
+    accentSoft: Color(0xFF2B3109),
+    accentInk: Color(0xFFD7F05C),
+    success: Color(0xFF63D383),
+    successSoft: Color(0xFF14301D),
     warm: Color(0xFFFB923C),
-    warmSoft: Color(0xFF3A220F),
+    warmSoft: Color(0xFF3A230F),
     warmInk: Color(0xFFFDA769),
-    hot: Color(0xFFFF7A7F),
-    hotSoft: Color(0xFF3B1619),
-    hotFill: Color(0xFFD92D35),
-    cold: Color(0xFFA6A7BF),
-    coldSoft: Color(0xFF1E1E36),
-    info: Color(0xFF5CC8FF),
-    infoSoft: Color(0xFF0D2B3B),
-    whatsapp: Color(0xFF4BD48A),
-    whatsappSoft: Color(0xFF123222),
+    hot: Color(0xFFFF8A78),
+    hotSoft: Color(0xFF3B1813),
+    hotFill: Color(0xFFD23A26),
+    cold: Color(0xFFADA595),
+    coldSoft: Color(0xFF26231F),
+    info: Color(0xFF6CC6F5),
+    infoSoft: Color(0xFF0F2A38),
+    whatsapp: Color(0xFF55D48E),
+    whatsappSoft: Color(0xFF133222),
     whatsappFill: Color(0xFF117A40),
-    mascotHalo: Color(0xFF1E1D4A),
-    inverse: Color(0xFF5A53E6),
-    onInverse: Color(0xFFFFFFFF),
-    strong: Color(0xFF1C1A48),
-    onStrongSoft: Color(0xFFC9C7EE),
+    mascotHalo: Color(0xFF1D2350),
+    inverse: Color(0xFFF3EEE4),
+    onInverse: Color(0xFF1A1814),
+    strong: Color(0xFF2440D8),
+    onStrongSoft: Color(0xFFDCE1FF),
     bubble: Color(0xFF173323),
     bubbleBorder: Color(0xFF24503A),
     shadow: Color(0xFF000000),
-    skeletonHighlight: Color(0xFF24244A),
+    skeletonHighlight: Color(0xFF2E2B26),
   );
 
   static AppPalette of(Brightness b) => b == Brightness.dark ? dark : light;
@@ -293,4 +295,86 @@ class AppColors {
 
   /// Status dot on dark/brand surfaces.
   static const liveDot = Color(0xFF86EFAC);
+}
+
+/// Each tab owns one loud colour, like a magazine section: the top of the
+/// tab is painted in it and the tab bar pill takes it when selected. The
+/// rest of the page stays on calm paper so lists remain easy to read.
+enum AppWorld {
+  /// Home – cobalt, the mascot's blue.
+  home(
+    bg: Color(0xFF2440D8),
+    fg: Color(0xFFFFFFFF),
+    soft: Color(0xFFDCE1FF),
+    cta: Color(0xFFCDEB3F),
+    onCta: Color(0xFF1A1814),
+  ),
+
+  /// Customers – ink black with lime, like a ledger.
+  leads(
+    bg: Color(0xFF1A1814),
+    fg: Color(0xFFFFFCF6),
+    soft: Color(0xFFC4BCAD),
+    cta: Color(0xFFCDEB3F),
+    onCta: Color(0xFF1A1814),
+  ),
+
+  /// Calls – tomato red, the colour of a phone ringing.
+  calls(
+    bg: Color(0xFFC0341F),
+    fg: Color(0xFFFFFFFF),
+    soft: Color(0xFFFFE3DC),
+    cta: Color(0xFFFFFCF6),
+    onCta: Color(0xFF1A1814),
+  ),
+
+  /// Messages – chartreuse, close to a chat bubble without copying one.
+  messages(
+    bg: Color(0xFFD5EE5A),
+    fg: Color(0xFF1A1814),
+    soft: Color(0xFF3B4410),
+    cta: Color(0xFF1A1814),
+    onCta: Color(0xFFFFFCF6),
+  ),
+
+  /// My employee – marigold, warm like a name badge.
+  agent(
+    bg: Color(0xFFF3B530),
+    fg: Color(0xFF1A1814),
+    soft: Color(0xFF4F3A07),
+    cta: Color(0xFF1A1814),
+    onCta: Color(0xFFFFFCF6),
+  );
+
+  const AppWorld({
+    required this.bg,
+    required this.fg,
+    required this.soft,
+    required this.cta,
+    required this.onCta,
+  });
+
+  /// The world's paint.
+  final Color bg;
+
+  /// Main text and icons on [bg].
+  final Color fg;
+
+  /// Secondary text on [bg].
+  final Color soft;
+
+  /// The one button on [bg], with [onCta] text.
+  final Color cta;
+  final Color onCta;
+
+  /// The paint to use right now: the ink world lifts a step in dark mode
+  /// so it still reads as a block on the near-black page.
+  Color get paint =>
+      this == AppWorld.leads && AppColors.isDark ? const Color(0xFF2A2621) : bg;
+
+  /// Light status-bar icons on dark worlds, dark ones on bright worlds.
+  bool get isDarkBg => bg.computeLuminance() < 0.3;
+
+  /// Per tab index (Home · Customers · Calls · Messages · My employee).
+  static AppWorld ofTab(int i) => values[i.clamp(0, values.length - 1)];
 }

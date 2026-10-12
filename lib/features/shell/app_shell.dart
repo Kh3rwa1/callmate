@@ -6,6 +6,7 @@ import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_glyphs.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/widgets/celebration.dart';
 import '../../l10n/l10n.dart';
 
@@ -58,9 +59,11 @@ class NavItemData {
   final String label;
 }
 
-/// The tab bar: CallPilot's own rounded icons, a pill that glides (with a
-/// slight overshoot) behind the selected tab, labels at 12.5+ that wrap
-/// rather than truncate, and badges that pop when their count changes.
+/// The tab bar: a floating paper capsule with CallPilot's own rounded
+/// icons. The selected tab sits in a pill painted in that tab's colour
+/// world (cobalt, ink, tomato, chartreuse, marigold) that glides between
+/// tabs. Labels stay at 12.5+ and never truncate; badges pop when their
+/// count changes.
 class AppNavBar extends StatelessWidget {
   const AppNavBar({
     super.key,
@@ -73,9 +76,6 @@ class AppNavBar extends StatelessWidget {
   final List<NavItemData> items;
   final ValueChanged<int> onSelect;
   final Map<int, int> badges;
-
-  static const _pillWidth = 60.0;
-  static const _pillHeight = 32.0;
 
   /// Tab labels stop growing here so five tabs still fit side by side.
   static const _maxLabelScale = 1.3;
@@ -92,55 +92,66 @@ class AppNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reduced = AppMotion.reduced(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.hairline)),
-      ),
+    final world = AppWorld.ofTab(index);
+    final dur = reduced ? Duration.zero : const Duration(milliseconds: 420);
+    return ColoredBox(
+      color: AppColors.background,
       child: SafeArea(
         top: false,
-        // One line per label, never split inside a word: labels grow with
-        // the owner's text size up to [_maxLabelScale] and shrink to fit
-        // their tab if a long word ("मेरा कर्मचारी") would not fit.
-        child: SizedBox(
-          height: 32 + 4 + 14 + labelLine(context),
-          child: LayoutBuilder(
-            builder: (context, c) {
-              final w = c.maxWidth / items.length;
-              return Stack(
-                children: [
-                  AnimatedPositioned(
-                    duration: reduced
-                        ? Duration.zero
-                        : const Duration(milliseconds: 460),
-                    curve: const Cubic(0.3, 1.3, 0.45, 1),
-                    left: w * index + (w - _pillWidth) / 2,
-                    top: 7,
-                    width: _pillWidth,
-                    height: _pillHeight,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: AppColors.brandSoft,
-                        borderRadius: BorderRadius.circular(99),
+        minimum: const EdgeInsets.only(bottom: 10),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+          child: Container(
+            // One line per label, never split inside a word: labels grow
+            // with the owner's text size up to [_maxLabelScale] and shrink
+            // to fit their tab if a long word ("मेरा कर्मचारी") won't fit.
+            height: 26 + 4 + 18 + labelLine(context),
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: AppColors.hairline),
+              boxShadow: AppShadows.raised,
+            ),
+            child: LayoutBuilder(
+              builder: (context, c) {
+                final w = c.maxWidth / items.length;
+                return Stack(
+                  children: [
+                    AnimatedPositioned(
+                      duration: dur,
+                      curve: const Cubic(0.3, 1.15, 0.45, 1),
+                      left: w * index,
+                      top: 0,
+                      bottom: 0,
+                      width: w,
+                      child: AnimatedContainer(
+                        duration: dur,
+                        curve: AppMotion.standard,
+                        decoration: BoxDecoration(
+                          color: world.paint,
+                          borderRadius: BorderRadius.circular(25),
+                        ),
                       ),
                     ),
-                  ),
-                  Row(
-                    children: [
-                      for (var i = 0; i < items.length; i++)
-                        Expanded(
-                          child: _NavItem(
-                            data: items[i],
-                            selected: i == index,
-                            badge: badges[i],
-                            onTap: () => onSelect(i),
+                    Row(
+                      children: [
+                        for (var i = 0; i < items.length; i++)
+                          Expanded(
+                            child: _NavItem(
+                              data: items[i],
+                              selected: i == index,
+                              selectedColor: world.fg,
+                              badge: badges[i],
+                              onTap: () => onSelect(i),
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
-                ],
-              );
-            },
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -152,11 +163,13 @@ class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.data,
     required this.selected,
+    required this.selectedColor,
     required this.badge,
     required this.onTap,
   });
   final NavItemData data;
   final bool selected;
+  final Color selectedColor;
 
   /// null: this tab never shows a badge.
   final int? badge;
@@ -168,13 +181,14 @@ class _NavItem extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final dur = AppMotion.of(context, AppMotion.base);
     final count = badge ?? 0;
+    final fg = selected ? selectedColor : AppColors.inkFaint;
     final icon = PopSwitcher(
       duration: AppMotion.slow,
       child: AppGlyph(
         data.glyph,
-        key: ValueKey(selected),
-        size: 24,
-        color: selected ? AppColors.brand : AppColors.inkFaint,
+        key: ValueKey('$selected-$fg'),
+        size: 23,
+        color: fg,
       ),
     );
     return Semantics(
@@ -190,7 +204,7 @@ class _NavItem extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(
-              height: 32,
+              height: 26,
               child: Center(
                 child: badge == null
                     ? icon
@@ -199,7 +213,7 @@ class _NavItem extends StatelessWidget {
                         children: [
                           icon,
                           Positioned(
-                            right: -10,
+                            right: -11,
                             top: -6,
                             child: PopSwitcher(
                               child: count == 0
@@ -222,11 +236,11 @@ class _NavItem extends StatelessWidget {
                 fontSize: AppNavBar.labelFontSize,
                 height: 1.2,
                 letterSpacing: 0,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                color: selected ? AppColors.ink : AppColors.inkFaint,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected ? selectedColor : AppColors.inkFaint,
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 3),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(

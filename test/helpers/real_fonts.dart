@@ -19,6 +19,11 @@ Future<void> loadAppFonts() async {
 
   const weights = ['Regular', 'Medium', 'SemiBold', 'Bold'];
   await family('Geist', [for (final w in weights) 'Geist-$w.ttf']);
+  await family('Anton', ['Anton-Regular.ttf']);
+  await family('InstrumentSerif', [
+    'InstrumentSerif-Regular.ttf',
+    'InstrumentSerif-Italic.ttf',
+  ]);
   await family('Mukta', [for (final w in weights) 'Mukta-$w.ttf']);
   await family('HindSiliguri', [
     for (final w in weights) 'HindSiliguri-$w.ttf',

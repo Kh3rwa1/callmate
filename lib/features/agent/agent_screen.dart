@@ -13,13 +13,13 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/whole_word_text.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/employee_avatar.dart';
 import '../../core/widgets/settings_sheets.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import '../../services/voice/voice_persona.dart';
-import '../../core/widgets/brand_widgets.dart';
+import '../../core/widgets/mascot.dart';
+import '../../core/widgets/world.dart';
 import 'owner_test_call_sheet.dart';
 
 /// AI Employee – "What can my AI employee do?" plus the app's settings.
@@ -32,6 +32,7 @@ class AgentScreen extends ConsumerWidget {
     final agent = ref.watch(agentProvider);
     return Scaffold(
       body: SafeArea(
+        top: false,
         bottom: false,
         child: AsyncView<Agent?>(
           value: agent,
@@ -138,7 +139,6 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = context.s;
-    final t = Theme.of(context).textTheme;
     final a = agent;
     final usage = ref.watch(usageProvider).value;
     final knowledge = ref.watch(knowledgeProvider).value;
@@ -153,160 +153,170 @@ class _Body extends ConsumerWidget {
         Reveal(id: 'agent-section-${i++}', index: i, child: child);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpace.page, 12, AppSpace.page, 40),
+      padding: const EdgeInsets.only(bottom: 40),
       children: [
-        Semantics(
-          header: true,
-          child: GradientText(s.myEmployee, style: t.headlineMedium),
-        ),
-        const SizedBox(height: 18),
-        reveal(_Hero(agent: a)),
-
-        // ------------------------------------------------ Your employee
-        _SectionHeader(
-          s.sectionYourEmployee,
-          key: const Key('section-employee'),
-        ),
-        reveal(
-          CardGroup(
+        _Hero(agent: a),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.page),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _NavRow(
-                icon: Icons.ring_volume_outlined,
-                glyph: AppGlyphs.call,
-                title: s.hearYourAiShort,
-                onTap: () => showOwnerTestCallSheet(context),
+              // ------------------------------------------------ Your employee
+              _SectionHeader(
+                s.sectionYourEmployee,
+                key: const Key('section-employee'),
               ),
-              _NavRow(
-                icon: Icons.menu_book_outlined,
-                glyph: AppGlyphs.teach,
-                title: s.teachYourAi,
-                value: knowledge == null ? null : s.nSources(knowledge.length),
-                onTap: () => context.push('/agent/teach'),
-              ),
-              _NavRow(
-                icon: Icons.checklist_rounded,
-                title: s.playbookTitle,
-                value: category == null
-                    ? null
-                    : s.playbookName(playbookVerticalFor(category)),
-                onTap: () => context.push('/agent/playbook'),
-              ),
-              _NavRow(
-                icon: Icons.tune_rounded,
-                title: s.editAiEmployee,
-                value: isMaleVoice(a.voice) ? s.obVoiceMale : s.obVoiceFemale,
-                onTap: () => context.push('/agent/edit'),
-              ),
-            ],
-          ),
-        ),
-
-        // ----------------------------------------------- Plan & minutes
-        _SectionHeader(s.sectionPlan, key: const Key('section-plan')),
-        reveal(
-          CardGroup(
-            children: [
-              usage == null
-                  ? const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Skeleton(height: 28),
-                    )
-                  : _NavRow(
-                      icon: Icons.timelapse_rounded,
-                      glyph: AppGlyphs.plan,
-                      title: s.minLeft(Fmt.number(usage.minutesRemaining)),
-                      value: s.planDisplayName(usage.subscription.planName),
-                      progress: usage.ratio,
-                      progressColor: usage.ratio > 0.85
-                          ? AppColors.hot
-                          : AppColors.brand,
-                      onTap: () => context.push('/usage'),
+              reveal(
+                CardGroup(
+                  children: [
+                    _NavRow(
+                      icon: Icons.ring_volume_outlined,
+                      glyph: AppGlyphs.call,
+                      title: s.hearYourAiShort,
+                      onTap: () => showOwnerTestCallSheet(context),
                     ),
-              _NavRow(
-                icon: Icons.card_giftcard_outlined,
-                glyph: AppGlyphs.share,
-                title: s.inviteAndEarn,
-                value: referralBonus == null
-                    ? null
-                    : s.inviteRowValue(referralBonus),
-                onTap: () => context.push('/invite'),
-              ),
-            ],
-          ),
-        ),
-
-        // ---------------------------------------------- Settings & help
-        _SectionHeader(
-          s.sectionSettingsHelp,
-          key: const Key('section-settings'),
-        ),
-        reveal(
-          CardGroup(
-            children: [
-              _NavRow(
-                icon: Icons.notifications_active_outlined,
-                title: s.allowAlerts,
-                onTap: () => _allowAlerts(context, ref),
-              ),
-              const _DigestRow(),
-              _NavRow(
-                icon: Icons.translate_rounded,
-                title: s.appLanguage,
-                value: lang?.nativeName ?? s.phoneDefault,
-                onTap: () => showLanguageSheet(context, ref),
-              ),
-              _NavRow(
-                key: const Key('text-size-row'),
-                icon: Icons.format_size_rounded,
-                title: s.textSize,
-                value: switch (textSize) {
-                  TextSize.normal => s.textNormal,
-                  TextSize.large => s.textLarge,
-                  TextSize.extraLarge => s.textExtraLarge,
-                },
-                onTap: () => showTextSizeSheet(context, ref),
-              ),
-              _NavRow(
-                icon: Icons.contrast_rounded,
-                title: s.appearance,
-                value: switch (mode) {
-                  ThemeMode.light => s.themeLight,
-                  ThemeMode.dark => s.themeDark,
-                  ThemeMode.system => s.themeSystem,
-                },
-                onTap: () => showAppearanceSheet(context, ref),
-              ),
-              _NavRow(
-                icon: Icons.help_outline_rounded,
-                title: s.helpSupport,
-                onTap: () => showSupportSheet(context),
-              ),
-              if (AppEnv.showDemoTools)
-                _NavRow(
-                  icon: Icons.science_outlined,
-                  title: s.demoControls,
-                  onTap: () => context.push('/demo'),
+                    _NavRow(
+                      icon: Icons.menu_book_outlined,
+                      glyph: AppGlyphs.teach,
+                      title: s.teachYourAi,
+                      value: knowledge == null
+                          ? null
+                          : s.nSources(knowledge.length),
+                      onTap: () => context.push('/agent/teach'),
+                    ),
+                    _NavRow(
+                      icon: Icons.checklist_rounded,
+                      title: s.playbookTitle,
+                      value: category == null
+                          ? null
+                          : s.playbookName(playbookVerticalFor(category)),
+                      onTap: () => context.push('/agent/playbook'),
+                    ),
+                    _NavRow(
+                      icon: Icons.tune_rounded,
+                      title: s.editAiEmployee,
+                      value: isMaleVoice(a.voice)
+                          ? s.obVoiceMale
+                          : s.obVoiceFemale,
+                      onTap: () => context.push('/agent/edit'),
+                    ),
+                  ],
                 ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        reveal(
-          CardGroup(
-            children: [
-              _NavRow(
-                icon: Icons.logout_rounded,
-                title: s.signOut,
-                color: AppColors.hot,
-                chevron: false,
-                onTap: () => _signOut(context, ref),
               ),
-              _NavRow(
-                icon: Icons.delete_outline_rounded,
-                title: s.deleteAccount,
-                color: AppColors.inkFaint,
-                chevron: false,
-                onTap: () => _deleteAccount(context, ref),
+
+              // ----------------------------------------------- Plan & minutes
+              _SectionHeader(s.sectionPlan, key: const Key('section-plan')),
+              reveal(
+                CardGroup(
+                  children: [
+                    usage == null
+                        ? const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Skeleton(height: 28),
+                          )
+                        : _NavRow(
+                            icon: Icons.timelapse_rounded,
+                            glyph: AppGlyphs.plan,
+                            title: s.minLeft(
+                              Fmt.number(usage.minutesRemaining),
+                            ),
+                            value: s.planDisplayName(
+                              usage.subscription.planName,
+                            ),
+                            progress: usage.ratio,
+                            progressColor: usage.ratio > 0.85
+                                ? AppColors.hot
+                                : AppColors.brand,
+                            onTap: () => context.push('/usage'),
+                          ),
+                    _NavRow(
+                      icon: Icons.card_giftcard_outlined,
+                      glyph: AppGlyphs.share,
+                      title: s.inviteAndEarn,
+                      value: referralBonus == null
+                          ? null
+                          : s.inviteRowValue(referralBonus),
+                      onTap: () => context.push('/invite'),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ---------------------------------------------- Settings & help
+              _SectionHeader(
+                s.sectionSettingsHelp,
+                key: const Key('section-settings'),
+              ),
+              reveal(
+                CardGroup(
+                  children: [
+                    _NavRow(
+                      icon: Icons.notifications_active_outlined,
+                      title: s.allowAlerts,
+                      onTap: () => _allowAlerts(context, ref),
+                    ),
+                    const _DigestRow(),
+                    _NavRow(
+                      icon: Icons.translate_rounded,
+                      title: s.appLanguage,
+                      value: lang?.nativeName ?? s.phoneDefault,
+                      onTap: () => showLanguageSheet(context, ref),
+                    ),
+                    _NavRow(
+                      key: const Key('text-size-row'),
+                      icon: Icons.format_size_rounded,
+                      title: s.textSize,
+                      value: switch (textSize) {
+                        TextSize.normal => s.textNormal,
+                        TextSize.large => s.textLarge,
+                        TextSize.extraLarge => s.textExtraLarge,
+                      },
+                      onTap: () => showTextSizeSheet(context, ref),
+                    ),
+                    _NavRow(
+                      icon: Icons.contrast_rounded,
+                      title: s.appearance,
+                      value: switch (mode) {
+                        ThemeMode.light => s.themeLight,
+                        ThemeMode.dark => s.themeDark,
+                        ThemeMode.system => s.themeSystem,
+                      },
+                      onTap: () => showAppearanceSheet(context, ref),
+                    ),
+                    _NavRow(
+                      icon: Icons.help_outline_rounded,
+                      title: s.helpSupport,
+                      onTap: () => showSupportSheet(context),
+                    ),
+                    if (AppEnv.showDemoTools)
+                      _NavRow(
+                        icon: Icons.science_outlined,
+                        title: s.demoControls,
+                        onTap: () => context.push('/demo'),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              reveal(
+                CardGroup(
+                  children: [
+                    _NavRow(
+                      icon: Icons.logout_rounded,
+                      title: s.signOut,
+                      color: AppColors.hot,
+                      chevron: false,
+                      onTap: () => _signOut(context, ref),
+                    ),
+                    _NavRow(
+                      icon: Icons.delete_outline_rounded,
+                      title: s.deleteAccount,
+                      color: AppColors.inkFaint,
+                      chevron: false,
+                      onTap: () => _deleteAccount(context, ref),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -316,22 +326,26 @@ class _Body extends ConsumerWidget {
   }
 }
 
-/// A big, plain section heading ("Your employee", "Plan & minutes", …).
+/// A big serif section heading ("Your employee", "Plan & minutes", …).
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader(this.text, {super.key});
   final String text;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(4, 28, 4, 10),
+    padding: const EdgeInsets.fromLTRB(4, 32, 4, 12),
     child: Semantics(
       header: true,
-      child: Text(text, style: Theme.of(context).textTheme.titleLarge),
+      child: Text(
+        text,
+        style: AppTheme.serif(27, color: AppColors.ink, height: 1.1),
+      ),
     ),
   );
 }
 
-/// Compact profile header: mascot, name, role, status and two actions.
+/// The marigold world at the top of the tab: the employee's name set big
+/// like a name badge, their role and status, and two actions.
 class _Hero extends StatelessWidget {
   const _Hero({required this.agent});
   final Agent agent;
@@ -342,51 +356,86 @@ class _Hero extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final a = agent;
     final active = a.status == AgentStatus.active;
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpace.xl),
+    const world = AppWorld.agent;
+    return WorldHeader(
+      world: world,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              AgentAvatar(agent: a, size: 80),
-              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      a.name,
-                      style: t.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        s.myEmployee,
+                        style: AppTheme.eyebrow(color: world.soft),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 8),
+                    MediaQuery.withClampedTextScaling(
+                      maxScaleFactor: 1.3,
+                      child: Text(
+                        a.name,
+                        style: AppTheme.serif(
+                          68,
+                          color: world.fg,
+                          height: 0.95,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
                     Text(
                       s.data(a.role),
-                      style: t.bodyMedium?.copyWith(color: AppColors.inkSoft),
+                      style: t.bodyLarge?.copyWith(
+                        color: world.soft,
+                        fontWeight: FontWeight.w500,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
-                    StatusDot(
-                      label: s.agentStatus(a.status),
-                      color: active ? AppColors.success : AppColors.cold,
-                      pulse: active,
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
+                      decoration: BoxDecoration(
+                        color: world.fg.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: StatusDot(
+                        label: s.agentStatus(a.status),
+                        color: active
+                            ? const Color(0xFF137336)
+                            : AppPalette.light.cold,
+                        textColor: world.fg,
+                        pulse: active,
+                      ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
+              Mascot(
+                state: active ? MascotState.waving : MascotState.resting,
+                size: 112,
+                haloColor: Colors.white.withValues(alpha: 0.35),
+                semanticLabel: a.name,
+              ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpace.xl),
           Row(
             children: [
               Expanded(
-                child: PrimaryButton(
+                child: WorldButton(
+                  world: world,
                   label: s.talkTo(a.name),
-                  icon: Icons.mic_rounded,
+                  iconWidget: const Icon(Icons.mic_rounded),
                   onPressed: () => context.push('/voice-test'),
                 ),
               ),
@@ -401,28 +450,29 @@ class _Hero extends StatelessWidget {
                   child: Container(
                     key: const Key('agent-edit'),
                     constraints: const BoxConstraints(
-                      minWidth: 64,
+                      minWidth: 72,
                       minHeight: 56,
                     ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
+                      horizontal: 14,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      border: Border.all(color: AppColors.border, width: 1.2),
-                      borderRadius: BorderRadius.circular(AppRadius.button),
+                      border: Border.all(color: world.fg, width: 1.6),
+                      borderRadius: BorderRadius.circular(99),
                     ),
-                    child: Column(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.tune_rounded, color: AppColors.ink),
+                        Icon(Icons.tune_rounded, color: world.fg, size: 20),
+                        const SizedBox(width: 6),
                         Text(
                           s.edit,
-                          style: t.labelMedium?.copyWith(
-                            fontSize: 13,
-                            color: AppColors.ink,
+                          style: t.labelLarge?.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: world.fg,
                           ),
                         ),
                       ],

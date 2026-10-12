@@ -13,9 +13,15 @@ class CallNewLeadsButton extends StatelessWidget {
     super.key,
     required this.count,
     this.compact = false,
+    this.background,
+    this.foreground,
   });
   final int count;
   final bool compact;
+
+  /// Compact pill colours (e.g. a world's CTA); default ink.
+  final Color? background;
+  final Color? foreground;
 
   @override
   Widget build(BuildContext context) {
@@ -29,10 +35,10 @@ class CallNewLeadsButton extends StatelessWidget {
           onTap: () => context.push('/campaign/new'),
           scale: 0.94,
           child: Container(
-            height: 36,
-            padding: const EdgeInsets.fromLTRB(12, 0, 14, 0),
+            height: 44,
+            padding: const EdgeInsets.fromLTRB(14, 0, 16, 0),
             decoration: BoxDecoration(
-              color: AppColors.inverse,
+              color: background ?? AppColors.inverse,
               borderRadius: BorderRadius.circular(99),
             ),
             child: Row(
@@ -40,15 +46,16 @@ class CallNewLeadsButton extends StatelessWidget {
               children: [
                 Icon(
                   Icons.phone_forwarded_rounded,
-                  size: 16,
-                  color: AppColors.onInverse,
+                  size: 17,
+                  color: foreground ?? AppColors.onInverse,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 7),
                 Text(
                   s.callNewCompact(count),
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppColors.onInverse,
-                    fontSize: 13.5,
+                    color: foreground ?? AppColors.onInverse,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],

@@ -13,7 +13,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import 'whatsapp_handoff.dart';
-import '../../core/widgets/brand_widgets.dart';
+import '../../core/widgets/world.dart';
 
 /// Follow-ups – "Who needs a message?"
 class FollowUpsScreen extends ConsumerWidget {
@@ -26,6 +26,7 @@ class FollowUpsScreen extends ConsumerWidget {
     final fus = ref.watch(followUpsProvider);
     return Scaffold(
       body: SafeArea(
+        top: false,
         bottom: false,
         child: AsyncView<List<FollowUp>>(
           value: fus,
@@ -39,28 +40,42 @@ class FollowUpsScreen extends ConsumerWidget {
               onRefresh: () async => ref.invalidate(followUpsProvider),
               child: CustomScrollView(
                 slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpace.page,
-                      12,
-                      AppSpace.page,
-                      0,
-                    ),
-                    sliver: SliverToBoxAdapter(
+                  SliverToBoxAdapter(
+                    child: WorldHeader(
+                      world: AppWorld.messages,
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Semantics(
-                            header: true,
-                            child: GradientText(
-                              s.followUpsTitle,
-                              style: t.headlineMedium,
-                            ),
+                          WorldTitle(
+                            world: AppWorld.messages,
+                            title: s.followUpsTitle,
                           ),
+                          const SizedBox(height: AppSpace.lg),
                           if (pending.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(s.followUpsSubtitle, style: t.bodyMedium),
-                          ],
+                            BigStat(
+                              value: pending.length,
+                              label: s.readyToSendShort,
+                              color: AppWorld.messages.fg,
+                              labelColor: AppWorld.messages.soft,
+                              size: 72,
+                            ),
+                            const SizedBox(height: AppSpace.md),
+                            Text(
+                              s.followUpsSubtitle,
+                              style: t.bodyLarge?.copyWith(
+                                color: AppWorld.messages.soft,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ] else
+                            Text(
+                              s.allSentToday,
+                              style: AppTheme.serif(
+                                30,
+                                color: AppWorld.messages.fg,
+                                italic: true,
+                              ),
+                            ),
                         ],
                       ),
                     ),

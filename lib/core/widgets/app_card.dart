@@ -85,13 +85,14 @@ class CardGroup extends StatelessWidget {
   );
 }
 
-/// Section heading – quiet, sentence case ("Needs your attention").
+/// Section heading – an editorial serif, sentence case ("Needs your
+/// attention"), like a heading in a printed magazine.
 class SectionLabel extends StatelessWidget {
   const SectionLabel(
     this.text, {
     super.key,
     this.trailing,
-    this.padding = const EdgeInsets.fromLTRB(2, 32, 2, 12),
+    this.padding = const EdgeInsets.fromLTRB(2, 34, 2, 12),
   });
   final String text;
   final Widget? trailing;
@@ -107,11 +108,7 @@ class SectionLabel extends StatelessWidget {
             header: true,
             child: Text(
               text,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.3,
-              ),
+              style: AppTheme.serif(27, color: AppColors.ink, height: 1.1),
             ),
           ),
         ),
@@ -293,7 +290,7 @@ class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
   );
 }
 
-/// The signature CTA: a solid marigold button with dark text, a spring
+/// The signature CTA: a solid ink pill (or a world's own colour), a spring
 /// squish on press and a light haptic. One per screen – it marks "the thing
 /// to do next". Label ⇄ spinner crossfade while [loading].
 ///
@@ -308,6 +305,7 @@ class PrimaryButton extends StatelessWidget {
     this.iconWidget,
     this.loading = false,
     this.color,
+    this.foreground,
     this.trailingArrow = false,
   });
   final String label;
@@ -318,16 +316,19 @@ class PrimaryButton extends StatelessWidget {
   final Widget? iconWidget;
   final bool loading;
 
-  /// Fill colour for special cases (WhatsApp, danger) – always carries white
-  /// text. Defaults to the signature [AppColors.accent] with dark text.
+  /// Fill colour for special cases (WhatsApp, danger, a world's CTA).
+  /// Carries white text unless [foreground] says otherwise. Defaults to a
+  /// solid ink pill ([AppColors.inverse]).
   final Color? color;
+  final Color? foreground;
   final bool trailingArrow;
 
   @override
   Widget build(BuildContext context) {
     final enabled = !loading && onPressed != null;
-    final fill = color ?? AppColors.accent;
-    final fg = color == null ? AppColors.onAccent : Colors.white;
+    final fill = color ?? AppColors.inverse;
+    final fg =
+        foreground ?? (color == null ? AppColors.onInverse : Colors.white);
     final br = BorderRadius.circular(AppRadius.button);
     return Pressable(
       enabled: enabled,
@@ -512,7 +513,7 @@ class AppFilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dur = AppMotion.of(context, AppMotion.base);
-    final fg = selected ? AppColors.onInverse : AppColors.inkSoft;
+    final fg = selected ? AppColors.onInverse : AppColors.ink;
     return Semantics(
       selected: selected,
       button: true,
@@ -533,21 +534,14 @@ class AppFilterChip extends StatelessWidget {
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
-                color: selected ? AppColors.inverse : AppColors.surface,
+                color: selected ? AppColors.inverse : Colors.transparent,
                 borderRadius: BorderRadius.circular(99),
                 border: Border.all(
-                  color: selected ? AppColors.inverse : AppColors.border,
+                  color: selected
+                      ? AppColors.inverse
+                      : AppColors.ink.withValues(alpha: 0.22),
                   width: 1.2,
                 ),
-                boxShadow: selected
-                    ? [
-                        BoxShadow(
-                          color: AppColors.inverse.withValues(alpha: 0.28),
-                          blurRadius: 14,
-                          offset: const Offset(0, 5),
-                        ),
-                      ]
-                    : null,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -565,7 +559,11 @@ class AppFilterChip extends StatelessWidget {
                     style:
                         (Theme.of(context).textTheme.labelMedium ??
                                 const TextStyle())
-                            .copyWith(color: fg, fontSize: 14),
+                            .copyWith(
+                              color: fg,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                     child: Text(label),
                   ),
                   if (count != null) ...[

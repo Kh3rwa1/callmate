@@ -387,11 +387,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Text(
               s.loginHeadline,
               textAlign: TextAlign.center,
-              style: t.displaySmall?.copyWith(
-                fontSize: 31,
-                height: 1.12,
-                letterSpacing: -0.8,
-              ),
+              style: t.headlineLarge?.copyWith(fontSize: 42, height: 1.0),
             ),
           ),
         ),
