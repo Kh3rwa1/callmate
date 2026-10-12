@@ -22,6 +22,7 @@ import '../services/whatsapp/whatsapp_service.dart';
 import 'config/app_env.dart';
 import 'config/brand.dart';
 import 'network/api_client.dart';
+import 'network/response_cache.dart';
 import 'routing/app_router.dart';
 import 'routing/deep_link.dart';
 import 'settings.dart';
@@ -42,6 +43,17 @@ final localPrefsProvider = Provider<LocalPrefs>(
   (_) => throw UnimplementedError('override in main'),
 );
 final secureStoreProvider = Provider<SecureStore>((_) => SecureStore());
+
+/// Saved answers for every read (see [ResponseCache]): screens open with the
+/// last data instantly and keep working on a bad network. Off in the
+/// offline demo, which never touches the network.
+final responseCacheProvider = Provider<ResponseCache?>((ref) {
+  if (ref.watch(useMockProvider)) return null;
+  return ResponseCache(
+    FileResponseStore(),
+    onRefreshed: () => ref.read(dataVersionProvider.notifier).repaint(),
+  );
+});
 final apiClientProvider = Provider<ApiClient>((ref) {
   LocalPrefs? prefs;
   try {
@@ -50,6 +62,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(
     ref.watch(secureStoreProvider),
     prefs: prefs,
+    cache: ref.watch(responseCacheProvider),
     onAuthFailure: () {
       ref.read(sessionProvider.notifier).forceLogout();
     },
@@ -192,6 +205,8 @@ class SessionNotifier extends AsyncNotifier<bool> {
 
   Future<void> forceLogout() async {
     state = const AsyncValue.data(false);
+    // The next login may be someone else; never show them this data.
+    await ref.read(responseCacheProvider)?.clear();
     ref.read(dataVersionProvider.notifier).bump();
   }
 
@@ -244,6 +259,7 @@ class SessionNotifier extends AsyncNotifier<bool> {
   /// Nothing from the previous account may leak into the next login.
   Future<void> _clearLocalUserState() async {
     await _prefs?.reset();
+    await ref.read(responseCacheProvider)?.clear();
     ref.invalidate(activeCampaignProvider);
     ref.read(dataVersionProvider.notifier).bump();
   }
@@ -375,13 +391,21 @@ class DataVersion extends Notifier<int> {
   @override
   int build() {
     final sub = ref.watch(backendEventsProvider).stream.listen((e) {
-      if (e is DataChangedEvent || e is CallCompletedEvent) state++;
+      if (e is DataChangedEvent || e is CallCompletedEvent) bump();
     });
     ref.onDispose(sub.cancel);
     return 0;
   }
 
-  void bump() => state++;
+  /// Something changed: screens reload, and saved answers aren't reused.
+  void bump() {
+    ref.read(responseCacheProvider)?.markStale();
+    state++;
+  }
+
+  /// Saved answers were refreshed in the background: repaint with them
+  /// without asking the server again.
+  void repaint() => state++;
 }
 
 final businessProvider = FutureProvider<Business?>((ref) {

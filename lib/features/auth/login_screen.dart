@@ -414,8 +414,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   IconBubble(
                     size: 32,
-                    color: AppColors.brandSoft,
-                    child: Icon(icon, size: 17, color: AppColors.brand),
+                    color: AppColors.accentSoft,
+                    child: Icon(icon, size: 17, color: AppColors.ink),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
