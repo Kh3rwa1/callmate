@@ -189,16 +189,11 @@ void main() {
   });
 
   group('SplashScreen', () {
-    appTest('continues to home when onboarded', (h) async {
-      h.router.go('/splash');
-      await h.tester.pump(const Duration(milliseconds: 50));
-      await h.tester.pump(const Duration(milliseconds: 50));
-      expect(find.byType(SplashScreen), findsOneWidget);
-      await h.tester.pump(const Duration(milliseconds: 1500));
-      await h.settle(4);
+    appTest('a returning owner goes straight home, no splash wait', (h) async {
+      // Launch lands on /splash; the harness settles without any 1.3 s wait.
       expect(h.location, '/home');
       expect(find.byType(HomeScreen), findsOneWidget);
-    });
+    }, location: '/splash');
 
     appTest('continues to onboarding when not onboarded', (h) async {
       await h.prefs.setLanguage('en');

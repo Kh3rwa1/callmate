@@ -37,8 +37,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 1300), () async {
+    // The branded intro plays once, for someone new. An owner who already
+    // set up goes straight in: every launch, no waiting.
+    final returning = ref.read(localPrefsProvider).onboarded;
+    final wait = returning ? Duration.zero : const Duration(milliseconds: 1300);
+    Future<void>.delayed(wait, () async {
       if (!mounted) return;
+      // Something else (a notification tap, a deep link) already moved on.
+      final here = GoRouter.of(
+        context,
+      ).routerDelegate.currentConfiguration.uri.path;
+      if (here != '/splash') return;
       final prefs = ref.read(localPrefsProvider);
       // First launch: the language comes before any English word.
       if (prefs.language == null && !prefs.onboarded) {
