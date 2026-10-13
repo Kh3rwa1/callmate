@@ -350,6 +350,11 @@ class SarvamVoiceAgentService implements VoiceAgentService {
     await _agent?.sendAudio(pcm16);
   }
 
+  /// Only the web build talks over the chat API; native voice sessions
+  /// drop client text messages on the server.
+  @override
+  bool get acceptsTypedText => kIsWeb;
+
   @override
   Future<void> sendText(String text) async {
     final clean = text.trim();

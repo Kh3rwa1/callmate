@@ -206,6 +206,9 @@ class MockVoiceAgentService implements VoiceAgentService {
   Future<void> sendAudio(Uint8List pcm16) async {}
 
   @override
+  bool get acceptsTypedText => true;
+
+  @override
   Future<void> sendText(String text) async {
     if (!_running) return;
     _entries.add(
