@@ -219,7 +219,7 @@ class _HomeBody extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: _stagger([
         if (results != null && !results.hasCalls) ...[
-          SectionLabel(s.resultsThisWeek),
+          SectionLabel(s.tryItYourself),
           const HearYourAiCard(),
         ] else
           const WeekFunnelSection(),
@@ -243,8 +243,13 @@ class _HomeBody extends ConsumerWidget {
                 color: AppColors.inkFaint,
                 tint: AppColors.surfaceMuted,
                 label: s.noHotLeadsYet,
-                trailing: s.callNewLeadsShort,
-                onTap: () => context.push('/campaign/new'),
+                // No customers yet: calling is a dead end, adding them isn't.
+                trailing: d.leads == 0
+                    ? s.addOrImportLeads
+                    : s.callNewLeadsShort,
+                onTap: () => context.push(
+                  d.leads == 0 ? '/leads/import' : '/campaign/new',
+                ),
               ),
             HomeActionRow(
               glyph: AppGlyphs.message,

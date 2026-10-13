@@ -140,7 +140,7 @@ void main() {
     appTest(
       'trial shows Free trial status, minutes left and Upgrade',
       (h) async {
-        expect(find.text('Free trial'), findsNWidgets(2)); // name + chip
+        expect(find.text('Free trial'), findsOneWidget); // said once, not twice
         expect(find.text('4'), findsOneWidget);
         expect(find.text('Renews on'), findsNothing);
         await _scrollTo(h, find.text('Upgrade'));

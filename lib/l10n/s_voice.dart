@@ -18,6 +18,13 @@ extension SVoice on S {
     '$name-এর সঙ্গে যুক্ত হচ্ছে…',
   );
   String get sayHello => pick('Say “Hello”', '“नमस्ते” कहें', '“নমস্কার” বলুন');
+  String vNameSpeaking(String name) =>
+      pick('$name is speaking…', '$name बोल रहे हैं…', '$name কথা বলছেন…');
+  String vEndedEarly(String name) => pick(
+    'The call with $name ended. Tap “Talk again” to try once more.',
+    '$name से बात कट गई। दोबारा कोशिश के लिए “फिर से बात करें” दबाएँ।',
+    '$name-এর সঙ্গে কথা কেটে গেছে। আবার চেষ্টা করতে “আবার কথা বলুন” চাপুন।',
+  );
   String messageTo(String name) =>
       pick('Message $name', '$name को लिखें', '$name-কে লিখুন');
   String get send => pick('Send', 'भेजें', 'পাঠান');

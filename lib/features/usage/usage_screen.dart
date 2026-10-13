@@ -138,7 +138,10 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
                               ),
                             ),
                           ),
-                          _StatusChip(status: u.subscription.status),
+                          // Not "Free trial" twice: the chip only adds news.
+                          if (planStatusLabel(s, u.subscription.status) !=
+                              s.planDisplayName(u.subscription.planName))
+                            _StatusChip(status: u.subscription.status),
                         ],
                       ),
                       const SizedBox(height: 18),

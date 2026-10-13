@@ -127,7 +127,7 @@ void main() {
     appTest('Schedule Callback books a callback for the lead', (h) async {
       final call = h.backend.simulateCall(LeadTemperature.warm);
       await h.push('/calls/${call.id}/result');
-      await h.tap(find.widgetWithText(OutlinedButton, 'Schedule Call Back'));
+      await h.tap(find.widgetWithText(OutlinedButton, 'Call back'));
       expect(find.text('Schedule call back'), findsOneWidget);
       await h.tap(find.widgetWithText(FilledButton, 'Schedule Call Back'));
       expect(

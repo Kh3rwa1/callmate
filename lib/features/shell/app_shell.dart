@@ -35,19 +35,26 @@ class AppShell extends ConsumerWidget {
       s.navFollowUps,
       s.navAgent,
     ];
-    return Scaffold(
-      body: HotLeadCelebrator(child: shell),
-      bottomNavigationBar: AppNavBar(
-        index: shell.currentIndex,
-        items: [
-          for (var i = 0; i < _icons.length; i++)
-            NavItemData(_icons[i], labels[i]),
-        ],
-        badges: {3: pending},
-        onSelect: (i) {
-          Haptics.tap();
-          shell.goBranch(i, initialLocation: i == shell.currentIndex);
-        },
+    // Back on another tab goes Home first instead of closing the app.
+    return PopScope(
+      canPop: shell.currentIndex == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) shell.goBranch(0);
+      },
+      child: Scaffold(
+        body: HotLeadCelebrator(child: shell),
+        bottomNavigationBar: AppNavBar(
+          index: shell.currentIndex,
+          items: [
+            for (var i = 0; i < _icons.length; i++)
+              NavItemData(_icons[i], labels[i]),
+          ],
+          badges: {3: pending},
+          onSelect: (i) {
+            Haptics.tap();
+            shell.goBranch(i, initialLocation: i == shell.currentIndex);
+          },
+        ),
       ),
     );
   }

@@ -413,23 +413,43 @@ class _ActionIconState extends State<_ActionIcon> {
     color: AppColors.brand,
     child: Pressable(
       scale: 0.92,
-      child: IconButton.outlined(
-        tooltip: widget.tooltip,
-        onPressed: () async {
-          Haptics.tap();
-          final ok = await widget.onPressed();
-          if (ok && mounted) setState(() => _placed++);
-        },
-        style: IconButton.styleFrom(
-          fixedSize: const Size(52, 48),
-          foregroundColor: AppColors.ink,
-          backgroundColor: AppColors.surface,
-          side: BorderSide(color: AppColors.border, width: 1.2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.button),
+      // Icon with its name under it: "AI Call" and "Call back" do
+      // different things and a bare phone icon can't say which.
+      child: Tooltip(
+        message: widget.tooltip,
+        excludeFromSemantics: true,
+        child: OutlinedButton(
+          onPressed: () async {
+            Haptics.tap();
+            final ok = await widget.onPressed();
+            if (ok && mounted) setState(() => _placed++);
+          },
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(68, 56),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            foregroundColor: AppColors.ink,
+            backgroundColor: AppColors.surface,
+            side: BorderSide(color: AppColors.border, width: 1.2),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.button),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppGlyph(widget.glyph, size: 20, color: AppColors.ink),
+              const SizedBox(height: 2),
+              Text(
+                widget.tooltip,
+                maxLines: 1,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.ink,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
-        icon: AppGlyph(widget.glyph, size: 22, color: AppColors.ink),
       ),
     ),
   );

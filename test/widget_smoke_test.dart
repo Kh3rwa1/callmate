@@ -68,7 +68,7 @@ void main() {
       );
       // Compact badges: short enough to never be cut off in a 412 dp list row.
       expect(find.text('Not now'), findsOneWidget);
-      expect(find.text('Thinking'), findsOneWidget);
+      expect(find.text('Maybe'), findsOneWidget);
       // Large badge (detail screens) keeps the full words.
       expect(find.text('Not interested now'), findsOneWidget);
       expect(find.bySemanticsLabel('Not interested now'), findsNWidgets(2));

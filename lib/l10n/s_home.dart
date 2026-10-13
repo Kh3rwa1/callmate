@@ -57,8 +57,13 @@ extension SHome on S {
       pick('Next call back', 'अगला कॉल बैक', 'পরের কল ব্যাক');
   String nextCallback(String name, String when) =>
       pick('$name · $when', '$name · $when', '$name · $when');
-  String get todaysActivity =>
-      pick('Today\'s AI activity', 'आज AI ने क्या किया', 'আজ AI যা করেছে');
+  String get todaysActivity => pick(
+    'Recent AI activity',
+    'AI ने हाल में क्या किया',
+    'AI সম্প্রতি যা করেছে',
+  );
+  String get tryItYourself =>
+      pick('Try it yourself', 'ख़ुद सुनकर देखें', 'নিজে শুনে দেখুন');
   String get noCallsYet =>
       pick('No calls yet', 'अभी कोई कॉल नहीं', 'এখনও কোনো কল হয়নি');
 }

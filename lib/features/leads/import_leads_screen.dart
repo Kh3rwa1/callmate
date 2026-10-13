@@ -28,6 +28,10 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
   final _phone = TextEditingController();
   String? _interest;
   bool _busy = false;
+
+  /// After a failed Add, errors update as the owner types, so a fixed
+  /// field stops showing red.
+  bool _tried = false;
   CsvLeadParseResult? _preview;
   String? _fileName;
 
@@ -51,7 +55,10 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
 
   Future<void> _addOne() async {
     final s = context.s;
-    if (!_form.currentState!.validate()) return;
+    if (!_form.currentState!.validate()) {
+      setState(() => _tried = true);
+      return;
+    }
     setState(() => _busy = true);
     try {
       await ref
@@ -65,9 +72,13 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
           );
       _name.clear();
       _phone.clear();
+      _form.currentState?.reset();
       Haptics.success();
       if (!mounted) return;
-      setState(() => _interest = null);
+      setState(() {
+        _interest = null;
+        _tried = false;
+      });
       _snack(s.leadAdded);
     } catch (e) {
       if (mounted) _snack(friendlyError(e, s));
@@ -240,34 +251,63 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          // Speed-to-lead: new enquiries arrive (and get called) by themselves.
+          Reveal(index: 1, child: SectionLabel(s.orAddOne)),
           Reveal(
+            index: 2,
             child: AppCard(
-              key: const Key('import-get-leads-automatically'),
-              onTap: () => context.push('/leads/auto'),
-              child: Row(
-                children: [
-                  IconBubble(
-                    size: 48,
-                    child: Icon(
-                      Icons.bolt_rounded,
-                      color: AppColors.brand,
-                      size: 24,
+              child: Form(
+                key: _form,
+                autovalidateMode: _tried
+                    ? AutovalidateMode.always
+                    : AutovalidateMode.disabled,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _name,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        hintText: s.customerNameHint,
+                        prefixIcon: const Icon(Icons.person_outline_rounded),
+                      ),
+                      validator: (v) =>
+                          (v ?? '').trim().length < 2 ? s.enterName : null,
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(s.getLeadsAutomatically, style: t.titleMedium),
-                        Text(s.leadCaptureEntrySubtitle, style: t.bodyMedium),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _phone,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        hintText: s.mobileNumberHint,
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                      ),
+                      validator: (v) =>
+                          PhoneUtils.isValid(v) ? null : s.validPhone,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      key: ValueKey('interest-$_interest'),
+                      initialValue: _interest,
+                      decoration: InputDecoration(
+                        hintText: s.optionalField(s.data(wf.interestLabel)),
+                        prefixIcon: const Icon(Icons.local_offer_outlined),
+                      ),
+                      dropdownColor: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.cardSm),
+                      items: [
+                        for (final c in wf.interestOptions)
+                          DropdownMenuItem(value: c, child: Text(s.data(c))),
                       ],
+                      onChanged: (v) => setState(() => _interest = v),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
-                ],
+                    const SizedBox(height: 16),
+                    SecondaryButton(
+                      label: s.addLead,
+                      icon: Icons.add_rounded,
+                      onPressed: _busy ? null : _addOne,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -363,60 +403,34 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
                     ],
                   ),
           ),
-          Reveal(index: 1, child: SectionLabel(s.orAddOne)),
+          const SizedBox(height: 12),
+          // Speed-to-lead: new enquiries arrive (and get called) by themselves.
           Reveal(
-            index: 2,
             child: AppCard(
-              child: Form(
-                key: _form,
-                child: Column(
-                  children: [
-                    TextFormField(
-                      controller: _name,
-                      textCapitalization: TextCapitalization.words,
-                      textInputAction: TextInputAction.next,
-                      decoration: InputDecoration(
-                        hintText: s.customerNameHint,
-                        prefixIcon: const Icon(Icons.person_outline_rounded),
-                      ),
-                      validator: (v) =>
-                          (v ?? '').trim().length < 2 ? s.enterName : null,
+              key: const Key('import-get-leads-automatically'),
+              onTap: () => context.push('/leads/auto'),
+              child: Row(
+                children: [
+                  IconBubble(
+                    size: 48,
+                    child: Icon(
+                      Icons.bolt_rounded,
+                      color: AppColors.brand,
+                      size: 24,
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _phone,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        hintText: s.mobileNumberHint,
-                        prefixIcon: const Icon(Icons.phone_outlined),
-                      ),
-                      validator: (v) =>
-                          PhoneUtils.isValid(v) ? null : s.validPhone,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      key: ValueKey('interest-$_interest'),
-                      initialValue: _interest,
-                      decoration: InputDecoration(
-                        hintText: s.optionalField(s.data(wf.interestLabel)),
-                        prefixIcon: const Icon(Icons.local_offer_outlined),
-                      ),
-                      dropdownColor: AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppRadius.cardSm),
-                      items: [
-                        for (final c in wf.interestOptions)
-                          DropdownMenuItem(value: c, child: Text(s.data(c))),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(s.getLeadsAutomatically, style: t.titleMedium),
+                        Text(s.leadCaptureEntrySubtitle, style: t.bodyMedium),
                       ],
-                      onChanged: (v) => setState(() => _interest = v),
                     ),
-                    const SizedBox(height: 16),
-                    SecondaryButton(
-                      label: s.addLead,
-                      icon: Icons.add_rounded,
-                      onPressed: _busy ? null : _addOne,
-                    ),
-                  ],
-                ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: AppColors.inkFaint),
+                ],
               ),
             ),
           ),

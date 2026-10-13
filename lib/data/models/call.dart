@@ -104,7 +104,12 @@ class Call {
     campaignId: jStrN(j, 'campaign_id'),
     agentId: jStr(j, 'agent_id'),
     status: CallStatus.parse(jStrN(j, 'status')),
-    duration: Duration(seconds: jInt(j, 'duration_sec')),
+    // The API sends duration_seconds; duration_sec is the old cached name.
+    duration: Duration(
+      seconds: jInt(j, 'duration_seconds') > 0
+          ? jInt(j, 'duration_seconds')
+          : jInt(j, 'duration_sec'),
+    ),
     startedAt: jDate(j, 'started_at') ?? DateTime.now(),
     endedAt: jDate(j, 'ended_at'),
     transcript: jObj(j, 'transcript') == null
@@ -132,7 +137,7 @@ class Call {
     'campaign_id': campaignId,
     'agent_id': agentId,
     'status': status.wire,
-    'duration_sec': duration.inSeconds,
+    'duration_seconds': duration.inSeconds,
     'started_at': dateOut(startedAt),
     'ended_at': dateOut(endedAt),
     'transcript': transcript.toJson(),
