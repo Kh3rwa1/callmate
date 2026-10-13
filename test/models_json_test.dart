@@ -34,6 +34,22 @@ void main() {
       expect(r.toJson(), c.toJson());
     });
 
+    test(
+      'Call reads the API duration_seconds (and old cached duration_sec)',
+      () {
+        final j = b.simulateCall(LeadTemperature.warm).toJson()
+          ..remove('duration_seconds');
+        expect(
+          Call.fromJson({...j, 'duration_seconds': 42}).duration.inSeconds,
+          42,
+        );
+        expect(
+          Call.fromJson({...j, 'duration_sec': 17}).duration.inSeconds,
+          17,
+        );
+      },
+    );
+
     test('Business and Agent', () {
       expect(
         Business.fromJson(b.business.toJson()).toJson(),

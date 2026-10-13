@@ -82,7 +82,7 @@ void main() {
       await h.go('/home');
       await h.tapText('Interested');
       expect(h.location, '/leads');
-      expect(_chipSelected('Thinking'), isTrue);
+      expect(_chipSelected('Maybe'), isTrue);
     });
 
     appTest('agent card, notifications and follow-ups navigate', (h) async {

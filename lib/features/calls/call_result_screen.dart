@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
@@ -247,36 +248,58 @@ class _Result extends ConsumerWidget {
               Reveal(
                 index: 6,
                 child: AppCard(
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      IconBubble(
-                        color: AppColors.brandSoft,
-                        size: 44,
-                        child: Icon(
-                          _actionIcon(c.nextAction),
-                          size: 21,
-                          color: AppColors.brand,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s.nextAction(c.nextAction),
-                              style: t.titleMedium,
+                      Row(
+                        children: [
+                          IconBubble(
+                            color: AppColors.brandSoft,
+                            size: 44,
+                            child: Icon(
+                              _actionIcon(c.nextAction),
+                              size: 21,
+                              color: AppColors.brand,
                             ),
-                            if (c.callbackAt != null) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                s.callBackAt(s.callbackPhrase(c.callbackAt!)),
-                                style: t.bodySmall,
-                              ),
-                            ],
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  s.nextAction(c.nextAction),
+                                  style: t.titleMedium,
+                                ),
+                                if (c.callbackAt != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    s.callBackAt(
+                                      s.callbackPhrase(c.callbackAt!),
+                                    ),
+                                    style: t.bodySmall,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
+                      // "You should call" comes with the button that does it.
+                      if (c.nextAction == NextAction.humanFollowUp &&
+                          PhoneUtils.normalize(c.leadPhone) != null) ...[
+                        const SizedBox(height: 14),
+                        PrimaryButton(
+                          key: const Key('result-call-now'),
+                          label: s.callNumber(PhoneUtils.display(c.leadPhone)),
+                          icon: Icons.call_rounded,
+                          onPressed: () => launchUrl(
+                            Uri.parse(
+                              'tel:+${PhoneUtils.normalize(c.leadPhone)}',
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -313,7 +336,8 @@ class _Result extends ConsumerWidget {
                 Expanded(
                   flex: 5,
                   child: SecondaryButton(
-                    label: s.scheduleCallback,
+                    label: s.callbackTooltip,
+                    icon: Icons.event_outlined,
                     onPressed: () async {
                       final lead = await ref
                           .read(leadRepoProvider)
@@ -335,7 +359,6 @@ class _Result extends ConsumerWidget {
                   child: fuId == null
                       ? PrimaryButton(
                           label: s.openLead,
-                          icon: Icons.person_outline_rounded,
                           onPressed: () => context.push('/leads/${c.leadId}'),
                         )
                       : PrimaryButton(

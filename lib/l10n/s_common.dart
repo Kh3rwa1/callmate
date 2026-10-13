@@ -164,7 +164,7 @@ extension SCommon on S {
   /// off on a phone ("Not interested n…"). Detail screens keep [temperature].
   String temperatureShort(LeadTemperature v) => switch (v) {
     LeadTemperature.hot => pick('Wants to buy', 'खरीदना चाहें', 'কিনতে চান'),
-    LeadTemperature.warm => pick('Thinking', 'सोच रहे हैं', 'ভাবছেন'),
+    LeadTemperature.warm => pick('Maybe', 'सोच रहे हैं', 'ভাবছেন'),
     LeadTemperature.cold => pick('Not now', 'अभी नहीं', 'এখন নয়'),
     LeadTemperature.unknown => pick('New', 'नया', 'নতুন'),
   };
@@ -203,8 +203,8 @@ extension SCommon on S {
   String nextAction(NextAction v) => switch (v) {
     NextAction.humanFollowUp => pick(
       'You should call',
-      'टीम से मैसेज',
-      'টিমের মেসেজ',
+      'आप ख़ुद कॉल करें',
+      'আপনি নিজে কল করুন',
     ),
     NextAction.sendWhatsapp => pick(
       'Send WhatsApp',

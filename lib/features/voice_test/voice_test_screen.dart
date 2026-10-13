@@ -40,6 +40,10 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
   String? _error;
   bool _permissionDenied = false;
   bool _muted = false;
+
+  /// True once the owner tapped End: a call that drops by itself gets a
+  /// line saying so, instead of a silent "Disconnected".
+  bool _userEnded = false;
   final _level = ValueNotifier<double>(0);
   final _inputController = TextEditingController();
 
@@ -79,6 +83,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
     setState(() {
       _error = null;
       _permissionDenied = false;
+      _userEnded = false;
     });
     try {
       final biz = ref.read(businessProvider).value;
@@ -133,6 +138,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
   }
 
   Future<void> _end() async {
+    _userEnded = true;
     Haptics.success();
     await _voice.stopSession();
   }
@@ -319,10 +325,14 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
           padding: const EdgeInsets.all(24),
           child: SwapFade(
             child: Text(
-              _state == VoiceConnectionState.connecting
-                  ? s.connectingTo(name)
-                  : s.sayHello,
-              key: ValueKey(_state == VoiceConnectionState.connecting),
+              switch (_state) {
+                VoiceConnectionState.connecting => s.connectingTo(name),
+                VoiceConnectionState.speaking => s.vNameSpeaking(name),
+                VoiceConnectionState.disconnected when !_userEnded =>
+                  s.vEndedEarly(name),
+                _ => s.sayHello,
+              },
+              key: ValueKey(_state),
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: AppColors.inkFaint),
@@ -369,6 +379,17 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
                 )
               : const SizedBox(width: double.infinity),
         ),
+        if (_state == VoiceConnectionState.disconnected && !_userEnded)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
+            child: Text(
+              s.vEndedEarly(name),
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.inkFaint),
+            ),
+          ),
       ],
     );
   }

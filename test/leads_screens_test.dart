@@ -72,7 +72,7 @@ void main() {
     }, location: '/leads');
 
     appTest('initial filter comes from the query string', (h) async {
-      expect(_chipSelected('Thinking'), isTrue);
+      expect(_chipSelected('Maybe'), isTrue);
       final warm = _visibleLeads(h.tester);
       expect(warm, isNotEmpty);
       expect(warm.every((l) => l.isWarm), isTrue);

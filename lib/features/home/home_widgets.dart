@@ -126,20 +126,21 @@ class HomeActionRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                    // Under the label, not beside it, so neither gets cut.
+                    if (trailing != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          trailing!,
+                          style: t.labelLarge?.copyWith(
+                            color: AppColors.brand,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
-              if (trailing != null)
-                Padding(
-                  padding: const EdgeInsets.only(left: AppSpace.sm),
-                  child: Text(
-                    trailing!,
-                    style: t.labelMedium?.copyWith(
-                      color: AppColors.brand,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
               const SizedBox(width: 2),
               Icon(
                 Icons.chevron_right_rounded,

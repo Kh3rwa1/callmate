@@ -16,7 +16,7 @@ extension SLeads on S {
   String get filterNew => pick('New', 'नई', 'নতুন');
   String get filterCalled => pick('Called', 'कॉल हुई', 'কল হয়েছে');
   String get filterHot => pick('Wants to buy', 'खरीदना चाहते हैं', 'কিনতে চান');
-  String get filterWarm => pick('Thinking', 'सोच रहे हैं', 'ভাবছেন');
+  String get filterWarm => pick('Maybe', 'सोच रहे हैं', 'ভাবছেন');
   String get filterCallback => pick('Call back', 'कॉल बैक', 'কল ব্যাক');
   String get noMatches =>
       pick('No matches', 'कुछ नहीं मिला', 'কিছু পাওয়া যায়নি');
@@ -183,9 +183,9 @@ extension SLeads on S {
     '$n টি গ্রাহক ইমপোর্ট করুন',
   );
   String get orAddOne => pick(
-    'Or add one customer',
-    'या एक ग्राहक जोड़ें',
-    'অথবা একটি গ্রাহক যোগ করুন',
+    'Or type one customer',
+    'या एक ग्राहक ख़ुद लिखें',
+    'অথবা একজন গ্রাহক নিজে লিখুন',
   );
   String get customerNameHint =>
       pick('Customer name', 'ग्राहक का नाम', 'গ্রাহকের নাম');
@@ -265,11 +265,8 @@ extension SLeads on S {
     'মোবাইল নম্বর সহ কোনো কন্টাক্ট নেই',
   );
   String get ctNoMatch => pick('No one matches', 'कोई नहीं मिला', 'কেউ মেলেনি');
-  String get ctHaveFile => pick(
-    'Add from Excel / file',
-    'Excel / फ़ाइल से जोड़ें',
-    'Excel / ফাইল থেকে যোগ করুন',
-  );
+  String get ctHaveFile =>
+      pick('Have a list?', 'कोई लिस्ट है?', 'কোনো লিস্ট আছে?');
 
   // Prominent disclosure, shown before Android's contacts permission prompt.
   String get ctDiscTitle => pick(
