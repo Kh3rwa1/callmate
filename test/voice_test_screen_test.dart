@@ -55,6 +55,15 @@ class _SpyVoice extends MockVoiceAgentService {
   }
 }
 
+/// Like the native Sarvam call: typed text never reaches the AI.
+class _VoiceOnly extends MockVoiceAgentService {
+  _VoiceOnly()
+    : super(agentName: 'Riya', agentRole: 'Counsellor', businessName: 'ABC');
+
+  @override
+  bool get acceptsTypedText => false;
+}
+
 /// Always fails like a denied microphone.
 class _DeniedVoice extends MockVoiceAgentService {
   _DeniedVoice()
@@ -156,6 +165,15 @@ void main() {
       expect(h.location, '/home');
       expect(find.byType(HomeScreen), findsOneWidget);
     }, voice: () => voice = _SpyVoice());
+
+    appTest('voice-only sessions offer no typing box', (h) async {
+      await h.push('/voice-test');
+      await h.settle(20);
+      expect(find.textContaining('Namaste'), findsWidgets);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('“What do you do?”'), findsNothing);
+      expect(find.byIcon(Icons.call_end_rounded), findsOneWidget);
+    }, voice: () => _VoiceOnly());
 
     appTest(
       'a man employee speaks in a man\'s voice, in the owner\'s language',

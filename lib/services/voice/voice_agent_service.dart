@@ -56,6 +56,10 @@ abstract class VoiceAgentService {
   /// Optional text input (useful for accessibility & noisy environments).
   Future<void> sendText(String text);
 
+  /// Whether [sendText] reaches the AI. Sarvam voice calls ignore typed
+  /// text, so the screen hides the box there instead of offering a dead end.
+  bool get acceptsTypedText;
+
   Future<void> setMuted(bool muted);
 
   /// Full transcript snapshot each time anything changes.

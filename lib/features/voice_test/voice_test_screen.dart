@@ -428,7 +428,7 @@ class _VoiceTestScreenState extends ConsumerState<VoiceTestScreen>
         AnimatedSize(
           duration: AppMotion.of(context, AppMotion.base),
           curve: AppMotion.standard,
-          child: _live
+          child: _live && _voice.acceptsTypedText
               ? Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: VoiceTestComposer(
