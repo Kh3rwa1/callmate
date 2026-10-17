@@ -16,8 +16,9 @@ SARVAM_PROXY_BASE = "https://apps.sarvam.ai/api/app-runtime"
 # Sarvam voice agent + caller IDs (not secret; SARVAM_API_KEY is a secret).
 SARVAM_ORG_ID = "019fae1b-3a58-7997-a365-1ba8adec01b3"
 SARVAM_WORKSPACE_ID = "019fae1b-3a5c-7830-94dc-9660d32abbf6"
-SARVAM_ADMISSIONS_APP_ID = "CallPilot---cb13b1d8-b8da"
-SARVAM_APP_VERSION = "2"
+# Greeting uses {{agent_name}} / {{business_name}}; the old agent (CallPilot---cb13b1d8-b8da) had Sarvam's sample "Shubh from Sarvam" hardcoded.
+SARVAM_ADMISSIONS_APP_ID = "CallPilot---5f0b01d4-fdd9"
+SARVAM_APP_VERSION = "1"
 SARVAM_CONNECTION_ID = "0da745db-ed-2dd19091-839b"
 SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
 # agent_variables sent per dial. Unset = the 8 the agent declares (call_id,campaign_id,lead_id,
