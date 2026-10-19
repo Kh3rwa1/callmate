@@ -366,6 +366,15 @@ class ApiCallRepository implements CallRepository {
     data: {'phone': phone},
   );
   @override
+  Future<BusinessNumberInfo> businessNumber() =>
+      api.get('/business-number', (d) => BusinessNumberInfo.fromJson(_j(d)));
+  @override
+  Future<BusinessNumberInfo> rentNumber(String phone) async {
+    await api.post('/business-number', (_) {}, data: {'phone': phone});
+    return businessNumber();
+  }
+
+  @override
   Future<AnsweringInfo> answering() =>
       api.get('/agent/answering', (d) => AnsweringInfo.fromJson(_j(d)));
   @override

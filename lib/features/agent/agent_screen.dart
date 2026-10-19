@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../core/config/app_env.dart';
 import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
+import '../../core/utils/phone.dart';
 import '../../core/settings.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_glyphs.dart';
@@ -146,6 +147,7 @@ class _Body extends ConsumerWidget {
     final knowledge = ref.watch(knowledgeProvider).value;
     final referralBonus = ref.watch(referralsProvider).value?.bonusMinutes;
     final answering = ref.watch(answeringProvider).value;
+    final number = ref.watch(businessNumberProvider).value;
     final lang = ref.watch(languageProvider);
     final mode = ref.watch(themeModeProvider);
     final textSize = ref.watch(textSizeProvider);
@@ -177,6 +179,16 @@ class _Body extends ConsumerWidget {
                       title: s.hearYourAiShort,
                       onTap: () => showOwnerTestCallSheet(context),
                     ),
+                    if (number != null && number.available)
+                      _NavRow(
+                        key: const Key('agent-business-number'),
+                        icon: Icons.phone_in_talk_outlined,
+                        title: s.businessNumberTitle,
+                        value: number.number != null
+                            ? PhoneUtils.display(number.number!.phone)
+                            : s.premiumBadge,
+                        onTap: () => context.push('/agent/number'),
+                      ),
                     _NavRow(
                       icon: Icons.menu_book_outlined,
                       glyph: AppGlyphs.teach,
@@ -253,7 +265,9 @@ class _Body extends ConsumerWidget {
                         key: const Key('agent-answering'),
                         icon: Icons.phone_callback_outlined,
                         title: s.answeringTitle,
-                        value: s.answerModeShort(answering.mode),
+                        value: answering.hasNumber
+                            ? s.answerModeShort(answering.mode)
+                            : null,
                         onTap: () => context.push('/agent/answering'),
                       ),
                     _NavRow(

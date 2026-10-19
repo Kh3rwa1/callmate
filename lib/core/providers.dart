@@ -495,6 +495,12 @@ final leadCallsProvider = FutureProvider.family<List<Call>, String>((ref, id) {
   return ref.watch(callRepoProvider).forLead(id);
 });
 
+/// The business's own number, or the free ones to pick from.
+final businessNumberProvider = FutureProvider<BusinessNumberInfo>((ref) {
+  ref.watch(dataVersionProvider);
+  return ref.watch(callRepoProvider).businessNumber();
+});
+
 /// Whether the AI answers the owner's missed calls (`GET /agent/answering`).
 final answeringProvider = FutureProvider<AnsweringInfo>((ref) {
   ref.watch(dataVersionProvider);

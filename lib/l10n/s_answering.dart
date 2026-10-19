@@ -125,4 +125,122 @@ extension SAnswering on S {
     'उन्होंने कॉल किया, AI ने जवाब दिया',
     'ওঁরা কল করেছেন, AI উত্তর দিয়েছে',
   );
+
+  // ------------------------------------------------------ business number
+  String get businessNumberTitle =>
+      pick('Your business number', 'आपका बिज़नेस नंबर', 'আপনার ব্যবসার নম্বর');
+  String get yourBusinessNumber => businessNumberTitle;
+  String get numberWhyTitle => pick(
+    'One number for your business',
+    'आपके बिज़नेस का एक नंबर',
+    'আপনার ব্যবসার একটি নম্বর',
+  );
+  String numberWhySame(String agent) => pick(
+    'Customers see the same number every time $agent calls. No more calls from random numbers.',
+    'जब भी $agent कॉल करे, ग्राहकों को हर बार वही नंबर दिखेगा। अलग-अलग नंबरों से कॉल नहीं।',
+    '$agent যখনই ফোন করবে, গ্রাহকরা একই নম্বর দেখবেন। আর আলাদা আলাদা নম্বর থেকে কল নয়।',
+  );
+  String numberWhyCallBack(String agent) => pick(
+    'When customers call it back, $agent answers and you get the summary.',
+    'ग्राहक इस नंबर पर वापस कॉल करें तो जवाब $agent से मिलेगा और सारांश आपको।',
+    'গ্রাহক এই নম্বরে ফোন করলে $agent উত্তর দেবে, আর সারাংশ আপনি পাবেন।',
+  );
+  String get numberWhyYours => pick(
+    'It stays yours as long as you are on Growth. Print it on your boards and ads.',
+    'जब तक आप Growth पर हैं, यह नंबर आपका रहेगा। इसे बोर्ड और विज्ञापनों पर छापें।',
+    'যতদিন Growth-এ থাকবেন, নম্বরটি আপনারই। বোর্ড আর বিজ্ঞাপনে ছাপুন।',
+  );
+  String get numberGetWithGrowth => pick(
+    'Get your number with Growth',
+    'Growth के साथ अपना नंबर पाएँ',
+    'Growth-এর সঙ্গে আপনার নম্বর নিন',
+  );
+  String get numberIncludedInGrowth => pick(
+    'Included in the Growth plan at no extra cost.',
+    'Growth प्लान में बिना अतिरिक्त ख़र्च के शामिल।',
+    'Growth প্ল্যানে কোনো বাড়তি খরচ ছাড়াই।',
+  );
+  String get pickYourNumber =>
+      pick('Pick your number', 'अपना नंबर चुनें', 'আপনার নম্বর বাছুন');
+  String get rentThisNumber => pick(
+    'Make this my business number',
+    'इसे मेरा बिज़नेस नंबर बनाएँ',
+    'এটাকে আমার ব্যবসার নম্বর করুন',
+  );
+  String numberChosenOnce(int days) => pick(
+    'You choose it once and it doesn\'t change. If your plan lapses, we keep it for you for $days days.',
+    'यह नंबर एक बार चुना जाता है और बदलता नहीं। प्लान रुक जाए तो $days दिन तक आपके लिए रखा जाता है।',
+    'নম্বরটি একবারই বাছা হয়, বদলায় না। প্ল্যান বন্ধ হলে $days দিন আপনার জন্য রাখা থাকে।',
+  );
+  String rentNumberConfirmTitle(String n) => pick(
+    'Make $n your business number?',
+    '$n को अपना बिज़नेस नंबर बनाएँ?',
+    '$n আপনার ব্যবসার নম্বর করবেন?',
+  );
+  String rentNumberConfirmBody(String agent) => pick(
+    '$agent will call customers from this number and answer it. You can\'t switch to another number later.',
+    'ग्राहकों को AI कॉल इसी नंबर से जाएँगी और इसी पर जवाब मिलेगा। बाद में दूसरा नंबर नहीं लिया जा सकता।',
+    '$agent এই নম্বর থেকে গ্রাহকদের ফোন করবে আর এতেই উত্তর দেবে। পরে অন্য নম্বরে বদলানো যাবে না।',
+  );
+  String get rentNumberYes =>
+      pick('Yes, make it mine', 'हाँ, मेरा बनाएँ', 'হ্যাঁ, আমার করুন');
+  String get numberTaken => pick(
+    'That number was just taken. Pick another one.',
+    'यह नंबर अभी किसी ने ले लिया। दूसरा चुनें।',
+    'এই নম্বরটা এইমাত্র নেওয়া হয়ে গেছে। অন্যটা বাছুন।',
+  );
+  String get numberNeedsGrowth => pick(
+    'A business number comes with the Growth plan.',
+    'बिज़नेस नंबर Growth प्लान के साथ मिलता है।',
+    'ব্যবসার নম্বর Growth প্ল্যানের সঙ্গে পাওয়া যায়।',
+  );
+  String get numberActive => pick('Active', 'चालू', 'চালু');
+  String get numberOnHold => pick('On hold', 'रुका हुआ', 'স্থগিত');
+  String numberActiveNote(String agent) => pick(
+    'Every AI call shows this number. Customers who call it reach $agent.',
+    'हर AI कॉल पर यही नंबर दिखता है। इस पर कॉल करने वालों को जवाब $agent से मिलता है।',
+    'প্রতিটি AI কলে এই নম্বর দেখা যায়। এতে ফোন করলে $agent উত্তর দেয়।',
+  );
+  String numberHeldUntil(String date) => pick(
+    'Your plan lapsed. We keep this number for you until $date: renew Growth to keep it.',
+    'आपका प्लान रुक गया है। यह नंबर $date तक आपके लिए रखा है: इसे रखने के लिए Growth रिन्यू करें।',
+    'আপনার প্ল্যান বন্ধ হয়েছে। $date পর্যন্ত নম্বরটি আপনার জন্য রাখা আছে: রাখতে Growth রিনিউ করুন।',
+  );
+  String get numberHeldForwarding => pick(
+    'While it\'s on hold the AI doesn\'t answer it. If your phone forwards calls to it, dial ##002# so they ring on your phone again.',
+    'होल्ड के दौरान AI इस पर कॉल नहीं उठाता। अगर आपका फ़ोन कॉल इस नंबर पर भेजता है, तो ##002# डायल करें ताकि कॉल फिर आपके फ़ोन पर बजें।',
+    'হোল্ডে থাকাকালীন AI এই নম্বরে কল ধরে না। আপনার ফোন কল এই নম্বরে পাঠালে ##002# ডায়াল করুন, যাতে কল আবার আপনার ফোনে বাজে।',
+  );
+  String get renewToKeepNumber => pick(
+    'Renew Growth to keep your number',
+    'नंबर रखने के लिए Growth रिन्यू करें',
+    'নম্বর রাখতে Growth রিনিউ করুন',
+  );
+  String get copyNumber =>
+      pick('Copy number', 'नंबर कॉपी करें', 'নম্বর কপি করুন');
+  String shareNumberText(String n) =>
+      pick('Call us at $n', 'हमें $n पर कॉल करें', 'আমাদের $n নম্বরে ফোন করুন');
+  String get answeringNeedsNumber => pick(
+    'Calls are forwarded to your business number. Get one first.',
+    'कॉल आपके बिज़नेस नंबर पर फ़ॉरवर्ड होती हैं। पहले नंबर लें।',
+    'কল আপনার ব্যবসার নম্বরে ফরওয়ার্ড হয়। আগে একটি নম্বর নিন।',
+  );
+  String get getBusinessNumber => pick(
+    'Get your business number',
+    'अपना बिज़नेस नंबर लें',
+    'আপনার ব্যবসার নম্বর নিন',
+  );
+
+  /// Plan picker.
+  String get planNumberIncluded => pick(
+    'Your own business number',
+    'आपका अपना बिज़नेस नंबर',
+    'আপনার নিজের ব্যবসার নম্বর',
+  );
+  String get planSharedNumbers => pick(
+    'Calls from shared CallPilot numbers',
+    'साझा CallPilot नंबरों से कॉल',
+    'শেয়ার করা CallPilot নম্বর থেকে কল',
+  );
+  String get premiumBadge => pick('Premium', 'प्रीमियम', 'প্রিমিয়াম');
 }

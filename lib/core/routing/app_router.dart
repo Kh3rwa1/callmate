@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/agent/agent_screen.dart';
 import '../../features/agent/edit_agent_screen.dart';
 import '../../features/agent/answering_screen.dart';
+import '../../features/agent/business_number_screen.dart';
 import '../../features/agent/playbook_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/callbacks/callbacks_screen.dart';
@@ -246,6 +247,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/agent/playbook',
         parentNavigatorKey: rootNavigatorKey,
         pageBuilder: (_, s) => _page(s, const PlaybookScreen()),
+      ),
+      GoRoute(
+        path: '/agent/number',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (_, s) => _page(s, const BusinessNumberScreen()),
       ),
       GoRoute(
         path: '/agent/answering',

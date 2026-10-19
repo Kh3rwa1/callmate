@@ -51,6 +51,9 @@ class MockBackend implements BackendEvents {
   );
   final List<ActivityItem> activity = [];
   int _id = 1000;
+
+  /// Demo: the business's own number once rented (Growth).
+  String? businessNumber;
   Timer? _campaignTimer;
 
   String _nextId(String p) => '${p}_${_id++}';

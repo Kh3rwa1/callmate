@@ -71,16 +71,17 @@ export const PLATFORM_MAX_BUSINESSES_PER_PHONE = 3;
 
 /**
  * TRAI: commercial voice calls must come from the 140 (promotional) or 160 (service/transactional)
- * number series. True only if every configured caller ID is +91140... or +91160...
+ * number series. True only if every configured caller ID is +91140... or +91160... : the shared pool
+ * and the business numbers (each Growth business calls from its own).
  */
-export function callerIdsAreDltSeries(env: { SARVAM_AGENT_PHONE_NUMBERS?: string }): boolean {
-  const numbers = (env.SARVAM_AGENT_PHONE_NUMBERS || '').split(',')
+export function callerIdsAreDltSeries(env: { SARVAM_AGENT_PHONE_NUMBERS?: string; SARVAM_INBOUND_NUMBERS?: string }): boolean {
+  const numbers = [env.SARVAM_AGENT_PHONE_NUMBERS, env.SARVAM_INBOUND_NUMBERS].join(',').split(',')
     .map((n) => n.replace(/[\s()-]/g, '')).filter(Boolean);
   return numbers.length > 0 && numbers.every((n) => /^\+91(140|160)\d+$/.test(n));
 }
 
 /** Production only: one warning per cron run while the caller IDs are not 140/160 series. */
-export function warnIfCallerIdsNotDlt(env: { ENVIRONMENT?: string; SARVAM_AGENT_PHONE_NUMBERS?: string }): boolean {
+export function warnIfCallerIdsNotDlt(env: { ENVIRONMENT?: string; SARVAM_AGENT_PHONE_NUMBERS?: string; SARVAM_INBOUND_NUMBERS?: string }): boolean {
   if (env.ENVIRONMENT !== 'production' || callerIdsAreDltSeries(env)) return false;
   console.warn(JSON.stringify({
     msg: 'caller_ids_not_dlt_series',

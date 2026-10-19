@@ -27,6 +27,8 @@ export const GROWTH_MINUTES = 2000;
 export const RATE_PER_MINUTE_INR = 7;
 /** Annual = 11 x the monthly price for 12 monthly grants ("1 month free"). */
 export const ANNUAL_PRICE_MONTHS = 11;
+/** Plans that include the business's own phone number (services/business_numbers.ts). */
+export const BUSINESS_NUMBER_PLANS: readonly string[] = ['growth'];
 export const DEFAULT_GST_RATE = 0.18;
 
 export interface Plan {
@@ -336,6 +338,8 @@ export interface CatalogueItem {
   included_minutes: number;
   /** Monthly grants bought: 1, 12, or 0 for a top-up. */
   months: number;
+  /** The plan includes the business's own phone number. */
+  business_number: boolean;
 }
 
 export interface BillingView {
@@ -371,6 +375,7 @@ export function catalogueItem(p: Product, env: Pick<Env, 'GST_RATE'>): Catalogue
     plan_id: p.id, kind: p.kind, name: p.name,
     price_inr: price.base_inr, gst_inr: price.gst_inr, total_inr: price.total_inr,
     included_minutes: p.minutes, months: p.months,
+    business_number: p.planId !== null && BUSINESS_NUMBER_PLANS.includes(p.planId),
   };
 }
 

@@ -112,9 +112,16 @@ abstract class CallRepository {
   /// number.
   Future<AnsweringInfo> answering();
 
-  /// `POST /agent/answering` – the AI answers every call ([AnswerMode.ai]),
-  /// the missed ones, or none (the number is given the first time).
+  /// `POST /agent/answering` – how the owner's phone forwards to the
+  /// business number: every call ([AnswerMode.ai]), the missed ones, or none.
   Future<AnsweringInfo> setAnswering(AnswerMode mode);
+
+  /// `GET /business-number` – the business's own number, or the free ones
+  /// it can pick from (Growth).
+  Future<BusinessNumberInfo> businessNumber();
+
+  /// `POST /business-number` – rent [phone] (E.164) as the business number.
+  Future<BusinessNumberInfo> rentNumber(String phone);
 }
 
 enum CallFilter { all, connected, noAnswer, hot }

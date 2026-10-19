@@ -1,10 +1,11 @@
 /**
- * The AI answers calls the owner misses (services/answering.ts).
+ * Business numbers and the AI answering them (services/business_numbers.ts, services/answering.ts).
  *
  * Owner (signed in):
- *   GET  /agent/answering                → { available, enabled, phone, mode }
- *   POST /agent/answering {enabled, mode} → on (number + Sarvam deployment; every call or only missed
- *                                          ones) / off (pause). The owner sets forwarding on their phone.
+ *   GET  /business-number          → { available, entitled, number, numbers_free }
+ *   POST /business-number {phone}  → rent that free number (Growth plan; chosen once)
+ *   GET  /agent/answering          → { available, enabled, phone, mode, has_number }
+ *   POST /agent/answering {enabled, mode} → how the owner's own phone forwards to the business number
  * Sarvam (public):
  *   POST /voice/inbound/start      → on-start hook: business name, employee, context, greeting
  *   POST /webhooks/sarvam-inbound  → after the call: lead + call row, then the outbound result handling
@@ -16,9 +17,11 @@ import { parseJsonBody } from '../schemas/validation';
 import { timingSafeEqual } from '../utils/compare';
 import { normalizePhone } from '../utils/phone';
 import { sarvamWebhookToken } from '../services/campaign_queue';
+import { inboundCallContext, setForwardMode } from '../services/answering';
 import {
-  answeringConfigured, answeringFor, e164, inboundCallContext, inboundWebhookToken, setAnswering,
-} from '../services/answering';
+  availableNumbers, BusinessNumberRow, businessNumberFor, e164, inboundWebhookToken, numberEntitled,
+  numbersConfigured, rentNumber, NUMBER_HOLD_DAYS,
+} from '../services/business_numbers';
 import { consentEventStatement, CONSENT_TEXT_VERSIONS } from '../services/consent';
 import { ownerLanguage } from '../services/owner_text';
 import { sendBusinessPushNotification } from '../services/fcm';
@@ -30,18 +33,64 @@ type AuthedEnv = { Bindings: Env; Variables: { user: AuthUser } };
 
 export const answeringApp = new Hono<AuthedEnv>();
 
-function answeringView(env: Env, row: { phone: string; enabled: number; answer_mode?: string } | null) {
+function numberView(row: BusinessNumberRow | null) {
+  return row && row.status !== 'free'
+    ? { phone: row.phone, status: row.status, held_until: row.held_until, since: row.assigned_at }
+    : null;
+}
+
+answeringApp.get('/business-number', async (c) => {
+  const user = c.get('user');
+  const [row, entitled] = await Promise.all([
+    businessNumberFor(c.env.DB, user.business_id),
+    numberEntitled(c.env.DB, user.business_id),
+  ]);
+  const available = numbersConfigured(c.env);
+  return c.json({
+    available,
+    entitled,
+    hold_days: NUMBER_HOLD_DAYS,
+    number: numberView(row),
+    // The picker: only for a business that may rent one and doesn't have one yet.
+    numbers_free: available && entitled && !row ? await availableNumbers(c.env) : [],
+  });
+});
+
+const rentSchema = z.object({ phone: z.string().min(8).max(20) });
+
+answeringApp.post('/business-number', async (c) => {
+  const user = c.get('user');
+  const parsed = await parseJsonBody(c, rentSchema);
+  if (!parsed.success) return parsed.response;
+  const base = c.env.PUBLIC_API_BASE_URL || new URL(c.req.url).origin;
+  const r = await rentNumber(c.env, user.business_id, parsed.data.phone, base);
+  if (!r.ok) {
+    const body = {
+      not_configured: { message: 'Business numbers are not available yet.', status: 503 },
+      not_entitled: { message: 'A business number comes with the Growth plan.', status: 402 },
+      already_has_number: { message: 'Your business already has a number.', status: 409 },
+      number_taken: { message: 'That number was just taken. Pick another one.', status: 409 },
+      sarvam_failed: { message: 'Could not set up the number. Try again in a minute.', status: 502 },
+    }[r.code];
+    return c.json({ message: body.message, code: r.code }, body.status as 402 | 409 | 502 | 503);
+  }
+  return c.json({ number: numberView(r.row) });
+});
+
+function answeringView(env: Env, row: BusinessNumberRow | null) {
+  const active = row?.status === 'active';
   return {
-    available: answeringConfigured(env),
-    enabled: row?.enabled === 1,
-    phone: row?.phone ?? null,
-    mode: row?.answer_mode === 'all' ? 'all' : 'missed',
+    available: numbersConfigured(env),
+    has_number: active,
+    enabled: active && row!.forward_mode !== 'off',
+    phone: active ? row!.phone : null,
+    mode: row?.forward_mode === 'all' ? 'all' : 'missed',
   };
 }
 
 answeringApp.get('/agent/answering', async (c) => {
   const user = c.get('user');
-  return c.json(answeringView(c.env, await answeringFor(c.env.DB, user.business_id)));
+  return c.json(answeringView(c.env, await businessNumberFor(c.env.DB, user.business_id)));
 });
 
 const setAnsweringSchema = z.object({ enabled: z.boolean(), mode: z.enum(['all', 'missed']).optional() });
@@ -50,15 +99,10 @@ answeringApp.post('/agent/answering', async (c) => {
   const user = c.get('user');
   const parsed = await parseJsonBody(c, setAnsweringSchema);
   if (!parsed.success) return parsed.response;
-  const base = c.env.PUBLIC_API_BASE_URL || new URL(c.req.url).origin;
-  const r = await setAnswering(c.env, user.business_id, parsed.data.enabled, base, parsed.data.mode);
+  const mode = parsed.data.enabled ? (parsed.data.mode ?? 'missed') : 'off';
+  const r = await setForwardMode(c.env, user.business_id, mode);
   if (!r.ok) {
-    const body = {
-      not_configured: { message: 'Call answering is not available yet.', status: 503 },
-      no_numbers: { message: 'No answering numbers are free right now. Try again later.', status: 503 },
-      sarvam_failed: { message: 'Could not set up call answering. Try again in a minute.', status: 502 },
-    }[r.code];
-    return c.json({ message: body.message, code: r.code }, body.status as 502 | 503);
+    return c.json({ message: 'Get your business number first.', code: 'no_business_number' }, 409);
   }
   return c.json(answeringView(c.env, r.row));
 });
@@ -115,7 +159,7 @@ answeringPublicApp.post('/webhooks/sarvam-inbound', async (c: Context<{ Bindings
   if (dialled && dialled !== number) {
     return c.json({ message: 'Payload is for another number.', code: 'number_mismatch' }, 400);
   }
-  const row = await c.env.DB.prepare('SELECT business_id FROM inbound_numbers WHERE phone = ?')
+  const row = await c.env.DB.prepare('SELECT business_id FROM business_numbers WHERE phone = ?')
     .bind(number).first<{ business_id: string | null }>();
   const businessId = row?.business_id;
   if (!businessId) return c.json({ message: 'Number is not assigned.', code: 'not_assigned' }, 404);

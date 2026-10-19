@@ -14,6 +14,7 @@
  * The ONLY transition into 'calling' is the atomic claim in processCampaignJob.
  */
 import { Env } from '../types';
+import { callerIdFor } from './business_numbers';
 import { checkCallCompliance, allowAnyCallingHours } from './compliance';
 import { maskPhone } from '../utils/crypto_data';
 import { isMockSarvam } from '../utils/secrets';
@@ -151,6 +152,8 @@ export interface DialRequest {
   webhookBaseUrl?: string | null;
   /** AI + recording disclosure (services/disclosure.ts); omitted = no app_overrides sent. */
   appOverrides?: SarvamAppOverrides;
+  /** The business's own number (services/business_numbers.ts); null = one from the shared pool. */
+  callerId?: string | null;
 }
 
 /**
@@ -177,7 +180,8 @@ export async function dialSarvam(env: Env, req: DialRequest): Promise<DialResult
   const orgId = env.SARVAM_ORG_ID;
   const workspaceId = env.SARVAM_WORKSPACE_ID;
   const appVersion = Number(env.SARVAM_APP_VERSION);
-  const agentPhone = pickAgentPhoneNumber(env);
+  // A business with its own number always calls from it, so customers see the same number.
+  const agentPhone = req.callerId || pickAgentPhoneNumber(env);
   if (!env.SARVAM_API_KEY || !orgId || !workspaceId || !env.SARVAM_ADMISSIONS_APP_ID
       || !Number.isInteger(appVersion) || !env.SARVAM_CONNECTION_ID || !agentPhone) {
     return { ok: false, retryable: false, error: 'sarvam_not_configured' };
@@ -334,6 +338,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
     }),
     webhookBaseUrl: env.PUBLIC_API_BASE_URL || job.webhook_base_url,
     appOverrides: buildDisclosureOverrides(env, { agent, business, lead }),
+    callerId: await callerIdFor(env.DB, business_id),
   });
 
   if (dial.ok) {

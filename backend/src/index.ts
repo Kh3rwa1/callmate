@@ -25,6 +25,7 @@ import { dashApp } from './routes/dashboard';
 import { voiceApp, handleSarvamWebhook } from './routes/voice';
 import { billingApp, handleRazorpayWebhook } from './routes/billing';
 import { runBillingRenewals } from './services/plans';
+import { runBusinessNumberCron } from './services/business_numbers';
 import { legalApp } from './routes/legal';
 import { landingApp } from './routes/landing';
 import { referralsApp } from './routes/referrals';
@@ -265,7 +266,8 @@ export default {
   },
   async scheduled(_ctrl: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(runMaintenance(env));
-    ctx.waitUntil(runBillingRenewals(env));
+    // Business numbers follow the plan: held after a lapse, released after the hold (after renewals ran).
+    ctx.waitUntil(runBillingRenewals(env).then(() => runBusinessNumberCron(env)));
     ctx.waitUntil(runAlertChecks(env));
     ctx.waitUntil(runLongCallWatchdog(env));
     ctx.waitUntil(runComplianceCron(env));

@@ -161,7 +161,8 @@ class CheckoutPlan {
     this.includedMinutes = 800,
     this.kind = 'plan',
     this.months = 1,
-  });
+    bool? businessNumber,
+  }) : _businessNumber = businessNumber;
   final String planId;
   final String name;
 
@@ -178,6 +179,13 @@ class CheckoutPlan {
 
   /// Monthly grants bought: 1, 12 (annual) or 0 (top-up).
   final int months;
+
+  final bool? _businessNumber;
+
+  /// The plan includes the business's own phone number (Growth). Older
+  /// servers don't say: the Growth plans do.
+  bool get businessNumber =>
+      _businessNumber ?? (!isTopup && basePlanId == 'growth');
 
   bool get isAnnual => kind == 'annual';
   bool get isTopup => kind == 'topup';
@@ -197,6 +205,9 @@ class CheckoutPlan {
       includedMinutes: jInt(j, 'included_minutes', 800),
       kind: jStr(j, 'kind', 'plan'),
       months: jInt(j, 'months', 1),
+      businessNumber: j['business_number'] is bool
+          ? j['business_number'] as bool
+          : null,
     );
   }
 
@@ -472,6 +483,62 @@ class OwnerTestCallInfo {
   );
 }
 
+/// The business's own phone number (`GET /business-number`): the caller ID
+/// of every AI call and the line its AI answers. Comes with Growth.
+class BusinessNumber {
+  const BusinessNumber({
+    required this.phone,
+    this.held = false,
+    this.heldUntil,
+  });
+
+  /// E.164, e.g. `+917971440002`.
+  final String phone;
+
+  /// The plan lapsed: kept for the business until [heldUntil].
+  final bool held;
+  final DateTime? heldUntil;
+
+  factory BusinessNumber.fromJson(Json j) => BusinessNumber(
+    phone: jStr(j, 'phone'),
+    held: jStr(j, 'status') == 'held',
+    heldUntil: jDate(j, 'held_until'),
+  );
+}
+
+class BusinessNumberInfo {
+  const BusinessNumberInfo({
+    this.available = false,
+    this.entitled = false,
+    this.number,
+    this.numbersFree = const [],
+    this.holdDays = 30,
+  });
+
+  /// False until numbers are set up on the server.
+  final bool available;
+
+  /// The current plan includes a number (Growth).
+  final bool entitled;
+  final BusinessNumber? number;
+
+  /// Free numbers to pick from (only when [entitled] and no [number]).
+  final List<String> numbersFree;
+
+  /// Days a number is kept after the plan lapses.
+  final int holdDays;
+
+  factory BusinessNumberInfo.fromJson(Json j) => BusinessNumberInfo(
+    available: jBool(j, 'available'),
+    entitled: jBool(j, 'entitled'),
+    number: jObj(j, 'number') == null
+        ? null
+        : BusinessNumber.fromJson(jObj(j, 'number')!),
+    numbersFree: jStrList(j, 'numbers_free'),
+    holdDays: jInt(j, 'hold_days', 30),
+  );
+}
+
 /// Who picks up the business's calls.
 enum AnswerMode {
   /// Every call goes to the AI employee.
@@ -495,6 +562,7 @@ class AnsweringInfo {
     this.enabled = false,
     this.phone,
     this.allCalls = false,
+    this.hasNumber = false,
   });
 
   /// False until answering is set up on the server (agent + numbers).
@@ -507,6 +575,9 @@ class AnsweringInfo {
   /// True: every call is forwarded; false: only missed ones.
   final bool allCalls;
 
+  /// The business has its own number (forwarding needs one).
+  final bool hasNumber;
+
   AnswerMode get mode => !enabled
       ? AnswerMode.owner
       : allCalls
@@ -518,6 +589,9 @@ class AnsweringInfo {
     enabled: jBool(j, 'enabled'),
     phone: jStrN(j, 'phone'),
     allCalls: jStrN(j, 'mode') == 'all',
+    hasNumber: j['has_number'] is bool
+        ? j['has_number'] as bool
+        : jStrN(j, 'phone') != null,
   );
 }
 

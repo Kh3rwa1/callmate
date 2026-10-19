@@ -410,24 +410,88 @@ class MockCallRepository implements CallRepository {
   @override
   Future<OwnerTestCallInfo> ownerTestCallInfo() => _lag(_ownerInfo, 150);
 
-  /// Demo: answering is available; the first turn-on gives a fixed number.
-  static const demoAnsweringPhone = '+917971440001';
-  AnsweringInfo _answering = const AnsweringInfo(available: true);
+  // ------------------------------------------------ business number (demo)
+
+  /// Demo numbers a Growth business can pick from.
+  static const demoNumbers = [
+    '+917971440001',
+    '+917971440002',
+    '+917971440003',
+    '+917971440004',
+  ];
+
+  /// Like the server: a Growth plan that is active includes a number.
+  bool get _entitled =>
+      b.usage.subscription.planId == 'growth' &&
+      b.usage.subscription.status == PlanStatus.active;
+
+  BusinessNumberInfo _numberInfo() => BusinessNumberInfo(
+    available: true,
+    entitled: _entitled,
+    // Like the server's cron: a lapsed plan holds the number for 30 days.
+    number: b.businessNumber == null
+        ? null
+        : BusinessNumber(
+            phone: b.businessNumber!,
+            held: !_entitled,
+            heldUntil: _entitled
+                ? null
+                : DateTime.now().add(const Duration(days: 30)),
+          ),
+    numbersFree: _entitled && b.businessNumber == null ? demoNumbers : const [],
+  );
 
   @override
-  Future<AnsweringInfo> answering() => _lag(() => _answering, 150);
+  Future<BusinessNumberInfo> businessNumber() => _lag(_numberInfo, 150);
+
+  @override
+  Future<BusinessNumberInfo> rentNumber(String phone) => _lag(() {
+    if (!_entitled) {
+      throw const ApiException(
+        'A business number comes with the Growth plan.',
+        statusCode: 402,
+        code: 'not_entitled',
+      );
+    }
+    if (b.businessNumber != null) {
+      throw const ApiException(
+        'Your business already has a number.',
+        statusCode: 409,
+        code: 'already_has_number',
+      );
+    }
+    b.businessNumber = phone;
+    b.emitChanged('business_number');
+    return _numberInfo();
+  }, 300);
+
+  AnswerMode _forward = AnswerMode.owner;
+
+  bool get _numberActive => b.businessNumber != null && _entitled;
+
+  AnsweringInfo _answeringInfo() => AnsweringInfo(
+    available: true,
+    hasNumber: _numberActive,
+    phone: _numberActive ? b.businessNumber : null,
+    enabled: _numberActive && _forward != AnswerMode.owner,
+    allCalls: _forward == AnswerMode.ai,
+  );
+
+  @override
+  Future<AnsweringInfo> answering() => _lag(_answeringInfo, 150);
 
   @override
   Future<AnsweringInfo> setAnswering(AnswerMode mode) => _lag(() {
-    final on = mode != AnswerMode.owner;
-    _answering = AnsweringInfo(
-      available: true,
-      enabled: on,
-      phone: _answering.phone ?? (on ? demoAnsweringPhone : null),
-      allCalls: on ? mode == AnswerMode.ai : _answering.allCalls,
-    );
+    if (!_numberActive) {
+      throw const ApiException(
+        'Get your business number first.',
+        statusCode: 409,
+        code: 'no_business_number',
+      );
+    }
+    _forward = mode;
     b.emitChanged('answering');
-    return _answering;
+    return _answeringInfo();
   }, 300);
 
   @override

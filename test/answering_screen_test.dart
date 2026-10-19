@@ -1,25 +1,11 @@
-import 'package:callpilot/core/network/api_client.dart';
-import 'package:callpilot/core/providers.dart';
 import 'package:callpilot/core/utils/call_forwarding.dart';
-import 'package:callpilot/data/datasources/mock/mock_repositories.dart';
+import 'package:callpilot/data/datasources/mock/mock_backend.dart';
 import 'package:callpilot/data/models/models.dart';
 import 'package:callpilot/features/usage/billing_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers/app_harness.dart';
-
-/// The pool is used up: turning answering on fails.
-class _NoNumbers extends MockCallRepository {
-  _NoNumbers(super.b);
-  @override
-  Future<AnsweringInfo> setAnswering(AnswerMode mode) async =>
-      throw const ApiException(
-        'No answering numbers are free right now.',
-        statusCode: 503,
-        code: 'no_numbers',
-      );
-}
 
 List<String> _codes(AnswerMode m, ForwardingNetwork n) =>
     forwardingSteps(m, n, '+917971440001').map((s) => s.code).toList();
@@ -78,6 +64,13 @@ void main() {
     });
   });
 
+  /// A Growth business that already rented its number (demo).
+  MockBackend withNumber() {
+    final b = MockBackend()..simulatePlanPayment(planId: 'growth');
+    b.businessNumber = '+917971440001';
+    return b;
+  }
+
   final dialled = <String>[];
   appTest(
     'choosing who answers shows the line and the codes for the network',
@@ -89,16 +82,8 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       await h.settle();
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('agent-answering')),
-          matching: find.text('Only me'),
-        ),
-        findsOneWidget,
-      );
       await h.tap(find.byKey(const Key('agent-answering')));
       expect(h.location, '/agent/answering');
-      expect(find.byKey(const Key('answering-line')), findsNothing);
 
       // Every call → the AI.
       await h.tap(find.byKey(const Key('answer-mode-ai')));
@@ -126,6 +111,7 @@ void main() {
       expect(find.byKey(const Key('answering-line')), findsOneWidget);
     },
     location: '/agent',
+    backend: withNumber,
     overrides: () => [
       externalUrlLauncherProvider.overrideWithValue((uri) async {
         dialled.add(uri.toString());
@@ -134,22 +120,71 @@ void main() {
     ],
   );
 
-  appTest(
-    'no free numbers: says so instead of a generic error',
-    (h) async {
-      await h.tap(find.byKey(const Key('answer-mode-ai')));
-      expect(
-        find.text('No answering numbers are free right now. Try again later.'),
-        findsOneWidget,
-      );
-    },
-    location: '/agent/answering',
-    overrides: () => [
-      callRepoProvider.overrideWith(
-        (ref) => _NoNumbers(ref.watch(mockBackendProvider)),
-      ),
-    ],
-  );
+  appTest('without a business number, who answers asks to get one first', (
+    h,
+  ) async {
+    expect(find.byKey(const Key('answering-needs-number')), findsOneWidget);
+    expect(find.byKey(const Key('answer-mode-ai')), findsNothing);
+    await h.tapText('Get your business number');
+    expect(h.location, '/agent/number');
+  }, location: '/agent/answering');
+
+  group('business number', () {
+    appTest('Starter: explains it and opens the plans on Growth, highlighted', (
+      h,
+    ) async {
+      expect(find.text('One number for your business'), findsOneWidget);
+      await h.tap(find.byKey(const Key('number-upgrade')));
+      expect(find.text('Choose a plan'), findsOneWidget);
+      // Growth is preselected and says what sets it apart.
+      expect(find.text('Pay ₹14,159'), findsOneWidget);
+      expect(find.text('Premium'), findsOneWidget);
+      expect(find.byKey(const ValueKey('plan-number-growth')), findsOneWidget);
+      expect(find.text('Your own business number'), findsOneWidget);
+      expect(find.text('Calls from shared CallPilot numbers'), findsOneWidget);
+    }, location: '/agent/number');
+
+    appTest(
+      'Growth: pick a specific number once, then it is the business number',
+      (h) async {
+        expect(find.text('Pick your number'), findsOneWidget);
+        // Nothing picked yet: can't rent.
+        final rent = find.byKey(const Key('rent-number'));
+        expect(h.tester.widget<FilledButton>(rent).onPressed, isNull);
+        await h.tap(find.byKey(const Key('number-option-+917971440003')));
+        await h.tap(rent);
+        expect(
+          find.text('Make +91 79714 40003 your business number?'),
+          findsOneWidget,
+        );
+        await h.tap(find.byKey(const Key('rent-number-confirm')));
+        expect(h.backend.businessNumber, '+917971440003');
+        expect(find.byKey(const Key('business-number')), findsOneWidget);
+        expect(find.text('+91 79714 40003'), findsOneWidget);
+        expect(find.text('Pick your number'), findsNothing);
+        // Who answers now works on this number.
+        await h.tapText('Who answers my calls');
+        expect(find.byKey(const Key('answer-mode-ai')), findsOneWidget);
+      },
+      location: '/agent/number',
+      backend: () => MockBackend()..simulatePlanPayment(planId: 'growth'),
+    );
+
+    appTest(
+      'plan lapsed: the number is on hold, with how to get calls back',
+      (h) async {
+        expect(find.text('+91 79714 40001'), findsOneWidget);
+        expect(find.text('On hold'), findsOneWidget);
+        expect(find.byKey(const Key('number-held-forwarding')), findsOneWidget);
+        expect(find.text('Renew Growth to keep your number'), findsOneWidget);
+        // Who answers can't forward to a held number.
+        await h.go('/agent/answering');
+        expect(find.byKey(const Key('answering-needs-number')), findsOneWidget);
+      },
+      location: '/agent/number',
+      backend: () => withNumber()..simulatePlanState(PlanStatus.pastDue),
+    );
+  });
 
   appTest('a call the AI answered reads "Called you"', (h) async {
     final c = h.backend.simulateCall(LeadTemperature.hot, inbound: true);
