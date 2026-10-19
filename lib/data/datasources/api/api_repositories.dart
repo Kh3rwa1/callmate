@@ -365,6 +365,18 @@ class ApiCallRepository implements CallRepository {
     (d) => OwnerTestCallInfo.fromJson(_j(d)),
     data: {'phone': phone},
   );
+  @override
+  Future<AnsweringInfo> answering() =>
+      api.get('/agent/answering', (d) => AnsweringInfo.fromJson(_j(d)));
+  @override
+  Future<AnsweringInfo> setAnswering(AnswerMode mode) => api.post(
+    '/agent/answering',
+    (d) => AnsweringInfo.fromJson(_j(d)),
+    data: {
+      'enabled': mode != AnswerMode.owner,
+      if (mode != AnswerMode.owner) 'mode': mode.wire,
+    },
+  );
 }
 
 class ApiCampaignRepository implements CampaignRepository {

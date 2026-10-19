@@ -93,6 +93,34 @@ export function testGreeting(lang: VoiceLang, names: Pick<DisclosureNames, 'agen
   return { initial_bot_message: message, initial_language_name: LANGUAGE_NAMES[lang] };
 }
 
+/**
+ * What the AI says when it answers a call for the business (services/answering.ts): which business,
+ * that it is an AI assistant and the call may be recorded, then an offer to help. `missed` (the owner
+ * answers first) adds that the team can't come to the phone; with every call forwarded it doesn't.
+ * With no business (the number isn't assigned), a neutral version.
+ */
+export function inboundGreeting(
+  lang: VoiceLang, names: Pick<DisclosureNames, 'agent' | 'business'>, mode: 'all' | 'missed' = 'missed',
+): string {
+  const agent = safeSpokenName(names.agent, lang === 'en' ? 'an assistant' : lang === 'hi' ? 'सहायक' : 'সহকারী');
+  const business = safeSpokenName(names.business, '');
+  const missed = mode === 'missed';
+  switch (lang) {
+    case 'hi':
+      return `नमस्ते${business ? `, ${business}` : ''}। मैं ${agent} हूँ, एक AI सहायक। `
+        + (missed ? 'अभी टीम फ़ोन नहीं उठा पा रही, पर मैं आपकी मदद कर सकती हूँ। ' : '')
+        + 'यह कॉल रिकॉर्ड की जा सकती है। बताइए, क्या जानना है?';
+    case 'bn':
+      return `নমস্কার${business ? `, ${business}` : ''}। আমি ${agent}, একজন AI সহকারী। `
+        + (missed ? 'এখন টিম ফোন ধরতে পারছে না, তবে আমি সাহায্য করতে পারি। ' : '')
+        + 'এই কলটি রেকর্ড হতে পারে। বলুন, কী জানতে চান?';
+    default:
+      return `Hello${business ? `, you've reached ${business}` : ''}. I'm ${agent}, an AI assistant. `
+        + (missed ? "The team can't come to the phone right now, but I can help. " : '')
+        + 'This call may be recorded. What can I do for you?';
+  }
+}
+
 export interface DisclosureInput {
   agent?: { name?: string | null; languages?: string | string[] | null } | null;
   business?: { name?: string | null } | null;

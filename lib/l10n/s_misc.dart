@@ -36,6 +36,11 @@ extension SMisc on S {
       'কলিং আপডেট',
     ),
     NotificationType.newLead => pick('New enquiry', 'नई पूछताछ', 'নতুন খোঁজ'),
+    NotificationType.inboundCall => pick(
+      'Your AI answered a call',
+      'AI ने एक कॉल का जवाब दिया',
+      'AI একটি কলের উত্তর দিয়েছে',
+    ),
   };
 
   // ------------------------------------------------------------ Callbacks

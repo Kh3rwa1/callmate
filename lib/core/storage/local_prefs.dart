@@ -20,6 +20,7 @@ class LocalPrefs {
   static const _textSize = 'ui.text_size';
   static const _checklistDismissed = 'home.checklist_dismissed';
   static const _heardAi = 'home.heard_ai';
+  static const _forwardingNetwork = 'answering.network';
 
   /// Older builds could store a Sarvam API key here in plain text. The app
   /// now only talks to Sarvam through the backend proxy, so it is purged.
@@ -59,6 +60,12 @@ class LocalPrefs {
   String? get themeMode => _p.getString(_themeMode);
   Future<void> setThemeMode(String? v) =>
       v == null ? _p.remove(_themeMode) : _p.setString(_themeMode, v);
+
+  /// The owner's mobile network for call-forwarding codes: 'jio' or 'gsm'
+  /// (Airtel, Vi, BSNL and others use the standard codes).
+  String? get forwardingNetwork => _p.getString(_forwardingNetwork);
+  Future<void> setForwardingNetwork(String v) =>
+      _p.setString(_forwardingNetwork, v);
 
   /// 'en' / 'hi' / 'bn', or null to follow the phone.
   String? get language => _p.getString(_language);

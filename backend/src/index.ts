@@ -38,6 +38,7 @@ import { leadSourcesApp } from './routes/lead_sources';
 import { leadCapturePublicApp } from './routes/lead_capture_public';
 import { playbooksApp } from './routes/playbooks';
 import { leadIntegrationsPublicApp } from './routes/lead_integrations_public';
+import { answeringApp, answeringPublicApp } from './routes/answering';
 import { runIndiaMartPulls } from './services/lead_integrations';
 import { handleInstantCallMessages, isInstantCallMessage } from './services/lead_capture';
 
@@ -186,6 +187,8 @@ app.route('/stop', stopApp);
 app.route('/', leadCapturePublicApp);
 // Lead integrations: Google Ads lead forms, IndiaMART push, Meta Lead Ads (each verifies its provider)
 app.route('/', leadIntegrationsPublicApp);
+// The AI answers missed calls: Sarvam's on-start hook and post-call webhook (each verifies its own token).
+app.route('/', answeringPublicApp);
 
 // Public Sarvam completed call webhook
 app.post('/webhooks/sarvam', async (c) => {
@@ -225,6 +228,7 @@ protectedApp.route('/', referralsApp);
 protectedApp.route('/', resultsApp);
 protectedApp.route('/', playbooksApp);
 protectedApp.route('/', leadSourcesApp);
+protectedApp.route('/', answeringApp);
 protectedApp.route('/voice', voiceApp);
 
 app.route('/', protectedApp);

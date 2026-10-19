@@ -173,6 +173,77 @@ greeting, that the agent carries on naturally after it, and that
 `GET /health/deep` shows `compliance.disclosure_override`. To roll back, remove
 the line and redeploy.
 
+## AI answers the business's calls (inbound)
+
+Owners choose in **Agent → Settings → Who answers my calls**:
+*the AI answers every call*, *I answer first, the AI takes the ones I miss*,
+or *only me*. The backend gives the business one number from a pool you rent
+in Sarvam and creates a Sarvam **inbound deployment** for it
+(`backend/src/services/answering.ts`). The phone does the forwarding; the app
+shows the codes for the owner's network (`lib/core/utils/call_forwarding.dart`):
+
+| | Jio | Airtel, Vi, BSNL (standard) |
+|---|---|---|
+| Every call | `*401*<10 digits>#` | `**21*<+91…>#` |
+| Missed only | `##002#`, then `*403*`, `*405*`, `*409*` `<10 digits>#` | `##002#`, then `**004*<+91…>#` |
+| Only me | `##002#` | `##002#` |
+
+The greeting follows the choice: with every call forwarded it doesn't say
+"the team can't come to the phone".
+
+```
+caller → owner's phone (no answer) → forwarded to the AI line
+  → Sarvam on-start hook POST {PUBLIC_API_BASE_URL}/voice/inbound/start
+      → business name, AI employee, business_context, greeting, can_talk
+  → the receptionist agent talks
+  → deployment webhook POST /webhooks/sarvam-inbound?number=…&token=HMAC
+      → lead (consent "inquiry", enquiry dated now) + inbound call row
+      → same scoring / WhatsApp draft / billing / opt-out as outbound
+      → owner notification "Your AI answered <name>"
+```
+
+A number stays with its business once given (turning it off pauses the
+deployment), so a forwarding code the owner forgot can never reach another
+business's AI. Answered minutes count against the owner's plan.
+
+**One-time setup (Sarvam dashboard, then Worker config):**
+
+1. **Rent numbers**: Phone Numbers → rent on the same connection as
+   `SARVAM_CONNECTION_ID` (₹59 per number per 30 days). One per business that
+   turns answering on.
+2. **Create the agent** "CallPilot - Inbound Receptionist":
+   - Input variables: `business_name`, `agent_name`, `agent_role`,
+     `business_context`, `call_language`, `caller_name`, `caller_known`,
+     `can_talk`, `greeting`. Opening line: `{{greeting}}` (it says it's an AI
+     assistant and that the call may be recorded).
+   - Prompt: answer as `{{agent_name}}` for `{{business_name}}` using
+     `{{business_context}}`; find out what the caller wants, their name, and
+     a good time for a call back. If `{{can_talk}}` is `no`, take a short
+     message and end the call. If they ask not to be called, apologise, say
+     they won't be called, set `intent = "opt_out"` and end the call.
+   - Output variables: the outbound set (`lead_score`, `intent`,
+     `temperature`, `summary`, `next_action`, `whatsapp_followup_required`,
+     `whatsapp_message`, `callback_at`) plus `caller_name`.
+   - **On-start hook**: an API tool with *When should this tool run?* =
+     `on_start`, `POST {PUBLIC_API_BASE_URL}/voice/inbound/start`, auth
+     *bearer token* = the `INBOUND_HOOK_SECRET` value (stored as a Sarvam
+     secret), JSON body `{"caller": @User Identifier, "called": <the number
+     dialled>, "interaction_id": @Interaction ID}`, and *Save reply into
+     variables* for every input variable above.
+   - **Verify on the first staging call** that `called` is filled. Sarvam's
+     docs list the caller's number for hooks but not the dialled one; without
+     it the agent still answers, discloses it's an AI and takes a message, and
+     the lead, summary and notification still reach the right business (the
+     after-call webhook carries the dialled number), but it can't greet with
+     the business name or answer questions from its details.
+   - Commit a version.
+3. **Worker config** (`wrangler.toml` `[vars]` / `[env.staging.vars]`):
+   `SARVAM_INBOUND_APP_ID`, `SARVAM_INBOUND_APP_VERSION`,
+   `SARVAM_INBOUND_NUMBERS = "+91…,+91…"`; secret
+   `npx wrangler secret put INBOUND_HOOK_SECRET` (any 32+ random characters,
+   the same value as the Sarvam secret). Deploy. Until all are set the app
+   hides the row.
+
 ## Checking it works
 
 ```bash

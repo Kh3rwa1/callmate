@@ -92,14 +92,18 @@ class _Result extends ConsumerWidget {
                 child: Row(
                   children: [
                     Icon(
-                      Icons.check_circle_outline_rounded,
+                      c.inbound
+                          ? Icons.phone_callback_rounded
+                          : Icons.check_circle_outline_rounded,
                       size: 16,
                       color: AppColors.success,
                     ),
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        '${s.friendlyFuture(c.startedAt)} · ${Fmt.duration(c.duration)}',
+                        c.inbound
+                            ? '${s.calledYouAiAnswered} · ${s.friendlyFuture(c.startedAt)} · ${Fmt.duration(c.duration)}'
+                            : '${s.friendlyFuture(c.startedAt)} · ${Fmt.duration(c.duration)}',
                         style: t.bodySmall?.copyWith(color: AppColors.inkFaint),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -429,7 +433,7 @@ class _Detail extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final c = call;
     final rows = <(String, String)>[
-      (s.status, s.callStatus(c.status)),
+      (s.status, c.inbound ? s.calledYouAiAnswered : s.callStatus(c.status)),
       (s.when, s.friendlyFuture(c.startedAt)),
       if (c.status.isConnected) (s.durationLabel, Fmt.duration(c.duration)),
       (s.outcome, c.outcome ?? '—'),

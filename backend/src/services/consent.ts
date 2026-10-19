@@ -14,7 +14,7 @@ import { globalDncSecret } from './global_dnc';
 
 export type ConsentSource =
   | 'form' | 'webhook' | 'import_attestation' | 'manual' | 'in_call_opt_out'
-  | 'google_ads' | 'indiamart' | 'meta_lead_ads';
+  | 'google_ads' | 'indiamart' | 'meta_lead_ads' | 'inbound_call';
 
 /**
  * Version labels of the wording behind each kind of event. Bump the matching label whenever the
@@ -44,6 +44,8 @@ export const CONSENT_TEXT_VERSIONS = {
   indiamart: 'indiamart-enquiry-2026-10',
   /** Person submitted a Meta (Facebook / Instagram) Lead Ads instant form. */
   meta_lead_ads: 'meta-lead-ads-2026-10',
+  /** Person phoned the business and the AI answered (services/answering.ts): an enquiry they made. */
+  inbound_call: 'inbound-call-2026-10',
 } as const;
 
 /**

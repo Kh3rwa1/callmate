@@ -119,6 +119,7 @@ extension SLeadCapture on S {
     'google_ads' => 'Google Ads',
     'indiamart' => 'IndiaMART',
     'meta' => 'Facebook',
+    'inbound_call' => pick('Called you', 'आपको कॉल किया', 'আপনাকে কল করেছেন'),
     _ => null,
   };
 

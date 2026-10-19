@@ -63,6 +63,8 @@ async function formatCall(row: any, secret?: string) {
     lead_name: row.lead_name,
     lead_phone: row.lead_phone,
     status: row.status,
+    // 'inbound' = the customer called and the AI answered (routes/answering.ts).
+    direction: row.direction || 'outbound',
     duration_seconds: row.duration_seconds || 0,
     recording_url: await decryptAtRest(row.recording_url ?? null, secret).catch(() => null),
     transcript: transcriptObj,

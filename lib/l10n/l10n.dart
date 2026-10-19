@@ -14,6 +14,7 @@ export 's_lead_capture.dart';
 export 's_calls.dart';
 export 's_followups.dart';
 export 's_agent.dart';
+export 's_answering.dart';
 export 's_misc.dart';
 export 's_auth.dart';
 export 's_voice.dart';

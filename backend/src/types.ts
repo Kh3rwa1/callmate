@@ -61,11 +61,18 @@ export interface Env {
   BILLING_RETURN_URL?: string;
   /** GST charged on top of every catalogue price (fraction, default "0.18"). */
   GST_RATE?: string;
-  /** Our cost per call minute in INR, for the margin report (defaults "2" and "0.6"). */
+  /** Our cost per call minute in INR, for the margin report (defaults "3.5" and "0.4", services/economics.ts). */
   COST_PER_MIN_SARVAM_INR?: string;
+  COST_PER_MIN_TELEPHONY_INR?: string;
   /** Sarvam's organisation-wide concurrent call limit for the plan we are on (campaign_queue.ts). */
   SARVAM_MAX_CONCURRENT_CALLS?: string;
-  COST_PER_MIN_TELEPHONY_INR?: string;
+  /** AI answers missed calls (services/answering.ts): the receptionist agent and its committed version. */
+  SARVAM_INBOUND_APP_ID?: string;
+  SARVAM_INBOUND_APP_VERSION?: string;
+  /** Numbers rented in Sarvam for answering, comma separated; each goes to one business. */
+  SARVAM_INBOUND_NUMBERS?: string;
+  /** Bearer token the agent's on-start hook sends to POST /voice/inbound/start (a Sarvam secret). */
+  INBOUND_HOOK_SECRET?: string;
   /** Calls still 'calling' after this many minutes are logged by the cron watchdog (default 8). */
   MAX_CALL_MINUTES?: string;
   /** Dev/test only: 'true' skips the TRAI 09:00-21:00 clamp so tests can dial at any time of day. */

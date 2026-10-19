@@ -176,7 +176,10 @@ enum NotificationType {
   campaign('campaign'),
 
   /// A new enquiry arrived through the hosted form or webhook (speed-to-lead).
-  newLead('new_lead');
+  newLead('new_lead'),
+
+  /// The AI answered a call the owner missed.
+  inboundCall('inbound_call');
 
   const NotificationType(this.wire);
   final String wire;

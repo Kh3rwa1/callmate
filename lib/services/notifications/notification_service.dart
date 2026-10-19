@@ -28,7 +28,8 @@ String plainNotificationTitle(String title) => splitNotificationTitle(title).$2;
 String notificationTitleFor(S s, AppNotification n) =>
     s.isEn &&
         (n.type == NotificationType.campaign ||
-            n.type == NotificationType.newLead)
+            n.type == NotificationType.newLead ||
+            n.type == NotificationType.inboundCall)
     ? plainNotificationTitle(n.title)
     : s.notificationTitle(n.type);
 
