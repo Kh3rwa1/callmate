@@ -3,6 +3,7 @@ import 'package:callpilot/core/providers.dart';
 import 'package:callpilot/data/datasources/mock/mock_backend.dart';
 import 'package:callpilot/data/datasources/mock/mock_repositories.dart';
 import 'package:callpilot/data/models/models.dart';
+import 'package:callpilot/l10n/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -70,4 +71,12 @@ void main() {
       ),
     ],
   );
+
+  test('one new customer is singular in every language', () {
+    expect(S.en.callNewLeadsCount(1), 'Call 1 New Customer');
+    expect(S.en.callNewLeadsCount(2), 'Call 2 New Customers');
+    expect(S(AppLang.hi).callNewLeadsCount(1), '1 नए ग्राहक को कॉल करें');
+    expect(S(AppLang.bn).callNewLeadsCount(1), '1 জন নতুন গ্রাহককে কল করুন');
+    expect(S.en.callNewSemantics(1), 'Call 1 new customer');
+  });
 }

@@ -19,6 +19,9 @@ import { buildDisclosureOverrides } from './disclosure';
 import { globalDncSecret } from './global_dnc';
 import { recordConsentEventsForLeads, CONSENT_TEXT_VERSIONS } from './consent';
 
+/** Name of the owner's hidden test lead when the business has no owner name (routes/results.ts). */
+export const OWNER_TEST_PLACEHOLDER_NAME = 'Owner';
+
 export type PlaceCallOutcome =
   | { ok: true; callId: string; dispatched: boolean; lead: any }
   | { ok: false; code: 'not_found' }
@@ -139,7 +142,11 @@ export async function placeLeadCall(env: Env, p: PlaceCallParams): Promise<Place
       businessId, business, agent, lead, callId,
     }),
     webhookBaseUrl: env.PUBLIC_API_BASE_URL || p.fallbackBaseUrl,
-    appOverrides: buildDisclosureOverrides(env, { agent, business, lead }),
+    // An owner test call without the owner's name on file greets "Hello," not "Hello Owner,".
+    appOverrides: buildDisclosureOverrides(env, {
+      agent, business,
+      lead: lead.is_owner_test === 1 && lead.name === OWNER_TEST_PLACEHOLDER_NAME ? { ...lead, name: '' } : lead,
+    }),
   });
 
   if (dial.ok) {

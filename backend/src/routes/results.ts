@@ -3,6 +3,7 @@ import { Env, AuthUser } from '../types';
 import { parseJsonBody, ownerTestCallSchema } from '../schemas/validation';
 import { normalizePhone } from '../utils/phone';
 import { respondWithLeadCall } from './calls';
+import { OWNER_TEST_PLACEHOLDER_NAME } from '../services/dial';
 import { DEFAULT_BUSINESS_TIMEZONE, estimatedValue, localMidnightUtc, periodResults, PeriodResults } from '../services/results';
 
 const resultsApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -124,7 +125,7 @@ resultsApp.post('/agent/test-call', async (c) => {
       await c.env.DB.prepare(
         `INSERT INTO leads (id, business_id, name, phone, source, status, consent, timezone, is_owner_test, created_at, updated_at)
          VALUES (?, ?, ?, ?, 'Owner test call', 'new', 'opt_in', 'Asia/Kolkata', 1, datetime('now'), datetime('now'))`
-      ).bind(leadId, user.business_id, biz?.owner_name?.trim() || 'Owner', phone).run();
+      ).bind(leadId, user.business_id, biz?.owner_name?.trim() || OWNER_TEST_PLACEHOLDER_NAME, phone).run();
     } catch (err) {
       await releaseSlot();
       // Lost a race with a concurrent request for the same number: let the owner retry.
