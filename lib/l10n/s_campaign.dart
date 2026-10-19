@@ -3,7 +3,13 @@ import 's.dart';
 /// Calling campaigns: the "Call new customers" button, setup and progress.
 extension SCampaign on S {
   // ------------------------------------------------------------ CTA
-  String callNewLeadsCount(int n) => n > 0
+  String callNewLeadsCount(int n) => n == 1
+      ? pick(
+          'Call 1 New Customer',
+          '1 नए ग्राहक को कॉल करें',
+          '1 জন নতুন গ্রাহককে কল করুন',
+        )
+      : n > 0
       ? pick(
           'Call $n New Customers',
           '$n नए ग्राहकों को कॉल करें',
@@ -17,7 +23,13 @@ extension SCampaign on S {
   String callNewCompact(int n) => n > 0
       ? pick('Call $n new', '$n नई कॉल करें', '$n নতুন কল')
       : pick('Call new', 'नई कॉल', 'নতুন কল');
-  String callNewSemantics(int n) => n > 0
+  String callNewSemantics(int n) => n == 1
+      ? pick(
+          'Call 1 new customer',
+          '1 नए ग्राहक को कॉल करें',
+          '1 জন নতুন গ্রাহককে কল করুন',
+        )
+      : n > 0
       ? pick(
           'Call $n new customers',
           '$n नए ग्राहकों को कॉल करें',
