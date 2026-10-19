@@ -2,6 +2,11 @@ import 's.dart';
 
 /// Splash and sign-in.
 extension SAuth on S {
+  String get noAccountForNumber => pick(
+    'No account for this number yet. Add your business name to create one.',
+    'इस नंबर पर अभी कोई अकाउंट नहीं है। अकाउंट बनाने के लिए अपने बिज़नेस का नाम लिखें।',
+    'এই নম্বরে এখনও কোনো অ্যাকাউন্ট নেই। অ্যাকাউন্ট খুলতে আপনার ব্যবসার নাম লিখুন।',
+  );
   String get tagline => pick(
     'Your AI Calling Employee',
     'आपका AI कॉलिंग कर्मचारी',
