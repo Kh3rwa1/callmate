@@ -130,13 +130,16 @@ void main() {
       expect(c.read(dataVersionProvider), v0 + 2);
     });
 
-    test('failed login surfaces an error state', () async {
+    test('failed login throws to the screen and stays signed out', () async {
       await c.read(sessionProvider.future);
       auth.failWith = const ApiException('Wrong OTP', statusCode: 400);
-      await c.read(sessionProvider.notifier).login(phone: '1', otp: '0');
-      final s = c.read(sessionProvider);
-      expect(s.hasError, isTrue);
-      expect(s.error.toString(), 'Wrong OTP');
+      await expectLater(
+        c.read(sessionProvider.notifier).login(phone: '1', otp: '0'),
+        throwsA(
+          isA<ApiException>().having((e) => e.message, 'message', 'Wrong OTP'),
+        ),
+      );
+      expect(c.read(sessionProvider), const AsyncValue<bool>.data(false));
     });
 
     test('logout unregisters the push token then signs out', () async {
