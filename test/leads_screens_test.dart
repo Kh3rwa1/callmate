@@ -1,3 +1,4 @@
+import 'package:callpilot/core/network/api_client.dart';
 import 'package:callpilot/core/providers.dart';
 import 'package:callpilot/core/widgets/app_card.dart';
 import 'package:callpilot/core/utils/phone.dart';
@@ -26,6 +27,42 @@ class _FailingLeads extends MockLeadRepository {
     String? cursor,
     int limit = 20,
   }) async => throw StateError('network down');
+}
+
+/// Backend says the lead needs the owner's confirmation (our copy of the lead
+/// was stale), then calls once confirmed.
+class _ConsentRequiredCalls extends MockCallRepository {
+  _ConsentRequiredCalls(super.b);
+  final attempts = <bool>[];
+  @override
+  Future<Call> triggerCall(String leadId, {bool consentAttested = false}) {
+    attempts.add(consentAttested);
+    if (!consentAttested) {
+      throw const ApiException(
+        'Confirm this customer asked to be contacted before your AI calls them.',
+        statusCode: 409,
+        code: 'consent_required',
+      );
+    }
+    return super.triggerCall(leadId, consentAttested: true);
+  }
+}
+
+/// Replaces a seeded lead with one whose consent / enquiry window is set.
+Lead _withConsent(
+  MockBackend b,
+  Lead l,
+  String consent, {
+  DateTime? enquiryExpiresAt,
+}) {
+  final updated = Lead.fromJson({
+    ...l.toJson(),
+    'consent': consent,
+    if (enquiryExpiresAt != null)
+      'enquiry_expires_at': enquiryExpiresAt.toUtc().toIso8601String(),
+  });
+  b.leads[l.id] = updated;
+  return updated;
 }
 
 List<Lead> _visibleLeads(WidgetTester tester) => tester
@@ -248,6 +285,9 @@ void main() {
       await h.tap(find.byTooltip('AI Call'));
       expect(find.text('Call Rahul Kumar'), findsOneWidget);
       await h.tapText('AI call by ${h.backend.agent.name}');
+      // Seeded leads have unknown consent: the owner confirms first.
+      expect(find.text('Did Rahul ask you to get in touch?'), findsOneWidget);
+      await h.tapText('Yes, call them');
 
       expect(h.backend.calls.length, before + 1);
       expect(h.backend.calls.last.leadId, rahul.id);
@@ -258,6 +298,77 @@ void main() {
         findsOneWidget,
       );
     });
+
+    appTest('cancelling the consent question places no call', (h) async {
+      final rahul = _byName(h.backend, 'Rahul Kumar');
+      final before = h.backend.calls.length;
+      await h.push('/leads/${rahul.id}');
+      await h.tap(find.byTooltip('AI Call'));
+      await h.tapText('AI call by ${h.backend.agent.name}');
+      await h.tapText('Cancel');
+      expect(h.backend.calls.length, before);
+      expect(find.text('Did Rahul ask you to get in touch?'), findsNothing);
+    });
+
+    appTest('a lead who agreed to calls is called without asking', (h) async {
+      final rahul = _withConsent(
+        h.backend,
+        _byName(h.backend, 'Rahul Kumar'),
+        'explicit_opt_in',
+      );
+      final before = h.backend.calls.length;
+      await h.push('/leads/${rahul.id}');
+      await h.tap(find.byTooltip('AI Call'));
+      await h.tapText('AI call by ${h.backend.agent.name}');
+      expect(find.text('Did Rahul ask you to get in touch?'), findsNothing);
+      expect(h.backend.calls.length, before + 1);
+    });
+
+    appTest('an enquiry over 7 days old cannot get an AI call', (h) async {
+      final rahul = _withConsent(
+        h.backend,
+        _byName(h.backend, 'Rahul Kumar'),
+        'explicit_opt_in',
+        enquiryExpiresAt: DateTime.now().subtract(const Duration(days: 1)),
+      );
+      expect(rahul.enquiryExpired, isTrue);
+      final before = h.backend.calls.length;
+      await h.push('/leads/${rahul.id}');
+      await h.tap(find.byTooltip('AI Call'));
+      expect(find.text('Their enquiry is over 7 days old'), findsOneWidget);
+      await h.tapText('AI call by ${h.backend.agent.name}');
+      expect(h.backend.calls.length, before);
+      // The sheet stays open: the other ways to reach them still work.
+      expect(find.text('Call from my phone'), findsOneWidget);
+    });
+
+    late _ConsentRequiredCalls staleCalls;
+    appTest(
+      'asks for consent when the backend wants it, then calls',
+      (h) async {
+        final rahul = _withConsent(
+          h.backend,
+          _byName(h.backend, 'Rahul Kumar'),
+          'explicit_opt_in',
+        );
+        await h.push('/leads/${rahul.id}');
+        await h.tap(find.byTooltip('AI Call'));
+        await h.tapText('AI call by ${h.backend.agent.name}');
+        await h.tapText('Yes, call them');
+        expect(staleCalls.attempts, [false, true]);
+        expect(
+          find.text('${h.backend.agent.name} is calling Rahul Kumar'),
+          findsOneWidget,
+        );
+      },
+      overrides: () => [
+        callRepoProvider.overrideWith(
+          (ref) => staleCalls = _ConsentRequiredCalls(
+            ref.watch(mockBackendProvider),
+          ),
+        ),
+      ],
+    );
 
     appTest('in-app option opens the voice test', (h) async {
       final rahul = _byName(h.backend, 'Rahul Kumar');

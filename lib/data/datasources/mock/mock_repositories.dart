@@ -388,9 +388,10 @@ class MockCallRepository implements CallRepository {
   );
 
   @override
-  Future<Call> triggerCall(String leadId) => _lag(() {
-    return b.simulateCall(LeadTemperature.hot, leadId: leadId);
-  }, 300);
+  Future<Call> triggerCall(String leadId, {bool consentAttested = false}) =>
+      _lag(() {
+        return b.simulateCall(LeadTemperature.hot, leadId: leadId);
+      }, 300);
 
   /// Demo: the owner's number and a 3-a-day limit (nothing actually dials).
   static const ownerPhone = '919830012345';

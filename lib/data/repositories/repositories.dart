@@ -96,7 +96,10 @@ abstract class CallRepository {
   });
   Future<Call> get(String id);
   Future<List<Call>> forLead(String leadId);
-  Future<Call> triggerCall(String leadId);
+
+  /// [consentAttested]: the owner confirmed a lead with unknown consent
+  /// asked to be contacted (the backend refuses without it).
+  Future<Call> triggerCall(String leadId, {bool consentAttested = false});
 
   /// `GET /agent/test-call` – the owner's number and test calls left today.
   Future<OwnerTestCallInfo> ownerTestCallInfo();

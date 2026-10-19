@@ -7,6 +7,8 @@ import {
   consentEventStatement, recordConsentEventsForLeads, hashIp, clientIp, CONSENT_TEXT_VERSIONS,
 } from '../services/consent';
 import { normalizePhone } from '../utils/phone';
+import { enquiryCallableUntil } from '../services/compliance';
+import { sqlUtc } from '../services/results';
 
 function isUniqueViolation(err: any): boolean {
   return /UNIQUE constraint failed/i.test(String(err?.message ?? err));
@@ -46,6 +48,11 @@ function formatLead(row: any) {
     do_not_call: row.do_not_call === 1,
     phone_invalid: row.phone_invalid === 1,
     consent: row.consent || 'unknown',
+    // Enquiry-based leads: AI calls stop at this time (services/compliance.ts, TRAI 7-day rule).
+    enquiry_expires_at: (() => {
+      const until = enquiryCallableUntil(row);
+      return until ? sqlUtc(until) : null;
+    })(),
     timezone: row.timezone || 'Asia/Kolkata',
     created_at: row.created_at,
     updated_at: row.updated_at,

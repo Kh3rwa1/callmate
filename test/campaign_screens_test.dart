@@ -44,7 +44,9 @@ Future<void> _dismissBanner(AppHarness h) async {
 /// Opens the confirmation sheet from the setup screen and confirms it.
 Future<void> _startCampaign(AppHarness h) async {
   await h.tapText('Start Calling');
-  final attest = find.text('I confirm these contacts asked to be contacted');
+  final attest = find.text(
+    'I confirm these contacts asked to be contacted in the last 7 days, or are existing customers',
+  );
   if (attest.evaluate().isNotEmpty) await h.tap(attest);
   expect(find.textContaining('Start calling'), findsOneWidget);
   await h.tapText('Yes, start calling');
@@ -103,7 +105,7 @@ void main() {
     appTest('without consent the sheet counts only callable leads', (h) async {
       await h.tapText('Start Calling');
       final attest = find.text(
-        'I confirm these contacts asked to be contacted',
+        'I confirm these contacts asked to be contacted in the last 7 days, or are existing customers',
       );
       if (attest.evaluate().isEmpty) return; // seed has consented leads only
       final unknown = h.backend.leads.values
@@ -136,7 +138,7 @@ void main() {
       await h.tapText('Start Calling');
       // Leads without recorded consent trigger the attestation checkbox.
       final attest = find.text(
-        'I confirm these contacts asked to be contacted',
+        'I confirm these contacts asked to be contacted in the last 7 days, or are existing customers',
       );
       if (attest.evaluate().isNotEmpty) {
         await h.tap(attest);

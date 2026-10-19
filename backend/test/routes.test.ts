@@ -186,7 +186,11 @@ describe('All Routes Unit & Integration Tests (Workers Runtime)', () => {
       // Open the calling window all day so this test does not depend on the time it runs.
       await env.DB.prepare('UPDATE agents SET calling_hours_start = 0, calling_hours_end = 24 WHERE business_id = ?').bind(bizA).run();
       const lead = await env.DB.prepare('SELECT id FROM leads WHERE business_id = ?').bind(bizA).first<any>();
-      const res = await authedReq(`/leads/${lead.id}/call`, tokenA, 'POST');
+      // Consent unknown: the owner must confirm the customer asked to be contacted.
+      const unconfirmed = await authedReq(`/leads/${lead.id}/call`, tokenA, 'POST');
+      expect(unconfirmed.status).toBe(409);
+      expect((await unconfirmed.json() as any).code).toBe('consent_required');
+      const res = await authedReq(`/leads/${lead.id}/call`, tokenA, 'POST', { consent_attestation: true });
       expect(res.status).toBe(200);
       const data = await res.json() as any;
       expect(data.call.status).toBe('calling');

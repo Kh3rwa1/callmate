@@ -138,6 +138,28 @@ extension SLeads on S {
       pick('Call from my phone', 'मेरे फ़ोन से कॉल', 'আমার ফোন থেকে কল');
   String get usesYourSim =>
       pick('Uses your SIM', 'आपकी SIM से', 'আপনার SIM থেকে');
+  String get enquiryTooOld => pick(
+    'Their enquiry is over 7 days old',
+    'उनकी पूछताछ 7 दिन से पुरानी है',
+    'ওঁর জিজ্ঞাসা 7 দিনের বেশি পুরনো',
+  );
+  String get enquiryExpiredCall => pick(
+    'TRAI allows AI calls only within 7 days of an enquiry.',
+    'TRAI के नियम से पूछताछ के 7 दिन बाद AI कॉल नहीं हो सकती।',
+    'TRAI-এর নিয়মে জিজ্ঞাসার 7 দিন পরে AI কল করা যায় না।',
+  );
+  String askedToBeContacted(String name) => pick(
+    'Did $name ask you to get in touch?',
+    'क्या $name ने आपसे संपर्क करने को कहा था?',
+    '$name কি আপনাকে যোগাযোগ করতে বলেছিলেন?',
+  );
+  String callAttestBody(String agent) => pick(
+    '$agent can only call people who asked you to contact them in the last 7 days, or who are already your customers.',
+    '$agent सिर्फ़ उन्हीं को कॉल कर सकता है जिन्होंने पिछले 7 दिनों में संपर्क करने को कहा हो, या जो पहले से आपके ग्राहक हों।',
+    '$agent শুধু তাঁদেরই কল করতে পারে যাঁরা গত 7 দিনে যোগাযোগ করতে বলেছেন, বা যাঁরা আগে থেকেই আপনার গ্রাহক।',
+  );
+  String get yesCallThem =>
+      pick('Yes, call them', 'हाँ, कॉल करें', 'হ্যাঁ, কল করুন');
   String callingName(String name) => pick(
     'Calling $name…',
     '$name को कॉल लग रही है…',

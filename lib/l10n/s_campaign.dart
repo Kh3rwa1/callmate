@@ -125,9 +125,14 @@ extension SCampaign on S {
     '$n জন গ্রাহক এখনও কলে রাজি হননি',
   );
   String get consentAttest => pick(
-    'I confirm these contacts asked to be contacted',
-    'पुष्टि: इन लोगों ने ख़ुद संपर्क के लिए कहा था',
-    'আমি নিশ্চিত করছি যে এঁরা যোগাযোগ করতে বলেছিলেন',
+    'I confirm these contacts asked to be contacted in the last 7 days, or are existing customers',
+    'पुष्टि: इन लोगों ने पिछले 7 दिनों में संपर्क के लिए कहा था, या ये मौजूदा ग्राहक हैं',
+    'আমি নিশ্চিত করছি যে এঁরা গত 7 দিনে যোগাযোগ করতে বলেছিলেন, বা এঁরা বর্তমান গ্রাহক',
+  );
+  String enquiryExpiredSkipped(int n) => pick(
+    '$n customers won\'t be called: their enquiry is over 7 days old (TRAI)',
+    '$n ग्राहकों को कॉल नहीं होगी: उनकी पूछताछ 7 दिन से पुरानी है (TRAI)',
+    '$n জন গ্রাহককে কল করা হবে না: ওঁদের জিজ্ঞাসা 7 দিনের বেশি পুরনো (TRAI)',
   );
   String get yesStartCalling =>
       pick('Yes, start calling', 'हाँ, कॉल शुरू करें', 'হ্যাঁ, কল শুরু করুন');

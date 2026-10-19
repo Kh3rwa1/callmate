@@ -225,6 +225,7 @@ void main() {
           'created_at': '2026-01-01T00:00:00Z',
         };
 
+        final callBodies = <Object?>[];
         client.dio.httpClientAdapter = _TestAdapter((opts) async {
           if (opts.path == '/calls') {
             return _json({
@@ -236,6 +237,7 @@ void main() {
             return _json(callJson);
           }
           if (opts.path == '/leads/l1/call') {
+            callBodies.add(opts.data);
             return _json({'call': callJson});
           }
           if (opts.path == '/campaigns') {
@@ -267,6 +269,11 @@ void main() {
         expect(forL.length, 1);
         final trig = await callRepo.triggerCall('l1');
         expect(trig.id, 'call1');
+        await callRepo.triggerCall('l1', consentAttested: true);
+        expect(callBodies, [
+          <String, dynamic>{},
+          {'consent_attestation': true},
+        ]);
 
         final campRepo = ApiCampaignRepository(client);
         final active = await campRepo.active();

@@ -103,6 +103,24 @@ void main() {
       expect(l.status, LeadStatus.newLead);
       expect(l.nextAction, NextAction.none);
     });
+    test('enquiry window comes from enquiry_expires_at', () {
+      final open = Lead.fromJson({
+        'id': '1',
+        'enquiry_expires_at': dateOut(
+          DateTime.now().add(const Duration(days: 2)),
+        ),
+      });
+      expect(open.enquiryExpired, isFalse);
+      // Server timestamps are UTC without a zone.
+      final closed = Lead.fromJson({
+        'id': '2',
+        'enquiry_expires_at': '2026-01-01 10:00:00',
+      });
+      expect(closed.enquiryExpiresAt, DateTime.utc(2026, 1, 1, 10).toLocal());
+      expect(closed.enquiryExpired, isTrue);
+      expect(closed.copyWith(name: 'x').enquiryExpired, isTrue);
+      expect(Lead.fromJson({'id': '3'}).enquiryExpired, isFalse);
+    });
   });
 
   group('Mock backend pipeline', () {

@@ -6,6 +6,7 @@ import { requireSecret } from '../utils/secrets';
 import { parseLimit } from '../utils/pagination';
 import { PLAN_BLOCKED_BODY } from '../services/plans';
 import { placeLeadCall } from '../services/dial';
+import { hashIp, clientIp } from '../services/consent';
 
 type CallsEnv = { Bindings: Env; Variables: { user: AuthUser } };
 const callsApp = new Hono<CallsEnv>();
@@ -167,6 +168,7 @@ const BLOCKED_CALL_MESSAGES: Record<string, string> = {
   do_not_call: 'This lead has opted out of calls.',
   max_daily_attempts: 'This lead has already been called 3 times today.',
   platform_frequency_cap: 'This number has already been called by several businesses today. Try again tomorrow.',
+  enquiry_expired: 'This enquiry is more than 7 days old. TRAI allows calls about an enquiry only within 7 days.',
 };
 
 /**
@@ -174,7 +176,11 @@ const BLOCKED_CALL_MESSAGES: Record<string, string> = {
  * DNC, daily attempts, concurrency, plan, minutes). The single dial path for POST /leads/:id/call and
  * POST /agent/test-call (routes/results.ts).
  */
-export async function respondWithLeadCall(c: Context<CallsEnv>, leadId: string): Promise<Response> {
+export async function respondWithLeadCall(
+  c: Context<CallsEnv>,
+  leadId: string,
+  opts: { consentAttested?: boolean } = {},
+): Promise<Response> {
   const user = c.get('user');
   const secret = requireSecret(c.env, 'ENCRYPTION_KEY');
 
@@ -183,6 +189,8 @@ export async function respondWithLeadCall(c: Context<CallsEnv>, leadId: string):
     businessId: user.business_id,
     leadId,
     fallbackBaseUrl: new URL(c.req.url).origin,
+    consentAttested: opts.consentAttested === true,
+    ipHash: opts.consentAttested ? await hashIp(c.env, clientIp(c)) : null,
   });
 
   if (!placed.ok) {
@@ -193,6 +201,11 @@ export async function respondWithLeadCall(c: Context<CallsEnv>, leadId: string):
         return c.json({
           message: BLOCKED_CALL_MESSAGES[placed.reason] ?? 'This call is not allowed right now.',
           code: placed.reason,
+        }, 409);
+      case 'consent_required':
+        return c.json({
+          message: 'Confirm this customer asked to be contacted before your AI calls them.',
+          code: 'consent_required',
         }, 409);
       case 'concurrency_limit':
         return c.json({ message: 'Too many calls in progress. Try again in a minute.', code: 'concurrency_limit' }, 429);
@@ -215,6 +228,10 @@ export async function respondWithLeadCall(c: Context<CallsEnv>, leadId: string):
   });
 }
 
-callsApp.post('/leads/:id/call', (c) => respondWithLeadCall(c, c.req.param('id')));
+// Optional body { consent_attestation: true }: the owner's word for a lead whose consent is unknown.
+callsApp.post('/leads/:id/call', async (c) => {
+  const body = await c.req.json().catch(() => null);
+  return respondWithLeadCall(c, c.req.param('id'), { consentAttested: body?.consent_attestation === true });
+});
 
 export { callsApp };
