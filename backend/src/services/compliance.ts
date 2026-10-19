@@ -213,11 +213,12 @@ export async function checkCallCompliance(
   }
 
   // 3. Max Attempts per day check (max 3 calls per day). A dial the provider rejected
-  // never rang the lead, so it doesn't count.
+  // never rang the lead, so it doesn't count; nor do calls the person made to the business
+  // (inbound), which aren't calls to them. Same for 3b and 3c.
   const callsToday = await db.prepare(
     `SELECT COUNT(*) as cnt FROM calls
      WHERE lead_id = ? AND business_id = ? AND started_at > datetime('now', '-1 day')
-       AND NOT (status = 'failed' AND interaction_id IS NULL)`
+       AND direction = 'outbound' AND NOT (status = 'failed' AND interaction_id IS NULL)`
   ).bind(params.leadId, params.businessId).first<{ cnt: number }>();
 
   if (callsToday && callsToday.cnt >= 3) {
@@ -234,7 +235,7 @@ export async function checkCallCompliance(
   const otherBusinesses = await db.prepare(
     `SELECT COUNT(DISTINCT business_id) AS cnt FROM calls
      WHERE lead_phone = ? AND business_id != ? AND started_at > datetime('now', '-1 day')
-       AND NOT (status = 'failed' AND interaction_id IS NULL)`
+       AND direction = 'outbound' AND NOT (status = 'failed' AND interaction_id IS NULL)`
   ).bind(lead.phone, params.businessId).first<{ cnt: number }>();
   if ((otherBusinesses?.cnt ?? 0) >= PLATFORM_MAX_BUSINESSES_PER_PHONE) {
     return { allowed: false, reason: 'platform_frequency_cap', reschedule: true, rescheduleDelaySeconds: 24 * 3600 };
@@ -246,7 +247,7 @@ export async function checkCallCompliance(
     const businessToday = await db.prepare(
       `SELECT COUNT(*) AS cnt FROM calls
        WHERE lead_phone = ? AND business_id = ? AND started_at > datetime('now', '-1 day')
-         AND NOT (status = 'failed' AND interaction_id IS NULL)`
+         AND direction = 'outbound' AND NOT (status = 'failed' AND interaction_id IS NULL)`
     ).bind(lead.phone, params.businessId).first<{ cnt: number }>();
     if ((businessToday?.cnt ?? 0) >= 1) {
       return { allowed: false, reason: 'platform_frequency_cap', reschedule: true, rescheduleDelaySeconds: 24 * 3600 };
