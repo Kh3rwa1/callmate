@@ -512,6 +512,7 @@ class BusinessNumberInfo {
     this.number,
     this.numbersFree = const [],
     this.holdDays = 30,
+    this.requested = false,
   });
 
   /// False until numbers are set up on the server.
@@ -527,6 +528,9 @@ class BusinessNumberInfo {
   /// Days a number is kept after the plan lapses.
   final int holdDays;
 
+  /// None was free, so the business asked for one; it arrives on its own.
+  final bool requested;
+
   factory BusinessNumberInfo.fromJson(Json j) => BusinessNumberInfo(
     available: jBool(j, 'available'),
     entitled: jBool(j, 'entitled'),
@@ -535,6 +539,7 @@ class BusinessNumberInfo {
         : BusinessNumber.fromJson(jObj(j, 'number')!),
     numbersFree: jStrList(j, 'numbers_free'),
     holdDays: jInt(j, 'hold_days', 30),
+    requested: jBool(j, 'requested'),
   );
 }
 

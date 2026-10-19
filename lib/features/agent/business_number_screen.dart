@@ -56,6 +56,23 @@ class _BodyState extends ConsumerState<_Body> {
     if (outcome != null) ref.invalidate(businessNumberProvider);
   }
 
+  Future<void> _request() async {
+    final s = context.s;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      await ref.read(callRepoProvider).requestNumber();
+      Haptics.success();
+      ref.invalidate(businessNumberProvider);
+    } catch (e) {
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(friendlyError(e, s))));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _rent(String phone) async {
     final s = context.s;
     final agent = ref.read(agentProvider).value?.name ?? 'AI';
@@ -136,34 +153,67 @@ class _BodyState extends ConsumerState<_Body> {
           textAlign: TextAlign.center,
         ),
       ];
+    } else if (info.numbersFree.isEmpty) {
+      // None free: numbers are bought for the business on request.
+      children = [
+        _Why(agent: agent),
+        const SizedBox(height: 16),
+        if (info.requested)
+          AppCard(
+            key: const Key('number-requested'),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.hourglass_top_rounded, color: AppColors.brand),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(s.numberRequestedTitle, style: t.titleSmall),
+                      const SizedBox(height: 4),
+                      Text(s.numberRequestedBody(agent), style: t.bodyMedium),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          )
+        else ...[
+          AppCard(child: Text(s.numberNoneFree, style: t.bodyMedium)),
+          const SizedBox(height: 16),
+          FilledButton(
+            key: const Key('number-request'),
+            onPressed: _busy ? null : _request,
+            child: Text(s.requestMyNumber),
+          ),
+        ],
+      ];
     } else {
       children = [
         _Why(agent: agent),
         SectionLabel(s.pickYourNumber),
-        if (info.numbersFree.isEmpty)
-          AppCard(child: Text(s.answeringNoNumbers, style: t.bodyMedium))
-        else
-          RadioGroup<String>(
-            groupValue: _picked,
-            onChanged: (v) => setState(() => _picked = v),
-            child: CardGroup(
-              children: [
-                for (final n in info.numbersFree)
-                  RadioListTile<String>(
-                    key: Key('number-option-$n'),
-                    value: n,
-                    enabled: !_busy,
-                    title: Text(
-                      PhoneUtils.display(n),
-                      style: t.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+        RadioGroup<String>(
+          groupValue: _picked,
+          onChanged: (v) => setState(() => _picked = v),
+          child: CardGroup(
+            children: [
+              for (final n in info.numbersFree)
+                RadioListTile<String>(
+                  key: Key('number-option-$n'),
+                  value: n,
+                  enabled: !_busy,
+                  title: Text(
+                    PhoneUtils.display(n),
+                    style: t.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
+        ),
         const SizedBox(height: 16),
         FilledButton(
           key: const Key('rent-number'),

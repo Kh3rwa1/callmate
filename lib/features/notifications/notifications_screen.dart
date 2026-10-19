@@ -106,6 +106,7 @@ class _NotificationRow extends StatelessWidget {
         AppColors.success,
         AppColors.successSoft,
       ),
+      NotificationType.businessNumber => (AppColors.brand, AppColors.brandSoft),
     };
     return Semantics(
       button: true,
@@ -331,4 +332,5 @@ class InAppNotificationBanner extends StatelessWidget {
   NotificationType.campaign => (AppColors.success, AppColors.successSoft),
   NotificationType.newLead => (AppColors.info, AppColors.infoSoft),
   NotificationType.inboundCall => (AppColors.success, AppColors.successSoft),
+  NotificationType.businessNumber => (AppColors.brand, AppColors.brandSoft),
 };

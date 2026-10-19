@@ -75,8 +75,9 @@ export const PLATFORM_MAX_BUSINESSES_PER_PHONE = 3;
  * and the business numbers (each Growth business calls from its own).
  */
 export function callerIdsAreDltSeries(env: { SARVAM_AGENT_PHONE_NUMBERS?: string; SARVAM_BUSINESS_NUMBERS?: string }): boolean {
+  // Business-number entries may name their agent: "+91…=<agent id>:<version>".
   const numbers = [env.SARVAM_AGENT_PHONE_NUMBERS, env.SARVAM_BUSINESS_NUMBERS].join(',').split(',')
-    .map((n) => n.replace(/[\s()-]/g, '')).filter(Boolean);
+    .map((n) => n.split('=')[0].replace(/[\s()-]/g, '')).filter(Boolean);
   return numbers.length > 0 && numbers.every((n) => /^\+91(140|160)\d+$/.test(n));
 }
 

@@ -438,7 +438,11 @@ class MockCallRepository implements CallRepository {
                 ? null
                 : DateTime.now().add(const Duration(days: 30)),
           ),
-    numbersFree: _entitled && b.businessNumber == null ? demoNumbers : const [],
+    numbersFree:
+        _entitled && b.businessNumber == null && !b.businessNumbersSoldOut
+        ? demoNumbers
+        : const [],
+    requested: b.businessNumber == null && b.businessNumberRequested,
   );
 
   @override
@@ -461,6 +465,20 @@ class MockCallRepository implements CallRepository {
       );
     }
     b.businessNumber = phone;
+    b.emitChanged('business_number');
+    return _numberInfo();
+  }, 300);
+
+  @override
+  Future<BusinessNumberInfo> requestNumber() => _lag(() {
+    if (!_entitled) {
+      throw const ApiException(
+        'A business number comes with a paid plan.',
+        statusCode: 402,
+        code: 'not_entitled',
+      );
+    }
+    b.businessNumberRequested = true;
     b.emitChanged('business_number');
     return _numberInfo();
   }, 300);

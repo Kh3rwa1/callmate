@@ -153,6 +153,23 @@ extension SAnswering on S {
     'हर पेड प्लान में बिना अतिरिक्त ख़र्च के शामिल।',
     'প্রতিটি পেইড প্ল্যানে কোনো বাড়তি খরচ ছাড়াই।',
   );
+  String get numberNoneFree => pick(
+    'All our numbers are taken right now. Ask for yours and we set it up for you.',
+    'अभी हमारे सभी नंबर ले लिए गए हैं। अपना नंबर माँगें, हम आपके लिए सेट कर देंगे।',
+    'এখন আমাদের সব নম্বর নেওয়া হয়ে গেছে। আপনার নম্বর চান, আমরা সেট করে দেব।',
+  );
+  String get requestMyNumber =>
+      pick('Request my number', 'मेरा नंबर माँगें', 'আমার নম্বর চাই');
+  String get numberRequestedTitle => pick(
+    'Your number is on its way',
+    'आपका नंबर आ रहा है',
+    'আপনার নম্বর আসছে',
+  );
+  String numberRequestedBody(String agent) => pick(
+    'We are setting it up. You get a notification the moment it is ready, and $agent starts using it straight away.',
+    'हम इसे सेट कर रहे हैं। तैयार होते ही आपको सूचना मिलेगी, और $agent तुरंत इसका इस्तेमाल शुरू कर देगा।',
+    'আমরা এটা সেট করছি। তৈরি হলেই আপনি নোটিফিকেশন পাবেন, আর $agent সঙ্গে সঙ্গে এটা ব্যবহার শুরু করবে।',
+  );
   String get pickYourNumber =>
       pick('Pick your number', 'अपना नंबर चुनें', 'আপনার নম্বর বাছুন');
   String get rentThisNumber => pick(

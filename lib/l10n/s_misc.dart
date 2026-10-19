@@ -41,6 +41,11 @@ extension SMisc on S {
       'AI ने एक कॉल का जवाब दिया',
       'AI একটি কলের উত্তর দিয়েছে',
     ),
+    NotificationType.businessNumber => pick(
+      'Your business number',
+      'आपका बिज़नेस नंबर',
+      'আপনার ব্যবসার নম্বর',
+    ),
   };
 
   // ------------------------------------------------------------ Callbacks

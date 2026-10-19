@@ -185,6 +185,28 @@ void main() {
     );
 
     appTest(
+      'none free: the owner requests one and is told it is on its way',
+      (h) async {
+        expect(find.text('Pick your number'), findsNothing);
+        expect(
+          find.text(
+            'All our numbers are taken right now. Ask for yours and we set it up for you.',
+          ),
+          findsOneWidget,
+        );
+        await h.tap(find.byKey(const Key('number-request')));
+        expect(h.backend.businessNumberRequested, isTrue);
+        expect(find.byKey(const Key('number-requested')), findsOneWidget);
+        expect(find.text('Your number is on its way'), findsOneWidget);
+        expect(find.byKey(const Key('number-request')), findsNothing);
+      },
+      location: '/agent/number',
+      backend: () => MockBackend()
+        ..simulatePlanPayment()
+        ..businessNumbersSoldOut = true,
+    );
+
+    appTest(
       'plan lapsed: the number is on hold, with how to get calls back',
       (h) async {
         expect(find.text('+91 79714 40001'), findsOneWidget);

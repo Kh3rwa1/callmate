@@ -61,6 +61,7 @@ class AppIcons {
     NotificationType.campaign => Icons.campaign_rounded,
     NotificationType.newLead => Icons.bolt_rounded,
     NotificationType.inboundCall => Icons.phone_callback_rounded,
+    NotificationType.businessNumber => Icons.phone_in_talk_rounded,
   };
 
   static const _byEmoji = <String, IconData>{
