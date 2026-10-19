@@ -21,12 +21,13 @@ import { sarvamWebhookToken } from '../services/campaign_queue';
 import { inboundCallContext, setForwardMode } from '../services/answering';
 import {
   availableNumbers, BusinessNumberRow, businessNumberFor, e164, inboundHookToken, inboundWebhookToken, numberEntitled,
-  numberRequested, numbersConfigured, rentNumber, requestNumber, NUMBER_HOLD_DAYS,
+  numberRequested, numbersConfigured, poolEntries, rentNumber, requestNumber, NUMBER_HOLD_DAYS,
 } from '../services/business_numbers';
 import { consentEventStatement, CONSENT_TEXT_VERSIONS } from '../services/consent';
 import { ownerLanguage } from '../services/owner_text';
 import { sendBusinessPushNotification } from '../services/fcm';
 import { voiceApp } from './voice';
+import { isMockSarvam } from '../utils/secrets';
 
 type AuthedEnv = { Bindings: Env; Variables: { user: AuthUser } };
 
@@ -275,3 +276,71 @@ answeringPublicApp.post('/webhooks/sarvam-inbound', async (c: Context<{ Bindings
   }
   return c.json({ ...result, call_id: call.id, direction: 'inbound' }, res.status as 200);
 });
+
+/** "2026-10-19T10:04:34" (analytics, UTC without offset) → "2026-10-19T10:04:34Z". */
+const utcIso = (t: unknown) => (typeof t === 'string' && t ? (/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? t : `${t}Z`) : null);
+
+/**
+ * Backup for the deployment webhook, from the cron. Sarvam's inbound deliveries can stall (seen on
+ * staging: stuck "running" for good), and an answered call must still reach the owner. Reads the
+ * last two hours of inbound conversations of each business number's agent from Sarvam's analytics
+ * API and feeds any the webhook hasn't delivered through the same handler (idempotent by
+ * interaction id, so a late webhook changes nothing). Returns how many calls it recorded.
+ */
+export async function syncInboundCalls(env: Env, now = new Date()): Promise<number> {
+  const key = env.SARVAM_API_KEY;
+  const secret = env.SARVAM_WEBHOOK_SECRET;
+  if (isMockSarvam(env) || !key || !secret || !env.SARVAM_ORG_ID || !env.SARVAM_WORKSPACE_ID) return 0;
+  const { results } = await env.DB.prepare(
+    "SELECT phone FROM business_numbers WHERE business_id IS NOT NULL AND status = 'active'"
+  ).all<{ phone: string }>();
+  const active = new Set((results ?? []).map((r) => r.phone));
+  const appIds = [...new Set(poolEntries(env).filter((e) => e.agent && active.has(e.phone)).map((e) => e.agent!.appId))];
+  // The webhook gets two minutes first.
+  const window = {
+    start_datetime: new Date(now.getTime() - 2 * 3600_000).toISOString().slice(0, 19) + 'Z',
+    end_datetime: new Date(now.getTime() - 2 * 60_000).toISOString().slice(0, 19) + 'Z',
+  };
+  let recorded = 0;
+  for (const appId of appIds) {
+    const url = new URL(`https://apps.sarvam.ai/api/analytics/v1/${env.SARVAM_ORG_ID}/${env.SARVAM_WORKSPACE_ID}/${encodeURIComponent(appId)}/interactions`);
+    for (const [k, v] of Object.entries({
+      ...window, include_transcript: 'true', limit: '200',
+      filter_conditions: JSON.stringify([{ field: 'channel_direction', operator: 'equals', value: 'inbound' }]),
+    })) url.searchParams.set(k, v);
+    const res = await fetch(url, { headers: { 'X-API-Key': key } }).catch(() => null);
+    if (!res?.ok) {
+      console.error(JSON.stringify({ msg: 'inbound_sync_fetch_failed', appId, status: res?.status ?? 0 }));
+      continue;
+    }
+    const items: any[] = (await res.json<any>().catch(() => ({})))?.items ?? [];
+    for (const it of items) {
+      const number = e164(it?.bot_contact_identifier);
+      const interactionId = String(it?.interaction_id || '');
+      if (!number || !active.has(number) || !interactionId) continue;
+      const known = await env.DB.prepare("SELECT 1 AS x FROM calls WHERE interaction_id = ? AND direction = 'inbound'")
+        .bind(interactionId).first();
+      if (known) continue;
+      const english: any[] = Array.isArray(it.translate_transcript) ? it.translate_transcript : [];
+      const original: any[] = Array.isArray(it.original_transcript) ? it.original_transcript : [];
+      const turns = (english.length ? english : original).map((t: any, i: number) => ({
+        role: t?.role, en_text: String(t?.text ?? ''), indic_text: original[i]?.text ?? null,
+      }));
+      const payload = {
+        app_id: appId, app_version: it.app_version, deployment_id: it.deployment_id,
+        interaction_id: interactionId, user_phone_number: it.user_contact, agent_phone_number: number,
+        duration: Number(it.duration_in_seconds ?? 0),
+        start_datetime: utcIso(it.start_datetime), end_datetime: utcIso(it.end_datetime),
+        output_agent_variables: it.agent_variables ?? {}, interaction_transcript: turns,
+      };
+      const r = await answeringPublicApp.fetch(new Request(
+        `http://internal/webhooks/sarvam-inbound?number=${encodeURIComponent(number)}&token=${await inboundWebhookToken(secret, number)}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) },
+      ), env);
+      if (r.ok) recorded++;
+      else console.error(JSON.stringify({ msg: 'inbound_sync_record_failed', interactionId, status: r.status }));
+    }
+  }
+  if (recorded) console.log(JSON.stringify({ msg: 'inbound_calls_synced', recorded }));
+  return recorded;
+}

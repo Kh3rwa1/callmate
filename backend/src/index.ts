@@ -39,7 +39,7 @@ import { leadSourcesApp } from './routes/lead_sources';
 import { leadCapturePublicApp } from './routes/lead_capture_public';
 import { playbooksApp } from './routes/playbooks';
 import { leadIntegrationsPublicApp } from './routes/lead_integrations_public';
-import { answeringApp, answeringPublicApp } from './routes/answering';
+import { answeringApp, answeringPublicApp, syncInboundCalls } from './routes/answering';
 import { runIndiaMartPulls } from './services/lead_integrations';
 import { handleInstantCallMessages, isInstantCallMessage } from './services/lead_capture';
 
@@ -268,6 +268,8 @@ export default {
     ctx.waitUntil(runMaintenance(env));
     // Business numbers follow the plan: held after a lapse, released after the hold (after renewals ran).
     ctx.waitUntil(runBillingRenewals(env).then(() => runBusinessNumberCron(env)));
+    // Answered calls whose Sarvam webhook never came (routes/answering.ts).
+    ctx.waitUntil(syncInboundCalls(env).catch((err) => console.error(JSON.stringify({ msg: 'inbound_sync_failed', error: err?.message }))));
     ctx.waitUntil(runAlertChecks(env));
     ctx.waitUntil(runLongCallWatchdog(env));
     ctx.waitUntil(runComplianceCron(env));

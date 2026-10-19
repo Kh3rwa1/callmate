@@ -250,6 +250,13 @@ the agent still answers with the disclosure and takes a message
 owner to cancel forwarding (`##002#`); after the hold, the number can go to
 another business.
 
+**If the after-call webhook doesn't come.** Sarvam's inbound deliveries can
+stall (on staging one stayed "running" indefinitely). Every 10 minutes the cron
+also reads the last two hours of inbound conversations of each business
+number's agent from Sarvam's analytics API (`syncInboundCalls`,
+`routes/answering.ts`) and records any call the webhook missed through the
+same handler, so the owner still gets the lead, summary and notification.
+
 **The receptionist agent** (staging: `CallPilot-R-2944da04-d549`, cloned from
 the outbound agent so it keeps the voice, languages and result variables):
 

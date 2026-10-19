@@ -116,6 +116,18 @@ describe('Quality hardening regressions', () => {
       expect(((await res.json()) as any).code).toBe('max_daily_attempts');
     });
 
+    it('calls the person made to the business do not count towards the daily cap', async () => {
+      await seedLead('lead_q_inbound');
+      for (let i = 0; i < 3; i++) {
+        await env.DB.prepare(
+          `INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, status, direction, started_at)
+           VALUES (?, ?, 'lead_q_inbound', 'Quality Lead', '919800012345', 'completed', 'inbound', datetime('now', '-1 hour'))`
+        ).bind(`call_q_inbound_${i}`, bizId).run();
+      }
+      const res = await callLead('lead_q_inbound');
+      expect(((await res.json()) as any).code).not.toBe('max_daily_attempts');
+    });
+
     it('refuses when the business has no minutes left', async () => {
       await seedLead('lead_q_minutes');
       await env.DB.prepare('UPDATE usage SET minutes_used = included_minutes WHERE business_id = ?').bind(bizId).run();
