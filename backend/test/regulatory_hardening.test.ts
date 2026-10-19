@@ -613,7 +613,7 @@ describe('DLT 140/160 caller-ID check', () => {
   it('scheduled() runs the compliance cron', async () => {
     const waits: Promise<unknown>[] = [];
     await worker.scheduled({} as any, env as any, { waitUntil: (p: Promise<unknown>) => waits.push(p) } as any);
-    expect(waits.length).toBe(7); // maintenance, billing renewals, alerts, long-call watchdog, compliance, daily digest, IndiaMART pulls
+    expect(waits.length).toBe(8); // maintenance, billing renewals + business numbers, inbound call sync, alerts, long-call watchdog, compliance, daily digest, IndiaMART pulls
     await Promise.allSettled(waits);
   });
 

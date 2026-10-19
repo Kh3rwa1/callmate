@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import { env } from 'cloudflare:test';
 import { migrateTestDb } from './setup-db';
 import app from '../src/index';
+import { syncInboundCalls } from '../src/routes/answering';
 import { signJWT } from '../src/auth';
 import { dialSarvam } from '../src/services/campaign_queue';
 import {
@@ -419,5 +420,49 @@ describe('numbers on request, each answered by its own agent', () => {
       route: '/agent/number',
     });
     expect((await collectAlertFindings(env)).find((f) => f.type === 'business_numbers_requested')).toBeUndefined();
+  });
+});
+
+describe('when the webhook never comes', () => {
+  it("the cron reads answered calls from Sarvam's analytics and records each once", async () => {
+    const asked: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (u: any) => {
+      const url = String(u);
+      asked.push(url);
+      if (!url.includes('/api/analytics/v1/')) return new Response('{}', { status: 200 });
+      return new Response(JSON.stringify({ items: [
+        {
+          interaction_id: '20261019/sync-1', user_contact: '+919830044499', bot_contact_identifier: '+917971440002',
+          channel_direction: 'inbound', duration_in_seconds: 41.5, start_datetime: '2026-10-19T10:04:34',
+          end_datetime: '2026-10-19T10:05:15', deployment_id: 'dep_x', app_version: 1,
+          agent_variables: {
+            lead_score: 72, intent: 'interested', temperature: 'warm', summary: 'Wants the WBJEE batch and a call at 6 pm.',
+            next_action: 'human_followup', whatsapp_followup_required: false, whatsapp_message: '', callback_at: '',
+            caller_name: 'Ananya Roy',
+          },
+          original_transcript: [{ role: 'agent', text: 'Hello' }, { role: 'user', text: 'WBJEE batch' }],
+          translate_transcript: [{ role: 'agent', text: 'Hello' }, { role: 'user', text: 'WBJEE batch' }],
+        },
+        // Another number (not one of ours, or not rented): skipped.
+        { interaction_id: '20261019/sync-2', user_contact: '+919830044498', bot_contact_identifier: '+917971449999', duration_in_seconds: 10 },
+      ] }), { status: 200 });
+    });
+    expect(await syncInboundCalls(live())).toBe(1);
+    const analytics = asked.find((u) => u.includes('/api/analytics/v1/'))!;
+    expect(analytics).toContain('/org/ws/CallPilot-Receptionist/interactions');
+    expect(decodeURIComponent(analytics)).toContain('"channel_direction"');
+
+    const call = await env.DB.prepare(
+      "SELECT lead_name, direction, status, duration_seconds FROM calls WHERE interaction_id = '20261019/sync-1'"
+    ).first<any>();
+    expect(call).toMatchObject({ lead_name: 'Ananya Roy', direction: 'inbound', duration_seconds: 41 });
+    // A second run, or the late webhook, finds it and records nothing new.
+    expect(await syncInboundCalls(live())).toBe(0);
+    const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM calls WHERE interaction_id = '20261019/sync-1'").first<{ n: number }>();
+    expect(n?.n).toBe(1);
+  });
+
+  it('does nothing without Sarvam or in mock mode', async () => {
+    expect(await syncInboundCalls(env as any)).toBe(0);
   });
 });
