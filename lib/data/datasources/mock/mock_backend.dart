@@ -97,12 +97,12 @@ class MockBackend implements BackendEvents {
     usage = Usage(
       subscription: Subscription(
         planName: 'Starter',
-        includedMinutes: 1000,
+        includedMinutes: 800,
         renewsAt: DateTime(now.year, now.month + 1, 1),
         priceInr: 4999,
         currentPeriodEnd: DateTime(now.year, now.month + 1, 1),
       ),
-      minutesUsed: 642,
+      minutesUsed: 442,
       callsMade: 0,
     );
 
@@ -1050,7 +1050,7 @@ class MockBackend implements BackendEvents {
   /// Demo: plan state for trying the trial / payment-due banners.
   void simulatePlanState(PlanStatus status, {int minutesLeft = 30}) {
     final trial = status == PlanStatus.trial;
-    final included = trial ? 30 : 1000;
+    final included = trial ? 30 : 800;
     final now = DateTime.now();
     final periodEnd = trial ? null : DateTime(now.year, now.month, now.day);
     usage = usage.copyWith(

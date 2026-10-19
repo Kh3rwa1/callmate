@@ -75,7 +75,7 @@ describe('Plans, trials and Razorpay billing', () => {
       expect(trialMinutes({})).toBe(30);
       expect(trialMinutes({ TRIAL_MINUTES: '45' })).toBe(45);
       expect(trialMinutes({ TRIAL_MINUTES: 'abc' })).toBe(30);
-      expect(getPlan('starter')).toMatchObject({ priceInr: 4999, includedMinutes: 1000, paid: true });
+      expect(getPlan('starter')).toMatchObject({ priceInr: 4999, includedMinutes: 800, paid: true });
       expect(getPlan('trial')).toMatchObject({ priceInr: 0, includedMinutes: 30, paid: false });
       expect(statusBlocksDialing('past_due')).toBe(true);
       expect(statusBlocksDialing('cancelled')).toBe(true);
@@ -190,7 +190,7 @@ describe('Plans, trials and Razorpay billing', () => {
       expect(await r1.json()).toMatchObject({ applied: true, duplicate: false });
 
       const row = await env.DB.prepare('SELECT * FROM usage WHERE business_id = ?').bind('biz_rzp_paid').first<any>();
-      expect(row).toMatchObject({ plan_id: 'starter', plan_status: 'active', included_minutes: 1000, minutes_used: 0, price_inr: 4999 });
+      expect(row).toMatchObject({ plan_id: 'starter', plan_status: 'active', included_minutes: 800, minutes_used: 0, price_inr: 4999 });
       const end = new Date(`${row.current_period_end.replace(' ', 'T')}Z`).getTime();
       expect(end - Date.now()).toBeGreaterThan(27 * 86400_000);
       expect(end - Date.now()).toBeLessThan(32 * 86400_000);
@@ -232,7 +232,7 @@ describe('Plans, trials and Razorpay billing', () => {
       const body = paidEvent('biz_rzp_renew', 'pay_renew_1');
       await postWebhook(body, await hmacHex(WEBHOOK_SECRET, body));
       const row = await env.DB.prepare('SELECT * FROM usage WHERE business_id = ?').bind('biz_rzp_renew').first<any>();
-      expect(row).toMatchObject({ plan_status: 'active', minutes_used: 0, included_minutes: 1000 });
+      expect(row).toMatchObject({ plan_status: 'active', minutes_used: 0, included_minutes: 800 });
       expect(new Date(`${row.current_period_end.replace(' ', 'T')}Z`).getTime()).toBeGreaterThan(Date.now());
     });
   });

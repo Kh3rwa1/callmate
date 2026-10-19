@@ -35,6 +35,9 @@ SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
 SARVAM_DISCLOSURE_OVERRIDE = "true"
 # Days to keep call transcripts, recordings and summaries before the cron clears them (default 180).
 # RETENTION_DAYS = "180"
+# Sarvam's organisation-wide concurrent call limit for our plan (pay-as-you-go 4, Pro 10, Growth 30).
+# Dials wait for a free slot instead of being rejected. Raise it when the Sarvam plan changes.
+SARVAM_MAX_CONCURRENT_CALLS = "4"
 # Ops alerts: set the chat webhook as a secret, not here: `wrangler secret put ALERT_WEBHOOK_URL`.
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
 # Shown on the public /legal pages. TODO(owner): set a monitored inbox and the registered company name.
@@ -110,6 +113,9 @@ SARVAM_AGENT_PHONE_NUMBERS = "+917971442975,+917971443028"
 SARVAM_DISCLOSURE_OVERRIDE = "true"
 # Days to keep call transcripts, recordings and summaries before the cron clears them (default 180).
 # RETENTION_DAYS = "180"
+# Sarvam's organisation-wide concurrent call limit for our plan (pay-as-you-go 4, Pro 10, Growth 30).
+# Dials wait for a free slot instead of being rejected. Raise it when the Sarvam plan changes.
+SARVAM_MAX_CONCURRENT_CALLS = "4"
 # Ops alerts: set the chat webhook as a secret, not here: `wrangler secret put ALERT_WEBHOOK_URL`.
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
 # Shown on the public /legal pages. TODO(owner): set a monitored inbox and the registered company name.

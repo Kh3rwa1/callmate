@@ -63,6 +63,8 @@ export interface Env {
   GST_RATE?: string;
   /** Our cost per call minute in INR, for the margin report (defaults "2" and "0.6"). */
   COST_PER_MIN_SARVAM_INR?: string;
+  /** Sarvam's organisation-wide concurrent call limit for the plan we are on (campaign_queue.ts). */
+  SARVAM_MAX_CONCURRENT_CALLS?: string;
   COST_PER_MIN_TELEPHONY_INR?: string;
   /** Calls still 'calling' after this many minutes are logged by the cron watchdog (default 8). */
   MAX_CALL_MINUTES?: string;

@@ -245,21 +245,30 @@ export async function handleRazorpayWebhook(c: any): Promise<Response> {
       ? `datetime(CASE WHEN annual_until IS NOT NULL AND julianday(annual_until) > julianday('now')
                        THEN annual_until ELSE ${periodBase} END, '+12 months')`
       : 'annual_until';
+    // Annual: the monthly grant is fixed at purchase (annual_monthly_minutes, used by the renewal
+    // cron). A year stacked onto a running one never grants less than the year already paid for.
+    const grant = annual
+      ? `CASE WHEN annual_until IS NOT NULL AND julianday(annual_until) > julianday('now')
+              THEN MAX(COALESCE(annual_monthly_minutes, 0), ?) ELSE ? END`
+      : '?';
     apply = db.prepare(
       `UPDATE usage SET
          plan_id = ?, plan_name = ?, plan_status = 'active',
          ${RESET_PERIOD_BONUS_SQL},
          topup_minutes = ${earlyRenewal('MAX(0, MIN(topup_minutes, included_minutes + topup_minutes - minutes_used))', '0')},
-         included_minutes = ?, minutes_used = 0, price_inr = ?,
+         included_minutes = ${grant}, minutes_used = 0, price_inr = ?,
          billing_cycle = ${annual ? `'annual'` : `CASE WHEN annual_until IS NOT NULL AND julianday(annual_until) > julianday('now') THEN 'annual' ELSE 'monthly' END`},
          annual_plan_id = ${annual ? '?' : 'annual_plan_id'},
+         annual_monthly_minutes = ${annual ? grant : 'annual_monthly_minutes'},
          annual_until = ${annualUntil},
          current_period_end = datetime(${periodBase}, '+1 month'),
          renews_at = datetime(${periodBase}, '+1 month')
        WHERE business_id = ? AND ${notApplied}`
     ).bind(
-      plan.id, plan.name, plan.includedMinutes, plan.priceInr,
-      ...(annual ? [plan.id] : []),
+      plan.id, plan.name,
+      ...(annual ? [plan.includedMinutes, plan.includedMinutes] : [plan.includedMinutes]),
+      plan.priceInr,
+      ...(annual ? [plan.id, plan.includedMinutes, plan.includedMinutes] : []),
       businessId, paymentId,
     );
   }
