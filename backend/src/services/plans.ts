@@ -27,8 +27,8 @@ export const GROWTH_MINUTES = 2000;
 export const RATE_PER_MINUTE_INR = 7;
 /** Annual = 11 x the monthly price for 12 monthly grants ("1 month free"). */
 export const ANNUAL_PRICE_MONTHS = 11;
-/** Plans that include the business's own phone number (services/business_numbers.ts). */
-export const BUSINESS_NUMBER_PLANS: readonly string[] = ['growth'];
+/** Plans that include the business's own phone number (services/business_numbers.ts): every paid plan. */
+export const BUSINESS_NUMBER_PLANS: readonly string[] = ['starter', 'growth'];
 export const DEFAULT_GST_RATE = 0.18;
 
 export interface Plan {

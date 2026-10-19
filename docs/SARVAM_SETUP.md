@@ -173,30 +173,39 @@ greeting, that the agent carries on naturally after it, and that
 `GET /health/deep` shows `compliance.disclosure_override`. To roll back, remove
 the line and redeploy.
 
-## Business numbers (Growth) and the AI answering calls
+## Business numbers (every paid plan): one number for calls out and in
 
-Every business on **Growth** gets **one fixed number of its own**, picked once
-in **Agent → Your business number** from the free numbers in a pool you rent
-in Sarvam (`SARVAM_INBOUND_NUMBERS`,
-`backend/src/services/business_numbers.ts`). It never rotates:
+**Your part is two steps:** buy numbers in Sarvam, paste them into one list.
+The backend does the rest.
 
-- It is the **caller ID of every AI call** the business makes (manual calls
-  and campaigns), so customers always see the same number and can save it.
-  Starter businesses, and businesses without a number yet, call from the
-  shared `SARVAM_AGENT_PHONE_NUMBERS`, one picked per call.
-- It is the **line the AI answers**: picking it creates a Sarvam **inbound
-  deployment** for it, so a customer who calls it back reaches the business's
-  AI employee.
-- If the plan lapses or drops to Starter, the daily cron **holds** the number
-  for 30 days (deployment paused, calls go out from the shared pool). Paying
-  for Growth again within those days brings it straight back. After that it
-  is deleted from Sarvam's deployments and goes back to the pool.
+1. Sarvam dashboard → **Deploy → Phone Numbers** → the **Sarvam Vobiz**
+   connection (the one in `SARVAM_CONNECTION_ID`) → number catalog → **Buy**.
+   ₹59 per number per 30 days. Numbers on that connection make and receive
+   calls; there is nothing separate to set up for inbound or outbound.
+2. Add them to `SARVAM_BUSINESS_NUMBERS` in `wrangler.toml` and deploy.
 
-Owners can also forward their own phone to it, in
-**Agent → Settings → Who answers my calls**: *the AI answers every call*,
-*I answer first, the AI takes the ones I miss*, or *only me*. The phone does
-the forwarding; the app shows the codes for the owner's network
-(`lib/core/utils/call_forwarding.dart`):
+**What the business gets** (`backend/src/services/business_numbers.ts`).
+Every business on a **paid plan** (Starter or Growth, monthly or yearly) picks
+**one number of its own**, once, in **Agent → Your business number**. The
+free trial can't; trial calls go out from the shared
+`SARVAM_AGENT_PHONE_NUMBERS`, one picked per call. The number never rotates,
+and it does both jobs at once:
+
+- **Calls out:** it is the caller ID of every AI call the business makes
+  (manual calls and campaigns), so customers always see the same number.
+- **Calls in:** when the owner picks it, the backend creates its Sarvam
+  inbound deployment, so a customer who calls it reaches the business's AI.
+
+If the plan lapses, the cron **holds** the number for 30 days (deployment
+paused, calls go out from the shared pool). Paying again within those days
+brings it straight back. After that, or when the account is deleted, the
+deployment is deleted and the number goes back to the pool.
+
+Optional, for owners who also want the AI to answer their **own** phone:
+**Your business number → Calls to your own phone** (*the AI answers every
+call*, *I answer first, the AI takes the ones I miss*, or *only me*). The
+phone does the forwarding with the codes the app shows for the owner's
+network (`lib/core/utils/call_forwarding.dart`):
 
 | | Jio | Airtel, Vi, BSNL (standard) |
 |---|---|---|
@@ -224,14 +233,9 @@ the agent still answers with the disclosure and takes a message
 owner to cancel forwarding (`##002#`); after the hold, the number can go to
 another business.
 
-**One-time setup (Sarvam dashboard, then Worker config):**
+**One-time setup of the AI that answers (Sarvam dashboard, then Worker config):**
 
-1. **Rent numbers**: Phone Numbers → rent them **on the same connection as
-   `SARVAM_CONNECTION_ID`**, so each one works as an outbound caller ID and
-   as an inbound line (₹59 per number per 30 days). Keep a few more than
-   your Growth businesses so the picker has a choice; the app shows up to
-   12 free numbers.
-2. **Create the agent** "CallPilot - Inbound Receptionist":
+1. **Create the agent** "CallPilot - Inbound Receptionist":
    - Input variables: `business_name`, `agent_name`, `agent_role`,
      `business_context`, `call_language`, `caller_name`, `caller_known`,
      `can_talk`, `greeting`. Opening line: `{{greeting}}` (it says it's an AI
@@ -257,15 +261,15 @@ another business.
      after-call webhook carries the dialled number), but it can't greet with
      the business name or answer questions from its details.
    - Commit a version.
-3. **Worker config** (`wrangler.toml` `[vars]` / `[env.staging.vars]`):
+2. **Worker config** (`wrangler.toml` `[vars]` / `[env.staging.vars]`):
    `SARVAM_INBOUND_APP_ID`, `SARVAM_INBOUND_APP_VERSION`,
-   `SARVAM_INBOUND_NUMBERS = "+91…,+91…"`; secret
+   `SARVAM_BUSINESS_NUMBERS = "+91…,+91…"`; secret
    `npx wrangler secret put INBOUND_HOOK_SECRET` (any 32+ random characters,
    the same value as the Sarvam secret). Deploy. Until all are set the app
    says business numbers aren't available yet.
 
 **Adding numbers later**: rent them on the same connection, append them to
-`SARVAM_INBOUND_NUMBERS` and redeploy; the picker shows them from the next
+`SARVAM_BUSINESS_NUMBERS` and redeploy; the picker shows them from the next
 request. Never remove a number that a business has rented (check
 `SELECT phone, business_id, status FROM business_numbers`).
 

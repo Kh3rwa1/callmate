@@ -1,12 +1,12 @@
 /**
  * Business numbers: one fixed phone number per business, rented from the pool we rent in Sarvam
- * (SARVAM_INBOUND_NUMBERS, ₹59 per number per 30 days). Included with the Growth plan.
+ * (SARVAM_BUSINESS_NUMBERS, ₹59 per number per 30 days). Included in every paid plan; not in the trial.
  *
  * - The owner picks a specific free number once; it never rotates or changes on its own.
  * - It is the caller ID of every AI call the business makes (dial.ts, campaign_queue.ts), so customers
  *   always see the same number, and it is the line the AI answers (a Sarvam inbound deployment), so
  *   calling it back reaches the business.
- * - If the plan lapses or drops to one without a number, the number is held for NUMBER_HOLD_DAYS (the
+ * - If the plan lapses, the number is held for NUMBER_HOLD_DAYS (the
  *   deployment paused, calls go out from the shared pool) and comes back the moment the plan does.
  *   After that it returns to the pool for someone else.
  */
@@ -46,9 +46,9 @@ export function e164(raw: unknown): string | null {
 /** Demo numbers when developing without a pool (mock Sarvam only). */
 const MOCK_POOL = Array.from({ length: 8 }, (_, i) => `+9179714400${String(i + 1).padStart(2, '0')}`);
 
-/** The numbers rented for businesses (SARVAM_INBOUND_NUMBERS), in E.164. */
-export function poolNumbers(env: Pick<Env, 'SARVAM_INBOUND_NUMBERS' | 'ENVIRONMENT' | 'SARVAM_API_KEY'>): string[] {
-  const configured = [...new Set((env.SARVAM_INBOUND_NUMBERS || '').split(',').map(e164).filter((n): n is string => !!n))];
+/** The numbers rented for businesses (SARVAM_BUSINESS_NUMBERS), in E.164. */
+export function poolNumbers(env: Pick<Env, 'SARVAM_BUSINESS_NUMBERS' | 'ENVIRONMENT' | 'SARVAM_API_KEY'>): string[] {
+  const configured = [...new Set((env.SARVAM_BUSINESS_NUMBERS || '').split(',').map(e164).filter((n): n is string => !!n))];
   return configured.length === 0 && isMockSarvam(env) ? MOCK_POOL : configured;
 }
 
@@ -59,7 +59,7 @@ export function numbersConfigured(env: Env): boolean {
     && env.SARVAM_ORG_ID && env.SARVAM_WORKSPACE_ID && env.SARVAM_CONNECTION_ID && poolNumbers(env).length);
 }
 
-/** True when the business's current plan includes a number (an active Growth plan). */
+/** True when the business's current plan includes a number (an active paid plan). */
 export async function numberEntitled(db: D1Database, businessId: string): Promise<boolean> {
   const u = await db.prepare('SELECT plan_id, plan_status FROM usage WHERE business_id = ?')
     .bind(businessId).first<{ plan_id: string | null; plan_status: string | null }>();

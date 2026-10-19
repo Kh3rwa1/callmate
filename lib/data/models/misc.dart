@@ -182,10 +182,9 @@ class CheckoutPlan {
 
   final bool? _businessNumber;
 
-  /// The plan includes the business's own phone number (Growth). Older
-  /// servers don't say: the Growth plans do.
-  bool get businessNumber =>
-      _businessNumber ?? (!isTopup && basePlanId == 'growth');
+  /// The plan includes the business's own phone number: every paid plan.
+  /// Older servers don't say.
+  bool get businessNumber => _businessNumber ?? !isTopup;
 
   bool get isAnnual => kind == 'annual';
   bool get isTopup => kind == 'topup';
@@ -484,7 +483,7 @@ class OwnerTestCallInfo {
 }
 
 /// The business's own phone number (`GET /business-number`): the caller ID
-/// of every AI call and the line its AI answers. Comes with Growth.
+/// of every AI call and the line its AI answers. Comes with every paid plan.
 class BusinessNumber {
   const BusinessNumber({
     required this.phone,
@@ -518,7 +517,7 @@ class BusinessNumberInfo {
   /// False until numbers are set up on the server.
   final bool available;
 
-  /// The current plan includes a number (Growth).
+  /// The current plan includes a number (any active paid plan).
   final bool entitled;
   final BusinessNumber? number;
 

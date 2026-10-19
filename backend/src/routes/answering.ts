@@ -3,7 +3,7 @@
  *
  * Owner (signed in):
  *   GET  /business-number          → { available, entitled, number, numbers_free }
- *   POST /business-number {phone}  → rent that free number (Growth plan; chosen once)
+ *   POST /business-number {phone}  → rent that free number (paid plans; chosen once)
  *   GET  /agent/answering          → { available, enabled, phone, mode, has_number }
  *   POST /agent/answering {enabled, mode} → how the owner's own phone forwards to the business number
  * Sarvam (public):
@@ -67,7 +67,7 @@ answeringApp.post('/business-number', async (c) => {
   if (!r.ok) {
     const body = {
       not_configured: { message: 'Business numbers are not available yet.', status: 503 },
-      not_entitled: { message: 'A business number comes with the Growth plan.', status: 402 },
+      not_entitled: { message: 'A business number comes with a paid plan.', status: 402 },
       already_has_number: { message: 'Your business already has a number.', status: 409 },
       number_taken: { message: 'That number was just taken. Pick another one.', status: 409 },
       sarvam_failed: { message: 'Could not set up the number. Try again in a minute.', status: 502 },

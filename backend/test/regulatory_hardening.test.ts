@@ -587,8 +587,8 @@ describe('DLT 140/160 caller-ID check', () => {
     expect(callerIdsAreDltSeries({ SARVAM_AGENT_PHONE_NUMBERS: '+911401234567, +91 160 123 4567' })).toBe(true);
     expect(callerIdsAreDltSeries({ SARVAM_AGENT_PHONE_NUMBERS: '+911401234567,+917971442975' })).toBe(false);
     // Business numbers are caller IDs too.
-    expect(callerIdsAreDltSeries({ SARVAM_AGENT_PHONE_NUMBERS: '+911401234567', SARVAM_INBOUND_NUMBERS: '+917971440001' })).toBe(false);
-    expect(callerIdsAreDltSeries({ SARVAM_AGENT_PHONE_NUMBERS: '+911401234567', SARVAM_INBOUND_NUMBERS: '+911401234568' })).toBe(true);
+    expect(callerIdsAreDltSeries({ SARVAM_AGENT_PHONE_NUMBERS: '+911401234567', SARVAM_BUSINESS_NUMBERS: '+917971440001' })).toBe(false);
+    expect(callerIdsAreDltSeries({ SARVAM_AGENT_PHONE_NUMBERS: '+911401234567', SARVAM_BUSINESS_NUMBERS: '+911401234568' })).toBe(true);
     expect(callerIdsAreDltSeries({ SARVAM_AGENT_PHONE_NUMBERS: '911401234567' })).toBe(false);
     expect(callerIdsAreDltSeries({ SARVAM_AGENT_PHONE_NUMBERS: '' })).toBe(false);
     expect(callerIdsAreDltSeries({})).toBe(false);

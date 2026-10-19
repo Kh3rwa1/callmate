@@ -18,7 +18,7 @@ import '../usage/billing_sheets.dart';
 
 /// "Your business number": one fixed number for the business, chosen once.
 /// It is the caller ID of every AI call, and customers who call it back reach
-/// the AI employee. Comes with Growth (`/business-number`).
+/// the AI employee. Comes with every paid plan (`/business-number`).
 class BusinessNumberScreen extends ConsumerWidget {
   const BusinessNumberScreen({super.key});
 
@@ -52,11 +52,7 @@ class _BodyState extends ConsumerState<_Body> {
     final usage = await ref.read(usageProvider.future);
     if (!mounted) return;
     Haptics.tap();
-    final outcome = await showPlanPickerSheet(
-      context,
-      usage,
-      preselect: 'growth',
-    );
+    final outcome = await showPlanPickerSheet(context, usage);
     if (outcome != null) ref.invalidate(businessNumberProvider);
   }
 
@@ -93,7 +89,7 @@ class _BodyState extends ConsumerState<_Body> {
     } catch (e) {
       final message = switch (e) {
         ApiException(code: 'number_taken') => s.numberTaken,
-        ApiException(code: 'not_entitled') => s.numberNeedsGrowth,
+        ApiException(code: 'not_entitled') => s.numberNeedsPaidPlan,
         _ => friendlyError(e, s),
       };
       messenger
@@ -131,11 +127,11 @@ class _BodyState extends ConsumerState<_Body> {
           key: const Key('number-upgrade'),
           onPressed: _upgrade,
           icon: const Icon(Icons.workspace_premium_rounded),
-          label: Text(s.numberGetWithGrowth),
+          label: Text(s.numberGetWithPlan),
         ),
         const SizedBox(height: 8),
         Text(
-          s.numberIncludedInGrowth,
+          s.numberIncludedInPlans,
           style: t.bodySmall?.copyWith(color: AppColors.inkSoft),
           textAlign: TextAlign.center,
         ),
@@ -320,8 +316,10 @@ class _NumberCard extends ConsumerWidget {
             children: [
               ListTile(
                 minTileHeight: 60,
+                key: const Key('number-forward-own-phone'),
                 leading: const Icon(Icons.phone_callback_outlined),
-                title: Text(s.answeringTitle, style: t.titleSmall),
+                title: Text(s.forwardYourPhone, style: t.titleSmall),
+                subtitle: Text(s.forwardYourPhoneHint),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => context.push('/agent/answering'),
               ),

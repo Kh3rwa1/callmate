@@ -12,18 +12,18 @@ import { inboundGreeting } from '../src/services/disclosure';
 const jwtSecret = 'test-jwt-signing-secret-key-32chars-min-length';
 const bizId = 'biz_answer';
 const otherBiz = 'biz_answer_other';
-const starterBiz = 'biz_answer_starter';
+const trialBiz = 'biz_answer_trial';
 const HOOK_SECRET = 'hook-secret-for-tests-0123456789';
 let token: string;
 let otherToken: string;
-let starterToken: string;
+let trialToken: string;
 
 /** Live (non-mock) Sarvam config with a three-number pool; fetch is stubbed per test. */
 const live = (extra: Record<string, unknown> = {}) => ({
   ...env,
   SARVAM_API_KEY: 'live-key', SARVAM_ORG_ID: 'org', SARVAM_WORKSPACE_ID: 'ws', SARVAM_CONNECTION_ID: 'conn',
   SARVAM_ADMISSIONS_APP_ID: 'outbound-agent', SARVAM_INBOUND_APP_ID: 'CallPilot-Receptionist', SARVAM_INBOUND_APP_VERSION: '1',
-  SARVAM_INBOUND_NUMBERS: '+917971440001, 07971440002, +917971440003', INBOUND_HOOK_SECRET: HOOK_SECRET,
+  SARVAM_BUSINESS_NUMBERS: '+917971440001, 07971440002, +917971440003', INBOUND_HOOK_SECRET: HOOK_SECRET,
   PUBLIC_API_BASE_URL: 'https://api.example',
   ...extra,
 }) as any;
@@ -42,7 +42,7 @@ function sarvamSpy() {
   return calls;
 }
 
-async function seedBusiness(id: string, name: string, plan: 'growth' | 'starter', phone: string) {
+async function seedBusiness(id: string, name: string, plan: 'growth' | 'starter' | 'trial', phone: string) {
   await env.DB.batch([
     env.DB.prepare("INSERT OR REPLACE INTO businesses (id, name, category) VALUES (?, ?, 'education')").bind(id, name),
     env.DB.prepare('INSERT OR REPLACE INTO users (id, phone, business_id) VALUES (?, ?, ?)').bind(`usr_${id}`, phone, id),
@@ -52,8 +52,8 @@ async function seedBusiness(id: string, name: string, plan: 'growth' | 'starter'
     ).bind(`agt_${id}`, id),
     env.DB.prepare(
       `INSERT OR REPLACE INTO usage (id, business_id, plan_id, plan_status, included_minutes, minutes_used, current_period_end)
-       VALUES (?, ?, ?, 'active', 2000, 0, datetime('now', '+20 days'))`
-    ).bind(`usg_${id}`, id, plan),
+       VALUES (?, ?, ?, ?, 2000, 0, datetime('now', '+20 days'))`
+    ).bind(`usg_${id}`, id, plan, plan === 'trial' ? 'trial' : 'active'),
   ]);
   return signJWT({ sub: `usr_${id}`, phone, business_id: id, type: 'access' }, jwtSecret, 3600);
 }
@@ -61,8 +61,8 @@ async function seedBusiness(id: string, name: string, plan: 'growth' | 'starter'
 beforeAll(async () => {
   await migrateTestDb();
   token = await seedBusiness(bizId, 'Roy Coaching', 'growth', '919830044444');
-  otherToken = await seedBusiness(otherBiz, 'Other Shop', 'growth', '919830044445');
-  starterToken = await seedBusiness(starterBiz, 'Small Shop', 'starter', '919830044446');
+  otherToken = await seedBusiness(otherBiz, 'Other Shop', 'starter', '919830044445');
+  trialToken = await seedBusiness(trialBiz, 'Small Shop', 'trial', '919830044446');
   await env.DB.prepare(
     `INSERT OR REPLACE INTO leads (id, business_id, name, phone, status, consent, interest)
      VALUES ('lead_answer_known', ?, 'Mitali Sen', '919830044401', 'called', 'unknown', 'WBJEE')`
@@ -94,10 +94,10 @@ describe('numbers and greetings', () => {
 });
 
 describe('renting a business number', () => {
-  it('comes with Growth: a Starter business sees no numbers and cannot rent one', async () => {
-    const view = await (await app.fetch(authed('/business-number', {}, starterToken), live())).json() as any;
+  it('comes with every paid plan: a trial business sees no numbers and cannot rent one', async () => {
+    const view = await (await app.fetch(authed('/business-number', {}, trialToken), live())).json() as any;
     expect(view).toMatchObject({ available: true, entitled: false, number: null, numbers_free: [], hold_days: NUMBER_HOLD_DAYS });
-    const res = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '+917971440001' }) }, starterToken), live());
+    const res = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '+917971440001' }) }, trialToken), live());
     expect(res.status).toBe(402);
     expect((await res.json() as any).code).toBe('not_entitled');
   });
@@ -136,6 +136,7 @@ describe('renting a business number', () => {
     expect((await outside.json() as any).code).toBe('number_taken');
 
     const otherView = await (await app.fetch(authed('/business-number', {}, otherToken), live())).json() as any;
+    expect(otherView.entitled).toBe(true); // Starter is a paid plan: it gets one too
     expect(otherView.numbers_free).toEqual(['+917971440001', '+917971440003']);
   });
 
@@ -151,7 +152,7 @@ describe('renting a business number', () => {
 
   it('every AI call of the business goes out from its number; others use the shared pool', async () => {
     expect(await callerIdFor(env.DB, bizId)).toBe('+917971440002');
-    expect(await callerIdFor(env.DB, starterBiz)).toBeNull();
+    expect(await callerIdFor(env.DB, trialBiz)).toBeNull();
     const calls = sarvamSpy();
     await dialSarvam(live({ SARVAM_AGENT_PHONE_NUMBERS: '+917971443028' }), {
       callId: 'c1', phone: '919830000001', agentVariables: {}, callerId: await callerIdFor(env.DB, bizId),
@@ -165,10 +166,10 @@ describe('renting a business number', () => {
 
 describe("who answers: forwarding the owner's phone to the number", () => {
   it('needs a business number', async () => {
-    const res = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true, mode: 'all' }) }, starterToken), live());
+    const res = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true, mode: 'all' }) }, trialToken), live());
     expect(res.status).toBe(409);
     expect((await res.json() as any).code).toBe('no_business_number');
-    expect(await (await app.fetch(authed('/agent/answering', {}, starterToken), live())).json())
+    expect(await (await app.fetch(authed('/agent/answering', {}, trialToken), live())).json())
       .toMatchObject({ has_number: false, enabled: false, phone: null });
   });
 

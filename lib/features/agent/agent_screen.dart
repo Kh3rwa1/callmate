@@ -146,7 +146,6 @@ class _Body extends ConsumerWidget {
     final usage = ref.watch(usageProvider).value;
     final knowledge = ref.watch(knowledgeProvider).value;
     final referralBonus = ref.watch(referralsProvider).value?.bonusMinutes;
-    final answering = ref.watch(answeringProvider).value;
     final number = ref.watch(businessNumberProvider).value;
     final lang = ref.watch(languageProvider);
     final mode = ref.watch(themeModeProvider);
@@ -186,7 +185,7 @@ class _Body extends ConsumerWidget {
                         title: s.businessNumberTitle,
                         value: number.number != null
                             ? PhoneUtils.display(number.number!.phone)
-                            : s.premiumBadge,
+                            : s.numberNotSet,
                         onTap: () => context.push('/agent/number'),
                       ),
                     _NavRow(
@@ -259,17 +258,6 @@ class _Body extends ConsumerWidget {
               reveal(
                 CardGroup(
                   children: [
-                    if (answering != null &&
-                        (answering.available || answering.enabled))
-                      _NavRow(
-                        key: const Key('agent-answering'),
-                        icon: Icons.phone_callback_outlined,
-                        title: s.answeringTitle,
-                        value: answering.hasNumber
-                            ? s.answerModeShort(answering.mode)
-                            : null,
-                        onTap: () => context.push('/agent/answering'),
-                      ),
                     _NavRow(
                       icon: Icons.notifications_active_outlined,
                       title: s.allowAlerts,

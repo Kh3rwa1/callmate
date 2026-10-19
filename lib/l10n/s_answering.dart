@@ -1,9 +1,8 @@
 import '../core/utils/call_forwarding.dart';
-import '../data/models/models.dart';
 import 's.dart';
 
-/// "Who answers my calls" (Agent tab → Settings): the AI employee answers
-/// every call, the ones the owner misses, or none.
+/// "Who answers my calls" (Your business number → Calls to your own phone):
+/// the AI employee answers every call, the ones the owner misses, or none.
 extension SAnswering on S {
   String get answeringTitle =>
       pick('Who answers my calls', 'मेरी कॉल कौन उठाए', 'আমার কল কে ধরবে');
@@ -41,12 +40,6 @@ extension SAnswering on S {
   );
 
   /// Short value for the Agent tab row.
-  String answerModeShort(AnswerMode m) => switch (m) {
-    AnswerMode.ai => pick('AI answers', 'AI उठाए', 'AI ধরবে'),
-    AnswerMode.missed => pick('Me first', 'पहले मैं', 'আগে আমি'),
-    AnswerMode.owner => pick('Only me', 'सिर्फ़ मैं', 'শুধু আমি'),
-  };
-
   String get answeringUnavailable => pick(
     'Not available yet. We\'ll tell you when it\'s ready.',
     'अभी उपलब्ध नहीं। तैयार होते ही बताएँगे।',
@@ -146,19 +139,19 @@ extension SAnswering on S {
     'গ্রাহক এই নম্বরে ফোন করলে $agent উত্তর দেবে, আর সারাংশ আপনি পাবেন।',
   );
   String get numberWhyYours => pick(
-    'It stays yours as long as you are on Growth. Print it on your boards and ads.',
-    'जब तक आप Growth पर हैं, यह नंबर आपका रहेगा। इसे बोर्ड और विज्ञापनों पर छापें।',
-    'যতদিন Growth-এ থাকবেন, নম্বরটি আপনারই। বোর্ড আর বিজ্ঞাপনে ছাপুন।',
+    'It stays yours as long as your plan is active. Print it on your boards and ads.',
+    'जब तक आपका प्लान चालू है, यह नंबर आपका रहेगा। इसे बोर्ड और विज्ञापनों पर छापें।',
+    'যতদিন আপনার প্ল্যান চালু, নম্বরটি আপনারই। বোর্ড আর বিজ্ঞাপনে ছাপুন।',
   );
-  String get numberGetWithGrowth => pick(
-    'Get your number with Growth',
-    'Growth के साथ अपना नंबर पाएँ',
-    'Growth-এর সঙ্গে আপনার নম্বর নিন',
+  String get numberGetWithPlan => pick(
+    'Choose a plan to get your number',
+    'अपना नंबर पाने के लिए प्लान चुनें',
+    'নম্বর পেতে একটি প্ল্যান বাছুন',
   );
-  String get numberIncludedInGrowth => pick(
-    'Included in the Growth plan at no extra cost.',
-    'Growth प्लान में बिना अतिरिक्त ख़र्च के शामिल।',
-    'Growth প্ল্যানে কোনো বাড়তি খরচ ছাড়াই।',
+  String get numberIncludedInPlans => pick(
+    'Included in every paid plan at no extra cost.',
+    'हर पेड प्लान में बिना अतिरिक्त ख़र्च के शामिल।',
+    'প্রতিটি পেইড প্ল্যানে কোনো বাড়তি খরচ ছাড়াই।',
   );
   String get pickYourNumber =>
       pick('Pick your number', 'अपना नंबर चुनें', 'আপনার নম্বর বাছুন');
@@ -189,10 +182,10 @@ extension SAnswering on S {
     'यह नंबर अभी किसी ने ले लिया। दूसरा चुनें।',
     'এই নম্বরটা এইমাত্র নেওয়া হয়ে গেছে। অন্যটা বাছুন।',
   );
-  String get numberNeedsGrowth => pick(
-    'A business number comes with the Growth plan.',
-    'बिज़नेस नंबर Growth प्लान के साथ मिलता है।',
-    'ব্যবসার নম্বর Growth প্ল্যানের সঙ্গে পাওয়া যায়।',
+  String get numberNeedsPaidPlan => pick(
+    'A business number comes with a paid plan.',
+    'बिज़नेस नंबर पेड प्लान के साथ मिलता है।',
+    'ব্যবসার নম্বর পেইড প্ল্যানের সঙ্গে পাওয়া যায়।',
   );
   String get numberActive => pick('Active', 'चालू', 'চালু');
   String get numberOnHold => pick('On hold', 'रुका हुआ', 'স্থগিত');
@@ -202,9 +195,9 @@ extension SAnswering on S {
     'প্রতিটি AI কলে এই নম্বর দেখা যায়। এতে ফোন করলে $agent উত্তর দেয়।',
   );
   String numberHeldUntil(String date) => pick(
-    'Your plan lapsed. We keep this number for you until $date: renew Growth to keep it.',
-    'आपका प्लान रुक गया है। यह नंबर $date तक आपके लिए रखा है: इसे रखने के लिए Growth रिन्यू करें।',
-    'আপনার প্ল্যান বন্ধ হয়েছে। $date পর্যন্ত নম্বরটি আপনার জন্য রাখা আছে: রাখতে Growth রিনিউ করুন।',
+    'Your plan lapsed. We keep this number for you until $date: renew your plan to keep it.',
+    'आपका प्लान रुक गया है। यह नंबर $date तक आपके लिए रखा है: इसे रखने के लिए प्लान रिन्यू करें।',
+    'আপনার প্ল্যান বন্ধ হয়েছে। $date পর্যন্ত নম্বরটি আপনার জন্য রাখা আছে: রাখতে প্ল্যান রিনিউ করুন।',
   );
   String get numberHeldForwarding => pick(
     'While it\'s on hold the AI doesn\'t answer it. If your phone forwards calls to it, dial ##002# so they ring on your phone again.',
@@ -212,9 +205,9 @@ extension SAnswering on S {
     'হোল্ডে থাকাকালীন AI এই নম্বরে কল ধরে না। আপনার ফোন কল এই নম্বরে পাঠালে ##002# ডায়াল করুন, যাতে কল আবার আপনার ফোনে বাজে।',
   );
   String get renewToKeepNumber => pick(
-    'Renew Growth to keep your number',
-    'नंबर रखने के लिए Growth रिन्यू करें',
-    'নম্বর রাখতে Growth রিনিউ করুন',
+    'Renew your plan to keep your number',
+    'नंबर रखने के लिए प्लान रिन्यू करें',
+    'নম্বর রাখতে প্ল্যান রিনিউ করুন',
   );
   String get copyNumber =>
       pick('Copy number', 'नंबर कॉपी करें', 'নম্বর কপি করুন');
@@ -237,10 +230,25 @@ extension SAnswering on S {
     'आपका अपना बिज़नेस नंबर',
     'আপনার নিজের ব্যবসার নম্বর',
   );
-  String get planSharedNumbers => pick(
-    'Calls from shared CallPilot numbers',
-    'साझा CallPilot नंबरों से कॉल',
-    'শেয়ার করা CallPilot নম্বর থেকে কল',
+  String get plansIncludeNumber => pick(
+    'Every plan includes your own business number',
+    'हर प्लान में आपका अपना बिज़नेस नंबर शामिल',
+    'প্রতিটি প্ল্যানে আপনার নিজের ব্যবসার নম্বর',
   );
-  String get premiumBadge => pick('Premium', 'प्रीमियम', 'প্রিমিয়াম');
+  String get plansIncludeNumberBody => pick(
+    'Your AI calls customers from it, and answers when they call it.',
+    'AI इसी नंबर से ग्राहकों को कॉल करता है, और इस पर आने वाली कॉल का जवाब देता है।',
+    'AI এই নম্বর থেকে গ্রাহকদের ফোন করে, আর এতে ফোন এলে উত্তর দেয়।',
+  );
+  String get numberNotSet => pick('Not set', 'सेट नहीं', 'সেট করা নেই');
+  String get forwardYourPhone => pick(
+    'Calls to your own phone',
+    'आपके अपने फ़ोन की कॉल',
+    'আপনার নিজের ফোনের কল',
+  );
+  String get forwardYourPhoneHint => pick(
+    'Optional: let your AI answer them too',
+    'वैकल्पिक: इनका जवाब भी AI दे',
+    'ঐচ্ছিক: এগুলোরও উত্তর AI দিক',
+  );
 }
