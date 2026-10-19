@@ -345,6 +345,16 @@ describe('Results loop', () => {
       expect(info.remaining_today).toBe(3);
     });
 
+    it("the owner's own number rings at any hour: hearing your AI is not a customer call", async () => {
+      const h = getHourInTimezone('Asia/Kolkata');
+      const start = (h + 1) % 24;
+      const token = await seedBusiness('biz_tc_own', { hours: [start, start + 1], phone: '919830066600' });
+      const res = await call('/agent/test-call', { method: 'POST', body: JSON.stringify({ phone: '98300 66600' }) }, token);
+      expect(res.status).toBe(200);
+      const info: any = await res.json();
+      expect(info.remaining_today).toBe(2);
+    });
+
     it('refuses a number that is already a customer, and bad input', async () => {
       const token = await seedBusiness('biz_tc_customer');
       await env.DB.prepare("INSERT INTO leads (id, business_id, name, phone) VALUES ('lead_tc_cust', 'biz_tc_customer', 'C', '919830077777')").run();

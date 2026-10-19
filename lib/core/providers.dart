@@ -394,7 +394,8 @@ final pushServiceInitializerProvider = Provider<void>((ref) {
   final isAuthed = session.asData?.value ?? false;
   if (isAuthed) {
     final push = ref.read(pushServiceProvider);
-    push.init();
+    // A new account is still onboarding: the last step asks for alerts.
+    push.init(askPermission: ref.read(localPrefsProvider).onboarded);
   }
 });
 

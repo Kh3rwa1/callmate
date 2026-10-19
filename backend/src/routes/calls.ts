@@ -179,7 +179,7 @@ const BLOCKED_CALL_MESSAGES: Record<string, string> = {
 export async function respondWithLeadCall(
   c: Context<CallsEnv>,
   leadId: string,
-  opts: { consentAttested?: boolean } = {},
+  opts: { consentAttested?: boolean; ignoreCallingHours?: boolean } = {},
 ): Promise<Response> {
   const user = c.get('user');
   const secret = requireSecret(c.env, 'ENCRYPTION_KEY');
@@ -190,6 +190,7 @@ export async function respondWithLeadCall(
     leadId,
     fallbackBaseUrl: new URL(c.req.url).origin,
     consentAttested: opts.consentAttested === true,
+    ignoreCallingHours: opts.ignoreCallingHours === true,
     ipHash: opts.consentAttested ? await hashIp(c.env, clientIp(c)) : null,
   });
 

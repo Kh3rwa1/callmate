@@ -160,6 +160,28 @@ extension SLeads on S {
   );
   String get yesCallThem =>
       pick('Yes, call them', 'हाँ, कॉल करें', 'হ্যাঁ, কল করুন');
+
+  /// Why an AI call was refused (the backend's own text is English only).
+  String callOutsideHours(String agent, String from, String to) => pick(
+    '$agent can call customers between $from and $to.',
+    'ग्राहकों को AI कॉल $from से $to के बीच ही होती है।',
+    'গ্রাহকদের AI কল শুধু $from থেকে $to-এর মধ্যে হয়।',
+  );
+  String get callRefusedDoNotCall => pick(
+    'This customer asked not to be called.',
+    'इस ग्राहक ने कॉल न करने को कहा है।',
+    'এই গ্রাহক কল না করতে বলেছেন।',
+  );
+  String get callRefusedDailyLimit => pick(
+    'Already called 3 times today. Try again tomorrow.',
+    'आज 3 बार कॉल हो चुकी है। कल फिर कोशिश करें।',
+    'আজ 3 বার কল হয়ে গেছে। কাল আবার চেষ্টা করুন।',
+  );
+  String get callRefusedBusyNumber => pick(
+    'This number already got several business calls today. Try again tomorrow.',
+    'इस नंबर पर आज कई बिज़नेस कॉल हो चुकी हैं। कल कोशिश करें।',
+    'এই নম্বরে আজ অনেক ব্যবসার কল হয়েছে। কাল চেষ্টা করুন।',
+  );
   String callingName(String name) => pick(
     'Calling $name…',
     '$name को कॉल लग रही है…',

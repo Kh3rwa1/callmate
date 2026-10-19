@@ -87,8 +87,14 @@ void main() {
     );
 
     appTest(
-      'outside calling hours the last step offers the in-app voice test',
+      'at night the owner still hears their AI on their own number; '
+      'another number gets the in-app voice test',
       (h) async {
+        // Ringing your own phone isn't a customer call: no calling window.
+        expect(find.byKey(const Key('outside-hours')), findsNothing);
+        expect(find.text('Call me now'), findsOneWidget);
+        await h.tester.enterText(find.byType(TextField).first, '9830099999');
+        await h.settle();
         expect(find.byKey(const Key('outside-hours')), findsOneWidget);
         expect(find.text('Call me now'), findsNothing);
         await h.tap(find.textContaining('Talk in-app with'));

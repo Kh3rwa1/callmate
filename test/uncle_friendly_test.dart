@@ -172,9 +172,13 @@ void main() {
     });
 
     appTest(
-      'the sheet offers the in-app test outside hours',
+      'outside hours the sheet still calls your own phone, and offers the '
+      'in-app test for another number',
       (h) async {
         await h.tap(find.byKey(const Key('getting-started-2')));
+        expect(find.byKey(const Key('outside-hours')), findsNothing);
+        await h.tester.enterText(find.byType(TextField).first, '9830099999');
+        await h.settle();
         expect(find.byKey(const Key('outside-hours')), findsOneWidget);
         await h.tap(find.textContaining('Talk in-app with'));
         expect(h.location, '/voice-test');

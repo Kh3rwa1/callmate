@@ -142,6 +142,11 @@ export async function checkCallCompliance(
     timezone?: string;
     /** Dev/test only (see allowAnyCallingHours): skip the TRAI 09:00-21:00 clamp. */
     skipTraiClamp?: boolean;
+    /**
+     * The owner asked the AI to ring their own number ("Hear your AI"): not a call to a customer, so
+     * no calling window applies. Every other guard still does.
+     */
+    ignoreCallingHours?: boolean;
     /** Injectable clock for tests. */
     now?: Date;
     /**
@@ -163,7 +168,7 @@ export async function checkCallCompliance(
 
   // 1. Check Calling Hours in lead timezone (default Asia/Kolkata)
   const currentHour = getHourInTimezone(tz, now);
-  if (currentHour < hoursStart || currentHour >= hoursEnd) {
+  if (!params.ignoreCallingHours && (currentHour < hoursStart || currentHour >= hoursEnd)) {
     const delay = getSecondsUntilCallingWindow(tz, hoursStart, now);
     return {
       allowed: false,
