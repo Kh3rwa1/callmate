@@ -278,58 +278,65 @@ class _OptionCard extends StatelessWidget {
           width: selected ? 1.6 : 1.2,
         ),
         color: selected ? AppColors.accentSoft : AppColors.surface,
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              selected
-                  ? Icons.radio_button_checked_rounded
-                  : Icons.radio_button_off_rounded,
-              size: 21,
-              color: selected ? AppColors.ink : AppColors.inkFaint,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: t.titleSmall),
-                  const SizedBox(height: 2),
-                  Text(sub, style: t.bodySmall),
-                  if (item.businessNumber) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.phone_in_talk_rounded,
-                          size: 16,
-                          color: AppColors.brand,
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            s.planNumberIncluded,
-                            key: ValueKey('plan-number-${item.planId}'),
-                            style: t.labelLarge?.copyWith(
-                              color: AppColors.brand,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+            Row(
+              children: [
+                Icon(
+                  selected
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_off_rounded,
+                  size: 21,
+                  color: selected ? AppColors.ink : AppColors.inkFaint,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: t.titleSmall),
+                      const SizedBox(height: 2),
+                      Text(sub, style: t.bodySmall),
+                      if (current) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          s.currentPlanTag,
+                          style: t.labelSmall?.copyWith(color: AppColors.brand),
                         ),
                       ],
-                    ),
-                  ],
-                  if (current) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      s.currentPlanTag,
-                      style: t.labelSmall?.copyWith(color: AppColors.brand),
-                    ),
-                  ],
-                ],
-              ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(price, style: t.titleSmall),
+              ],
             ),
-            const SizedBox(width: 8),
-            Text(price, style: t.titleSmall),
+            // Under the whole row so it never wraps beside the price.
+            if (item.businessNumber)
+              Padding(
+                padding: const EdgeInsets.only(left: 33, top: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.phone_in_talk_rounded,
+                      size: 16,
+                      color: AppColors.brand,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        s.planNumberIncluded,
+                        key: ValueKey('plan-number-${item.planId}'),
+                        style: t.labelLarge?.copyWith(
+                          color: AppColors.brand,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -353,7 +360,7 @@ class _NumberIncluded extends StatelessWidget {
       key: const Key('plans-include-number'),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.brand,
+        color: AppColors.brandFill,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
