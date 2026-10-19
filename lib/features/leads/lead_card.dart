@@ -86,8 +86,10 @@ class LeadCard extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Name gets the whole line; status and interest
-                            // share the second one.
+                            // Name gets the whole line. Status and interest
+                            // share the second one when both fit; otherwise
+                            // the interest gets a line of its own instead of
+                            // being cut to "NEET ·…".
                             Row(
                               children: [
                                 Flexible(
@@ -105,18 +107,18 @@ class LeadCard extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Row(
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 _Status(lead: l),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    meta,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: t.bodySmall?.copyWith(
-                                      color: AppColors.inkSoft,
-                                    ),
+                                Text(
+                                  meta,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: t.bodySmall?.copyWith(
+                                    color: AppColors.inkSoft,
                                   ),
                                 ),
                               ],

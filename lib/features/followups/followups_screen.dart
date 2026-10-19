@@ -333,7 +333,9 @@ class _FollowUpRow extends ConsumerWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        followUpPreview(fu.message),
+                        fu.callSummary?.trim().isNotEmpty == true
+                            ? fu.callSummary!.trim()
+                            : followUpPreview(fu.message),
                         style: t.bodySmall?.copyWith(color: AppColors.inkSoft),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -368,16 +370,25 @@ class _FollowUpRow extends ConsumerWidget {
 }
 
 /// A follow-up without its opening greeting ("Hi Sourav 👋 Great speaking
-/// with you today."), so each list preview shows what's actually different.
+/// with you today.") and a short lead-in ("As discussed, here are the
+/// details:"), so each list preview shows what's actually different.
 String followUpPreview(String message) {
-  final flat = message.replaceAll(RegExp(r'\s+'), ' ').trim();
+  var flat = message.replaceAll(RegExp(r'\s+'), ' ').trim();
   final greeting = RegExp(
     r'^((hi|hello|hey|dear|namaste|namaskar)\b|नमस्ते|নমস্কার)',
     caseSensitive: false,
   );
-  if (!greeting.hasMatch(flat)) return flat;
-  final end = RegExp(r'[.!?।]\s').firstMatch(flat);
-  if (end == null || end.end > 100) return flat;
-  final rest = flat.substring(end.end).trim();
-  return rest.isEmpty ? flat : rest;
+  if (greeting.hasMatch(flat)) {
+    final end = RegExp(r'[.!?।]\s').firstMatch(flat);
+    if (end != null && end.end <= 100) {
+      final rest = flat.substring(end.end).trim();
+      if (rest.isNotEmpty) flat = rest;
+    }
+  }
+  final colon = flat.indexOf(': ');
+  if (colon > 0 && colon <= 60 && !flat.substring(0, colon).contains('. ')) {
+    final rest = flat.substring(colon + 2).trim();
+    if (rest.isNotEmpty) flat = rest;
+  }
+  return flat;
 }

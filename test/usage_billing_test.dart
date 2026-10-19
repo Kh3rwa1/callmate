@@ -142,7 +142,7 @@ void main() {
       (h) async {
         expect(find.text('Free trial'), findsOneWidget); // said once, not twice
         expect(find.text('4'), findsOneWidget);
-        expect(find.text('Renews on'), findsNothing);
+        expect(find.text('Plan ends on'), findsNothing);
         await _scrollTo(h, find.text('Upgrade'));
         expect(find.text('Upgrade'), findsOneWidget);
         expect(
