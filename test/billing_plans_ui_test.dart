@@ -143,12 +143,12 @@ void main() {
     test('new strings exist in Hindi and Bengali', () {
       for (final lang in AppLang.values) {
         final s = S(lang);
-        expect(s.twoMonthsFree, isNotEmpty);
+        expect(s.oneMonthFree, isNotEmpty);
         expect(s.buyMoreMinutes, isNotEmpty);
         expect(s.topupNeedsActivePlan, isNotEmpty);
         expect(s.bannerPaidLow('5'), contains('5'));
       }
-      expect(S(AppLang.hi).twoMonthsFree, isNot(S.en.twoMonthsFree));
+      expect(S(AppLang.hi).oneMonthFree, isNot(S.en.oneMonthFree));
       expect(S(AppLang.bn).buyMoreMinutes, isNot(S.en.buyMoreMinutes));
     });
   });
@@ -160,7 +160,7 @@ void main() {
         await _scrollTo(h, find.text('Upgrade'));
         await h.tap(find.text('Upgrade'));
         expect(_inSheet(find.text('Choose a plan')), findsOneWidget);
-        expect(_inSheet(find.text('2 months free')), findsOneWidget);
+        expect(_inSheet(find.text('1 month free')), findsOneWidget);
         // Starter preselected: ₹4,999 + ₹900 GST.
         expect(_inSheet(find.text('Pay ₹5,899')), findsOneWidget);
         expect(_inSheet(find.text('GST (18%)')), findsOneWidget);
@@ -169,19 +169,19 @@ void main() {
         expect(_inSheet(find.text('₹2,160')), findsOneWidget);
         expect(_inSheet(find.text('₹14,159')), findsOneWidget);
 
-        await h.tap(find.text('2 months free'));
+        await h.tap(find.text('1 month free'));
         expect(
           find.byKey(const ValueKey('checkout-option-growth_annual')),
           findsOneWidget,
         );
-        expect(_inSheet(find.text('₹1,41,588 / year')), findsOneWidget);
-        await h.tap(find.text('Pay ₹1,41,588'));
+        expect(_inSheet(find.text('₹1,55,747 / year')), findsOneWidget);
+        await h.tap(find.text('Pay ₹1,55,747'));
 
         expect(find.byType(BottomSheet), findsNothing);
         expect(find.text(S.en.paymentReceived), findsOneWidget);
         expect(h.backend.usage.subscription.planId, 'growth');
         expect(h.backend.usage.subscription.annual, isTrue);
-        expect(h.backend.usage.subscription.includedMinutes, 3000);
+        expect(h.backend.usage.subscription.includedMinutes, 2000);
         await _scrollTo(h, find.text('Yearly plan until'));
         expect(find.text('Yearly plan until'), findsOneWidget);
       },
@@ -212,13 +212,13 @@ void main() {
           ),
           findsOneWidget,
         );
-        expect(_inSheet(find.text('Pay ₹1,769')), findsOneWidget);
+        expect(_inSheet(find.text('Pay ₹2,064')), findsOneWidget);
         await h.tap(find.byKey(const ValueKey('checkout-option-topup_1000')));
-        await h.tap(find.text('Pay ₹6,489'));
+        await h.tap(find.text('Pay ₹7,669'));
         expect(find.byType(BottomSheet), findsNothing);
         expect(find.text('Extra minutes added ✓'), findsOneWidget);
         expect(h.backend.usage.subscription.topupMinutes, 1000);
-        expect(h.backend.usage.subscription.includedMinutes, 1000);
+        expect(h.backend.usage.subscription.includedMinutes, 800);
         await _scrollTo(h, find.text('Added minutes'));
         expect(find.text('Added minutes'), findsOneWidget);
       },
@@ -231,7 +231,7 @@ void main() {
       (h) async {
         await _scrollTo(h, find.text('Buy more minutes'));
         await h.tap(find.text('Buy more minutes'));
-        await h.tap(find.text('Pay ₹1,769'));
+        await h.tap(find.text('Pay ₹2,064'));
         expect(_inSheet(find.text(S.en.topupNeedsActivePlan)), findsOneWidget);
       },
       location: '/usage',

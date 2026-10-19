@@ -73,12 +73,14 @@ describe('Unit economics', () => {
       for (const s of ['voicemail', 'no_answer', 'busy', 'failed']) expect(billableMinutes(s, 120).minutes).toBe(0);
     });
 
-    it('costs every started minute at Sarvam + telephony rates', () => {
-      expect(costRates({})).toEqual({ sarvam: 2, telephony: 0.6, total: 2.6 });
-      expect(costRates({ COST_PER_MIN_SARVAM_INR: '1.5', COST_PER_MIN_TELEPHONY_INR: 'x' })).toEqual({ sarvam: 1.5, telephony: 0.6, total: 2.1 });
+    it('costs Sarvam agent minutes per 60 s pulse and telephony per 30 s pulse', () => {
+      // Sarvam's published rate card: ₹3.50 / agent minute (pay-as-you-go), ₹0.20 / 30 s on its telephony.
+      expect(costRates({})).toEqual({ sarvam: 3.5, telephony: 0.4, total: 3.9 });
+      expect(costRates({ COST_PER_MIN_SARVAM_INR: '3.25', COST_PER_MIN_TELEPHONY_INR: 'x' })).toEqual({ sarvam: 3.25, telephony: 0.4, total: 3.65 });
       expect(callCostInr({}, 0)).toBe(0);
-      expect(callCostInr({}, 5)).toBe(2.6);
-      expect(callCostInr({}, 61)).toBe(5.2);
+      expect(callCostInr({}, 5)).toBe(3.7); // 1 agent minute + 1 telephony pulse
+      expect(callCostInr({}, 45)).toBe(3.9); // Sarvam's own example: ₹3.50 + ₹0.40
+      expect(callCostInr({}, 61)).toBe(7.6); // 2 agent minutes + 3 pulses
       expect(callDurationSeconds(95.9)).toBe(95);
       expect(callDurationSeconds(null)).toBe(0);
       expect(callDurationSeconds('abc')).toBe(0);
@@ -109,10 +111,10 @@ describe('Unit economics', () => {
       const res = await postSarvam('call_e1', { status: 'connected', duration: 95.4 });
       expect(res.status).toBe(200);
       const call = await env.DB.prepare('SELECT billed_minutes, cost_inr, duration_seconds FROM calls WHERE id = ?').bind('call_e1').first<any>();
-      expect(call).toMatchObject({ billed_minutes: 2, cost_inr: 5.2, duration_seconds: 95 });
+      expect(call).toMatchObject({ billed_minutes: 2, cost_inr: 7.8, duration_seconds: 95 });
       expect(await minutesUsed()).toBe(before + 2);
       const ledger = await env.DB.prepare('SELECT * FROM usage_ledger WHERE call_id = ?').bind('call_e1').first<any>();
-      expect(ledger).toMatchObject({ billed_minutes: 2, duration_seconds: 95, cost_inr: 5.2, plan_id: 'growth' });
+      expect(ledger).toMatchObject({ billed_minutes: 2, duration_seconds: 95, cost_inr: 7.8, plan_id: 'growth' });
     });
 
     it('a 6 s connected call and a 40 s voicemail bill 0 minutes but record our cost', async () => {
@@ -125,9 +127,9 @@ describe('Unit economics', () => {
       expect((await postSarvam('call_e3', { status: 'voicemail', duration: 40 })).status).toBe(200);
       expect(await minutesUsed()).toBe(before);
       const c2 = await env.DB.prepare('SELECT status, billed_minutes, cost_inr FROM calls WHERE id = ?').bind('call_e2').first<any>();
-      expect(c2).toMatchObject({ status: 'completed', billed_minutes: 0, cost_inr: 2.6 });
+      expect(c2).toMatchObject({ status: 'completed', billed_minutes: 0, cost_inr: 3.7 });
       const c3 = await env.DB.prepare('SELECT status, billed_minutes, cost_inr FROM calls WHERE id = ?').bind('call_e3').first<any>();
-      expect(c3).toMatchObject({ status: 'voicemail', billed_minutes: 0, cost_inr: 2.6 });
+      expect(c3).toMatchObject({ status: 'voicemail', billed_minutes: 0, cost_inr: 3.9 });
       const l3 = await env.DB.prepare('SELECT duration_seconds FROM usage_ledger WHERE call_id = ?').bind('call_e3').first<any>();
       expect(l3.duration_seconds).toBe(40);
     });
@@ -299,7 +301,7 @@ describe('Unit economics', () => {
       expect(res.status).toBe(200);
       const r = (await res.json()) as any;
       expect(r.days).toBe(30);
-      expect(r.cost_per_min_inr.total).toBe(2.6);
+      expect(r.cost_per_min_inr.total).toBe(3.9);
       const growth = r.by_plan.find((p: any) => p.plan_id === 'growth');
       const growthBefore = before.by_plan.find((p: any) => p.plan_id === 'growth') ?? { revenue_inr: 0, minutes_billed: 0, cost_inr: 0, wasted_minutes: 0 };
       expect(growth.revenue_inr - growthBefore.revenue_inr).toBeCloseTo(11999, 2);

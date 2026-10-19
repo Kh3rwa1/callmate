@@ -14,13 +14,19 @@ export type PlanId = 'trial' | 'starter' | 'growth';
 export type PlanStatus = 'trial' | 'active' | 'past_due' | 'cancelled';
 
 export const DEFAULT_TRIAL_MINUTES = 30;
+/*
+ * Priced so no product sells a minute below ~₹5.50 (before GST). A connected minute costs us about
+ * ₹3.90 on Sarvam pay-as-you-go: ₹3.50 agent + ₹0.40 telephony (services/economics.ts), so every
+ * product keeps ~30-45% gross margin even when all its minutes are used.
+ */
 export const STARTER_PRICE_INR = 4999;
-export const STARTER_MINUTES = 1000;
+export const STARTER_MINUTES = 800;
 export const GROWTH_PRICE_INR = 11999;
-export const GROWTH_MINUTES = 3000;
-export const RATE_PER_MINUTE_INR = 6;
-/** Annual = 10 x the monthly price for 12 monthly grants ("2 months free"). */
-export const ANNUAL_PRICE_MONTHS = 10;
+export const GROWTH_MINUTES = 2000;
+/** Shown as the price of extra minutes; the top-ups sell them at ₹7.00 (250) and ₹6.50 (1,000). */
+export const RATE_PER_MINUTE_INR = 7;
+/** Annual = 11 x the monthly price for 12 monthly grants ("1 month free"). */
+export const ANNUAL_PRICE_MONTHS = 11;
 export const DEFAULT_GST_RATE = 0.18;
 
 export interface Plan {
@@ -88,8 +94,8 @@ export const PRODUCTS: Record<ProductId, Product> = {
   growth: planProduct(PAID_PLANS.growth, false),
   starter_annual: planProduct(PAID_PLANS.starter, true),
   growth_annual: planProduct(PAID_PLANS.growth, true),
-  topup_250: { id: 'topup_250', kind: 'topup', name: '250 extra minutes', priceInr: 1499, planId: null, minutes: 250, months: 0 },
-  topup_1000: { id: 'topup_1000', kind: 'topup', name: '1000 extra minutes', priceInr: 5499, planId: null, minutes: 1000, months: 0 },
+  topup_250: { id: 'topup_250', kind: 'topup', name: '250 extra minutes', priceInr: 1749, planId: null, minutes: 250, months: 0 },
+  topup_1000: { id: 'topup_1000', kind: 'topup', name: '1000 extra minutes', priceInr: 6499, planId: null, minutes: 1000, months: 0 },
 };
 
 export function isProductId(id: unknown): id is ProductId {
@@ -298,7 +304,7 @@ export async function runBillingRenewals(env: Env): Promise<number> {
     `UPDATE usage SET
        plan_id = ${planCase(annualPlan, (p) => p.id)},
        plan_name = ${planCase(annualPlan, (p) => p.name)},
-       included_minutes = ${planCase(annualPlan, (p) => p.includedMinutes)},
+       included_minutes = COALESCE(annual_monthly_minutes, ${planCase(annualPlan, (p) => p.includedMinutes)}),
        price_inr = ${planCase(annualPlan, (p) => p.priceInr)},
        billing_cycle = 'annual', ${RESET_PERIOD_BONUS_SQL}, minutes_used = 0, topup_minutes = 0,
        current_period_end = ${nextEnd},

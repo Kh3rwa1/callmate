@@ -6,6 +6,13 @@ import { parseLimit, MAX_LIST_LIMIT } from '../utils/pagination';
 const fcApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
 // ------------------------------------------------------------- Follow-ups
+/** A follow-up with its lead, and the summary + score of the call it was drafted from. */
+const FOLLOWUP_COLUMNS = `f.*, l.name as lead_name, l.phone as lead_phone,
+           c.summary as call_summary, c.score as score_value
+    FROM followups f
+    LEFT JOIN leads l ON f.lead_id = l.id
+    LEFT JOIN calls c ON c.id = f.call_id AND c.business_id = f.business_id`;
+
 function formatFollowUp(row: any) {
   if (!row) return null;
   return {
@@ -16,6 +23,9 @@ function formatFollowUp(row: any) {
     lead_phone: row.lead_phone || '',
     message: row.message,
     status: row.status,
+    // What the customer wants, from the call: the list preview shows it instead of the draft's greeting.
+    call_summary: row.call_summary ?? null,
+    score_value: row.score_value ?? null,
     opened_at: row.opened_at,
     created_at: row.created_at,
   };
@@ -27,9 +37,7 @@ fcApp.get('/followups', async (c) => {
   const callId = c.req.query('call_id');
 
   let sql = `
-    SELECT f.*, l.name as lead_name, l.phone as lead_phone
-    FROM followups f
-    LEFT JOIN leads l ON f.lead_id = l.id
+    SELECT ${FOLLOWUP_COLUMNS}
     WHERE f.business_id = ?
   `;
   const params: any[] = [user.business_id];
@@ -53,9 +61,7 @@ fcApp.get('/followups/:id', async (c) => {
   const user = c.get('user');
   const id = c.req.param('id');
   const sql = `
-    SELECT f.*, l.name as lead_name, l.phone as lead_phone
-    FROM followups f
-    LEFT JOIN leads l ON f.lead_id = l.id
+    SELECT ${FOLLOWUP_COLUMNS}
     WHERE f.id = ? AND f.business_id = ?
   `;
   const row = await c.env.DB.prepare(sql).bind(id, user.business_id).first();
@@ -84,9 +90,7 @@ fcApp.patch('/followups/:id', async (c) => {
   ).bind(message, status, openedAt, id, user.business_id).run();
 
   const sql = `
-    SELECT f.*, l.name as lead_name, l.phone as lead_phone
-    FROM followups f
-    LEFT JOIN leads l ON f.lead_id = l.id
+    SELECT ${FOLLOWUP_COLUMNS}
     WHERE f.id = ? AND f.business_id = ?
   `;
   const updated = await c.env.DB.prepare(sql).bind(id, user.business_id).first();

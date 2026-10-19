@@ -91,13 +91,13 @@ describe('Plan catalogue, GST and top-ups', () => {
   describe('catalogue + GST', () => {
     it('prices every product and adds GST rounded to whole rupees', () => {
       expect(PRODUCT_IDS).toEqual(['starter', 'growth', 'starter_annual', 'growth_annual', 'topup_250', 'topup_1000']);
-      expect(PRODUCTS.starter).toMatchObject({ priceInr: 4999, minutes: 1000, kind: 'plan', months: 1 });
-      expect(PRODUCTS.growth).toMatchObject({ priceInr: 11999, minutes: 3000, kind: 'plan' });
-      expect(PRODUCTS.starter_annual).toMatchObject({ priceInr: 49990, minutes: 1000, kind: 'annual', months: 12, planId: 'starter' });
-      expect(PRODUCTS.growth_annual).toMatchObject({ priceInr: 119990, minutes: 3000, kind: 'annual', planId: 'growth' });
-      expect(PRODUCTS.topup_250).toMatchObject({ priceInr: 1499, minutes: 250, kind: 'topup', planId: null });
-      expect(PRODUCTS.topup_1000).toMatchObject({ priceInr: 5499, minutes: 1000, kind: 'topup' });
-      expect(getPlan('growth')).toMatchObject({ includedMinutes: 3000, priceInr: 11999 });
+      expect(PRODUCTS.starter).toMatchObject({ priceInr: 4999, minutes: 800, kind: 'plan', months: 1 });
+      expect(PRODUCTS.growth).toMatchObject({ priceInr: 11999, minutes: 2000, kind: 'plan' });
+      expect(PRODUCTS.starter_annual).toMatchObject({ priceInr: 54989, minutes: 800, kind: 'annual', months: 12, planId: 'starter' });
+      expect(PRODUCTS.growth_annual).toMatchObject({ priceInr: 131989, minutes: 2000, kind: 'annual', planId: 'growth' });
+      expect(PRODUCTS.topup_250).toMatchObject({ priceInr: 1749, minutes: 250, kind: 'topup', planId: null });
+      expect(PRODUCTS.topup_1000).toMatchObject({ priceInr: 6499, minutes: 1000, kind: 'topup' });
+      expect(getPlan('growth')).toMatchObject({ includedMinutes: 2000, priceInr: 11999 });
 
       expect(gstRate({})).toBe(0.18);
       expect(gstRate({ GST_RATE: '0.05' })).toBe(0.05);
@@ -185,7 +185,7 @@ describe('Plan catalogue, GST and top-ups', () => {
       const r = await pay(paidEvent('biz_pay_growth', 'pay_g1', 'growth'));
       expect(r).toMatchObject({ applied: true, plan_id: 'growth' });
       expect(await usageOf('biz_pay_growth')).toMatchObject({
-        plan_id: 'growth', plan_name: 'Growth', plan_status: 'active', included_minutes: 3000, minutes_used: 0,
+        plan_id: 'growth', plan_name: 'Growth', plan_status: 'active', included_minutes: 2000, minutes_used: 0,
         price_inr: 11999, billing_cycle: 'monthly', annual_until: null,
       });
       const p = await env.DB.prepare("SELECT * FROM payments WHERE razorpay_payment_id = 'pay_g1'").first<any>();
@@ -211,7 +211,7 @@ describe('Plan catalogue, GST and top-ups', () => {
       const body = paidEvent('biz_pay_annual', 'pay_a1', 'starter_annual');
       expect((await pay(body)).applied).toBe(true);
       const u = await usageOf('biz_pay_annual');
-      expect(u).toMatchObject({ plan_id: 'starter', plan_status: 'active', included_minutes: 1000, minutes_used: 0, billing_cycle: 'annual', annual_plan_id: 'starter' });
+      expect(u).toMatchObject({ plan_id: 'starter', plan_status: 'active', included_minutes: 800, minutes_used: 0, billing_cycle: 'annual', annual_plan_id: 'starter' });
       expect(ts(u.current_period_end) - Date.now()).toBeGreaterThan(27 * DAY);
       expect(ts(u.current_period_end) - Date.now()).toBeLessThan(32 * DAY);
       expect(ts(u.annual_until) - Date.now()).toBeGreaterThan(364 * DAY);
@@ -223,7 +223,7 @@ describe('Plan catalogue, GST and top-ups', () => {
       expect(again.minutes_used).toBe(50);
       expect(again.annual_until).toBe(u.annual_until);
       const p = await env.DB.prepare("SELECT kind, base_paise FROM payments WHERE razorpay_payment_id = 'pay_a1'").first<any>();
-      expect(p).toEqual({ kind: 'annual', base_paise: 4999000 });
+      expect(p).toEqual({ kind: 'annual', base_paise: 5498900 });
     });
 
     it('a top-up adds minutes to an active plan once and keeps the period', async () => {
@@ -243,13 +243,13 @@ describe('Plan catalogue, GST and top-ups', () => {
       // Renewing early (period still running) keeps the unused top-up minutes; plan minutes reset.
       await env.DB.prepare("UPDATE usage SET minutes_used = 1100 WHERE business_id = 'biz_pay_topup'").run();
       await pay(paidEvent('biz_pay_topup', 'pay_t1_renew', 'starter'));
-      expect(await usageOf('biz_pay_topup')).toMatchObject({ included_minutes: 1000, topup_minutes: 150, minutes_used: 0 });
+      expect(await usageOf('biz_pay_topup')).toMatchObject({ included_minutes: 800, topup_minutes: 150, minutes_used: 0 });
     });
 
     it('top-ups expire at period end: paying after the period resets them', async () => {
       await seedBiz('biz_pay_topup_exp', { plan_id: 'starter', plan_status: 'past_due', included: 1000, used: 1000, topup: 250, period_end: '2020-01-01 00:00:00' });
       await pay(paidEvent('biz_pay_topup_exp', 'pay_t_exp', 'starter'));
-      expect(await usageOf('biz_pay_topup_exp')).toMatchObject({ plan_status: 'active', included_minutes: 1000, topup_minutes: 0, minutes_used: 0 });
+      expect(await usageOf('biz_pay_topup_exp')).toMatchObject({ plan_status: 'active', included_minutes: 800, topup_minutes: 0, minutes_used: 0 });
     });
 
     it('a top-up paid on a lapsed plan is recorded for review, not applied', async () => {
@@ -300,13 +300,13 @@ describe('Plan catalogue, GST and top-ups', () => {
       await seedBiz('biz_bonus_keep', { plan_id: 'starter', plan_status: 'past_due', included: 1000, used: 500, period_end: '2020-01-01 00:00:00' });
       await env.DB.prepare("UPDATE usage SET bonus_minutes = 100 WHERE business_id = 'biz_bonus_keep'").run();
       await pay(paidEvent('biz_bonus_keep', 'pay_bonus_keep', 'growth'));
-      expect(await usageOf('biz_bonus_keep')).toMatchObject({ plan_id: 'growth', included_minutes: 3000, bonus_minutes: 100, minutes_used: 0 });
+      expect(await usageOf('biz_bonus_keep')).toMatchObject({ plan_id: 'growth', included_minutes: 2000, bonus_minutes: 100, minutes_used: 0 });
 
       // Consumed past plan + top-up: 1300 used of 1000 + 250 → 50 came from bonus.
       await seedBiz('biz_bonus_used', { plan_id: 'starter', plan_status: 'past_due', included: 1000, used: 1300, topup: 250, period_end: '2020-01-01 00:00:00' });
       await env.DB.prepare("UPDATE usage SET bonus_minutes = 100 WHERE business_id = 'biz_bonus_used'").run();
       await pay(paidEvent('biz_bonus_used', 'pay_bonus_used', 'starter'));
-      expect(await usageOf('biz_bonus_used')).toMatchObject({ bonus_minutes: 50, topup_minutes: 0, minutes_used: 0, included_minutes: 1000 });
+      expect(await usageOf('biz_bonus_used')).toMatchObject({ bonus_minutes: 50, topup_minutes: 0, minutes_used: 0, included_minutes: 800 });
     });
 
     it('the annual monthly re-grant expires top-ups and keeps bonus', async () => {
@@ -316,7 +316,30 @@ describe('Plan catalogue, GST and top-ups', () => {
       });
       await env.DB.prepare("UPDATE usage SET bonus_minutes = 40 WHERE business_id = 'biz_bonus_annual'").run();
       await runBillingRenewals(env as any);
-      expect(await usageOf('biz_bonus_annual')).toMatchObject({ topup_minutes: 0, bonus_minutes: 20, minutes_used: 0, included_minutes: 1000 });
+      expect(await usageOf('biz_bonus_annual')).toMatchObject({ topup_minutes: 0, bonus_minutes: 20, minutes_used: 0, included_minutes: 800 });
+    });
+  });
+
+  describe('a price change never shrinks a year already paid for', () => {
+    it('buying a year fixes its monthly minutes; the monthly re-grant uses them', async () => {
+      await seedBiz('biz_year_fixed', { plan_id: 'trial', plan_status: 'trial', included: 30, used: 0, period_end: null });
+      await pay(paidEvent('biz_year_fixed', 'pay_year_fixed', 'starter_annual'));
+      expect(await usageOf('biz_year_fixed')).toMatchObject({ included_minutes: 800, annual_monthly_minutes: 800 });
+    });
+
+    it('a year bought at 1,000 minutes a month keeps 1,000 after the catalogue moved to 800', async () => {
+      await seedBiz('biz_year_legacy', {
+        plan_id: 'starter', plan_status: 'active', included: 1000, used: 900,
+        period_end: '2020-01-01 00:00:00', annual_until: '2999-01-01 00:00:00', annual_plan_id: 'starter',
+      });
+      // What migration 0018 backfills for years bought before the column existed.
+      await env.DB.prepare("UPDATE usage SET annual_monthly_minutes = 1000 WHERE business_id = 'biz_year_legacy'").run();
+      await runBillingRenewals(env as any);
+      expect(await usageOf('biz_year_legacy')).toMatchObject({ included_minutes: 1000, minutes_used: 0, annual_monthly_minutes: 1000 });
+
+      // Buying another year early stacks on and keeps the bigger monthly grant.
+      await pay(paidEvent('biz_year_legacy', 'pay_year_legacy_2', 'starter_annual'));
+      expect(await usageOf('biz_year_legacy')).toMatchObject({ included_minutes: 1000, annual_monthly_minutes: 1000 });
     });
   });
 
@@ -343,14 +366,14 @@ describe('Plan catalogue, GST and top-ups', () => {
       await runBillingRenewals(env as any);
 
       expect(await usageOf('biz_cron_annual')).toMatchObject({
-        plan_status: 'active', plan_id: 'growth', included_minutes: 3000, minutes_used: 0, topup_minutes: 0,
+        plan_status: 'active', plan_id: 'growth', included_minutes: 2000, minutes_used: 0, topup_minutes: 0,
         current_period_end: '2020-02-01 00:00:00',
       });
       expect((await usageOf('biz_cron_annual_end')).plan_status).toBe('past_due');
       const cap = await usageOf('biz_cron_annual_cap');
       expect(cap.plan_status).toBe('active');
       expect(cap.current_period_end).toBe(cap.annual_until); // last month ends at annual_until
-      expect(await usageOf('biz_cron_annual_mix')).toMatchObject({ plan_id: 'starter', included_minutes: 1000 });
+      expect(await usageOf('biz_cron_annual_mix')).toMatchObject({ plan_id: 'starter', included_minutes: 800 });
     });
   });
 });

@@ -10,7 +10,7 @@ import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import 'billing_actions.dart';
 
-/// Plan picker: Starter / Growth, monthly or yearly ("2 months free"), with
+/// Plan picker: Starter / Growth, monthly or yearly ("1 month free"), with
 /// the GST breakdown. Returns the checkout outcome when the payment page
 /// opened or the (mock) payment went through; errors stay inside the sheet.
 Future<CheckoutOutcome?> showPlanPickerSheet(BuildContext context, Usage u) =>
@@ -218,7 +218,7 @@ class _CycleToggle extends StatelessWidget {
             children: [
               Text(s.billingYearly, maxLines: 1),
               Text(
-                s.twoMonthsFree,
+                s.oneMonthFree,
                 maxLines: 1,
                 style: const TextStyle(fontSize: 12.5),
               ),

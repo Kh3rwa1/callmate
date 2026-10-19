@@ -135,7 +135,12 @@ extension SAgent on S {
   String nUsed(String n) => pick('$n used', '$n इस्तेमाल', '$n ব্যবহার হয়েছে');
   String ofTotal(String n) => pick('of $n', '$n में से', '$n-এর মধ্যে');
   String get callsMade => pick('Calls made', 'कुल कॉल', 'মোট কল');
-  String get renewsOn => pick('Renews on', 'रिन्यू होगा', 'রিনিউ হবে');
+  String get planEndsOn =>
+      pick('Plan ends on', 'प्लान ख़त्म होगा', 'প্ল্যান শেষ হবে');
+  String get trialEndsOn =>
+      pick('Trial ends on', 'ट्रायल ख़त्म होगा', 'ট্রায়াল শেষ হবে');
+  String get minutesRefillOn =>
+      pick('New minutes on', 'नए मिनट मिलेंगे', 'নতুন মিনিট পাবেন');
   String get extraMinutes =>
       pick('Extra minutes', 'अतिरिक्त मिनट', 'অতিরিক্ত মিনিট');
   String perMin(String price) =>
@@ -158,8 +163,8 @@ extension SAgent on S {
   String get changePlan => pick('Change plan', 'प्लान बदलें', 'প্ল্যান বদলান');
   String get billingMonthly => pick('Monthly', 'मासिक', 'মাসিক');
   String get billingYearly => pick('Yearly', 'सालाना', 'বার্ষিক');
-  String get twoMonthsFree =>
-      pick('2 months free', '2 महीने मुफ़्त', '2 মাস ফ্রি');
+  String get oneMonthFree =>
+      pick('1 month free', '1 महीना मुफ़्त', '1 মাস ফ্রি');
   String minutesPerMonth(String n) =>
       pick('$n minutes / month', '$n मिनट / महीना', '$n মিনিট / মাস');
   String pricePerMonth(String price) =>

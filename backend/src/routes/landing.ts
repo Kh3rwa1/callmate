@@ -140,7 +140,7 @@ ${demo}
 ${planCard(trial, false, env)}
 ${paid.map((p) => planCard(p, true, env)).join('\n')}
 </div>
-<p class="fine">Prices in Indian rupees, plus 18% GST. Pay monthly, or yearly and get 2 months free, in the app. Plans never renew automatically.</p></section>
+<p class="fine">Prices in Indian rupees, plus 18% GST. Pay monthly, or yearly and get 1 month free, in the app. Plans never renew automatically.</p></section>
 
 <section aria-labelledby="faq"><h2 id="faq">Questions</h2>
 <details><summary>Is it legal to call my leads with AI?</summary><p>CallPilot calls only between 9 am and 9 pm, skips anyone marked "do not call", and only calls people who enquired with you or agreed to be contacted. You confirm consent before a campaign starts.</p></details>

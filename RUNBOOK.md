@@ -332,12 +332,12 @@ names each dial sends.
 
   | id | price | minutes |
   |---|---|---|
-  | `starter` | ₹4,999 / month | 1,000 / month |
-  | `growth` | ₹11,999 / month | 3,000 / month |
-  | `starter_annual` | ₹49,990 / year (10 × monthly, "2 months free") | 1,000 / month for 12 months |
-  | `growth_annual` | ₹1,19,990 / year | 3,000 / month for 12 months |
-  | `topup_250` | ₹1,499 | +250, until the period ends |
-  | `topup_1000` | ₹5,499 | +1,000, until the period ends |
+  | `starter` | ₹4,999 / month | 800 / month |
+  | `growth` | ₹11,999 / month | 2,000 / month |
+  | `starter_annual` | ₹54,989 / year (11 × monthly, "1 month free") | 800 / month for 12 months |
+  | `growth_annual` | ₹1,31,989 / year | 2,000 / month for 12 months |
+  | `topup_250` | ₹1,749 | +250, until the period ends |
+  | `topup_1000` | ₹6,499 | +1,000, until the period ends |
 
 - **GST:** `GST_RATE` (plain var, default `0.18`). The Razorpay link charges
   `round(price × (1 + GST_RATE))` whole rupees; the base / GST split is stored in
@@ -366,9 +366,13 @@ names each dial sends.
   after busy / no-answer, max 3 dials, ≥ 3 h apart (`services/call_outcomes.ts`);
   invalid / unreachable numbers get `leads.phone_invalid = 1` and are skipped
   until the phone is edited.
-- **Economics report:** our cost per call is
-  `COST_PER_MIN_SARVAM_INR` (default 2) + `COST_PER_MIN_TELEPHONY_INR` (default
-  0.6) per started minute of the real duration, billed or not. Margin report:
+- **Economics report:** our cost per call follows Sarvam's published rate card
+  (sarvam.ai/products/voice-agents/pricing): `COST_PER_MIN_SARVAM_INR` (default
+  3.5 = pay-as-you-go; 3.25 Pro, 3.15 Growth) per started 60 s of the real
+  duration, plus `COST_PER_MIN_TELEPHONY_INR` (default 0.4 = ₹0.20 per 30 s on a
+  Sarvam / Vobiz number) charged per started 30 s, billed to the owner or not.
+  Only connected calls cost anything. Number rental (₹59 per number per 30 days)
+  is a fixed cost outside the report. Margin report:
   ```bash
   curl -s -H "x-health-key: $HEALTH_CHECK_SECRET" \
     "https://callpilot-backend.dulalkisku0.workers.dev/admin/economics?days=30" | jq
@@ -377,6 +381,10 @@ names each dial sends.
   full in the month it was paid). `wasted_minutes` = minutes we paid Sarvam /
   telephony for that were not billed (voicemail, < 10 s, unanswered with
   duration). Update the cost vars when Sarvam or telephony pricing changes.
+- **Sarvam call slots:** Sarvam caps concurrent calls for the whole organisation
+  by plan (pay-as-you-go 4, Pro 10, Growth 30). `SARVAM_MAX_CONCURRENT_CALLS`
+  (default 4, in `wrangler.toml`) makes manual, speed-to-lead and campaign dials
+  wait for a free slot instead of being rejected. Raise it when the plan changes.
 - **Long calls:** the cron logs `call_over_max_duration` once per call still
   `calling` after `MAX_CALL_MINUTES` (default 8). Sarvam's instant-outbound API
   has no end-call endpoint, so we cannot hang up; tighten the agent's own

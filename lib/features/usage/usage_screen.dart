@@ -217,12 +217,15 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
                         last: !paidPlan,
                       ),
                       if (periodEnd != null)
-                        _Kv(
-                          u.subscription.status.blocksCalling
-                              ? s.paymentDueOn
-                              : s.renewsOn,
-                          s.date(periodEnd.toLocal()),
-                        ),
+                        _Kv(switch (u.subscription.status) {
+                          PlanStatus.pastDue ||
+                          PlanStatus.cancelled => s.paymentDueOn,
+                          // Yearly plans get a new month of minutes on
+                          // their own; nothing else renews by itself.
+                          _ when sub.annual => s.minutesRefillOn,
+                          PlanStatus.trial => s.trialEndsOn,
+                          _ => s.planEndsOn,
+                        }, s.date(periodEnd.toLocal())),
                       if (sub.annual && sub.annualUntil != null)
                         _Kv(
                           s.yearlyPlanUntil,

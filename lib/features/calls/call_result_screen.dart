@@ -213,13 +213,15 @@ class _Result extends ConsumerWidget {
                                     s.temperature(score.temperature),
                                     style: t.headlineSmall,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    s.intent(score.intent),
-                                    style: t.bodyMedium?.copyWith(
-                                      color: AppColors.inkSoft,
+                                  if (intentAddsToTemperature(score)) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      s.intent(score.intent),
+                                      style: t.bodyMedium?.copyWith(
+                                        color: AppColors.inkSoft,
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -517,3 +519,15 @@ class _Detail extends StatelessWidget {
     ),
   );
 }
+
+/// False when the intent only repeats the headline ("Not interested now"
+/// over "Not interested"); true when it adds something, e.g. a hot lead who
+/// is still exploring, or one who asked for a call back.
+bool intentAddsToTemperature(LeadScore score) =>
+    switch ((score.temperature, score.intent)) {
+      (_, LeadIntent.unknown) => false,
+      (LeadTemperature.hot, LeadIntent.interested) => false,
+      (LeadTemperature.warm, LeadIntent.exploring) => false,
+      (LeadTemperature.cold, LeadIntent.notInterested) => false,
+      _ => true,
+    };
