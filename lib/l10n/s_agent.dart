@@ -135,7 +135,12 @@ extension SAgent on S {
   String nUsed(String n) => pick('$n used', '$n इस्तेमाल', '$n ব্যবহার হয়েছে');
   String ofTotal(String n) => pick('of $n', '$n में से', '$n-এর মধ্যে');
   String get callsMade => pick('Calls made', 'कुल कॉल', 'মোট কল');
-  String get renewsOn => pick('Renews on', 'रिन्यू होगा', 'রিনিউ হবে');
+  String get planEndsOn =>
+      pick('Plan ends on', 'प्लान ख़त्म होगा', 'প্ল্যান শেষ হবে');
+  String get trialEndsOn =>
+      pick('Trial ends on', 'ट्रायल ख़त्म होगा', 'ট্রায়াল শেষ হবে');
+  String get minutesRefillOn =>
+      pick('New minutes on', 'नए मिनट मिलेंगे', 'নতুন মিনিট পাবেন');
   String get extraMinutes =>
       pick('Extra minutes', 'अतिरिक्त मिनट', 'অতিরিক্ত মিনিট');
   String perMin(String price) =>

@@ -103,6 +103,7 @@ Tenant-isolated documents stored in Cloudflare R2 and indexed into Sarvam AI.
 |---|---|---|---|
 | `GET` | `/followups?status=ready&call_id=` | - | `{"items": [FollowUp, ...]}` |
 | `GET` | `/followups/:id` | - | `FollowUp` object |
+|  |  |  | `FollowUp`: `{id, lead_id, call_id, lead_name, lead_phone, message, status, call_summary, score_value, opened_at, created_at}`. `call_summary` / `score_value` come from the call the draft was written after (null for drafts without a call, or once retention cleared the summary). |
 | `PATCH` | `/followups/:id` | `{"message"?: "...", "status"?: "opened"|"done"|"dismissed"}` | Updated `FollowUp`. `status=opened` signifies WhatsApp deep link was launched by the user. **Nothing is ever sent automatically on WhatsApp.** |
 | `GET` | `/callbacks` | - | `{"items": [Callback, ...]}` |
 | `POST` | `/callbacks` | `{"lead_id": "...", "scheduled_at": "...", "note"?: "..."}` | Created `Callback` |

@@ -175,7 +175,7 @@ void main() {
       expect(find.text(u.subscription.planName), findsOneWidget);
       expect(find.text('Calls made'), findsOneWidget);
       expect(find.text('Active'), findsOneWidget);
-      expect(find.text('Renews on'), findsOneWidget);
+      expect(find.text('Plan ends on'), findsOneWidget);
       expect(find.text('${Fmt.number(u.minutesUsed)} used'), findsOneWidget);
       expect(find.text('minutes remaining'), findsOneWidget);
 
