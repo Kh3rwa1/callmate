@@ -348,10 +348,14 @@ class ApiCallRepository implements CallRepository {
   );
 
   @override
-  Future<Call> triggerCall(String leadId) => api.post(
-    '/leads/$leadId/call',
-    (d) => Call.fromJson(_j(d is Map && d.containsKey('call') ? d['call'] : d)),
-  );
+  Future<Call> triggerCall(String leadId, {bool consentAttested = false}) =>
+      api.post(
+        '/leads/$leadId/call',
+        (d) => Call.fromJson(
+          _j(d is Map && d.containsKey('call') ? d['call'] : d),
+        ),
+        data: {if (consentAttested) 'consent_attestation': true},
+      );
   @override
   Future<OwnerTestCallInfo> ownerTestCallInfo() =>
       api.get('/agent/test-call', (d) => OwnerTestCallInfo.fromJson(_j(d)));

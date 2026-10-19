@@ -3,8 +3,9 @@
  *
  * Shared by the owner's manual call (POST /leads/:id/call in routes/calls.ts) and the speed-to-lead
  * instant call (services/lead_capture.ts), so both always apply the same rules in the same order:
- * calling hours (TRAI-clamped, lead timezone), do-not-call / opt-out, max 3 calls per lead per day,
- * the per-business concurrency cap, plan status and minutes headroom. Campaign dispatch has its own
+ * calling hours (TRAI-clamped, lead timezone), do-not-call / opt-out, the 7-day enquiry window, max 3
+ * calls per lead per day, the owner's attestation for unknown consent, the per-business concurrency
+ * cap, plan status and minutes headroom. Campaign dispatch has its own
  * claim-based state machine (services/campaign_queue.ts) but uses the same guard functions.
  */
 import { Env } from '../types';
@@ -16,6 +17,7 @@ import { isPlanBlocked, MinuteBalances, MINUTE_BALANCE_COLUMNS } from './plans';
 import { buildCallAgentVariables } from './call_variables';
 import { buildDisclosureOverrides } from './disclosure';
 import { globalDncSecret } from './global_dnc';
+import { recordConsentEventsForLeads, CONSENT_TEXT_VERSIONS } from './consent';
 
 export type PlaceCallOutcome =
   | { ok: true; callId: string; dispatched: boolean; lead: any }
@@ -27,6 +29,7 @@ export type PlaceCallOutcome =
       reschedule: boolean;
       delaySeconds?: number;
     }
+  | { ok: false; code: 'consent_required' }
   | { ok: false; code: 'concurrency_limit' }
   | { ok: false; code: 'plan_blocked' }
   | { ok: false; code: 'exhausted_minutes' }
@@ -39,6 +42,13 @@ export interface PlaceCallParams {
   fallbackBaseUrl?: string | null;
   /** Injectable clock for tests (calling-hours check). */
   now?: Date;
+  /**
+   * The owner confirmed this customer asked to be contacted in the last 7 days or is an existing
+   * customer. Required for leads whose consent is 'unknown' (phone contacts, imports).
+   */
+  consentAttested?: boolean;
+  /** Hashed request IP for the attestation's consent event (services/consent.ts hashIp). */
+  ipHash?: string | null;
 }
 
 /**
@@ -74,6 +84,11 @@ export async function placeLeadCall(env: Env, p: PlaceCallParams): Promise<Place
     };
   }
 
+  // Unknown consent (phone contacts, imports): only on the owner's word for this call, like the
+  // campaign attestation (routes/campaigns.ts). Enquiry and form leads carry their own basis.
+  const needsAttestation = lead.consent === 'unknown';
+  if (needsAttestation && !p.consentAttested) return { ok: false, code: 'consent_required' };
+
   const active = await env.DB.prepare(
     `SELECT COUNT(*) AS cnt FROM calls
      WHERE business_id = ? AND status = 'calling' AND started_at > datetime('now', '-20 minutes')`
@@ -93,6 +108,13 @@ export async function placeLeadCall(env: Env, p: PlaceCallParams): Promise<Place
     INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, status, started_at, created_at)
     VALUES (?, ?, ?, ?, ?, 'calling', datetime('now'), datetime('now'))
   `).bind(callId, businessId, lead.id, lead.name, lead.phone).run();
+
+  if (needsAttestation) {
+    await recordConsentEventsForLeads(env.DB, businessId, [leadId], {
+      source: 'import_attestation', textVersion: CONSENT_TEXT_VERSIONS.callAttestation,
+      consentValue: 'owner_attested', ipHash: p.ipHash ?? null,
+    });
+  }
 
   const markLeadCalling = env.DB.prepare(
     `UPDATE leads SET status = 'calling', updated_at = datetime('now') WHERE id = ? AND business_id = ?`

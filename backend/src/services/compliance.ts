@@ -5,7 +5,8 @@ import { isInGlobalDnc } from './global_dnc';
 
 export interface ComplianceCheckResult {
   allowed: boolean;
-  reason?: 'outside_hours' | 'do_not_call' | 'max_daily_attempts' | 'max_campaign_attempts' | 'platform_frequency_cap';
+  reason?: 'outside_hours' | 'do_not_call' | 'enquiry_expired' | 'max_daily_attempts' | 'max_campaign_attempts'
+    | 'platform_frequency_cap';
   reschedule?: boolean;
   rescheduleDelaySeconds?: number;
 }
@@ -35,6 +36,34 @@ export function clampToTraiWindow(startHour: number, endHour: number): { start: 
  */
 export function allowAnyCallingHours(env: { ENVIRONMENT?: string; DEV_ALLOW_ANY_CALLING_HOURS?: string }): boolean {
   return (env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'test') && env.DEV_ALLOW_ANY_CALLING_HOURS === 'true';
+}
+
+/**
+ * TRAI TCCCPR third amendment (press release 119/2026, 18 Sep 2026): commercial communication based on
+ * a customer's enquiry is allowed only for seven days from that enquiry.
+ */
+export const ENQUIRY_VALID_DAYS = 7;
+
+/** Lead consent values whose basis is the person's own enquiry ('implicit_inquiry' is the old column default). */
+const ENQUIRY_CONSENTS = ['inquiry', 'implicit_inquiry'];
+
+/**
+ * When an enquiry-based lead stops being callable, or null when the lead isn't called on the basis of
+ * an enquiry. Enquiry-based: the lead came in through an enquiry (form, webhook, Google / Meta / IndiaMART:
+ * last_enquiry_at), or the owner marked it 'inquiry' (dated from when it was added). Existing customers
+ * are a separate basis and never expire.
+ */
+export function enquiryCallableUntil(lead: {
+  consent?: string | null;
+  last_enquiry_at?: string | null;
+  created_at?: string | null;
+}): Date | null {
+  if (lead.consent === 'existing_customer') return null;
+  const basis = lead.last_enquiry_at || (ENQUIRY_CONSENTS.includes(lead.consent ?? '') ? lead.created_at : null);
+  if (!basis) return null;
+  // D1 timestamps are UTC without a zone ('2026-10-19 06:30:00').
+  const at = Date.parse(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(basis) ? `${basis.replace(' ', 'T')}Z` : basis);
+  return Number.isNaN(at) ? null : new Date(at + ENQUIRY_VALID_DAYS * 24 * 3600 * 1000);
 }
 
 /** Distinct businesses that may call one phone number in a rolling 24h (platform-wide). */
@@ -146,8 +175,10 @@ export async function checkCallCompliance(
 
   // 2. Fetch Lead DNC status
   const lead = await db.prepare(
-    'SELECT do_not_call, consent, phone FROM leads WHERE id = ? AND business_id = ?'
-  ).bind(params.leadId, params.businessId).first<{ do_not_call: number; consent: string; phone: string }>();
+    'SELECT do_not_call, consent, phone, last_enquiry_at, created_at FROM leads WHERE id = ? AND business_id = ?'
+  ).bind(params.leadId, params.businessId).first<{
+    do_not_call: number; consent: string; phone: string; last_enquiry_at: string | null; created_at: string | null;
+  }>();
 
   if (!lead || lead.do_not_call === 1 || lead.consent === 'opt_out') {
     return {
@@ -166,6 +197,12 @@ export async function checkCallCompliance(
     if (await isInGlobalDnc(db, params.globalDncSecret, lead.phone)) {
       return { allowed: false, reason: 'do_not_call', reschedule: false };
     }
+  }
+
+  // 2c. Enquiry-based leads: only within ENQUIRY_VALID_DAYS of the enquiry. A new enquiry reopens it.
+  const callableUntil = enquiryCallableUntil(lead);
+  if (callableUntil && now.getTime() >= callableUntil.getTime()) {
+    return { allowed: false, reason: 'enquiry_expired', reschedule: false };
   }
 
   // 3. Max Attempts per day check (max 3 calls per day). A dial the provider rejected
@@ -240,10 +277,16 @@ export const OPT_OUT_PATTERNS: RegExp[] = [
   /\b(mujhe|humein|hame)\s+(call|phone)\s+(mat|na|nahi)\b/,
   /\bnumber\s+(hata|hatao|hata do|delete kar do)\b/,
   /\b(band karo|bandh karo)\s+(call|calling|phone)\b/,
+  // Bengali (romanised)
+  /\b(call|phone|fon)\s+(korben|korbe|koro|korbi|diben)\s+na\b/,
+  /\bnumber\s+(muche|sorie|soriye|kete)\s+(din|dao|den)\b/,
   // Hindi (Devanagari)
   /(कॉल|काल|फोन|फ़ोन)\s*(मत|ना|नहीं)\s*(करो|करना|करें|कीजिए)/,
   /(दोबारा|फिर से)\s*(कॉल|फोन|फ़ोन)\s*(मत|ना|नहीं)/,
   /नंबर\s*(हटा|हटाओ|हटा दो|डिलीट)/,
+  // Bengali (script)
+  /(কল|ফোন)\s*(করবেন|করবে|করো|করিস|দেবেন)\s*না/,
+  /(নম্বর|নাম্বার)\s*(মুছে|সরিয়ে|কেটে)\s*(দিন|দাও|দেবেন)/,
 ];
 
 export function normalizeTranscript(s: string): string {
@@ -252,19 +295,24 @@ export function normalizeTranscript(s: string): string {
 
 /**
  * Checks if the caller or call output indicates an opt-out request ("don't call me").
+ * Sarvam's webhook sends the agent's outputs as `final_agent_variables` and the turns as
+ * `interaction_transcript: [{ role: 'agent' | 'user', en_text }]` (English, translated when the call was
+ * in Hindi or Bengali); older and mock payloads use `output_variables` / `transcript` with `text`.
  */
 export function isOptOutRequest(payload: any): boolean {
   if (!payload) return false;
-  const intent = String(payload.intent ?? payload.output_variables?.intent ?? '').toLowerCase();
-  const next = String(payload.next_action ?? payload.output_variables?.next_action ?? '').toLowerCase();
+  const vars = payload.output_variables || payload.output_agent_variables || payload.final_agent_variables || {};
+  const intent = String(payload.intent ?? vars.intent ?? '').toLowerCase();
+  const next = String(payload.next_action ?? vars.next_action ?? '').toLowerCase();
   if (['opt_out', 'dnc', 'do_not_call', 'unsubscribe'].includes(intent)) return true;
   if (['opt_out', 'dnc', 'do_not_call'].includes(next)) return true;
 
-  const t = payload.transcript;
+  const t = payload.transcript || payload.interaction_transcript;
   // Only inspect what the CUSTOMER said, not the agent (avoid "you can say stop calling anytime" false positives)
   const text = Array.isArray(t)
     ? t.filter((x: any) => !['agent', 'assistant', 'bot'].includes(String(x?.role ?? x?.speaker ?? '').toLowerCase()))
-        .map((x: any) => x?.text ?? x?.content ?? x?.message ?? '').join(' ')
+        .flatMap((x: any) => [x?.text, x?.en_text, x?.content, x?.message].filter((v) => typeof v === 'string'))
+        .join(' ')
     : typeof t === 'string' ? t : '';
   const norm = normalizeTranscript(text);
   return OPT_OUT_PATTERNS.some((re) => re.test(norm));

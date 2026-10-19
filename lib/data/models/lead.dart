@@ -70,6 +70,7 @@ class Lead {
     this.language,
     this.consent = 'unknown',
     this.doNotCall = false,
+    this.enquiryExpiresAt,
   });
 
   final String id;
@@ -93,10 +94,18 @@ class Lead {
   final String? language;
   final String consent;
   final bool doNotCall;
+
+  /// Leads called because they enquired: AI calls stop 7 days after the
+  /// enquiry (TRAI). Set by the backend; null when not enquiry-based.
+  final DateTime? enquiryExpiresAt;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   bool get hasConsent => consent != 'unknown' && consent != 'opt_out';
+
+  /// The enquiry is too old for an AI call (the backend refuses it).
+  bool get enquiryExpired =>
+      enquiryExpiresAt != null && !DateTime.now().isBefore(enquiryExpiresAt!);
   LeadTemperature get temperature =>
       score?.temperature ?? LeadTemperature.unknown;
   bool get isHot => temperature == LeadTemperature.hot;
@@ -153,6 +162,7 @@ class Lead {
     language: language ?? this.language,
     consent: consent ?? this.consent,
     doNotCall: doNotCall ?? this.doNotCall,
+    enquiryExpiresAt: enquiryExpiresAt,
     createdAt: createdAt,
     updatedAt: updatedAt ?? DateTime.now(),
   );
@@ -187,6 +197,7 @@ class Lead {
       language: jStrN(j, 'language'),
       consent: jStr(j, 'consent', 'unknown'),
       doNotCall: jBool(j, 'do_not_call'),
+      enquiryExpiresAt: jDate(j, 'enquiry_expires_at'),
       createdAt: jDate(j, 'created_at') ?? DateTime.now(),
       updatedAt: jDate(j, 'updated_at') ?? DateTime.now(),
     );

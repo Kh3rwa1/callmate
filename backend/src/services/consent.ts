@@ -25,8 +25,13 @@ export const CONSENT_TEXT_VERSIONS = {
   manual: 'owner-entry-2026-10',
   /** Owner imports a file / contacts; each row's consent is the owner's statement. */
   import: 'import-2026-10',
-  /** Owner ticks "I have consent to call these customers" when starting a campaign. */
-  campaignAttestation: 'campaign-attestation-2026-10',
+  /**
+   * Owner ticks "these contacts asked to be contacted in the last 7 days, or are existing customers"
+   * when starting a campaign.
+   */
+  campaignAttestation: 'campaign-attestation-2026-10-7d',
+  /** Owner confirms the same for one customer before an AI call ("Call now" on a lead). */
+  callAttestation: 'call-attestation-2026-10-7d',
   /** Opt-out detected in the call (services/compliance.ts isOptOutRequest). */
   inCallOptOut: 'opt-out-detector-v1',
   /** Person ticked the consent box on the hosted enquiry form (routes/lead_capture_public.ts). */

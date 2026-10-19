@@ -34,13 +34,21 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
   Future<void> _start(List<Lead> leads, Agent agent) async {
     final s = context.s;
     final repo = ref.read(campaignRepoProvider);
-    // The backend never calls DNC / opted-out leads, and skips leads with
-    // unknown consent unless the owner attests to it.
-    final blocked = leads
+    // The backend never calls DNC / opted-out leads or enquiries over 7 days
+    // old, and skips leads with unknown consent unless the owner attests.
+    final optedOut = leads
         .where((l) => l.doNotCall || l.consent == 'opt_out')
         .length;
+    final expired = leads
+        .where(
+          (l) => !l.doNotCall && l.consent != 'opt_out' && l.enquiryExpired,
+        )
+        .length;
+    final blocked = optedOut + expired;
     final skippedNoConsent = leads
-        .where((l) => !l.doNotCall && l.consent == 'unknown')
+        .where(
+          (l) => !l.doNotCall && !l.enquiryExpired && l.consent == 'unknown',
+        )
         .length;
     var consentAttestation = false;
     int callable() =>
@@ -89,6 +97,14 @@ class _CampaignSetupScreenState extends ConsumerState<CampaignSetupScreen> {
                       style: t.bodyMedium,
                       textAlign: TextAlign.center,
                     ),
+                    if (expired > 0) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        s.enquiryExpiredSkipped(expired),
+                        style: t.bodySmall,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                     if (skippedNoConsent > 0) ...[
                       const SizedBox(height: 12),
                       AnimatedContainer(

@@ -6,7 +6,8 @@
  *                 |         |
  *                 |         +-> retry_pending -> (re-queued) -> calling ...
  *                 |         +-> failed (attempts exhausted or permanent error)
- *                 +-> rescheduled (outside hours) / skipped_dnc / skipped_invalid / max_attempts_exceeded
+ *                 +-> rescheduled (outside hours) / skipped_dnc / skipped_expired (enquiry over 7 days old)
+ *                     / skipped_invalid / max_attempts_exceeded
  *
  * Retries after an unanswered call: services/call_outcomes.ts (busy / no-answer only, >= 3 h apart).
  *
@@ -254,6 +255,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
     const statusFor: Record<string, string> = {
       outside_hours: 'rescheduled',
       do_not_call: 'skipped_dnc',
+      enquiry_expired: 'skipped_expired',
       max_daily_attempts: 'rescheduled',
       platform_frequency_cap: 'rescheduled',
       max_campaign_attempts: 'max_attempts_exceeded',

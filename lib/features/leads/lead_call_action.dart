@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/motion/motion.dart';
+import '../../core/network/api_client.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/phone.dart';
@@ -33,11 +34,13 @@ Future<bool> handleLeadCall(
         Color bg,
         String title,
         String subtitle,
-        int i,
-      ) => Reveal(
+        int i, {
+        bool enabled = true,
+      }) => Reveal(
         index: i,
         offset: 8,
         child: ListTile(
+          enabled: enabled,
           minTileHeight: 64,
           leading: IconBubble(
             size: 40,
@@ -79,8 +82,9 @@ Future<bool> handleLeadCall(
                 AppColors.brand,
                 AppColors.brandSoft,
                 s.aiCallBy(agentName),
-                s.callsTheirPhone,
+                l.enquiryExpired ? s.enquiryTooOld : s.callsTheirPhone,
                 0,
+                enabled: !l.enquiryExpired,
               ),
               option(
                 'in_app',
@@ -110,10 +114,29 @@ Future<bool> handleLeadCall(
   if (!context.mounted || action == null) return false;
 
   if (action == 'ai_call') {
+    // Unknown consent (phone contacts, imports): the owner's word first.
+    var attested = false;
+    if (l.consent == 'unknown') {
+      attested = await _confirmAskedToBeContacted(context, l, agentName);
+      if (!context.mounted || !attested) return false;
+    }
     final messenger = ScaffoldMessenger.of(context);
     try {
       messenger.showSnackBar(SnackBar(content: Text(s.callingName(l.name))));
-      await ref.read(callRepoProvider).triggerCall(l.id);
+      final calls = ref.read(callRepoProvider);
+      try {
+        await calls.triggerCall(l.id, consentAttested: attested);
+      } on ApiException catch (e) {
+        // Our copy of the lead was stale: the backend wants the confirmation.
+        if (e.code != 'consent_required' || attested) rethrow;
+        messenger.clearSnackBars();
+        if (!context.mounted ||
+            !await _confirmAskedToBeContacted(context, l, agentName)) {
+          return false;
+        }
+        messenger.showSnackBar(SnackBar(content: Text(s.callingName(l.name))));
+        await calls.triggerCall(l.id, consentAttested: true);
+      }
       ref.invalidate(leadCallsProvider(l.id));
       ref.read(dataVersionProvider.notifier).bump();
       Haptics.success();
@@ -124,9 +147,12 @@ Future<bool> handleLeadCall(
         );
       return true;
     } catch (e) {
+      final message = e is ApiException && e.code == 'enquiry_expired'
+          ? s.enquiryExpiredCall
+          : friendlyError(e, s);
       messenger
         ..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text(friendlyError(e, s))));
+        ..showSnackBar(SnackBar(content: Text(message)));
     }
   } else if (action == 'in_app') {
     context.push('/voice-test');
@@ -135,4 +161,34 @@ Future<bool> handleLeadCall(
     if (d != null) launchUrl(Uri.parse('tel:+$d'));
   }
   return false;
+}
+
+/// TRAI: an AI call needs a basis. For a lead with unknown consent the owner
+/// confirms the customer asked to be contacted in the last 7 days or is
+/// already a customer; the backend records it.
+Future<bool> _confirmAskedToBeContacted(
+  BuildContext context,
+  Lead l,
+  String agentName,
+) async {
+  final s = context.s;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (c) => AlertDialog(
+      title: Text(s.askedToBeContacted(l.firstName)),
+      content: Text(s.callAttestBody(agentName)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(c, false),
+          child: Text(s.cancel),
+        ),
+        TextButton(
+          key: const Key('lead-call-confirm-consent'),
+          onPressed: () => Navigator.pop(c, true),
+          child: Text(s.yesCallThem),
+        ),
+      ],
+    ),
+  );
+  return ok == true;
 }

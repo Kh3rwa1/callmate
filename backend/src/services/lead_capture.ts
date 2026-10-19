@@ -363,6 +363,9 @@ export async function processInstantCallJob(
       if (placed.reason === 'do_not_call') await notifyOnce('not_called_dnc');
       // max_daily_attempts: the lead was just called repeatedly; one more enquiry doesn't add a 4th call.
       return { action: 'ack', reason: placed.reason };
+    case 'consent_required':
+      // Enquiry leads are explicit_opt_in, so this shouldn't happen; never dial without a basis.
+      return { action: 'ack', reason: 'consent_required' };
     case 'concurrency_limit':
       return {
         action: 'requeue',

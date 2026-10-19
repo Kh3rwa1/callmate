@@ -249,9 +249,17 @@ async function run() {
     'wrangler', 'd1', 'execute', 'callpilot-db', '--local',
     '--command', `UPDATE agents SET calling_hours_start = 0, calling_hours_end = 24 WHERE id = '${traiHours.data.id}'`,
   ], { stdio: 'ignore' });
+  // Consent unknown: the owner must confirm the customer asked to be contacted.
+  const unconfirmed = await req(`/leads/${singleLead.data.id}/call`, {
+    method: 'POST',
+    headers: authHeader,
+  });
+  assert.strictEqual(unconfirmed.status, 409);
+  assert.strictEqual(unconfirmed.data.code, 'consent_required');
   const triggerRes = await req(`/leads/${singleLead.data.id}/call`, {
     method: 'POST',
     headers: authHeader,
+    body: JSON.stringify({ consent_attestation: true }),
   });
   assert.strictEqual(triggerRes.status, 200);
   assert.ok(triggerRes.data.call?.id);

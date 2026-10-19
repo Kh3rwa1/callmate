@@ -724,9 +724,9 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
     // 4. Only create FollowUp when finalStatus is a connected status
     const isConnected = ['completed', 'connected', 'answered', 'ended'].includes(finalStatus);
     // Without the agent's own message, the business's playbook template for this outcome is the
-    // draft (services/playbooks.ts). A lead who opted out gets no default draft.
+    // draft (services/playbooks.ts). A lead who opted out gets no draft at all, not even the agent's.
     const aiMessage = typeof outputVars.whatsapp_message === 'string' ? outputVars.whatsapp_message.trim() : '';
-    if (isConnected && (aiMessage || (norm.whatsapp_followup_required && !optOutRequested))) {
+    if (isConnected && !optOutRequested && (aiMessage || norm.whatsapp_followup_required)) {
       followUpId = `fu_${crypto.randomUUID().slice(0, 12)}`;
       const msg = aiMessage || await defaultFollowupDraft(c.env.DB, businessId, {
         leadName: lead?.name || call.lead_name,
