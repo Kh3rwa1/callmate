@@ -158,8 +158,8 @@ extension SAgent on S {
   String get changePlan => pick('Change plan', 'प्लान बदलें', 'প্ল্যান বদলান');
   String get billingMonthly => pick('Monthly', 'मासिक', 'মাসিক');
   String get billingYearly => pick('Yearly', 'सालाना', 'বার্ষিক');
-  String get twoMonthsFree =>
-      pick('2 months free', '2 महीने मुफ़्त', '2 মাস ফ্রি');
+  String get oneMonthFree =>
+      pick('1 month free', '1 महीना मुफ़्त', '1 মাস ফ্রি');
   String minutesPerMonth(String n) =>
       pick('$n minutes / month', '$n मिनट / महीना', '$n মিনিট / মাস');
   String pricePerMonth(String price) =>

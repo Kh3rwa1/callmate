@@ -1,14 +1,19 @@
 /**
  * Unit economics: what each call costs us, the long-call watchdog and the admin margin report.
  *
- * Cost model (estimate, set per environment): every started minute of a call that actually rang
- * through costs COST_PER_MIN_SARVAM_INR + COST_PER_MIN_TELEPHONY_INR, whether or not the owner is
- * billed for it. Rounded up to whole minutes, which is conservative for margin.
+ * Cost model (set per environment), from Sarvam's published Voice Agents rate card
+ * (sarvam.ai/products/voice-agents/pricing, Oct 2026), whether or not the owner is billed for the call:
+ *  - agent: COST_PER_MIN_SARVAM_INR per 60-second pulse, rounded up (₹3.50 pay-as-you-go, ₹3.25 Pro,
+ *    ₹3.15 Growth; set the plan you are on);
+ *  - telephony on a Sarvam (Vobiz) number: COST_PER_MIN_TELEPHONY_INR per minute, billed as half of it
+ *    per 30-second pulse, rounded up (₹0.20 a pulse).
+ * Only connected calls cost anything; unanswered, busy and failed dials are free. Number rental
+ * (₹59 per number per 30 days) is a fixed cost and not in here.
  */
 import { Env } from '../types';
 
-export const DEFAULT_COST_PER_MIN_SARVAM_INR = 2;
-export const DEFAULT_COST_PER_MIN_TELEPHONY_INR = 0.6;
+export const DEFAULT_COST_PER_MIN_SARVAM_INR = 3.5;
+export const DEFAULT_COST_PER_MIN_TELEPHONY_INR = 0.4;
 export const DEFAULT_MAX_CALL_MINUTES = 8;
 
 function numVar(raw: string | undefined, fallback: number, min = 0): number {
@@ -35,10 +40,11 @@ export function callDurationSeconds(raw: unknown): number {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Our cost of a call of `seconds`, in INR (2 decimals). */
+/** Our cost of a call of `seconds`, in INR (2 decimals): agent per 60-second pulse, telephony per 30. */
 export function callCostInr(env: Pick<Env, 'COST_PER_MIN_SARVAM_INR' | 'COST_PER_MIN_TELEPHONY_INR'>, seconds: number): number {
   if (!(seconds > 0)) return 0;
-  return round2(Math.ceil(seconds / 60) * costRates(env).total);
+  const { sarvam, telephony } = costRates(env);
+  return round2(Math.ceil(seconds / 60) * sarvam + Math.ceil(seconds / 30) * (telephony / 2));
 }
 
 // ------------------------------------------------------------------ long-call watchdog

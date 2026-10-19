@@ -47,6 +47,25 @@ export interface ProcessResult {
 export const MAX_DIAL_ATTEMPTS = 3;
 export const MAX_CONCURRENT_CALLS_PER_BUSINESS = 5;
 /**
+ * Sarvam limits concurrent calls across the whole organisation by plan: 4 on pay-as-you-go, 10 Pro,
+ * 30 Growth, 120 Business. A dial past the limit is rejected, so every dial path waits for a free
+ * slot instead. Set SARVAM_MAX_CONCURRENT_CALLS to the plan's limit.
+ */
+export const DEFAULT_SARVAM_MAX_CONCURRENT_CALLS = 4;
+
+export function sarvamMaxConcurrentCalls(env: Pick<Env, 'SARVAM_MAX_CONCURRENT_CALLS'>): number {
+  const n = Number.parseInt(String(env.SARVAM_MAX_CONCURRENT_CALLS ?? ''), 10);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_SARVAM_MAX_CONCURRENT_CALLS;
+}
+
+/** True when every Sarvam call slot (all businesses together) is taken by a call in progress. */
+export async function sarvamSlotsFull(env: Pick<Env, 'DB' | 'SARVAM_MAX_CONCURRENT_CALLS'>): Promise<boolean> {
+  const row = await env.DB.prepare(
+    `SELECT COUNT(*) AS cnt FROM calls WHERE status = 'calling' AND started_at > datetime('now', '-20 minutes')`
+  ).first<{ cnt: number }>();
+  return (row?.cnt ?? 0) >= sarvamMaxConcurrentCalls(env);
+}
+/**
  * Minutes held back for every call that is (or is about to be) in progress. Usage is only billed when
  * a call ends, so a new dial needs room for itself plus every call still running.
  */
@@ -224,7 +243,7 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
     `SELECT COUNT(*) AS cnt FROM calls
      WHERE business_id = ? AND status = 'calling' AND started_at > datetime('now', '-20 minutes')`
   ).bind(business_id).first<{ cnt: number }>();
-  if ((active?.cnt ?? 0) >= MAX_CONCURRENT_CALLS_PER_BUSINESS) {
+  if ((active?.cnt ?? 0) >= MAX_CONCURRENT_CALLS_PER_BUSINESS || await sarvamSlotsFull(env)) {
     return { success: false, retry: true, requeue: true, delaySeconds: 15 + Math.floor(Math.random() * 15), reason: 'concurrency_limit' };
   }
 

@@ -111,7 +111,8 @@ dashApp.get('/usage', async (c) => {
     gst_rate: billing.gst_rate,
     minutes_used: row.minutes_used || 0,
     calls_made: row.calls_made || 0,
-    rate_per_minute_inr: row.rate_per_minute_inr || 6,
+    // Today's price of extra minutes; rows store the rate from signup, which may be out of date.
+    rate_per_minute_inr: RATE_PER_MINUTE_INR,
   });
 });
 

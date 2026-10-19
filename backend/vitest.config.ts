@@ -24,6 +24,8 @@ export default defineConfig({
           ENCRYPTION_KEY: 'test-encryption-key-32chars-min-length',
           // Tests seed 0-24 calling windows so they pass at any time of day; skips only the TRAI clamp.
           DEV_ALLOW_ANY_CALLING_HOURS: 'true',
+          // Tests share one D1 per file and leave calls 'calling'; the Sarvam-wide slot limit has its own test.
+          SARVAM_MAX_CONCURRENT_CALLS: '1000',
         },
       },
     }),
