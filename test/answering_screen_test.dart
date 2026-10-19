@@ -75,14 +75,17 @@ void main() {
   appTest(
     'choosing who answers shows the line and the codes for the network',
     (h) async {
-      // Settings row on the Agent tab says who answers today.
+      // One row on the Agent tab: the number; forwarding lives inside it.
       await h.tester.scrollUntilVisible(
-        find.byKey(const Key('agent-answering')),
+        find.byKey(const Key('agent-business-number')),
         300,
         scrollable: find.byType(Scrollable).first,
       );
       await h.settle();
-      await h.tap(find.byKey(const Key('agent-answering')));
+      expect(find.byKey(const Key('agent-answering')), findsNothing);
+      await h.tap(find.byKey(const Key('agent-business-number')));
+      expect(h.location, '/agent/number');
+      await h.tap(find.byKey(const Key('number-forward-own-phone')));
       expect(h.location, '/agent/answering');
 
       // Every call → the AI.
@@ -130,22 +133,33 @@ void main() {
   }, location: '/agent/answering');
 
   group('business number', () {
-    appTest('Starter: explains it and opens the plans on Growth, highlighted', (
-      h,
-    ) async {
-      expect(find.text('One number for your business'), findsOneWidget);
-      await h.tap(find.byKey(const Key('number-upgrade')));
-      expect(find.text('Choose a plan'), findsOneWidget);
-      // Growth is preselected and says what sets it apart.
-      expect(find.text('Pay ₹14,159'), findsOneWidget);
-      expect(find.text('Premium'), findsOneWidget);
-      expect(find.byKey(const ValueKey('plan-number-growth')), findsOneWidget);
-      expect(find.text('Your own business number'), findsOneWidget);
-      expect(find.text('Calls from shared CallPilot numbers'), findsOneWidget);
-    }, location: '/agent/number');
+    appTest(
+      'free trial: explains it and opens the plans, which all include it',
+      (h) async {
+        expect(find.text('One number for your business'), findsOneWidget);
+        expect(find.text('Pick your number'), findsNothing);
+        await h.tap(find.byKey(const Key('number-upgrade')));
+        expect(find.text('Choose a plan'), findsOneWidget);
+        expect(find.byKey(const Key('plans-include-number')), findsOneWidget);
+        expect(
+          find.text('Every plan includes your own business number'),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('plan-number-starter')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('plan-number-growth')),
+          findsOneWidget,
+        );
+      },
+      location: '/agent/number',
+      backend: () => MockBackend()..simulatePlanState(PlanStatus.trial),
+    );
 
     appTest(
-      'Growth: pick a specific number once, then it is the business number',
+      'Starter: pick a specific number once, then it is the business number',
       (h) async {
         expect(find.text('Pick your number'), findsOneWidget);
         // Nothing picked yet: can't rent.
@@ -162,12 +176,34 @@ void main() {
         expect(find.byKey(const Key('business-number')), findsOneWidget);
         expect(find.text('+91 79714 40003'), findsOneWidget);
         expect(find.text('Pick your number'), findsNothing);
-        // Who answers now works on this number.
-        await h.tapText('Who answers my calls');
+        // Forwarding the owner's own phone now works on this number.
+        await h.tap(find.byKey(const Key('number-forward-own-phone')));
         expect(find.byKey(const Key('answer-mode-ai')), findsOneWidget);
       },
       location: '/agent/number',
-      backend: () => MockBackend()..simulatePlanPayment(planId: 'growth'),
+      backend: () => MockBackend()..simulatePlanPayment(),
+    );
+
+    appTest(
+      'none free: the owner requests one and is told it is on its way',
+      (h) async {
+        expect(find.text('Pick your number'), findsNothing);
+        expect(
+          find.text(
+            'All our numbers are taken right now. Ask for yours and we set it up for you.',
+          ),
+          findsOneWidget,
+        );
+        await h.tap(find.byKey(const Key('number-request')));
+        expect(h.backend.businessNumberRequested, isTrue);
+        expect(find.byKey(const Key('number-requested')), findsOneWidget);
+        expect(find.text('Your number is on its way'), findsOneWidget);
+        expect(find.byKey(const Key('number-request')), findsNothing);
+      },
+      location: '/agent/number',
+      backend: () => MockBackend()
+        ..simulatePlanPayment()
+        ..businessNumbersSoldOut = true,
     );
 
     appTest(
@@ -176,7 +212,10 @@ void main() {
         expect(find.text('+91 79714 40001'), findsOneWidget);
         expect(find.text('On hold'), findsOneWidget);
         expect(find.byKey(const Key('number-held-forwarding')), findsOneWidget);
-        expect(find.text('Renew Growth to keep your number'), findsOneWidget);
+        expect(
+          find.text('Renew your plan to keep your number'),
+          findsOneWidget,
+        );
         // Who answers can't forward to a held number.
         await h.go('/agent/answering');
         expect(find.byKey(const Key('answering-needs-number')), findsOneWidget);

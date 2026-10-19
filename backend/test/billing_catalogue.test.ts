@@ -101,7 +101,7 @@ describe('Plan catalogue, GST and top-ups', () => {
       // Growth (monthly and yearly) includes the business's own number; Starter and top-ups don't.
       const items = Object.values(PRODUCTS).map((p) => catalogueItem(p, {}));
       expect(Object.fromEntries(items.map((i) => [i.plan_id, i.business_number]))).toEqual({
-        starter: false, growth: true, starter_annual: false, growth_annual: true, topup_250: false, topup_1000: false,
+        starter: true, growth: true, starter_annual: true, growth_annual: true, topup_250: false, topup_1000: false,
       });
 
       expect(gstRate({})).toBe(0.18);

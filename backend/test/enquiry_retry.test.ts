@@ -17,6 +17,11 @@ function queueEnv() {
   return { e, sent };
 }
 
+/** D1 time on the faked clock: SQL datetime('now') is the real one, and after noon IST it is later. */
+function minutesAgo(m: number): string {
+  return new Date(Date.now() - m * 60_000).toISOString().slice(0, 19).replace('T', ' ');
+}
+
 async function seedEnquiry(opts: { autoCall?: number } = {}): Promise<{ leadId: string; sourceId: string }> {
   const n = ++seq;
   const sourceId = `lsrc_retry_${n}`;
@@ -27,8 +32,8 @@ async function seedEnquiry(opts: { autoCall?: number } = {}): Promise<{ leadId: 
     ).bind(sourceId, bizId, `slug_retry_${n}_${crypto.randomUUID().slice(0, 6)}`, opts.autoCall ?? 1),
     env.DB.prepare(
       `INSERT INTO leads (id, business_id, name, phone, status, consent, lead_source_id, last_enquiry_at)
-       VALUES (?, ?, 'Priya Das', ?, 'new', 'explicit_opt_in', ?, datetime('now', '-10 minutes'))`
-    ).bind(leadId, bizId, `9198300900${String(n).padStart(2, '0')}`, sourceId),
+       VALUES (?, ?, 'Priya Das', ?, 'new', 'explicit_opt_in', ?, ?)`
+    ).bind(leadId, bizId, `9198300900${String(n).padStart(2, '0')}`, sourceId, minutesAgo(10)),
   ]);
   return { leadId, sourceId };
 }
@@ -37,8 +42,8 @@ async function seedCall(leadId: string, opts: { campaignId?: string } = {}): Pro
   const id = `call_retry_${++seq}`;
   await env.DB.prepare(
     `INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, campaign_id, status, interaction_id, started_at)
-     VALUES (?, ?, ?, 'Priya Das', '919830090000', ?, 'calling', ?, datetime('now', '-1 minutes'))`
-  ).bind(id, bizId, leadId, opts.campaignId ?? null, `att_${id}`).run();
+     VALUES (?, ?, ?, 'Priya Das', '919830090000', ?, 'calling', ?, ?)`
+  ).bind(id, bizId, leadId, opts.campaignId ?? null, `att_${id}`, minutesAgo(1)).run();
   return id;
 }
 

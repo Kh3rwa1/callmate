@@ -179,7 +179,10 @@ enum NotificationType {
   newLead('new_lead'),
 
   /// The AI answered a call the owner missed.
-  inboundCall('inbound_call');
+  inboundCall('inbound_call'),
+
+  /// The number the business asked for is ready.
+  businessNumber('business_number');
 
   const NotificationType(this.wire);
   final String wire;

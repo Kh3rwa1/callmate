@@ -52,8 +52,14 @@ class MockBackend implements BackendEvents {
   final List<ActivityItem> activity = [];
   int _id = 1000;
 
-  /// Demo: the business's own number once rented (Growth).
+  /// Demo: the business's own number once rented (paid plans).
   String? businessNumber;
+
+  /// Demo: every number is taken, so the owner requests one.
+  bool businessNumbersSoldOut = false;
+
+  /// Demo: the owner asked for a number while none was free.
+  bool businessNumberRequested = false;
   Timer? _campaignTimer;
 
   String _nextId(String p) => '${p}_${_id++}';
@@ -845,6 +851,16 @@ class MockBackend implements BackendEvents {
           createdAt: DateTime.now(),
         );
       }(),
+      NotificationType.businessNumber => AppNotification(
+        id: _nextId('n'),
+        type: type,
+        title: 'Your business number is ready',
+        body:
+            '${businessNumber ?? '+91 79714 40002'} is yours now. Your AI calls customers from it and answers it.',
+        route: '/agent/number',
+        actionLabel: 'View',
+        createdAt: DateTime.now(),
+      ),
     };
     notifications.insert(0, n);
     _events.add(NotificationEvent(n));

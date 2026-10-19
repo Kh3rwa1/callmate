@@ -122,6 +122,10 @@ abstract class CallRepository {
 
   /// `POST /business-number` – rent [phone] (E.164) as the business number.
   Future<BusinessNumberInfo> rentNumber(String phone);
+
+  /// `POST /business-number/request` – none is free: ask for one. It is
+  /// given to the business as soon as one is added, with a notification.
+  Future<BusinessNumberInfo> requestNumber();
 }
 
 enum CallFilter { all, connected, noAnswer, hot }

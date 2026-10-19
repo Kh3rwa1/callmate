@@ -385,21 +385,26 @@ names each dial sends.
   by plan (pay-as-you-go 4, Pro 10, Growth 30). `SARVAM_MAX_CONCURRENT_CALLS`
   (default 4, in `wrangler.toml`) makes manual, speed-to-lead and campaign dials
   wait for a free slot instead of being rejected. Raise it when the plan changes.
-- **Business numbers (Growth):** each Growth business rents one number from
-  `SARVAM_INBOUND_NUMBERS` (picked once in the app, `POST /business-number`).
-  It is the caller ID of all its AI calls and the line its AI answers
-  (`docs/SARVAM_SETUP.md`). The cron holds the number of a business whose plan
-  lapsed or dropped to Starter for 30 days (Sarvam deployment paused, calls go
-  out from the shared `SARVAM_AGENT_PHONE_NUMBERS`), restores it when Growth is
-  paid again, and returns it to the pool when the hold ends or the account is
-  deleted. Each pool number costs ₹59 per 30 days whether rented or not, so
-  keep a few more than the Growth businesses:
+- **Business numbers (every paid plan):** each Starter or Growth business
+  rents one number from `SARVAM_BUSINESS_NUMBERS` (picked once in the app,
+  `POST /business-number`). It is the caller ID of all its AI calls and the
+  line its AI answers (`docs/SARVAM_SETUP.md`); trial businesses call from the
+  shared `SARVAM_AGENT_PHONE_NUMBERS`. The cron holds the number of a business
+  whose plan lapsed for 30 days (Sarvam deployment paused, calls go out from
+  the shared numbers), restores it when the plan is paid again, and returns
+  it to the pool when the hold ends or the account is deleted. Each pool
+  number costs ₹59 per 30 days whether rented or not, so keep a few more than
+  the paying businesses:
   ```bash
   npx wrangler d1 execute callpilot-db --remote --command="
     SELECT status, COUNT(*) FROM business_numbers GROUP BY status;"
   ```
-  No free numbers left: the picker says so; rent more on the same Sarvam
-  connection, add them to `SARVAM_INBOUND_NUMBERS`, redeploy.
+  No free numbers left: paying owners tap **Request my number** and the ops
+  alert `business_numbers_requested` fires (every 12 h while anyone waits).
+  Buy a number in Sarvam (Deploy → Phone Numbers → Sarvam Vobiz → Buy), give
+  it its answering agent and add `+91…=<agent id>:<version>` to
+  `SARVAM_BUSINESS_NUMBERS` (docs/SARVAM_SETUP.md), redeploy: the cron hands
+  it to the longest-waiting business and notifies the owner.
   **Changing a business's number** (support only, the app doesn't offer it):
   `UPDATE business_numbers SET business_id = NULL, status = 'held',
   held_until = datetime('now') WHERE business_id = 'biz_xxx';` — the owner can

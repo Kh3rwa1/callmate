@@ -9,7 +9,7 @@ import { deleteR2Prefix } from '../utils/r2';
 import { hitRateLimit } from '../utils/rate_limit';
 import { timingSafeEqual } from '../utils/compare';
 import { recordReferral, referralDeletionStatements } from '../services/referrals';
-import { businessNumberDeletionStatement } from '../services/business_numbers';
+import { businessNumberDeletionStatements } from '../services/business_numbers';
 import { claimTrialMinutes, rememberTrialIdentities, anonymisedBusinessId, getPlan, RATE_PER_MINUTE_INR } from '../services/plans';
 
 const authApp = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -438,7 +438,7 @@ authApp.delete('/account', authMiddleware, async (c) => {
     ...rememberTrial,
     c.env.DB.prepare('UPDATE usage_ledger SET business_id = ? WHERE business_id = ?').bind(anonId, businessId),
     ...referralDeletionStatements(c.env, businessId, anonId),
-    businessNumberDeletionStatement(c.env.DB, businessId),
+    ...businessNumberDeletionStatements(c.env.DB, businessId),
     c.env.DB.prepare(
       `UPDATE payments SET business_id = ?, contact_email = NULL, contact_phone = NULL, anonymized_at = datetime('now')
        WHERE business_id = ?`

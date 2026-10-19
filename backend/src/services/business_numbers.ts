@@ -1,18 +1,27 @@
 /**
  * Business numbers: one fixed phone number per business, rented from the pool we rent in Sarvam
- * (SARVAM_INBOUND_NUMBERS, ₹59 per number per 30 days). Included with the Growth plan.
+ * (SARVAM_BUSINESS_NUMBERS, ₹59 per number per 30 days). Included in every paid plan; not in the trial.
  *
  * - The owner picks a specific free number once; it never rotates or changes on its own.
  * - It is the caller ID of every AI call the business makes (dial.ts, campaign_queue.ts), so customers
  *   always see the same number, and it is the line the AI answers (a Sarvam inbound deployment), so
  *   calling it back reaches the business.
- * - If the plan lapses or drops to one without a number, the number is held for NUMBER_HOLD_DAYS (the
+ * - If the plan lapses, the number is held for NUMBER_HOLD_DAYS (the
  *   deployment paused, calls go out from the shared pool) and comes back the moment the plan does.
  *   After that it returns to the pool for someone else.
+ * - On request: with no free number, the business asks for one (number_requests). Numbers can only
+ *   be bought in the Sarvam dashboard, so the operator is alerted (alerts.ts); the cron gives the next
+ *   number added to the longest-waiting business and tells the owner.
+ *
+ * Each number is answered by its own Sarvam agent: the agent's on-start hook can't see which number
+ * was dialled, so each number's agent calls /voice/inbound/start?number=<it>. SARVAM_BUSINESS_NUMBERS
+ * entries are "+917971443028=<agent id>:<version>"; a bare number uses SARVAM_INBOUND_APP_ID.
  */
 import { Env } from '../types';
 import { isMockSarvam } from '../utils/secrets';
 import { hmacHex, BUSINESS_NUMBER_PLANS } from './plans';
+import { ownerLanguage } from './owner_text';
+import { sendBusinessPushNotification } from './fcm';
 
 export { BUSINESS_NUMBER_PLANS };
 
@@ -46,20 +55,49 @@ export function e164(raw: unknown): string | null {
 /** Demo numbers when developing without a pool (mock Sarvam only). */
 const MOCK_POOL = Array.from({ length: 8 }, (_, i) => `+9179714400${String(i + 1).padStart(2, '0')}`);
 
-/** The numbers rented for businesses (SARVAM_INBOUND_NUMBERS), in E.164. */
-export function poolNumbers(env: Pick<Env, 'SARVAM_INBOUND_NUMBERS' | 'ENVIRONMENT' | 'SARVAM_API_KEY'>): string[] {
-  const configured = [...new Set((env.SARVAM_INBOUND_NUMBERS || '').split(',').map(e164).filter((n): n is string => !!n))];
-  return configured.length === 0 && isMockSarvam(env) ? MOCK_POOL : configured;
+type PoolEnv = Pick<Env, 'SARVAM_BUSINESS_NUMBERS' | 'SARVAM_INBOUND_APP_ID' | 'SARVAM_INBOUND_APP_VERSION' | 'ENVIRONMENT' | 'SARVAM_API_KEY'>;
+
+/** One SARVAM_BUSINESS_NUMBERS entry: the number and the agent that answers it (null: none configured). */
+export interface PoolEntry {
+  phone: string;
+  agent: { appId: string; version: number } | null;
 }
 
-/** True when business numbers can be offered: the answering agent and a pool are configured (or mock). */
+/** SARVAM_BUSINESS_NUMBERS parsed: "+917971443028=<agent id>:<version>" or a bare number (default agent). */
+export function poolEntries(env: PoolEnv): PoolEntry[] {
+  const fallback = env.SARVAM_INBOUND_APP_ID && Number(env.SARVAM_INBOUND_APP_VERSION) > 0
+    ? { appId: env.SARVAM_INBOUND_APP_ID, version: Number(env.SARVAM_INBOUND_APP_VERSION) } : null;
+  const seen = new Set<string>();
+  const entries: PoolEntry[] = [];
+  for (const raw of (env.SARVAM_BUSINESS_NUMBERS || '').split(',')) {
+    const [num, agentPart] = raw.split('=');
+    const phone = e164(num);
+    if (!phone || seen.has(phone)) continue;
+    seen.add(phone);
+    const m = /^\s*([^:\s]+):(\d+)\s*$/.exec(agentPart ?? '');
+    entries.push({ phone, agent: m ? { appId: m[1], version: Number(m[2]) } : fallback });
+  }
+  if (entries.length === 0 && isMockSarvam(env)) {
+    return MOCK_POOL.map((phone) => ({ phone, agent: { appId: 'mock-receptionist', version: 1 } }));
+  }
+  return entries;
+}
+
+/** The numbers that can be given to businesses: in the pool and answered by an agent. */
+export function poolNumbers(env: PoolEnv): string[] {
+  return poolEntries(env).filter((e) => e.agent).map((e) => e.phone);
+}
+
+/**
+ * True when business numbers can be offered or requested: Sarvam is configured (or mock). The pool
+ * may be empty; then paying businesses request one and the operator adds it.
+ */
 export function numbersConfigured(env: Env): boolean {
   if (isMockSarvam(env)) return true;
-  return !!(env.SARVAM_INBOUND_APP_ID && Number(env.SARVAM_INBOUND_APP_VERSION) > 0
-    && env.SARVAM_ORG_ID && env.SARVAM_WORKSPACE_ID && env.SARVAM_CONNECTION_ID && poolNumbers(env).length);
+  return !!(env.SARVAM_API_KEY && env.SARVAM_ORG_ID && env.SARVAM_WORKSPACE_ID && env.SARVAM_CONNECTION_ID);
 }
 
-/** True when the business's current plan includes a number (an active Growth plan). */
+/** True when the business's current plan includes a number (an active paid plan). */
 export async function numberEntitled(db: D1Database, businessId: string): Promise<boolean> {
   const u = await db.prepare('SELECT plan_id, plan_status FROM usage WHERE business_id = ?')
     .bind(businessId).first<{ plan_id: string | null; plan_status: string | null }>();
@@ -99,6 +137,15 @@ export async function availableNumbers(env: Env, limit = PICKER_SIZE): Promise<s
 
 // ------------------------------------------------------------------ Sarvam deployments
 
+/**
+ * On-start hook URL token for one number's agent: HMAC(INBOUND_HOOK_SECRET, "hook:<number>"). Sarvam
+ * only attaches stored secrets to allow-listed URLs, so each agent's hook URL carries this instead
+ * (scripts/hook_url.mjs prints it).
+ */
+export function inboundHookToken(secret: string, phone: string): Promise<string> {
+  return hmacHex(secret, `hook:${phone}`);
+}
+
 /** Webhook URL token for one number: HMAC(SARVAM_WEBHOOK_SECRET, "inbound:<number>"). */
 export function inboundWebhookToken(secret: string, phone: string): Promise<string> {
   // Same HMAC-SHA256 hex as the per-call token (campaign_queue.ts sarvamWebhookToken).
@@ -114,15 +161,17 @@ export type DeploymentResult = { ok: true; deploymentId: string } | { ok: false;
 export async function createDeployment(env: Env, businessId: string, phone: string, webhookBaseUrl: string): Promise<DeploymentResult> {
   if (isMockSarvam(env)) return { ok: true, deploymentId: `mock_dep_${phone.replace(/\D/g, '')}` };
   const secret = env.SARVAM_WEBHOOK_SECRET;
-  if (!secret || !env.SARVAM_API_KEY || !numbersConfigured(env)) return { ok: false, error: 'sarvam_not_configured' };
+  const agent = poolEntries(env).find((e) => e.phone === phone)?.agent;
+  const apiKey = env.SARVAM_API_KEY;
+  if (!secret || !apiKey || !agent || !numbersConfigured(env)) return { ok: false, error: 'sarvam_not_configured' };
   const token = await inboundWebhookToken(secret, phone);
   const res = await fetch(deploymentsUrl(env), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-API-Key': env.SARVAM_API_KEY },
+    headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
     body: JSON.stringify({
       name: `CallPilot ${phone.replace(/\D/g, '')}`.slice(0, 50),
-      app_id: env.SARVAM_INBOUND_APP_ID,
-      app_version: Number(env.SARVAM_INBOUND_APP_VERSION),
+      app_id: agent.appId,
+      app_version: agent.version,
       // The reference types say agent_phone_number, its example phone_numbers: send both.
       connection_configs: [{ connection_id: env.SARVAM_CONNECTION_ID, agent_phone_number: phone, phone_numbers: [phone] }],
       description: `Business number of ${businessId}`.slice(0, 150),
@@ -221,19 +270,101 @@ export async function restoreNumberIfEntitled(env: Env, businessId: string): Pro
 /**
  * Account deletion: the number leaves the business at once (no business id kept, its calls are no
  * longer recorded) and the next cron run deletes its Sarvam deployment and puts it back in the pool.
+ * A waiting request goes too.
  */
-export function businessNumberDeletionStatement(db: D1Database, businessId: string): D1PreparedStatement {
-  return db.prepare(
-    "UPDATE business_numbers SET business_id = NULL, status = 'held', held_until = datetime('now') WHERE business_id = ?"
-  ).bind(businessId);
+export function businessNumberDeletionStatements(db: D1Database, businessId: string): D1PreparedStatement[] {
+  return [
+    db.prepare(
+      "UPDATE business_numbers SET business_id = NULL, status = 'held', held_until = datetime('now') WHERE business_id = ?"
+    ).bind(businessId),
+    db.prepare('DELETE FROM number_requests WHERE business_id = ?').bind(businessId),
+  ];
+}
+
+// ------------------------------------------------------------------ on request
+
+export type RequestResult =
+  | { ok: true }
+  | { ok: false; code: 'not_configured' | 'not_entitled' | 'already_has_number' };
+
+/** A paying business asks for a number while none is free. Idempotent. */
+export async function requestNumber(env: Env, businessId: string): Promise<RequestResult> {
+  if (!numbersConfigured(env)) return { ok: false, code: 'not_configured' };
+  if (!(await numberEntitled(env.DB, businessId))) return { ok: false, code: 'not_entitled' };
+  if (await businessNumberFor(env.DB, businessId)) return { ok: false, code: 'already_has_number' };
+  await env.DB.prepare('INSERT OR IGNORE INTO number_requests (business_id) VALUES (?)').bind(businessId).run();
+  console.log(JSON.stringify({ msg: 'business_number_requested', business_id: businessId }));
+  return { ok: true };
+}
+
+export async function numberRequested(db: D1Database, businessId: string): Promise<boolean> {
+  return !!(await db.prepare('SELECT 1 AS x FROM number_requests WHERE business_id = ?').bind(businessId).first());
+}
+
+const READY_TEXT = {
+  en: { title: 'Your business number is ready', body: (n: string, a: string) => `${n} is yours now. ${a} calls customers from it and answers it.` },
+  hi: { title: 'आपका बिज़नेस नंबर तैयार है', body: (n: string, a: string) => `${n} अब आपका है। ${a} इसी से ग्राहकों को कॉल करेगा और इसी पर जवाब देगा।` },
+  bn: { title: 'আপনার ব্যবসার নম্বর তৈরি', body: (n: string, a: string) => `${n} এখন আপনার। ${a} এই নম্বর থেকে গ্রাহকদের ফোন করবে আর এতেই উত্তর দেবে।` },
+} as const;
+
+/** "+917971443028" → "+91 79714 43028", as the app shows it. */
+function displayNumber(phone: string): string {
+  const d = phone.replace(/^\+91/, '');
+  return d.length === 10 ? `+91 ${d.slice(0, 5)} ${d.slice(5)}` : phone;
+}
+
+/**
+ * Gives free numbers to waiting businesses, longest-waiting first, and tells each owner. Requests
+ * of businesses that no longer pay, or already have a number, are dropped. Returns how many got one.
+ */
+export async function fulfilNumberRequests(env: Env): Promise<number> {
+  const base = env.PUBLIC_API_BASE_URL;
+  if (!base || !numbersConfigured(env)) return 0;
+  const { results } = await env.DB.prepare('SELECT business_id FROM number_requests ORDER BY requested_at, business_id')
+    .all<{ business_id: string }>();
+  let assigned = 0;
+  for (const { business_id: businessId } of results ?? []) {
+    const drop = () => env.DB.prepare('DELETE FROM number_requests WHERE business_id = ?').bind(businessId).run();
+    if ((await businessNumberFor(env.DB, businessId)) || !(await numberEntitled(env.DB, businessId))) {
+      await drop();
+      continue;
+    }
+    const [free] = await availableNumbers(env, 1);
+    if (!free) break;
+    const r = await rentNumber(env, businessId, free, base);
+    if (!r.ok) {
+      if (r.code === 'sarvam_failed') break; // retried next run
+      continue;
+    }
+    await drop();
+    assigned++;
+    try {
+      const [lang, agent] = await Promise.all([
+        ownerLanguage(env, businessId),
+        env.DB.prepare('SELECT name FROM agents WHERE business_id = ?').bind(businessId).first<{ name: string }>(),
+      ]);
+      const t = READY_TEXT[lang];
+      const title = t.title;
+      const body = t.body(displayNumber(free), agent?.name || 'Your AI');
+      await env.DB.prepare(
+        `INSERT INTO notifications (id, business_id, type, title, body, route, action_label, is_read, created_at)
+         VALUES (?, ?, 'business_number', ?, ?, '/agent/number', ?, 0, datetime('now'))`
+      ).bind(`notif_${crypto.randomUUID().slice(0, 12)}`, businessId, title, body,
+        lang === 'hi' ? 'देखें' : lang === 'bn' ? 'দেখুন' : 'View').run();
+      await sendBusinessPushNotification(env, businessId, { type: 'business_number', title, body, route: '/agent/number' });
+    } catch (err: any) {
+      console.error(JSON.stringify({ msg: 'business_number_ready_notify_failed', error: err?.message }));
+    }
+  }
+  return assigned;
 }
 
 /**
  * Cron. Active numbers of businesses whose plan no longer includes one are held for NUMBER_HOLD_DAYS
  * (deployment paused; their calls go out from the shared pool). Holds that ran out go back to the pool.
- * Returns how many were held and released.
+ * Then gives free numbers to businesses that asked for one. Returns how many were held, released, assigned.
  */
-export async function runBusinessNumberCron(env: Env, now = new Date()): Promise<{ held: number; released: number }> {
+export async function runBusinessNumberCron(env: Env, now = new Date()): Promise<{ held: number; released: number; assigned: number }> {
   const { results: lapsed } = await env.DB.prepare(
     `SELECT n.phone, n.business_id, n.deployment_id FROM business_numbers n
      LEFT JOIN usage u ON u.business_id = n.business_id
@@ -263,5 +394,7 @@ export async function runBusinessNumberCron(env: Env, now = new Date()): Promise
     released++;
     console.log(JSON.stringify({ msg: 'business_number_released', business_id: n.business_id }));
   }
-  return { held: lapsed?.length ?? 0, released };
+  // Numbers just released, or newly added to the pool, go to businesses that asked for one.
+  const assigned = await fulfilNumberRequests(env);
+  return { held: lapsed?.length ?? 0, released, assigned };
 }

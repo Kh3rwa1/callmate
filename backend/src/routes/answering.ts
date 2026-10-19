@@ -2,8 +2,9 @@
  * Business numbers and the AI answering them (services/business_numbers.ts, services/answering.ts).
  *
  * Owner (signed in):
- *   GET  /business-number          → { available, entitled, number, numbers_free }
- *   POST /business-number {phone}  → rent that free number (Growth plan; chosen once)
+ *   GET  /business-number          → { available, entitled, number, numbers_free, requested }
+ *   POST /business-number {phone}  → rent that free number (paid plans; chosen once)
+ *   POST /business-number/request  → none free: ask for one; it arrives when the operator adds one
  *   GET  /agent/answering          → { available, enabled, phone, mode, has_number }
  *   POST /agent/answering {enabled, mode} → how the owner's own phone forwards to the business number
  * Sarvam (public):
@@ -19,8 +20,8 @@ import { normalizePhone } from '../utils/phone';
 import { sarvamWebhookToken } from '../services/campaign_queue';
 import { inboundCallContext, setForwardMode } from '../services/answering';
 import {
-  availableNumbers, BusinessNumberRow, businessNumberFor, e164, inboundWebhookToken, numberEntitled,
-  numbersConfigured, rentNumber, NUMBER_HOLD_DAYS,
+  availableNumbers, BusinessNumberRow, businessNumberFor, e164, inboundHookToken, inboundWebhookToken, numberEntitled,
+  numberRequested, numbersConfigured, rentNumber, requestNumber, NUMBER_HOLD_DAYS,
 } from '../services/business_numbers';
 import { consentEventStatement, CONSENT_TEXT_VERSIONS } from '../services/consent';
 import { ownerLanguage } from '../services/owner_text';
@@ -39,21 +40,39 @@ function numberView(row: BusinessNumberRow | null) {
     : null;
 }
 
-answeringApp.get('/business-number', async (c) => {
-  const user = c.get('user');
-  const [row, entitled] = await Promise.all([
-    businessNumberFor(c.env.DB, user.business_id),
-    numberEntitled(c.env.DB, user.business_id),
+async function businessNumberView(env: Env, businessId: string) {
+  const [row, entitled, requested] = await Promise.all([
+    businessNumberFor(env.DB, businessId),
+    numberEntitled(env.DB, businessId),
+    numberRequested(env.DB, businessId),
   ]);
-  const available = numbersConfigured(c.env);
-  return c.json({
+  const available = numbersConfigured(env);
+  return {
     available,
     entitled,
     hold_days: NUMBER_HOLD_DAYS,
     number: numberView(row),
     // The picker: only for a business that may rent one and doesn't have one yet.
-    numbers_free: available && entitled && !row ? await availableNumbers(c.env) : [],
-  });
+    numbers_free: available && entitled && !row ? await availableNumbers(env) : [],
+    // Asked for one while none was free; it arrives on its own.
+    requested: !row && requested,
+  };
+}
+
+answeringApp.get('/business-number', async (c) => c.json(await businessNumberView(c.env, c.get('user').business_id)));
+
+answeringApp.post('/business-number/request', async (c) => {
+  const user = c.get('user');
+  const r = await requestNumber(c.env, user.business_id);
+  if (!r.ok) {
+    const body = {
+      not_configured: { message: 'Business numbers are not available yet.', status: 503 },
+      not_entitled: { message: 'A business number comes with a paid plan.', status: 402 },
+      already_has_number: { message: 'Your business already has a number.', status: 409 },
+    }[r.code];
+    return c.json({ message: body.message, code: r.code }, body.status as 402 | 409 | 503);
+  }
+  return c.json(await businessNumberView(c.env, user.business_id));
 });
 
 const rentSchema = z.object({ phone: z.string().min(8).max(20) });
@@ -67,7 +86,7 @@ answeringApp.post('/business-number', async (c) => {
   if (!r.ok) {
     const body = {
       not_configured: { message: 'Business numbers are not available yet.', status: 503 },
-      not_entitled: { message: 'A business number comes with the Growth plan.', status: 402 },
+      not_entitled: { message: 'A business number comes with a paid plan.', status: 402 },
       already_has_number: { message: 'Your business already has a number.', status: 409 },
       number_taken: { message: 'That number was just taken. Pick another one.', status: 409 },
       sarvam_failed: { message: 'Could not set up the number. Try again in a minute.', status: 502 },
@@ -119,12 +138,17 @@ export const answeringPublicApp = new Hono<{ Bindings: Env }>();
  */
 answeringPublicApp.post('/voice/inbound/start', async (c) => {
   const secret = c.env.INBOUND_HOOK_SECRET;
+  // Each number's agent names its number in the hook URL (the hook can't see the dialled number),
+  // signed with that number's token; a bearer secret also works.
+  const urlNumber = e164(c.req.query('number'));
   const auth = (c.req.header('authorization') || '').replace(/^Bearer\s+/i, '');
-  if (!secret || !auth || !timingSafeEqual(auth, secret)) {
-    return c.json({ message: 'Unauthorized.', code: 'unauthorized' }, 401);
-  }
+  const token = c.req.query('token') || '';
+  const authorized = !!secret && (
+    (!!auth && timingSafeEqual(auth, secret))
+    || (!!urlNumber && !!token && timingSafeEqual(token, await inboundHookToken(secret, urlNumber))));
+  if (!authorized) return c.json({ message: 'Unauthorized.', code: 'unauthorized' }, 401);
   const body = await c.req.json<any>().catch(() => ({}));
-  const called = body?.called ?? body?.agent_phone_number ?? body?.to;
+  const called = urlNumber ?? body?.called ?? body?.agent_phone_number ?? body?.to;
   const caller = body?.caller ?? body?.user_phone_number ?? body?.user_identifier ?? body?.from;
   return c.json(await inboundCallContext(c.env, called, caller));
 });

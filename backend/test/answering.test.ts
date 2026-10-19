@@ -5,25 +5,27 @@ import app from '../src/index';
 import { signJWT } from '../src/auth';
 import { dialSarvam } from '../src/services/campaign_queue';
 import {
-  callerIdFor, e164, inboundWebhookToken, poolNumbers, restoreNumberIfEntitled, runBusinessNumberCron, NUMBER_HOLD_DAYS,
+  callerIdFor, e164, inboundHookToken, inboundWebhookToken, poolEntries, poolNumbers, restoreNumberIfEntitled, runBusinessNumberCron,
+  NUMBER_HOLD_DAYS,
 } from '../src/services/business_numbers';
+import { collectAlertFindings } from '../src/services/alerts';
 import { inboundGreeting } from '../src/services/disclosure';
 
 const jwtSecret = 'test-jwt-signing-secret-key-32chars-min-length';
 const bizId = 'biz_answer';
 const otherBiz = 'biz_answer_other';
-const starterBiz = 'biz_answer_starter';
+const trialBiz = 'biz_answer_trial';
 const HOOK_SECRET = 'hook-secret-for-tests-0123456789';
 let token: string;
 let otherToken: string;
-let starterToken: string;
+let trialToken: string;
 
 /** Live (non-mock) Sarvam config with a three-number pool; fetch is stubbed per test. */
 const live = (extra: Record<string, unknown> = {}) => ({
   ...env,
   SARVAM_API_KEY: 'live-key', SARVAM_ORG_ID: 'org', SARVAM_WORKSPACE_ID: 'ws', SARVAM_CONNECTION_ID: 'conn',
   SARVAM_ADMISSIONS_APP_ID: 'outbound-agent', SARVAM_INBOUND_APP_ID: 'CallPilot-Receptionist', SARVAM_INBOUND_APP_VERSION: '1',
-  SARVAM_INBOUND_NUMBERS: '+917971440001, 07971440002, +917971440003', INBOUND_HOOK_SECRET: HOOK_SECRET,
+  SARVAM_BUSINESS_NUMBERS: '+917971440001, 07971440002, +917971440003', INBOUND_HOOK_SECRET: HOOK_SECRET,
   PUBLIC_API_BASE_URL: 'https://api.example',
   ...extra,
 }) as any;
@@ -42,7 +44,7 @@ function sarvamSpy() {
   return calls;
 }
 
-async function seedBusiness(id: string, name: string, plan: 'growth' | 'starter', phone: string) {
+async function seedBusiness(id: string, name: string, plan: 'growth' | 'starter' | 'trial', phone: string) {
   await env.DB.batch([
     env.DB.prepare("INSERT OR REPLACE INTO businesses (id, name, category) VALUES (?, ?, 'education')").bind(id, name),
     env.DB.prepare('INSERT OR REPLACE INTO users (id, phone, business_id) VALUES (?, ?, ?)').bind(`usr_${id}`, phone, id),
@@ -52,8 +54,8 @@ async function seedBusiness(id: string, name: string, plan: 'growth' | 'starter'
     ).bind(`agt_${id}`, id),
     env.DB.prepare(
       `INSERT OR REPLACE INTO usage (id, business_id, plan_id, plan_status, included_minutes, minutes_used, current_period_end)
-       VALUES (?, ?, ?, 'active', 2000, 0, datetime('now', '+20 days'))`
-    ).bind(`usg_${id}`, id, plan),
+       VALUES (?, ?, ?, ?, 2000, 0, datetime('now', '+20 days'))`
+    ).bind(`usg_${id}`, id, plan, plan === 'trial' ? 'trial' : 'active'),
   ]);
   return signJWT({ sub: `usr_${id}`, phone, business_id: id, type: 'access' }, jwtSecret, 3600);
 }
@@ -61,8 +63,8 @@ async function seedBusiness(id: string, name: string, plan: 'growth' | 'starter'
 beforeAll(async () => {
   await migrateTestDb();
   token = await seedBusiness(bizId, 'Roy Coaching', 'growth', '919830044444');
-  otherToken = await seedBusiness(otherBiz, 'Other Shop', 'growth', '919830044445');
-  starterToken = await seedBusiness(starterBiz, 'Small Shop', 'starter', '919830044446');
+  otherToken = await seedBusiness(otherBiz, 'Other Shop', 'starter', '919830044445');
+  trialToken = await seedBusiness(trialBiz, 'Small Shop', 'trial', '919830044446');
   await env.DB.prepare(
     `INSERT OR REPLACE INTO leads (id, business_id, name, phone, status, consent, interest)
      VALUES ('lead_answer_known', ?, 'Mitali Sen', '919830044401', 'called', 'unknown', 'WBJEE')`
@@ -94,10 +96,10 @@ describe('numbers and greetings', () => {
 });
 
 describe('renting a business number', () => {
-  it('comes with Growth: a Starter business sees no numbers and cannot rent one', async () => {
-    const view = await (await app.fetch(authed('/business-number', {}, starterToken), live())).json() as any;
+  it('comes with every paid plan: a trial business sees no numbers and cannot rent one', async () => {
+    const view = await (await app.fetch(authed('/business-number', {}, trialToken), live())).json() as any;
     expect(view).toMatchObject({ available: true, entitled: false, number: null, numbers_free: [], hold_days: NUMBER_HOLD_DAYS });
-    const res = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '+917971440001' }) }, starterToken), live());
+    const res = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '+917971440001' }) }, trialToken), live());
     expect(res.status).toBe(402);
     expect((await res.json() as any).code).toBe('not_entitled');
   });
@@ -136,6 +138,7 @@ describe('renting a business number', () => {
     expect((await outside.json() as any).code).toBe('number_taken');
 
     const otherView = await (await app.fetch(authed('/business-number', {}, otherToken), live())).json() as any;
+    expect(otherView.entitled).toBe(true); // Starter is a paid plan: it gets one too
     expect(otherView.numbers_free).toEqual(['+917971440001', '+917971440003']);
   });
 
@@ -151,7 +154,7 @@ describe('renting a business number', () => {
 
   it('every AI call of the business goes out from its number; others use the shared pool', async () => {
     expect(await callerIdFor(env.DB, bizId)).toBe('+917971440002');
-    expect(await callerIdFor(env.DB, starterBiz)).toBeNull();
+    expect(await callerIdFor(env.DB, trialBiz)).toBeNull();
     const calls = sarvamSpy();
     await dialSarvam(live({ SARVAM_AGENT_PHONE_NUMBERS: '+917971443028' }), {
       callId: 'c1', phone: '919830000001', agentVariables: {}, callerId: await callerIdFor(env.DB, bizId),
@@ -165,10 +168,10 @@ describe('renting a business number', () => {
 
 describe("who answers: forwarding the owner's phone to the number", () => {
   it('needs a business number', async () => {
-    const res = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true, mode: 'all' }) }, starterToken), live());
+    const res = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true, mode: 'all' }) }, trialToken), live());
     expect(res.status).toBe(409);
     expect((await res.json() as any).code).toBe('no_business_number');
-    expect(await (await app.fetch(authed('/agent/answering', {}, starterToken), live())).json())
+    expect(await (await app.fetch(authed('/agent/answering', {}, trialToken), live())).json())
       .toMatchObject({ has_number: false, enabled: false, phone: null });
   });
 
@@ -246,6 +249,19 @@ describe('on-start hook', () => {
     expect(v.business_context).toContain('Business: Roy Coaching');
     expect(v.greeting).toContain('Roy Coaching');
     expect(v.greeting).toContain('AI');
+  });
+
+  it("each number's agent names its number in the hook URL, signed with that number's token", async () => {
+    const at = (query: string) => app.fetch(new Request(`http://localhost/voice/inbound/start?${query}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ caller: '+919830044401', interaction_id: 'y' }),
+    }), live());
+    const token = await inboundHookToken(HOOK_SECRET, '+917971440002');
+    const res = await at(`number=%2B917971440002&token=${token}`);
+    expect(await res.json()).toMatchObject({ business_name: 'Roy Coaching', caller_name: 'Mitali Sen' });
+    // Another number's token, or none, is refused.
+    expect((await at(`number=%2B917971440001&token=${token}`)).status).toBe(401);
+    expect((await at('number=%2B917971440002')).status).toBe(401);
   });
 
   it('an unknown number still gets a neutral greeting that says it is an AI', async () => {
@@ -344,5 +360,64 @@ describe('account deletion', () => {
     expect(view.number.phone).toBe('+917971440002'); // the other business keeps its own
     const free = await env.DB.prepare("SELECT status FROM business_numbers WHERE phone = '+917971440003'").first<{ status: string }>();
     expect(free?.status).toBe('free');
+  });
+});
+
+describe('numbers on request, each answered by its own agent', () => {
+  const reqBiz = 'biz_answer_request';
+  let reqToken: string;
+  beforeAll(async () => {
+    reqToken = await seedBusiness(reqBiz, 'Sen Tailors', 'starter', '919830044447');
+  });
+
+  it("reads each number's agent; a number with no agent is not offered", () => {
+    const pool = live({ SARVAM_BUSINESS_NUMBERS: '+917971440009=CallPilot-Recep-9:2, 07971440010, junk', SARVAM_INBOUND_APP_ID: '' });
+    expect(poolEntries(pool)).toEqual([
+      { phone: '+917971440009', agent: { appId: 'CallPilot-Recep-9', version: 2 } },
+      { phone: '+917971440010', agent: null },
+    ]);
+    expect(poolNumbers(pool)).toEqual(['+917971440009']);
+    // A bare number falls back to SARVAM_INBOUND_APP_ID.
+    expect(poolEntries(live({ SARVAM_BUSINESS_NUMBERS: '07971440010' }))[0].agent)
+      .toEqual({ appId: 'CallPilot-Receptionist', version: 1 });
+  });
+
+  it('none free: a paying business asks for one, a trial one cannot, and the operator is alerted', async () => {
+    const empty = live({ SARVAM_BUSINESS_NUMBERS: '' });
+    const view = await (await app.fetch(authed('/business-number', {}, reqToken), empty)).json() as any;
+    expect(view).toMatchObject({ available: true, entitled: true, number: null, numbers_free: [], requested: false });
+
+    const asked = await app.fetch(authed('/business-number/request', { method: 'POST' }, reqToken), empty);
+    expect(asked.status).toBe(200);
+    expect(await asked.json()).toMatchObject({ requested: true, number: null });
+    // Asking twice is fine.
+    expect((await app.fetch(authed('/business-number/request', { method: 'POST' }, reqToken), empty)).status).toBe(200);
+    const trial = await app.fetch(authed('/business-number/request', { method: 'POST' }, trialToken), empty);
+    expect(trial.status).toBe(402);
+
+    const findings = await collectAlertFindings(env);
+    expect(findings.find((f) => f.type === 'business_numbers_requested')).toMatchObject({ count: 1 });
+  });
+
+  it('the next number added goes to them on its own agent, and the owner is told', async () => {
+    const calls = sarvamSpy();
+    const added = live({ SARVAM_BUSINESS_NUMBERS: '+917971440009=CallPilot-Recep-9:2' });
+    expect((await runBusinessNumberCron(added)).assigned).toBe(1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].body).toMatchObject({
+      app_id: 'CallPilot-Recep-9', app_version: 2,
+      connection_configs: [{ agent_phone_number: '+917971440009' }],
+      webhook_config: { metadata: { business_id: reqBiz } },
+    });
+    const view = await (await app.fetch(authed('/business-number', {}, reqToken), added)).json() as any;
+    expect(view).toMatchObject({ number: { phone: '+917971440009', status: 'active' }, requested: false });
+    const note = await env.DB.prepare("SELECT title, body, route FROM notifications WHERE business_id = ? AND type = 'business_number'")
+      .bind(reqBiz).first<{ title: string; body: string; route: string }>();
+    expect(note).toEqual({
+      title: 'Your business number is ready',
+      body: '+91 79714 40009 is yours now. Riya calls customers from it and answers it.',
+      route: '/agent/number',
+    });
+    expect((await collectAlertFindings(env)).find((f) => f.type === 'business_numbers_requested')).toBeUndefined();
   });
 });

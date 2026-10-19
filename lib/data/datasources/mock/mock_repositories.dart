@@ -412,7 +412,7 @@ class MockCallRepository implements CallRepository {
 
   // ------------------------------------------------ business number (demo)
 
-  /// Demo numbers a Growth business can pick from.
+  /// Demo numbers a paid business can pick from.
   static const demoNumbers = [
     '+917971440001',
     '+917971440002',
@@ -420,10 +420,10 @@ class MockCallRepository implements CallRepository {
     '+917971440004',
   ];
 
-  /// Like the server: a Growth plan that is active includes a number.
+  /// Like the server: every active paid plan includes a number.
   bool get _entitled =>
-      b.usage.subscription.planId == 'growth' &&
-      b.usage.subscription.status == PlanStatus.active;
+      b.usage.subscription.status == PlanStatus.active &&
+      b.usage.subscription.planId != 'trial';
 
   BusinessNumberInfo _numberInfo() => BusinessNumberInfo(
     available: true,
@@ -438,7 +438,11 @@ class MockCallRepository implements CallRepository {
                 ? null
                 : DateTime.now().add(const Duration(days: 30)),
           ),
-    numbersFree: _entitled && b.businessNumber == null ? demoNumbers : const [],
+    numbersFree:
+        _entitled && b.businessNumber == null && !b.businessNumbersSoldOut
+        ? demoNumbers
+        : const [],
+    requested: b.businessNumber == null && b.businessNumberRequested,
   );
 
   @override
@@ -448,7 +452,7 @@ class MockCallRepository implements CallRepository {
   Future<BusinessNumberInfo> rentNumber(String phone) => _lag(() {
     if (!_entitled) {
       throw const ApiException(
-        'A business number comes with the Growth plan.',
+        'A business number comes with a paid plan.',
         statusCode: 402,
         code: 'not_entitled',
       );
@@ -461,6 +465,20 @@ class MockCallRepository implements CallRepository {
       );
     }
     b.businessNumber = phone;
+    b.emitChanged('business_number');
+    return _numberInfo();
+  }, 300);
+
+  @override
+  Future<BusinessNumberInfo> requestNumber() => _lag(() {
+    if (!_entitled) {
+      throw const ApiException(
+        'A business number comes with a paid plan.',
+        statusCode: 402,
+        code: 'not_entitled',
+      );
+    }
+    b.businessNumberRequested = true;
     b.emitChanged('business_number');
     return _numberInfo();
   }, 300);

@@ -8,7 +8,8 @@
  */
 import { Env } from '../types';
 
-export type AlertType = 'sarvam_dial_failures' | 'stuck_calls' | 'queue_dead_letters' | 'webhook_auth_failures';
+export type AlertType = 'sarvam_dial_failures' | 'stuck_calls' | 'queue_dead_letters' | 'webhook_auth_failures'
+  | 'business_numbers_requested';
 
 /** Count in the last hour at which each alert fires. */
 export const ALERT_THRESHOLDS: Record<AlertType, number> = {
@@ -16,9 +17,12 @@ export const ALERT_THRESHOLDS: Record<AlertType, number> = {
   stuck_calls: 3,
   queue_dead_letters: 1,
   webhook_auth_failures: 10,
+  business_numbers_requested: 1,
 };
 
 export const ALERT_DEDUPE_MINUTES = 60;
+/** Alerts that need the operator to buy something repeat less often. */
+const DEDUPE_MINUTES: Partial<Record<AlertType, number>> = { business_numbers_requested: 12 * 60 };
 
 export type OpsEventKind = 'queue_dead_letter' | 'webhook_auth_failure';
 
@@ -94,6 +98,19 @@ export async function collectAlertFindings(env: Pick<Env, 'DB'>): Promise<AlertF
       text: `${auth.n} Sarvam webhooks were rejected as unauthorized in the last hour. Latest: ${auth.sample ?? 'n/a'}`,
     });
   }
+
+  // Paying businesses waiting for a number: only the operator can buy one (Sarvam dashboard).
+  const waiting = await db.prepare(
+    'SELECT COUNT(*) AS n, MIN(requested_at) AS oldest FROM number_requests'
+  ).first<{ n: number; oldest: string | null }>().catch(() => null);
+  if ((waiting?.n ?? 0) >= ALERT_THRESHOLDS.business_numbers_requested) {
+    findings.push({
+      type: 'business_numbers_requested', count: waiting!.n,
+      text: `${waiting!.n} paying business(es) asked for a business number and none is free (oldest since ${waiting!.oldest} UTC). `
+        + 'Buy numbers in Sarvam (Deploy -> Phone Numbers -> Buy), give each its answering agent and add it to '
+        + 'SARVAM_BUSINESS_NUMBERS (docs/SARVAM_SETUP.md). They are assigned automatically.',
+    });
+  }
   return findings;
 }
 
@@ -103,7 +120,7 @@ async function claimAlertSlot(db: D1Database, f: AlertFinding): Promise<boolean>
     `INSERT INTO alert_state (alert_type, last_sent_at, last_count) VALUES (?, datetime('now'), ?)
      ON CONFLICT(alert_type) DO UPDATE SET last_sent_at = excluded.last_sent_at, last_count = excluded.last_count
      WHERE alert_state.last_sent_at <= datetime('now', ?)`
-  ).bind(f.type, f.count, `-${ALERT_DEDUPE_MINUTES} minutes`).run();
+  ).bind(f.type, f.count, `-${DEDUPE_MINUTES[f.type] ?? ALERT_DEDUPE_MINUTES} minutes`).run();
   return (res.meta?.changes ?? 0) > 0;
 }
 

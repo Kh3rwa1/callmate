@@ -69,8 +69,8 @@ export interface Env {
   /** AI answers missed calls (services/answering.ts): the receptionist agent and its committed version. */
   SARVAM_INBOUND_APP_ID?: string;
   SARVAM_INBOUND_APP_VERSION?: string;
-  /** Numbers rented in Sarvam for answering, comma separated; each goes to one business. */
-  SARVAM_INBOUND_NUMBERS?: string;
+  /** Numbers rented in Sarvam, comma separated; each paid business rents one for its calls out and in. */
+  SARVAM_BUSINESS_NUMBERS?: string;
   /** Bearer token the agent's on-start hook sends to POST /voice/inbound/start (a Sarvam secret). */
   INBOUND_HOOK_SECRET?: string;
   /** Calls still 'calling' after this many minutes are logged by the cron watchdog (default 8). */
