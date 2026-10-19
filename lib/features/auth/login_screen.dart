@@ -17,6 +17,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/brand_widgets.dart';
 import '../../core/widgets/mascot.dart';
 import '../../core/widgets/settings_sheets.dart';
+import '../../core/network/api_client.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/repositories/repositories.dart';
 import '../../l10n/l10n.dart';
@@ -261,7 +262,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final prefs = ref.read(localPrefsProvider);
       context.go(prefs.onboarded ? '/home' : '/onboarding');
     } catch (e) {
-      if (mounted) _fail(friendlyError(e, s));
+      if (!mounted) return;
+      if (!_isRegister && e is ApiException && e.code == 'user_not_found') {
+        // Checking the code used it up: start the sign-up with this number.
+        _otpController.clear();
+        setState(() {
+          _isRegister = true;
+          _otpSent = false;
+        });
+        _fail(s.noAccountForNumber);
+        return;
+      }
+      _fail(friendlyError(e, s));
     }
   }
 

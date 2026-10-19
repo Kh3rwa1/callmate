@@ -172,14 +172,26 @@ class SessionNotifier extends AsyncNotifier<bool> {
 
   Future<void> login({required String phone, required String otp}) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      await ref.read(authRepoProvider).login(phone: phone, otp: otp);
-      // Logging into an existing account: its business is already set up
-      // (registration goes through onboarding instead).
-      await _prefs?.setOnboarded(true);
-      ref.read(dataVersionProvider.notifier).bump();
-      return true;
-    });
+    _settle(
+      await AsyncValue.guard(() async {
+        await ref.read(authRepoProvider).login(phone: phone, otp: otp);
+        // Logging into an existing account: its business is already set up
+        // (registration goes through onboarding instead).
+        await _prefs?.setOnboarded(true);
+        ref.read(dataVersionProvider.notifier).bump();
+        return true;
+      }),
+    );
+  }
+
+  /// Stores a sign-in [result]. A failure leaves the user signed out and is
+  /// rethrown: the login screen shows why instead of waiting forever for a
+  /// session that won't come (wrong code, no account for the number).
+  void _settle(AsyncValue<bool> result) {
+    state = result.hasError ? const AsyncValue.data(false) : result;
+    if (result case AsyncError(:final error, :final stackTrace)) {
+      Error.throwWithStackTrace(error, stackTrace);
+    }
   }
 
   Future<void> register({
@@ -189,18 +201,20 @@ class SessionNotifier extends AsyncNotifier<bool> {
     String? referralCode,
   }) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      await ref
-          .read(authRepoProvider)
-          .register(
-            phone: phone,
-            businessName: businessName,
-            otp: otp,
-            referralCode: referralCode,
-          );
-      ref.read(dataVersionProvider.notifier).bump();
-      return true;
-    });
+    _settle(
+      await AsyncValue.guard(() async {
+        await ref
+            .read(authRepoProvider)
+            .register(
+              phone: phone,
+              businessName: businessName,
+              otp: otp,
+              referralCode: referralCode,
+            );
+        ref.read(dataVersionProvider.notifier).bump();
+        return true;
+      }),
+    );
   }
 
   Future<void> forceLogout() async {
