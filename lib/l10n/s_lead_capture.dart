@@ -47,9 +47,9 @@ extension SLeadCapture on S {
     'AI নতুন খোঁজে কল করবে',
   );
   String get autoCallHint => pick(
-    'Within about a minute, during calling hours',
-    'लगभग एक मिनट में, कॉलिंग के समय में',
-    'প্রায় এক মিনিটে, কলের সময়ের মধ্যে',
+    'Within about a minute, during calling hours. If they don\'t pick up, it tries again 3 hours later (3 calls at most).',
+    'लगभग एक मिनट में, कॉलिंग के समय में। फ़ोन न उठे तो 3 घंटे बाद फिर कोशिश (ज़्यादा से ज़्यादा 3 कॉल)।',
+    'প্রায় এক মিনিটে, কলের সময়ের মধ্যে। ফোন না ধরলে 3 ঘণ্টা পরে আবার চেষ্টা (সর্বোচ্চ 3টি কল)।',
   );
   String enquiriesCount(int n) => plural(
     n,

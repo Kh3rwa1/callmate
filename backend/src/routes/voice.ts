@@ -16,6 +16,7 @@ import { hitRateLimit } from '../utils/rate_limit';
 import { retrieveKnowledge } from '../services/knowledge';
 import { buildSystemPrompt, loadHistory, saveTurn } from '../services/prompt';
 import { defaultFollowupDraft } from '../services/playbooks';
+import { scheduleEnquiryRetry } from '../services/lead_capture';
 import { requireSecret } from '../utils/secrets';
 import { timingSafeEqual } from '../utils/compare';
 import { jsonErrorHandler } from '../utils/errors';
@@ -878,6 +879,12 @@ async function handleSarvamWebhook(c: Context<{ Bindings: Env; Variables: { user
         // 6. Check whether the campaign is finished
         await maybeCompleteCampaign(c.env.DB, cl.campaign_id);
       }
+    }
+
+    // Speed-to-lead: an enquiry nobody picked up gets another try later (services/lead_capture.ts).
+    if (!call.campaign_id && call.status !== 'timed_out' && !isConnected && bill.minutes === 0
+        && isRetryableOutcome(finalStatus)) {
+      await scheduleEnquiryRetry(c.env, { businessId, leadId, callId, webhookBaseUrl: webhookOrigin });
     }
 
     // 2.5: Push Notifications (FCM data-messages)
