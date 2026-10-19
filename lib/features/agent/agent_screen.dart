@@ -145,6 +145,7 @@ class _Body extends ConsumerWidget {
     final usage = ref.watch(usageProvider).value;
     final knowledge = ref.watch(knowledgeProvider).value;
     final referralBonus = ref.watch(referralsProvider).value?.bonusMinutes;
+    final answering = ref.watch(answeringProvider).value;
     final lang = ref.watch(languageProvider);
     final mode = ref.watch(themeModeProvider);
     final textSize = ref.watch(textSizeProvider);
@@ -176,6 +177,15 @@ class _Body extends ConsumerWidget {
                       title: s.hearYourAiShort,
                       onTap: () => showOwnerTestCallSheet(context),
                     ),
+                    if (answering != null &&
+                        (answering.available || answering.enabled))
+                      _NavRow(
+                        key: const Key('agent-answering'),
+                        icon: Icons.phone_callback_outlined,
+                        title: s.answeringTitle,
+                        value: answering.enabled ? s.answeringOn : null,
+                        onTap: () => context.push('/agent/answering'),
+                      ),
                     _NavRow(
                       icon: Icons.menu_book_outlined,
                       glyph: AppGlyphs.teach,

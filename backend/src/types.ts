@@ -63,6 +63,13 @@ export interface Env {
   GST_RATE?: string;
   /** Our cost per call minute in INR, for the margin report (defaults "2" and "0.6"). */
   COST_PER_MIN_SARVAM_INR?: string;
+  /** AI answers missed calls (services/answering.ts): the receptionist agent and its committed version. */
+  SARVAM_INBOUND_APP_ID?: string;
+  SARVAM_INBOUND_APP_VERSION?: string;
+  /** Numbers rented in Sarvam for answering, comma separated; each goes to one business. */
+  SARVAM_INBOUND_NUMBERS?: string;
+  /** Bearer token the agent's on-start hook sends to POST /voice/inbound/start (a Sarvam secret). */
+  INBOUND_HOOK_SECRET?: string;
   COST_PER_MIN_TELEPHONY_INR?: string;
   /** Calls still 'calling' after this many minutes are logged by the cron watchdog (default 8). */
   MAX_CALL_MINUTES?: string;

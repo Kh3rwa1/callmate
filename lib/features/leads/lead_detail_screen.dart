@@ -348,7 +348,9 @@ class _Body extends ConsumerWidget {
                           : AppColors.inkFaint,
                     ),
                     title: Text(
-                      calls[i].status.isConnected
+                      calls[i].inbound
+                          ? s.calledYouFor(Fmt.duration(calls[i].duration))
+                          : calls[i].status.isConnected
                           ? s.connectedFor(Fmt.duration(calls[i].duration))
                           : s.callStatus(calls[i].status),
                       style: t.titleSmall,

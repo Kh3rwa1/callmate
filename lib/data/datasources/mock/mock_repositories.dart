@@ -410,6 +410,24 @@ class MockCallRepository implements CallRepository {
   @override
   Future<OwnerTestCallInfo> ownerTestCallInfo() => _lag(_ownerInfo, 150);
 
+  /// Demo: answering is available; the first turn-on gives a fixed number.
+  static const demoAnsweringPhone = '+917971440001';
+  AnsweringInfo _answering = const AnsweringInfo(available: true);
+
+  @override
+  Future<AnsweringInfo> answering() => _lag(() => _answering, 150);
+
+  @override
+  Future<AnsweringInfo> setAnswering(bool enabled) => _lag(() {
+    _answering = AnsweringInfo(
+      available: true,
+      enabled: enabled,
+      phone: _answering.phone ?? (enabled ? demoAnsweringPhone : null),
+    );
+    b.emitChanged('answering');
+    return _answering;
+  }, 300);
+
   @override
   Future<OwnerTestCallInfo> callOwner(String phone) => _lag(() {
     if (!PhoneUtils.isValid(phone)) {

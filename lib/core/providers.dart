@@ -480,6 +480,12 @@ final leadCallsProvider = FutureProvider.family<List<Call>, String>((ref, id) {
   return ref.watch(callRepoProvider).forLead(id);
 });
 
+/// Whether the AI answers the owner's missed calls (`GET /agent/answering`).
+final answeringProvider = FutureProvider<AnsweringInfo>((ref) {
+  ref.watch(dataVersionProvider);
+  return ref.watch(callRepoProvider).answering();
+});
+
 final callProvider = FutureProvider.family<Call, String>(
   (ref, id) => ref.watch(callRepoProvider).get(id),
 );

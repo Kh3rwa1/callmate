@@ -387,6 +387,7 @@ class MockBackend implements BackendEvents {
     bool connected = true,
     String? campaignId,
     bool quiet = false,
+    bool inbound = false,
   }) {
     final start = at ?? DateTime.now();
     final callId = _nextId('call');
@@ -437,6 +438,7 @@ class MockBackend implements BackendEvents {
       start: start,
       campaignId: campaignId,
       quiet: quiet,
+      inbound: inbound,
     );
   }
 
@@ -449,6 +451,7 @@ class MockBackend implements BackendEvents {
     required DateTime start,
     String? campaignId,
     bool quiet = false,
+    bool inbound = false,
   }) {
     final transcript = brain.transcript(
       lead: lead,
@@ -526,6 +529,7 @@ class MockBackend implements BackendEvents {
       objections: out.objections,
       followUpId: followUpId,
       interactionId: interactionId,
+      inbound: inbound,
       rawMetadata: {
         'connectivity_status': 'connected',
         'agent_outputs': out.toJson(),
@@ -740,7 +744,8 @@ class MockBackend implements BackendEvents {
   // ------------------------------------------------------------- demo hooks
 
   /// Simulate one completed call for a new (or freshly created) lead.
-  Call simulateCall(LeadTemperature t, {String? leadId}) {
+  /// [inbound]: the customer called and the AI answered (missed call).
+  Call simulateCall(LeadTemperature t, {String? leadId, bool inbound = false}) {
     Lead lead;
     if (leadId != null && leads[leadId] != null) {
       lead = leads[leadId]!;
@@ -765,8 +770,10 @@ class MockBackend implements BackendEvents {
       temperature: t,
       connected: true,
       at: DateTime.now().subtract(const Duration(minutes: 2)),
+      inbound: inbound,
     );
     _emitCallCompleted(call);
+    if (inbound) simulateNotification(NotificationType.inboundCall);
     return call;
   }
 
@@ -823,6 +830,18 @@ class MockBackend implements BackendEvents {
         route: '/leads',
         createdAt: DateTime.now(),
       ),
+      NotificationType.inboundCall => () {
+        final c = calls.where((c) => c.inbound).firstOrNull;
+        return AppNotification(
+          id: _nextId('n'),
+          type: type,
+          title: 'Your AI answered ${c?.leadName ?? first}',
+          body: c?.summary ?? 'See what they wanted.',
+          route: c == null ? '/calls' : '/calls/${c.id}/result',
+          actionLabel: 'View',
+          createdAt: DateTime.now(),
+        );
+      }(),
     };
     notifications.insert(0, n);
     _events.add(NotificationEvent(n));

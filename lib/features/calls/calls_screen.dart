@@ -316,7 +316,9 @@ class CallCard extends StatelessWidget {
       top: first ? r : Radius.zero,
       bottom: last ? r : Radius.zero,
     );
-    final meta = connected
+    final meta = c.inbound
+        ? s.calledYouFor(_shortDuration(c.duration))
+        : connected
         ? s.connectedFor(_shortDuration(c.duration))
         : s.callStatus(c.status);
     return RepaintBoundary(

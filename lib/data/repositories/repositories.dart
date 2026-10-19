@@ -107,6 +107,14 @@ abstract class CallRepository {
   /// `POST /agent/test-call` – the AI employee calls the owner's [phone].
   /// Returns the test calls left today.
   Future<OwnerTestCallInfo> callOwner(String phone);
+
+  /// `GET /agent/answering` – does the AI answer missed calls, and on which
+  /// number.
+  Future<AnsweringInfo> answering();
+
+  /// `POST /agent/answering` – turn answering on (gets a number the first
+  /// time) or off.
+  Future<AnsweringInfo> setAnswering(bool enabled);
 }
 
 enum CallFilter { all, connected, noAnswer, hot }

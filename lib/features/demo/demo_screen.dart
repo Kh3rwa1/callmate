@@ -107,6 +107,15 @@ class DemoScreen extends ConsumerWidget {
                 }
               },
             ),
+            row(
+              Icons.phone_callback_outlined,
+              'Simulate missed call answered by AI',
+              () {
+                final c = b.simulateCall(LeadTemperature.hot, inbound: true);
+                notif.present(b.notifications.first);
+                context.push('/calls/${c.id}/result');
+              },
+            ),
             row(Icons.bolt_rounded, s.simulateFormEnquiry, () {
               final lead = b.simulateFormEnquiry();
               notif.present(b.notifications.first);

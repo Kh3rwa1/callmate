@@ -472,6 +472,29 @@ class OwnerTestCallInfo {
   );
 }
 
+/// `GET/POST /agent/answering`: whether the AI answers the owner's missed
+/// calls, and the number their calls should be forwarded to.
+class AnsweringInfo {
+  const AnsweringInfo({
+    this.available = false,
+    this.enabled = false,
+    this.phone,
+  });
+
+  /// False until answering is set up on the server (agent + numbers).
+  final bool available;
+  final bool enabled;
+
+  /// E.164, e.g. `+917971440001`; null until the business turned it on once.
+  final String? phone;
+
+  factory AnsweringInfo.fromJson(Json j) => AnsweringInfo(
+    available: jBool(j, 'available'),
+    enabled: jBool(j, 'enabled'),
+    phone: jStrN(j, 'phone'),
+  );
+}
+
 class ActivityItem {
   const ActivityItem({
     required this.emoji,

@@ -32,6 +32,7 @@ Outbound automated voice calls in India are regulated under:
 | 10 | **Retention.** Transcripts, recording links, summaries and the raw webhook payload are cleared `RETENTION_DAYS` (default 180) after the call, 500 calls per cron run. Metadata and scores stay. | `services/retention.ts` |
 | 11 | **Encryption at rest.** Transcripts, raw webhook payloads and recording links are AES-256-GCM encrypted (legacy plaintext rows still read). | `utils/crypto_data.ts`, `routes/voice.ts` |
 | 12 | **DLT caller-ID check.** `/health/deep` reports `compliance.caller_ids_dlt_series` (true only if every `SARVAM_AGENT_PHONE_NUMBERS` entry is `+91140…` or `+91160…`); production logs `caller_ids_not_dlt_series` once per cron run until fixed. | `callerIdsAreDltSeries` |
+| 12b | **Answering missed calls (inbound).** The AI only answers calls the person made to the business, so it is not unsolicited commercial communication; calling hours and the 7-day window don't gate answering. Its opening line (`inboundGreeting`) says it is an AI assistant and that the call may be recorded. The caller becomes a lead with consent `inquiry` dated now (consent event `inbound_call`), so a follow-up AI call is allowed within 7 days; an opt-out on the call is honoured like outbound. | `services/answering.ts`, `services/disclosure.ts` |
 | 13 | **Zero automated messaging.** WhatsApp follow-ups are only deep links the owner taps. | app |
 The CallPilot platform enforces the following operational guardrails at runtime:
 

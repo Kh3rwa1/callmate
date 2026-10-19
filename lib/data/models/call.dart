@@ -70,6 +70,7 @@ class Call {
     this.followUpId,
     this.interactionId,
     this.rawMetadata = const {},
+    this.inbound = false,
   });
 
   final String id;
@@ -93,6 +94,9 @@ class Call {
   final String? followUpId;
   final String? interactionId;
   final Map<String, dynamic> rawMetadata;
+
+  /// The customer called the business and the AI answered (a missed call).
+  final bool inbound;
 
   bool get isHot => leadScore?.temperature == LeadTemperature.hot;
 
@@ -127,6 +131,7 @@ class Call {
     followUpId: jStrN(j, 'followup_id'),
     interactionId: jStrN(j, 'interaction_id'),
     rawMetadata: jObj(j, 'raw_metadata') ?? const {},
+    inbound: jStrN(j, 'direction') == 'inbound',
   );
 
   Json toJson() => {
@@ -134,6 +139,7 @@ class Call {
     'lead_id': leadId,
     'lead_name': leadName,
     'lead_phone': leadPhone,
+    'direction': inbound ? 'inbound' : 'outbound',
     'campaign_id': campaignId,
     'agent_id': agentId,
     'status': status.wire,
