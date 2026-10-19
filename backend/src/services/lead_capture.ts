@@ -16,6 +16,7 @@ import { timingSafeEqual } from '../utils/compare';
 import { normalizePhone } from '../utils/phone';
 import { placeLeadCall } from './dial';
 import { clampDelay, retryDelaySeconds, MAX_DIAL_ATTEMPTS } from './campaign_queue';
+import { RETRY_SPACING_SECONDS } from './call_outcomes';
 import { sendBusinessPushNotification } from './fcm';
 import { ownerLanguage, ownerText, type EnquiryNotice, type OwnerLang } from './owner_text';
 
@@ -256,6 +257,52 @@ export async function enqueueInstantCall(
     console.error(JSON.stringify({ msg: 'instant_call_inline_failed', error: err?.message })));
   if (waitUntil) waitUntil(run);
   else await run;
+}
+
+/**
+ * An enquiry call nobody answered (busy / no answer) gets another try RETRY_SPACING_SECONDS later,
+ * up to MAX_DIAL_ATTEMPTS calls since the enquiry, like campaigns. The retry is a normal instant-call
+ * job, so every guard runs again: calling hours, the 7-day enquiry window, do-not-call, daily caps,
+ * minutes. Unanswered dials cost nothing at Sarvam. Only for leads whose source still auto-calls; a
+ * call the owner places in the meantime counts, and the retry then stands down.
+ * Returns true when a retry was queued.
+ */
+export async function scheduleEnquiryRetry(
+  env: Env, p: { businessId: string; leadId: string; callId: string; webhookBaseUrl?: string },
+): Promise<boolean> {
+  if (!env.CAMPAIGN_QUEUE) return false;
+  const lead = await env.DB.prepare(
+    `SELECT l.lead_source_id, l.last_enquiry_at, s.auto_call, s.revoked_at
+     FROM leads l JOIN lead_sources s ON s.id = l.lead_source_id AND s.business_id = l.business_id
+     WHERE l.id = ? AND l.business_id = ?`
+  ).bind(p.leadId, p.businessId).first<{
+    lead_source_id: string; last_enquiry_at: string | null; auto_call: number; revoked_at: string | null;
+  }>();
+  if (!lead || lead.auto_call !== 1 || lead.revoked_at || !lead.last_enquiry_at) return false;
+
+  // Calls that rang since the enquiry (manual ones too); a dial the provider rejected never rang.
+  const tries = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM calls
+     WHERE lead_id = ? AND business_id = ? AND campaign_id IS NULL AND started_at >= ?
+       AND NOT (status = 'failed' AND interaction_id IS NULL)`
+  ).bind(p.leadId, p.businessId, lead.last_enquiry_at).first<{ n: number }>();
+  if ((tries?.n ?? 0) >= MAX_DIAL_ATTEMPTS) return false;
+
+  const message: InstantCallMessage = {
+    kind: INSTANT_CALL_KIND,
+    business_id: p.businessId,
+    lead_id: p.leadId,
+    lead_source_id: lead.lead_source_id,
+    idempotency_key: `instant-retry:${p.callId}`,
+    attempts: 0,
+    // Any call placed after now (e.g. by the owner) makes the retry stand down.
+    enqueued_at: sqliteNow(),
+    // The owner already heard about this enquiry.
+    notified: true,
+    ...(p.webhookBaseUrl ? { webhook_base_url: p.webhookBaseUrl } : {}),
+  };
+  await env.CAMPAIGN_QUEUE.send(message, { delaySeconds: clampDelay(RETRY_SPACING_SECONDS) });
+  return true;
 }
 
 /** What the owner is told about an enquiry. */
