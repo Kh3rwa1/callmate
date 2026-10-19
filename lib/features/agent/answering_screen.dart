@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/motion/motion.dart';
 import '../../core/network/api_client.dart';
@@ -129,6 +130,25 @@ class _BodyState extends ConsumerState<_Body> {
             padding: const EdgeInsets.only(top: 12),
             child: AppCard(
               child: Text(s.answeringUnavailable, style: t.bodyMedium),
+            ),
+          )
+        else if (!a.hasNumber)
+          // Forwarding goes to the business number: no number, nothing to set.
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: AppCard(
+              key: const Key('answering-needs-number'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(s.answeringNeedsNumber, style: t.bodyMedium),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: () => context.push('/agent/number'),
+                    child: Text(s.getBusinessNumber),
+                  ),
+                ],
+              ),
             ),
           )
         else ...[

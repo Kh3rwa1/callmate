@@ -3,22 +3,27 @@ import { env } from 'cloudflare:test';
 import { migrateTestDb } from './setup-db';
 import app from '../src/index';
 import { signJWT } from '../src/auth';
-import { e164, inboundWebhookToken, poolNumbers } from '../src/services/answering';
+import { dialSarvam } from '../src/services/campaign_queue';
+import {
+  callerIdFor, e164, inboundWebhookToken, poolNumbers, restoreNumberIfEntitled, runBusinessNumberCron, NUMBER_HOLD_DAYS,
+} from '../src/services/business_numbers';
 import { inboundGreeting } from '../src/services/disclosure';
 
 const jwtSecret = 'test-jwt-signing-secret-key-32chars-min-length';
 const bizId = 'biz_answer';
 const otherBiz = 'biz_answer_other';
+const starterBiz = 'biz_answer_starter';
 const HOOK_SECRET = 'hook-secret-for-tests-0123456789';
 let token: string;
 let otherToken: string;
+let starterToken: string;
 
-/** Live (non-mock) Sarvam config with a two-number pool; fetch is stubbed per test. */
+/** Live (non-mock) Sarvam config with a three-number pool; fetch is stubbed per test. */
 const live = (extra: Record<string, unknown> = {}) => ({
   ...env,
   SARVAM_API_KEY: 'live-key', SARVAM_ORG_ID: 'org', SARVAM_WORKSPACE_ID: 'ws', SARVAM_CONNECTION_ID: 'conn',
-  SARVAM_INBOUND_APP_ID: 'CallPilot-Receptionist', SARVAM_INBOUND_APP_VERSION: '1',
-  SARVAM_INBOUND_NUMBERS: '+917971440001, 07971440002', INBOUND_HOOK_SECRET: HOOK_SECRET,
+  SARVAM_ADMISSIONS_APP_ID: 'outbound-agent', SARVAM_INBOUND_APP_ID: 'CallPilot-Receptionist', SARVAM_INBOUND_APP_VERSION: '1',
+  SARVAM_INBOUND_NUMBERS: '+917971440001, 07971440002, +917971440003', INBOUND_HOOK_SECRET: HOOK_SECRET,
   PUBLIC_API_BASE_URL: 'https://api.example',
   ...extra,
 }) as any;
@@ -27,36 +32,52 @@ const authed = (path: string, init: RequestInit = {}, t = token) => new Request(
   ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
 });
 
-beforeAll(async () => {
-  await migrateTestDb();
+/** Records Sarvam API calls; answers deployments with an id and dials with an attempt id. */
+function sarvamSpy() {
+  const calls: { url: string; method: string; body: any }[] = [];
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (u: any, init: any) => {
+    calls.push({ url: String(u), method: init?.method ?? 'GET', body: init?.body ? JSON.parse(init.body) : null });
+    return new Response(JSON.stringify({ deployment_id: `dep_${calls.length}`, attempt_id: `att_${calls.length}` }), { status: 200 });
+  });
+  return calls;
+}
+
+async function seedBusiness(id: string, name: string, plan: 'growth' | 'starter', phone: string) {
   await env.DB.batch([
-    env.DB.prepare("INSERT OR REPLACE INTO businesses (id, name, category) VALUES (?, 'Roy Coaching', 'education')").bind(bizId),
-    env.DB.prepare("INSERT OR REPLACE INTO businesses (id, name) VALUES (?, 'Other Shop')").bind(otherBiz),
-    env.DB.prepare("INSERT OR REPLACE INTO users (id, phone, business_id) VALUES ('usr_answer', '919830044444', ?)").bind(bizId),
-    env.DB.prepare("INSERT OR REPLACE INTO users (id, phone, business_id) VALUES ('usr_answer_o', '919830044445', ?)").bind(otherBiz),
+    env.DB.prepare("INSERT OR REPLACE INTO businesses (id, name, category) VALUES (?, ?, 'education')").bind(id, name),
+    env.DB.prepare('INSERT OR REPLACE INTO users (id, phone, business_id) VALUES (?, ?, ?)').bind(`usr_${id}`, phone, id),
     env.DB.prepare(
       `INSERT OR REPLACE INTO agents (id, business_id, name, role, status, calling_hours_start, calling_hours_end, voice, languages)
-       VALUES ('agt_answer', ?, 'Riya', 'Admissions Assistant', 'active', 9, 21, 'Warm · Female', '["Bengali","English"]')`
-    ).bind(bizId),
-    env.DB.prepare("INSERT OR REPLACE INTO usage (id, business_id, plan_id, plan_status, included_minutes, minutes_used) VALUES ('usg_answer', ?, 'starter', 'active', 800, 0)").bind(bizId),
+       VALUES (?, ?, 'Riya', 'Admissions Assistant', 'active', 0, 24, 'Warm · Female', '["Bengali","English"]')`
+    ).bind(`agt_${id}`, id),
     env.DB.prepare(
-      `INSERT OR REPLACE INTO leads (id, business_id, name, phone, status, consent, interest)
-       VALUES ('lead_answer_known', ?, 'Mitali Sen', '919830044401', 'called', 'unknown', 'WBJEE')`
-    ).bind(bizId),
+      `INSERT OR REPLACE INTO usage (id, business_id, plan_id, plan_status, included_minutes, minutes_used, current_period_end)
+       VALUES (?, ?, ?, 'active', 2000, 0, datetime('now', '+20 days'))`
+    ).bind(`usg_${id}`, id, plan),
   ]);
-  token = await signJWT({ sub: 'usr_answer', phone: '919830044444', business_id: bizId, type: 'access' }, jwtSecret, 3600);
-  otherToken = await signJWT({ sub: 'usr_answer_o', phone: '919830044445', business_id: otherBiz, type: 'access' }, jwtSecret, 3600);
+  return signJWT({ sub: `usr_${id}`, phone, business_id: id, type: 'access' }, jwtSecret, 3600);
+}
+
+beforeAll(async () => {
+  await migrateTestDb();
+  token = await seedBusiness(bizId, 'Roy Coaching', 'growth', '919830044444');
+  otherToken = await seedBusiness(otherBiz, 'Other Shop', 'growth', '919830044445');
+  starterToken = await seedBusiness(starterBiz, 'Small Shop', 'starter', '919830044446');
+  await env.DB.prepare(
+    `INSERT OR REPLACE INTO leads (id, business_id, name, phone, status, consent, interest)
+     VALUES ('lead_answer_known', ?, 'Mitali Sen', '919830044401', 'called', 'unknown', 'WBJEE')`
+  ).bind(bizId).run();
 });
 
 afterEach(() => vi.restoreAllMocks());
 
-describe('numbers', () => {
+describe('numbers and greetings', () => {
   it('normalises numbers to E.164 and reads the pool', () => {
     expect(e164('07971440002')).toBe('+917971440002');
     expect(e164('9830044401')).toBe('+919830044401');
     expect(e164('+91 79714 40001')).toBe('+917971440001');
     expect(e164('abc')).toBeNull();
-    expect(poolNumbers(live())).toEqual(['+917971440001', '+917971440002']);
+    expect(poolNumbers(live())).toEqual(['+917971440001', '+917971440002', '+917971440003']);
   });
 
   it('greets as an AI either way; only missed calls say the team is busy', () => {
@@ -72,66 +93,136 @@ describe('numbers', () => {
   });
 });
 
-describe('turning answering on and off', () => {
-  it('is unavailable until the agent and numbers are configured', async () => {
-    const res = await app.fetch(authed('/agent/answering'), live({ SARVAM_INBOUND_APP_ID: '' }));
-    expect(await res.json()).toEqual({ available: false, enabled: false, phone: null, mode: 'missed' });
-    const on = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true }) }), live({ SARVAM_INBOUND_APP_ID: '' }));
-    expect(on.status).toBe(503);
+describe('renting a business number', () => {
+  it('comes with Growth: a Starter business sees no numbers and cannot rent one', async () => {
+    const view = await (await app.fetch(authed('/business-number', {}, starterToken), live())).json() as any;
+    expect(view).toMatchObject({ available: true, entitled: false, number: null, numbers_free: [], hold_days: NUMBER_HOLD_DAYS });
+    const res = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '+917971440001' }) }, starterToken), live());
+    expect(res.status).toBe(402);
+    expect((await res.json() as any).code).toBe('not_entitled');
   });
 
-  it('gives the business a number and a Sarvam deployment; off pauses; on again resumes', async () => {
-    const calls: { url: string; body: any; method: string }[] = [];
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (u: any, init: any) => {
-      calls.push({ url: String(u), body: init?.body ? JSON.parse(init.body) : null, method: init?.method });
-      return new Response(JSON.stringify({ deployment_id: 'dep_123' }), { status: 200 });
-    });
-    const on = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true }) }), live());
-    expect(on.status).toBe(200);
-    expect(await on.json()).toEqual({ available: true, enabled: true, phone: '+917971440001', mode: 'missed' });
+  it('a Growth business picks a specific number; it gets a Sarvam deployment for it', async () => {
+    const view = await (await app.fetch(authed('/business-number'), live())).json() as any;
+    expect(view).toMatchObject({ entitled: true, number: null });
+    expect(view.numbers_free).toEqual(['+917971440001', '+917971440002', '+917971440003']);
+
+    const calls = sarvamSpy();
+    // Not the first one: the owner chooses.
+    const res = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '07971440002' }) }), live());
+    expect(res.status).toBe(200);
+    expect((await res.json() as any).number).toMatchObject({ phone: '+917971440002', status: 'active' });
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe('https://apps.sarvam.ai/api/app-authoring/v1/orgs/org/workspaces/ws/deployments');
     expect(calls[0].body).toMatchObject({
       app_id: 'CallPilot-Receptionist', app_version: 1,
-      connection_configs: [{ connection_id: 'conn', agent_phone_number: '+917971440001', phone_numbers: ['+917971440001'] }],
+      connection_configs: [{ connection_id: 'conn', agent_phone_number: '+917971440002', phone_numbers: ['+917971440002'] }],
       webhook_config: { metadata: { business_id: bizId } },
     });
-    const tok = await inboundWebhookToken(env.SARVAM_WEBHOOK_SECRET!, '+917971440001');
-    expect(calls[0].body.webhook_config.url).toBe(`https://api.example/webhooks/sarvam-inbound?number=%2B917971440001&token=${tok}`);
-
-    // Turning it on again changes nothing.
-    await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true }) }), live());
-    expect(calls).toHaveLength(1);
-
-    const off = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: false }) }), live());
-    expect(await off.json()).toEqual({ available: true, enabled: false, phone: '+917971440001', mode: 'missed' });
-    expect(calls[1]).toMatchObject({ url: expect.stringContaining('/deployments/dep_123/status'), method: 'PUT', body: { action: 'pause' } });
-
-    // On again, now for every call: resumes the deployment and remembers the choice.
-    const all = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true, mode: 'all' }) }), live());
-    expect(calls[2]).toMatchObject({ method: 'PUT', body: { action: 'resume' } });
-    expect(await all.json()).toMatchObject({ enabled: true, mode: 'all' });
-    expect(await (await app.fetch(authed('/agent/answering'), live())).json()).toMatchObject({ mode: 'all' });
-    const bad = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true, mode: 'sometimes' }) }), live());
-    expect(bad.status).toBe(400);
+    const tok = await inboundWebhookToken(env.SARVAM_WEBHOOK_SECRET!, '+917971440002');
+    expect(calls[0].body.webhook_config.url).toBe(`https://api.example/webhooks/sarvam-inbound?number=%2B917971440002&token=${tok}`);
   });
 
-  it("another business gets the next number, never this one's", async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ deployment_id: 'dep_456' }), { status: 200 }));
-    const res = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true }) }, otherToken), live());
-    expect((await res.json() as any).phone).toBe('+917971440002');
+  it('is chosen once: no second number, and nobody else can take it', async () => {
+    const again = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '+917971440003' }) }), live());
+    expect(again.status).toBe(409);
+    expect((await again.json() as any).code).toBe('already_has_number');
+
+    const taken = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '+917971440002' }) }, otherToken), live());
+    expect(taken.status).toBe(409);
+    expect((await taken.json() as any).code).toBe('number_taken');
+    // A number outside the pool can't be rented either.
+    const outside = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '+919999999999' }) }, otherToken), live());
+    expect((await outside.json() as any).code).toBe('number_taken');
+
+    const otherView = await (await app.fetch(authed('/business-number', {}, otherToken), live())).json() as any;
+    expect(otherView.numbers_free).toEqual(['+917971440001', '+917971440003']);
   });
 
-  it('a Sarvam failure is reported and keeps the number for a retry', async () => {
-    await env.DB.prepare("INSERT OR REPLACE INTO businesses (id, name) VALUES ('biz_answer_fail', 'F')").run();
-    await env.DB.prepare("INSERT OR REPLACE INTO users (id, phone, business_id) VALUES ('usr_answer_f', '919830044446', 'biz_answer_fail')").run();
-    const t = await signJWT({ sub: 'usr_answer_f', phone: '919830044446', business_id: 'biz_answer_fail', type: 'access' }, jwtSecret, 3600);
+  it('a Sarvam failure gives the number back', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('nope', { status: 422 }));
-    const res = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true }) }, t),
-      live({ SARVAM_INBOUND_NUMBERS: '+917971440001,+917971440002,+917971440003' }));
+    const res = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '+917971440001' }) }, otherToken), live());
     expect(res.status).toBe(502);
-    expect((await res.json() as any).code).toBe('sarvam_failed');
+    const otherView = await (await app.fetch(authed('/business-number', {}, otherToken), live())).json() as any;
+    expect(otherView.number).toBeNull();
+    expect(otherView.numbers_free).toContain('+917971440001');
+  });
+
+  it('every AI call of the business goes out from its number; others use the shared pool', async () => {
+    expect(await callerIdFor(env.DB, bizId)).toBe('+917971440002');
+    expect(await callerIdFor(env.DB, starterBiz)).toBeNull();
+    const calls = sarvamSpy();
+    await dialSarvam(live({ SARVAM_AGENT_PHONE_NUMBERS: '+917971443028' }), {
+      callId: 'c1', phone: '919830000001', agentVariables: {}, callerId: await callerIdFor(env.DB, bizId),
+    });
+    await dialSarvam(live({ SARVAM_AGENT_PHONE_NUMBERS: '+917971443028' }), {
+      callId: 'c2', phone: '919830000001', agentVariables: {}, callerId: null,
+    });
+    expect(calls.map((c) => c.body.app_config.connection_config.agent_phone_number)).toEqual(['+917971440002', '+917971443028']);
+  });
+});
+
+describe("who answers: forwarding the owner's phone to the number", () => {
+  it('needs a business number', async () => {
+    const res = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true, mode: 'all' }) }, starterToken), live());
+    expect(res.status).toBe(409);
+    expect((await res.json() as any).code).toBe('no_business_number');
+    expect(await (await app.fetch(authed('/agent/answering', {}, starterToken), live())).json())
+      .toMatchObject({ has_number: false, enabled: false, phone: null });
+  });
+
+  it('remembers the choice; the number stays live whatever is chosen', async () => {
+    const calls = sarvamSpy();
+    const all = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true, mode: 'all' }) }), live());
+    expect(await all.json()).toEqual({ available: true, has_number: true, enabled: true, phone: '+917971440002', mode: 'all' });
+    const off = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: false }) }), live());
+    expect(await off.json()).toMatchObject({ has_number: true, enabled: false, phone: '+917971440002' });
+    // Customers calling the number back still reach the AI: nothing is paused at Sarvam.
+    expect(calls).toHaveLength(0);
+    await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true, mode: 'all' }) }), live());
+  });
+});
+
+describe('the number follows the plan', () => {
+  it('a lapsed plan holds the number, paying again brings it back, and it is released after the hold', async () => {
+    await env.DB.prepare("UPDATE usage SET plan_status = 'past_due' WHERE business_id = ?").bind(bizId).run();
+    let calls = sarvamSpy();
+    expect((await runBusinessNumberCron(live())).held).toBe(1);
+    expect(calls).toEqual([expect.objectContaining({ method: 'PUT', body: { action: 'pause' } })]);
+    let view = await (await app.fetch(authed('/business-number'), live())).json() as any;
+    expect(view.number).toMatchObject({ phone: '+917971440002', status: 'held' });
+    expect(await callerIdFor(env.DB, bizId)).toBeNull(); // calls go out from the shared pool meanwhile
+    // Nobody else can rent it while it is held.
+    const taken = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '+917971440002' }) }, otherToken), live());
+    expect((await taken.json() as any).code).toBe('number_taken');
+
+    // Paying again: the same number comes back.
+    vi.restoreAllMocks();
+    calls = sarvamSpy();
+    await env.DB.prepare("UPDATE usage SET plan_status = 'active' WHERE business_id = ?").bind(bizId).run();
+    expect(await restoreNumberIfEntitled(live(), bizId)).toBe(true);
+    expect(calls).toEqual([expect.objectContaining({ method: 'PUT', body: { action: 'resume' } })]);
+    expect(await callerIdFor(env.DB, bizId)).toBe('+917971440002');
+
+    // Lapsed again and the hold ran out: back to the pool, deployment deleted.
+    await env.DB.prepare("UPDATE usage SET plan_status = 'past_due' WHERE business_id = ?").bind(bizId).run();
+    await runBusinessNumberCron(live());
+    vi.restoreAllMocks();
+    calls = sarvamSpy();
+    const later = new Date(Date.now() + (NUMBER_HOLD_DAYS + 1) * 86400_000);
+    expect((await runBusinessNumberCron(live(), later)).released).toBe(1);
+    expect(calls).toEqual([expect.objectContaining({ method: 'DELETE' })]);
+    view = await (await app.fetch(authed('/business-number'), live())).json() as any;
+    expect(view.number).toBeNull();
+
+    // Back on Growth and the same number rented again, for the inbound tests below.
+    vi.restoreAllMocks();
+    sarvamSpy();
+    await env.DB.prepare("UPDATE usage SET plan_status = 'active' WHERE business_id = ?").bind(bizId).run();
+    const back = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '+917971440002' }) }), live());
+    expect(back.status).toBe(200);
+    await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true, mode: 'all' }) }), live());
   });
 });
 
@@ -141,23 +232,20 @@ describe('on-start hook', () => {
   }), live());
 
   it('needs the hook secret', async () => {
-    expect((await hook({ called: '+917971440001' }, 'wrong')).status).toBe(401);
+    expect((await hook({ called: '+917971440002' }, 'wrong')).status).toBe(401);
   });
 
   it("returns the business, its AI employee, the known caller and a greeting in the employee's language", async () => {
-    const res = await hook({ called: '+917971440001', caller: '+919830044401', interaction_id: 'x' });
+    const res = await hook({ called: '+917971440002', caller: '+919830044401', interaction_id: 'x' });
     expect(res.status).toBe(200);
     const v = await res.json() as any;
     expect(v).toMatchObject({
       business_name: 'Roy Coaching', agent_name: 'Riya', agent_role: 'Admissions Assistant',
-      call_language: 'Bengali', caller_name: 'Mitali Sen', caller_known: 'yes',
+      call_language: 'Bengali', caller_name: 'Mitali Sen', caller_known: 'yes', can_talk: 'yes', answer_mode: 'all',
     });
     expect(v.business_context).toContain('Business: Roy Coaching');
     expect(v.greeting).toContain('Roy Coaching');
     expect(v.greeting).toContain('AI');
-    // Every call goes to the AI (set in the previous block): no "the team can't come to the phone".
-    expect(v.answer_mode).toBe('all');
-    expect(v.greeting).not.toContain("can't come to the phone");
   });
 
   it('an unknown number still gets a neutral greeting that says it is an AI', async () => {
@@ -169,9 +257,9 @@ describe('on-start hook', () => {
 
 describe('after an answered call', () => {
   const payload = (over: Record<string, unknown> = {}) => ({
-    app_id: 'CallPilot-Receptionist', app_version: 1, deployment_id: 'dep_123',
+    app_id: 'CallPilot-Receptionist', app_version: 1, deployment_id: 'dep_x',
     interaction_id: `20261019/${crypto.randomUUID()}`,
-    user_phone_number: '+919830055501', agent_phone_number: '+917971440001',
+    user_phone_number: '+919830055501', agent_phone_number: '+917971440002',
     duration: 84.2, start_datetime: '2026-10-19T08:00:00Z',
     output_agent_variables: {
       caller_name: 'Arjun Das', lead_score: '81', intent: 'interested', temperature: 'hot',
@@ -181,14 +269,14 @@ describe('after an answered call', () => {
     interaction_transcript: [{ role: 'agent', en_text: 'Hello, you have reached Roy Coaching.' }, { role: 'user', en_text: 'Weekend batch fees?' }],
     ...over,
   });
-  const post = async (body: any, number = '+917971440001', tok?: string) => app.fetch(new Request(
+  const post = async (body: any, number = '+917971440002', tok?: string) => app.fetch(new Request(
     `http://localhost/webhooks/sarvam-inbound?number=${encodeURIComponent(number)}&token=${tok ?? await inboundWebhookToken(env.SARVAM_WEBHOOK_SECRET!, number)}`,
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
   ), env);
 
   it('rejects a wrong token or a payload for another number', async () => {
-    expect((await post(payload(), '+917971440001', 'deadbeef')).status).toBe(401);
-    expect((await post(payload({ agent_phone_number: '+917971440002' }))).status).toBe(400);
+    expect((await post(payload(), '+917971440002', 'deadbeef')).status).toBe(401);
+    expect((await post(payload({ agent_phone_number: '+917971440003' }))).status).toBe(400);
   });
 
   it('creates the lead and an inbound call, scores it, drafts the WhatsApp and tells the owner', async () => {
@@ -209,7 +297,6 @@ describe('after an answered call', () => {
     const n = await env.DB.prepare("SELECT title, body, route FROM notifications WHERE business_id = ? AND type = 'inbound_call' ORDER BY created_at DESC").bind(bizId).first<any>();
     expect(n).toMatchObject({ title: 'Your AI answered Arjun Das', route: `/calls/${out.call_id}/result` });
 
-    // The app sees it as an inbound call.
     const seen = await (await app.fetch(authed(`/calls/${out.call_id}`), env)).json() as any;
     expect(seen.direction).toBe('inbound');
 
@@ -235,5 +322,27 @@ describe('after an answered call', () => {
   it('a withheld number is acknowledged without a lead', async () => {
     const res = await post(payload({ user_phone_number: '' }));
     expect(await res.json()).toMatchObject({ ignored: true, reason: 'no_caller' });
+  });
+});
+
+describe('account deletion', () => {
+  it("releases the business's number: its deployment is deleted and the number goes back to the pool", async () => {
+    sarvamSpy();
+    const rent = await app.fetch(authed('/business-number', { method: 'POST', body: JSON.stringify({ phone: '+917971440003' }) }, otherToken), live());
+    expect(rent.status).toBe(200);
+    const del = await app.fetch(authed('/auth/account', { method: 'DELETE' }, otherToken), live());
+    expect(del.status).toBe(200);
+    const row = await env.DB.prepare('SELECT business_id, status FROM business_numbers WHERE phone = ?')
+      .bind('+917971440003').first<{ business_id: string | null; status: string }>();
+    expect(row).toEqual({ business_id: null, status: 'held' });
+
+    vi.restoreAllMocks();
+    const calls = sarvamSpy();
+    expect((await runBusinessNumberCron(live())).released).toBe(1);
+    expect(calls).toEqual([expect.objectContaining({ method: 'DELETE' })]);
+    const view = await (await app.fetch(authed('/business-number'), live())).json() as any;
+    expect(view.number.phone).toBe('+917971440002'); // the other business keeps its own
+    const free = await env.DB.prepare("SELECT status FROM business_numbers WHERE phone = '+917971440003'").first<{ status: string }>();
+    expect(free?.status).toBe('free');
   });
 });

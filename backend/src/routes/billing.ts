@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { restoreNumberIfEntitled } from '../services/business_numbers';
 import { Env, AuthUser } from '../types';
 import { timingSafeEqual } from '../utils/compare';
 import { isDevEnv } from '../utils/secrets';
@@ -284,6 +285,8 @@ export async function handleRazorpayWebhook(c: any): Promise<Response> {
   ]);
   const duplicate = (results[0].meta?.changes ?? 0) === 0;
   await onFirstPayment(env, businessId); // referral bonus; idempotent, so redeliveries are safe
+  // A business number held after a lapse (or a downgrade) goes live again with the plan.
+  await restoreNumberIfEntitled(env, businessId);
   return c.json({ received: true, applied: !duplicate, duplicate, plan_id: product.id });
 }
 

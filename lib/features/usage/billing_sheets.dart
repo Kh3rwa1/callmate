@@ -13,14 +13,19 @@ import 'billing_actions.dart';
 /// Plan picker: Starter / Growth, monthly or yearly ("1 month free"), with
 /// the GST breakdown. Returns the checkout outcome when the payment page
 /// opened or the (mock) payment went through; errors stay inside the sheet.
-Future<CheckoutOutcome?> showPlanPickerSheet(BuildContext context, Usage u) =>
-    showModalBottomSheet<CheckoutOutcome>(
-      useRootNavigator: true,
-      context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      builder: (_) => _CheckoutSheet(usage: u, topup: false),
-    );
+/// [preselect]: a plan id to start on (e.g. 'growth' from the business
+/// number screen).
+Future<CheckoutOutcome?> showPlanPickerSheet(
+  BuildContext context,
+  Usage u, {
+  String? preselect,
+}) => showModalBottomSheet<CheckoutOutcome>(
+  useRootNavigator: true,
+  context: context,
+  useSafeArea: true,
+  isScrollControlled: true,
+  builder: (_) => _CheckoutSheet(usage: u, topup: false, preselect: preselect),
+);
 
 /// "Buy more minutes": top-up packs for an active plan.
 Future<CheckoutOutcome?> showTopupSheet(BuildContext context, Usage u) =>
@@ -37,9 +42,14 @@ String gstPercent(CheckoutPlan p) =>
     p.priceInr == 0 ? '18' : ((p.gstInr / p.priceInr) * 100).round().toString();
 
 class _CheckoutSheet extends ConsumerStatefulWidget {
-  const _CheckoutSheet({required this.usage, required this.topup});
+  const _CheckoutSheet({
+    required this.usage,
+    required this.topup,
+    this.preselect,
+  });
   final Usage usage;
   final bool topup;
+  final String? preselect;
   @override
   ConsumerState<_CheckoutSheet> createState() => _CheckoutSheetState();
 }
@@ -64,9 +74,9 @@ class _CheckoutSheetState extends ConsumerState<_CheckoutSheet> {
     if (widget.topup) {
       _selected = u.topups.isEmpty ? '' : u.topups.first.planId;
     } else {
-      final current = u.subscription.isTrial
-          ? 'starter'
-          : u.subscription.planId;
+      final current =
+          widget.preselect ??
+          (u.subscription.isTrial ? 'starter' : u.subscription.planId);
       _selected = _yearly ? '${current}_annual' : current;
       if (!_options.any((p) => p.planId == _selected)) {
         _selected = _options.isEmpty ? 'starter' : _options.first.planId;
@@ -287,9 +297,47 @@ class _OptionCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (item.businessNumber) ...[
+                    _PremiumBadge(label: s.premiumBadge),
+                    const SizedBox(height: 6),
+                  ],
                   Text(title, style: t.titleSmall),
                   const SizedBox(height: 2),
                   Text(sub, style: t.bodySmall),
+                  if (!item.isTopup) ...[
+                    const SizedBox(height: 6),
+                    // The business number is what sets Growth apart: say so.
+                    Row(
+                      children: [
+                        Icon(
+                          item.businessNumber
+                              ? Icons.phone_in_talk_rounded
+                              : Icons.shuffle_rounded,
+                          size: 16,
+                          color: item.businessNumber
+                              ? AppColors.brand
+                              : AppColors.inkFaint,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            item.businessNumber
+                                ? s.planNumberIncluded
+                                : s.planSharedNumbers,
+                            key: ValueKey('plan-number-${item.planId}'),
+                            style: item.businessNumber
+                                ? t.labelLarge?.copyWith(
+                                    color: AppColors.brand,
+                                    fontWeight: FontWeight.w700,
+                                  )
+                                : t.bodySmall?.copyWith(
+                                    color: AppColors.inkFaint,
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   if (current) ...[
                     const SizedBox(height: 2),
                     Text(
@@ -311,6 +359,39 @@ class _OptionCard extends StatelessWidget {
   /// "Starter (annual)" → "Starter" (the toggle already says yearly).
   static String _baseName(CheckoutPlan p) =>
       p.name.replaceFirst(RegExp(r'\s*\(annual\)$'), '');
+}
+
+/// "Premium" pill on the plan that includes a business number.
+class _PremiumBadge extends StatelessWidget {
+  const _PremiumBadge({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: AppColors.brand,
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(
+          Icons.workspace_premium_rounded,
+          size: 14,
+          color: Colors.white,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Breakdown extends StatelessWidget {
