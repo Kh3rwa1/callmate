@@ -1,8 +1,8 @@
 import 'package:callpilot/core/network/api_client.dart';
 import 'package:callpilot/core/providers.dart';
+import 'package:callpilot/core/utils/call_forwarding.dart';
 import 'package:callpilot/data/datasources/mock/mock_repositories.dart';
 import 'package:callpilot/data/models/models.dart';
-import 'package:callpilot/features/agent/answering_screen.dart';
 import 'package:callpilot/features/usage/billing_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,7 +13,7 @@ import 'helpers/app_harness.dart';
 class _NoNumbers extends MockCallRepository {
   _NoNumbers(super.b);
   @override
-  Future<AnsweringInfo> setAnswering(bool enabled) async =>
+  Future<AnsweringInfo> setAnswering(AnswerMode mode) async =>
       throw const ApiException(
         'No answering numbers are free right now.',
         statusCode: 503,
@@ -21,65 +21,114 @@ class _NoNumbers extends MockCallRepository {
       );
 }
 
+List<String> _codes(AnswerMode m, ForwardingNetwork n) =>
+    forwardingSteps(m, n, '+917971440001').map((s) => s.code).toList();
+
 void main() {
-  test('forwarding codes and the inbound flag', () {
-    expect(ForwardingCodes.noAnswer('+917971440001'), '**61*+917971440001#');
-    expect(ForwardingCodes.busy('+917971440001'), '**67*+917971440001#');
-    expect(ForwardingCodes.unreachable('+917971440001'), '**62*+917971440001#');
-    // The dialer only keeps the trailing # when it is percent-encoded.
-    expect(
-      Uri(
-        scheme: 'tel',
-        path: ForwardingCodes.noAnswer('+917971440001'),
-      ).toString(),
-      'tel:**61*+917971440001%23',
-    );
-    expect(
-      AnsweringInfo.fromJson({
+  group('forwarding codes', () {
+    test('standard (Airtel, Vi, BSNL) codes take +91', () {
+      expect(_codes(AnswerMode.ai, ForwardingNetwork.gsm), [
+        '**21*+917971440001#',
+      ]);
+      expect(_codes(AnswerMode.missed, ForwardingNetwork.gsm), [
+        '##002#',
+        '**004*+917971440001#',
+      ]);
+      expect(_codes(AnswerMode.owner, ForwardingNetwork.gsm), ['##002#']);
+    });
+
+    test('Jio has its own codes and takes 10 digits', () {
+      expect(_codes(AnswerMode.ai, ForwardingNetwork.jio), [
+        '*401*7971440001#',
+      ]);
+      expect(_codes(AnswerMode.missed, ForwardingNetwork.jio), [
+        '##002#',
+        '*403*7971440001#',
+        '*405*7971440001#',
+        '*409*7971440001#',
+      ]);
+      expect(_codes(AnswerMode.owner, ForwardingNetwork.jio), ['##002#']);
+    });
+
+    test('the dialer keeps # only when percent-encoded', () {
+      expect(
+        Uri(scheme: 'tel', path: '**21*+917971440001#').toString(),
+        'tel:**21*+917971440001%23',
+      );
+    });
+
+    test('models', () {
+      final on = AnsweringInfo.fromJson({
         'available': true,
         'enabled': true,
         'phone': '+917971440001',
-      }).phone,
-      '+917971440001',
-    );
-    expect(Call.fromJson({'id': 'c', 'direction': 'inbound'}).inbound, isTrue);
-    expect(Call.fromJson({'id': 'c'}).inbound, isFalse);
+        'mode': 'all',
+      });
+      expect(on.mode, AnswerMode.ai);
+      expect(
+        AnsweringInfo.fromJson({'enabled': true, 'mode': 'missed'}).mode,
+        AnswerMode.missed,
+      );
+      expect(AnsweringInfo.fromJson({'enabled': false}).mode, AnswerMode.owner);
+      expect(
+        Call.fromJson({'id': 'c', 'direction': 'inbound'}).inbound,
+        isTrue,
+      );
+      expect(Call.fromJson({'id': 'c'}).inbound, isFalse);
+    });
   });
 
-  final dialled = <Uri>[];
+  final dialled = <String>[];
   appTest(
-    'turning it on shows the AI line and opens the dialer with each code',
+    'choosing who answers shows the line and the codes for the network',
     (h) async {
-      expect(find.byKey(const Key('agent-answering')), findsOneWidget);
+      // Settings row on the Agent tab says who answers today.
+      await h.tester.scrollUntilVisible(
+        find.byKey(const Key('agent-answering')),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await h.settle();
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('agent-answering')),
+          matching: find.text('Only me'),
+        ),
+        findsOneWidget,
+      );
       await h.tap(find.byKey(const Key('agent-answering')));
       expect(h.location, '/agent/answering');
       expect(find.byKey(const Key('answering-line')), findsNothing);
 
-      await h.tap(find.byKey(const Key('answering-switch')));
+      // Every call → the AI.
+      await h.tap(find.byKey(const Key('answer-mode-ai')));
       expect(find.byKey(const Key('answering-line')), findsOneWidget);
       expect(find.text('+91 79714 40001'), findsOneWidget);
+      await h.tap(find.byKey(const Key('network-jio')));
+      await h.tap(find.byKey(const Key('forward-step-1')));
+      expect(dialled.last, 'tel:*401*7971440001%23');
 
-      await h.tapText('When I don\'t pick up');
-      await h.tapText('When I\'m on another call');
-      await h.tapText('Stop sending calls');
-      expect(dialled.map((u) => u.toString()), [
-        'tel:**61*+917971440001%23',
-        'tel:**67*+917971440001%23',
+      // Missed calls only, on Airtel: clear, then one code.
+      await h.tap(find.byKey(const Key('answer-mode-missed')));
+      await h.tap(find.byKey(const Key('network-gsm')));
+      await h.tap(find.byKey(const Key('forward-step-1')));
+      await h.tap(find.byKey(const Key('forward-step-2')));
+      expect(dialled.sublist(dialled.length - 2), [
         'tel:%23%23002%23',
+        'tel:**004*+917971440001%23',
       ]);
+      expect(find.byKey(const Key('forward-step-3')), findsNothing);
 
-      // Off again: the number stays, the switch is off.
-      await h.tap(find.byKey(const Key('answering-switch')));
-      final sw = h.tester.widget<SwitchListTile>(
-        find.byKey(const Key('answering-switch')),
-      );
-      expect(sw.value, isFalse);
+      // Only me: one step that stops forwarding; the line stays.
+      await h.tap(find.byKey(const Key('answer-mode-owner')));
+      expect(find.byKey(const Key('forward-step-2')), findsNothing);
+      expect(find.text('Clear old call forwarding'), findsOneWidget);
       expect(find.byKey(const Key('answering-line')), findsOneWidget);
     },
     location: '/agent',
     overrides: () => [
       externalUrlLauncherProvider.overrideWithValue((uri) async {
-        dialled.add(uri);
+        dialled.add(uri.toString());
         return true;
       }),
     ],
@@ -88,7 +137,7 @@ void main() {
   appTest(
     'no free numbers: says so instead of a generic error',
     (h) async {
-      await h.tap(find.byKey(const Key('answering-switch')));
+      await h.tap(find.byKey(const Key('answer-mode-ai')));
       expect(
         find.text('No answering numbers are free right now. Try again later.'),
         findsOneWidget,

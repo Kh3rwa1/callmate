@@ -177,15 +177,6 @@ class _Body extends ConsumerWidget {
                       title: s.hearYourAiShort,
                       onTap: () => showOwnerTestCallSheet(context),
                     ),
-                    if (answering != null &&
-                        (answering.available || answering.enabled))
-                      _NavRow(
-                        key: const Key('agent-answering'),
-                        icon: Icons.phone_callback_outlined,
-                        title: s.answeringTitle,
-                        value: answering.enabled ? s.answeringOn : null,
-                        onTap: () => context.push('/agent/answering'),
-                      ),
                     _NavRow(
                       icon: Icons.menu_book_outlined,
                       glyph: AppGlyphs.teach,
@@ -256,6 +247,15 @@ class _Body extends ConsumerWidget {
               reveal(
                 CardGroup(
                   children: [
+                    if (answering != null &&
+                        (answering.available || answering.enabled))
+                      _NavRow(
+                        key: const Key('agent-answering'),
+                        icon: Icons.phone_callback_outlined,
+                        title: s.answeringTitle,
+                        value: s.answerModeShort(answering.mode),
+                        onTap: () => context.push('/agent/answering'),
+                      ),
                     _NavRow(
                       icon: Icons.notifications_active_outlined,
                       title: s.allowAlerts,

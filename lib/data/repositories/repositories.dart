@@ -108,13 +108,13 @@ abstract class CallRepository {
   /// Returns the test calls left today.
   Future<OwnerTestCallInfo> callOwner(String phone);
 
-  /// `GET /agent/answering` – does the AI answer missed calls, and on which
+  /// `GET /agent/answering` – who answers the business's calls, and the AI's
   /// number.
   Future<AnsweringInfo> answering();
 
-  /// `POST /agent/answering` – turn answering on (gets a number the first
-  /// time) or off.
-  Future<AnsweringInfo> setAnswering(bool enabled);
+  /// `POST /agent/answering` – the AI answers every call ([AnswerMode.ai]),
+  /// the missed ones, or none (the number is given the first time).
+  Future<AnsweringInfo> setAnswering(AnswerMode mode);
 }
 
 enum CallFilter { all, connected, noAnswer, hot }

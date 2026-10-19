@@ -25,11 +25,15 @@ import { formatBusinessContext, firstLanguageName } from './call_variables';
 import { topKnowledge } from './knowledge';
 import { isPlanBlocked, minutesRemaining, MINUTE_BALANCE_COLUMNS, MinuteBalances } from './plans';
 
+/** 'all': every call is forwarded to the AI; 'missed': the owner answers first, the AI takes the rest. */
+export type AnswerMode = 'all' | 'missed';
+
 export interface AnsweringRow {
   phone: string;
   business_id: string | null;
   deployment_id: string | null;
   enabled: number;
+  answer_mode: AnswerMode;
 }
 
 /** "+917971440000" from anything with an Indian or international number in it; null if not a number. */
@@ -54,7 +58,7 @@ export function answeringConfigured(env: Env): boolean {
 }
 
 export async function answeringFor(db: D1Database, businessId: string): Promise<AnsweringRow | null> {
-  return db.prepare('SELECT phone, business_id, deployment_id, enabled FROM inbound_numbers WHERE business_id = ?')
+  return db.prepare('SELECT phone, business_id, deployment_id, enabled, answer_mode FROM inbound_numbers WHERE business_id = ?')
     .bind(businessId).first<AnsweringRow>();
 }
 
@@ -141,8 +145,9 @@ export async function setDeploymentActive(env: Env, deploymentId: string, active
  * Turns answering on or off for a business. On: a number (claimed once), a deployment (created once),
  * resumed. Off: the deployment is paused; the number stays with the business.
  */
-export async function setAnswering(env: Env, businessId: string, enabled: boolean, webhookBaseUrl: string):
-  Promise<{ ok: true; row: AnsweringRow | null } | { ok: false; code: 'not_configured' | 'no_numbers' | 'sarvam_failed'; error?: string }> {
+export async function setAnswering(
+  env: Env, businessId: string, enabled: boolean, webhookBaseUrl: string, mode?: AnswerMode,
+): Promise<{ ok: true; row: AnsweringRow | null } | { ok: false; code: 'not_configured' | 'no_numbers' | 'sarvam_failed'; error?: string }> {
   if (!enabled) {
     const row = await answeringFor(env.DB, businessId);
     if (!row) return { ok: true, row: null };
@@ -168,6 +173,7 @@ export async function setAnswering(env: Env, businessId: string, enabled: boolea
     if (!(await setDeploymentActive(env, row.deployment_id, true))) return { ok: false, code: 'sarvam_failed' };
     await env.DB.prepare('UPDATE inbound_numbers SET enabled = 1 WHERE phone = ?').bind(phone).run();
   }
+  if (mode) await env.DB.prepare('UPDATE inbound_numbers SET answer_mode = ? WHERE phone = ?').bind(mode, phone).run();
   row = (await answeringFor(env.DB, businessId))!;
   return { ok: true, row };
 }
@@ -179,7 +185,8 @@ export async function setAnswering(env: Env, businessId: string, enabled: boolea
 export async function inboundCallContext(env: Env, called: unknown, caller: unknown): Promise<Record<string, string>> {
   const phone = e164(called);
   const row = phone
-    ? await env.DB.prepare('SELECT business_id, enabled FROM inbound_numbers WHERE phone = ?').bind(phone).first<{ business_id: string | null; enabled: number }>()
+    ? await env.DB.prepare('SELECT business_id, enabled, answer_mode FROM inbound_numbers WHERE phone = ?')
+      .bind(phone).first<{ business_id: string | null; enabled: number; answer_mode: AnswerMode }>()
     : null;
   const businessId = row?.business_id;
   if (!businessId) {
@@ -212,6 +219,7 @@ export async function inboundCallContext(env: Env, called: unknown, caller: unkn
     caller_known: lead ? 'yes' : 'no',
     // 'no': out of minutes or plan unpaid — the agent takes a message and ends the call quickly.
     can_talk: canTalk ? 'yes' : 'no',
-    greeting: inboundGreeting(callLang(agent?.languages), { agent: agent?.name, business: business?.name }),
+    answer_mode: row.answer_mode,
+    greeting: inboundGreeting(callLang(agent?.languages), { agent: agent?.name, business: business?.name }, row.answer_mode),
   };
 }

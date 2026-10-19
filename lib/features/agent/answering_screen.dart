@@ -6,6 +6,7 @@ import '../../core/network/api_client.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/call_forwarding.dart';
 import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
@@ -13,17 +14,9 @@ import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import '../usage/billing_actions.dart';
 
-/// GSM call-forwarding codes the owner dials once to send calls to their AI
-/// line: when unanswered, busy or unreachable, and to cancel all of them.
-abstract final class ForwardingCodes {
-  static String noAnswer(String line) => '**61*$line#';
-  static String busy(String line) => '**67*$line#';
-  static String unreachable(String line) => '**62*$line#';
-  static const stopAll = '##002#';
-}
-
-/// "Answer my missed calls": the AI picks up calls the owner can't, on a
-/// number their phone forwards to (`/agent/answering`).
+/// "Who answers my calls": the AI employee answers every call, only the ones
+/// the owner misses, or none. The phone does the forwarding; the app gives
+/// the codes for the owner's network (`/agent/answering`).
 class AnsweringScreen extends ConsumerWidget {
   const AnsweringScreen({super.key});
 
@@ -50,15 +43,27 @@ class _Body extends ConsumerStatefulWidget {
 }
 
 class _BodyState extends ConsumerState<_Body> {
-  bool _busy = false;
+  AnswerMode? _saving;
+  ForwardingNetwork? _network;
 
-  Future<void> _toggle(bool on) async {
+  @override
+  void initState() {
+    super.initState();
+    _network = switch (ref.read(localPrefsProvider).forwardingNetwork) {
+      'jio' => ForwardingNetwork.jio,
+      'gsm' => ForwardingNetwork.gsm,
+      _ => null,
+    };
+  }
+
+  Future<void> _choose(AnswerMode mode) async {
+    if (_saving != null || mode == widget.info.mode) return;
     final s = context.s;
     final messenger = ScaffoldMessenger.of(context);
-    setState(() => _busy = true);
+    setState(() => _saving = mode);
     Haptics.tap();
     try {
-      await ref.read(callRepoProvider).setAnswering(on);
+      await ref.read(callRepoProvider).setAnswering(mode);
       ref.invalidate(answeringProvider);
     } catch (e) {
       final message = e is ApiException && e.code == 'no_numbers'
@@ -68,8 +73,14 @@ class _BodyState extends ConsumerState<_Body> {
         ..clearSnackBars()
         ..showSnackBar(SnackBar(content: Text(message)));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) setState(() => _saving = null);
     }
+  }
+
+  void _pickNetwork(ForwardingNetwork n) {
+    Haptics.tap();
+    setState(() => _network = n);
+    ref.read(localPrefsProvider).setForwardingNetwork(n.name);
   }
 
   Future<void> _dial(String code) async {
@@ -97,26 +108,53 @@ class _BodyState extends ConsumerState<_Body> {
     final a = widget.info;
     final agentName = ref.watch(agentProvider).value?.name ?? 'AI';
     final line = a.phone;
+    final mode = _saving ?? a.mode;
+
+    Widget option(AnswerMode m, String title, String subtitle) =>
+        RadioListTile<AnswerMode>(
+          key: Key('answer-mode-${m.name}'),
+          value: m,
+          enabled: _saving == null,
+          title: Text(title, style: t.titleSmall),
+          subtitle: Text(subtitle, style: t.bodySmall),
+        );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(AppSpace.page, 8, AppSpace.page, 40),
       children: [
         Text(s.answeringIntro(agentName), style: t.bodyLarge),
-        const SizedBox(height: 20),
+        const SizedBox(height: 8),
         if (!a.available && !a.enabled)
-          AppCard(child: Text(s.answeringUnavailable, style: t.bodyMedium))
-        else
-          AppCard(
-            padding: EdgeInsets.zero,
-            child: SwitchListTile(
-              key: const Key('answering-switch'),
-              value: a.enabled,
-              onChanged: _busy ? null : _toggle,
-              title: Text(s.answeringSwitch(agentName), style: t.titleSmall),
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: AppCard(
+              child: Text(s.answeringUnavailable, style: t.bodyMedium),
+            ),
+          )
+        else ...[
+          SectionLabel(s.whoAnswers),
+          RadioGroup<AnswerMode>(
+            groupValue: mode,
+            onChanged: (v) => _choose(v!),
+            child: CardGroup(
+              children: [
+                option(AnswerMode.ai, s.modeAi(agentName), s.modeAiSub),
+                option(
+                  AnswerMode.missed,
+                  s.modeMissed(agentName),
+                  s.modeMissedSub,
+                ),
+                option(
+                  AnswerMode.owner,
+                  s.modeOwner,
+                  s.modeOwnerSub(agentName),
+                ),
+              ],
             ),
           ),
-        if (line != null) ...[
-          SectionLabel(s.answeringForwardTitle(agentName)),
+        ],
+        if (line != null && _saving == null) ...[
+          SectionLabel(s.applyOnPhone),
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,62 +166,71 @@ class _BodyState extends ConsumerState<_Body> {
                   key: const Key('answering-line'),
                   style: t.headlineSmall,
                 ),
+                const SizedBox(height: 12),
+                Text(s.whichNetwork, style: t.titleSmall),
                 const SizedBox(height: 8),
-                Text(s.answeringForwardHint, style: t.bodyMedium),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ChoiceChip(
+                      key: const Key('network-jio'),
+                      label: const Text('Jio'),
+                      selected: _network == ForwardingNetwork.jio,
+                      onSelected: (_) => _pickNetwork(ForwardingNetwork.jio),
+                    ),
+                    ChoiceChip(
+                      key: const Key('network-gsm'),
+                      label: Text(s.networkOthers),
+                      selected: _network == ForwardingNetwork.gsm,
+                      onSelected: (_) => _pickNetwork(ForwardingNetwork.gsm),
+                    ),
+                  ],
+                ),
+                if (_network != null) ...[
+                  const SizedBox(height: 12),
+                  Text(s.answeringForwardHint, style: t.bodyMedium),
+                ],
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          CardGroup(
-            children: [
-              _ForwardRow(
-                icon: Icons.phone_missed_outlined,
-                title: s.forwardNoAnswer,
-                code: ForwardingCodes.noAnswer(line),
-                onTap: _dial,
-              ),
-              _ForwardRow(
-                icon: Icons.phone_in_talk_outlined,
-                title: s.forwardBusy,
-                code: ForwardingCodes.busy(line),
-                onTap: _dial,
-              ),
-              _ForwardRow(
-                icon: Icons.signal_cellular_off_outlined,
-                title: s.forwardUnreachable,
-                code: ForwardingCodes.unreachable(line),
-                onTap: _dial,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => _dial(ForwardingCodes.stopAll),
-              icon: const Icon(Icons.phone_disabled_outlined),
-              label: Text(s.forwardStop),
+          if (_network != null) ...[
+            const SizedBox(height: 12),
+            CardGroup(
+              children: [
+                for (final (i, step) in forwardingSteps(
+                  mode,
+                  _network!,
+                  line,
+                ).indexed)
+                  _StepRow(
+                    number: i + 1,
+                    title: s.forwardingStep(step.kind, agentName),
+                    code: step.code,
+                    onTap: _dial,
+                  ),
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            s.answeringChargesNote,
-            style: t.bodySmall?.copyWith(color: AppColors.inkSoft),
-          ),
+            const SizedBox(height: 12),
+            Text(
+              s.answeringChargesNote,
+              style: t.bodySmall?.copyWith(color: AppColors.inkSoft),
+            ),
+          ],
         ],
       ],
     );
   }
 }
 
-class _ForwardRow extends StatelessWidget {
-  const _ForwardRow({
-    required this.icon,
+class _StepRow extends StatelessWidget {
+  const _StepRow({
+    required this.number,
     required this.title,
     required this.code,
     required this.onTap,
   });
-  final IconData icon;
+  final int number;
   final String title;
   final String code;
   final void Function(String code) onTap;
@@ -192,8 +239,13 @@ class _ForwardRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return ListTile(
+      key: Key('forward-step-$number'),
       minTileHeight: 64,
-      leading: Icon(icon, color: AppColors.ink),
+      leading: CircleAvatar(
+        radius: 14,
+        backgroundColor: AppColors.surfaceMuted,
+        child: Text('$number', style: t.labelLarge),
+      ),
       title: Text(title, style: t.titleSmall),
       subtitle: Text(code, style: t.bodySmall),
       trailing: Icon(Icons.dialpad_rounded, color: AppColors.brand),

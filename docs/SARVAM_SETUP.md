@@ -173,13 +173,23 @@ greeting, that the agent carries on naturally after it, and that
 `GET /health/deep` shows `compliance.disclosure_override`. To roll back, remove
 the line and redeploy.
 
-## AI answers missed calls (inbound)
+## AI answers the business's calls (inbound)
 
-Owners turn on **Agent → Answer my missed calls**. The backend gives the
-business one number from a pool you rent in Sarvam and creates a Sarvam
-**inbound deployment** for it (`backend/src/services/answering.ts`). The owner
-forwards busy / unanswered / unreachable calls to that number with the codes
-the app shows (`**61*<number>#`, `**67*…#`, `**62*…#`; `##002#` stops all).
+Owners choose in **Agent → Settings → Who answers my calls**:
+*the AI answers every call*, *I answer first, the AI takes the ones I miss*,
+or *only me*. The backend gives the business one number from a pool you rent
+in Sarvam and creates a Sarvam **inbound deployment** for it
+(`backend/src/services/answering.ts`). The phone does the forwarding; the app
+shows the codes for the owner's network (`lib/core/utils/call_forwarding.dart`):
+
+| | Jio | Airtel, Vi, BSNL (standard) |
+|---|---|---|
+| Every call | `*401*<10 digits>#` | `**21*<+91…>#` |
+| Missed only | `##002#`, then `*403*`, `*405*`, `*409*` `<10 digits>#` | `##002#`, then `**004*<+91…>#` |
+| Only me | `##002#` | `##002#` |
+
+The greeting follows the choice: with every call forwarded it doesn't say
+"the team can't come to the phone".
 
 ```
 caller → owner's phone (no answer) → forwarded to the AI line

@@ -472,13 +472,29 @@ class OwnerTestCallInfo {
   );
 }
 
-/// `GET/POST /agent/answering`: whether the AI answers the owner's missed
-/// calls, and the number their calls should be forwarded to.
+/// Who picks up the business's calls.
+enum AnswerMode {
+  /// Every call goes to the AI employee.
+  ai('all'),
+
+  /// The owner answers; calls they miss go to the AI.
+  missed('missed'),
+
+  /// Only the owner (no forwarding).
+  owner('off');
+
+  const AnswerMode(this.wire);
+  final String wire;
+}
+
+/// `GET/POST /agent/answering`: whether the AI answers the business's calls
+/// (every call or the missed ones), and the number to forward them to.
 class AnsweringInfo {
   const AnsweringInfo({
     this.available = false,
     this.enabled = false,
     this.phone,
+    this.allCalls = false,
   });
 
   /// False until answering is set up on the server (agent + numbers).
@@ -488,10 +504,20 @@ class AnsweringInfo {
   /// E.164, e.g. `+917971440001`; null until the business turned it on once.
   final String? phone;
 
+  /// True: every call is forwarded; false: only missed ones.
+  final bool allCalls;
+
+  AnswerMode get mode => !enabled
+      ? AnswerMode.owner
+      : allCalls
+      ? AnswerMode.ai
+      : AnswerMode.missed;
+
   factory AnsweringInfo.fromJson(Json j) => AnsweringInfo(
     available: jBool(j, 'available'),
     enabled: jBool(j, 'enabled'),
     phone: jStrN(j, 'phone'),
+    allCalls: jStrN(j, 'mode') == 'all',
   );
 }
 

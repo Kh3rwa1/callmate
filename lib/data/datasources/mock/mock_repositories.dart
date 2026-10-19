@@ -418,11 +418,13 @@ class MockCallRepository implements CallRepository {
   Future<AnsweringInfo> answering() => _lag(() => _answering, 150);
 
   @override
-  Future<AnsweringInfo> setAnswering(bool enabled) => _lag(() {
+  Future<AnsweringInfo> setAnswering(AnswerMode mode) => _lag(() {
+    final on = mode != AnswerMode.owner;
     _answering = AnsweringInfo(
       available: true,
-      enabled: enabled,
-      phone: _answering.phone ?? (enabled ? demoAnsweringPhone : null),
+      enabled: on,
+      phone: _answering.phone ?? (on ? demoAnsweringPhone : null),
+      allCalls: on ? mode == AnswerMode.ai : _answering.allCalls,
     );
     b.emitChanged('answering');
     return _answering;

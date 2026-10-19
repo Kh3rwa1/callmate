@@ -369,10 +369,13 @@ class ApiCallRepository implements CallRepository {
   Future<AnsweringInfo> answering() =>
       api.get('/agent/answering', (d) => AnsweringInfo.fromJson(_j(d)));
   @override
-  Future<AnsweringInfo> setAnswering(bool enabled) => api.post(
+  Future<AnsweringInfo> setAnswering(AnswerMode mode) => api.post(
     '/agent/answering',
     (d) => AnsweringInfo.fromJson(_j(d)),
-    data: {'enabled': enabled},
+    data: {
+      'enabled': mode != AnswerMode.owner,
+      if (mode != AnswerMode.owner) 'mode': mode.wire,
+    },
   );
 }
 

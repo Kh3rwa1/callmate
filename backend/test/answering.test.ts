@@ -4,6 +4,7 @@ import { migrateTestDb } from './setup-db';
 import app from '../src/index';
 import { signJWT } from '../src/auth';
 import { e164, inboundWebhookToken, poolNumbers } from '../src/services/answering';
+import { inboundGreeting } from '../src/services/disclosure';
 
 const jwtSecret = 'test-jwt-signing-secret-key-32chars-min-length';
 const bizId = 'biz_answer';
@@ -57,12 +58,24 @@ describe('numbers', () => {
     expect(e164('abc')).toBeNull();
     expect(poolNumbers(live())).toEqual(['+917971440001', '+917971440002']);
   });
+
+  it('greets as an AI either way; only missed calls say the team is busy', () => {
+    const missed = inboundGreeting('en', { agent: 'Riya', business: 'Roy Coaching' }, 'missed');
+    const all = inboundGreeting('en', { agent: 'Riya', business: 'Roy Coaching' }, 'all');
+    for (const g of [missed, all]) {
+      expect(g).toContain("you've reached Roy Coaching");
+      expect(g).toContain('an AI assistant');
+      expect(g).toContain('may be recorded');
+    }
+    expect(missed).toContain("can't come to the phone");
+    expect(all).not.toContain("can't come to the phone");
+  });
 });
 
 describe('turning answering on and off', () => {
   it('is unavailable until the agent and numbers are configured', async () => {
     const res = await app.fetch(authed('/agent/answering'), live({ SARVAM_INBOUND_APP_ID: '' }));
-    expect(await res.json()).toEqual({ available: false, enabled: false, phone: null });
+    expect(await res.json()).toEqual({ available: false, enabled: false, phone: null, mode: 'missed' });
     const on = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true }) }), live({ SARVAM_INBOUND_APP_ID: '' }));
     expect(on.status).toBe(503);
   });
@@ -75,7 +88,7 @@ describe('turning answering on and off', () => {
     });
     const on = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true }) }), live());
     expect(on.status).toBe(200);
-    expect(await on.json()).toEqual({ available: true, enabled: true, phone: '+917971440001' });
+    expect(await on.json()).toEqual({ available: true, enabled: true, phone: '+917971440001', mode: 'missed' });
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe('https://apps.sarvam.ai/api/app-authoring/v1/orgs/org/workspaces/ws/deployments');
     expect(calls[0].body).toMatchObject({
@@ -91,11 +104,16 @@ describe('turning answering on and off', () => {
     expect(calls).toHaveLength(1);
 
     const off = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: false }) }), live());
-    expect(await off.json()).toEqual({ available: true, enabled: false, phone: '+917971440001' });
+    expect(await off.json()).toEqual({ available: true, enabled: false, phone: '+917971440001', mode: 'missed' });
     expect(calls[1]).toMatchObject({ url: expect.stringContaining('/deployments/dep_123/status'), method: 'PUT', body: { action: 'pause' } });
 
-    await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true }) }), live());
+    // On again, now for every call: resumes the deployment and remembers the choice.
+    const all = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true, mode: 'all' }) }), live());
     expect(calls[2]).toMatchObject({ method: 'PUT', body: { action: 'resume' } });
+    expect(await all.json()).toMatchObject({ enabled: true, mode: 'all' });
+    expect(await (await app.fetch(authed('/agent/answering'), live())).json()).toMatchObject({ mode: 'all' });
+    const bad = await app.fetch(authed('/agent/answering', { method: 'POST', body: JSON.stringify({ enabled: true, mode: 'sometimes' }) }), live());
+    expect(bad.status).toBe(400);
   });
 
   it("another business gets the next number, never this one's", async () => {
@@ -137,6 +155,9 @@ describe('on-start hook', () => {
     expect(v.business_context).toContain('Business: Roy Coaching');
     expect(v.greeting).toContain('Roy Coaching');
     expect(v.greeting).toContain('AI');
+    // Every call goes to the AI (set in the previous block): no "the team can't come to the phone".
+    expect(v.answer_mode).toBe('all');
+    expect(v.greeting).not.toContain("can't come to the phone");
   });
 
   it('an unknown number still gets a neutral greeting that says it is an AI', async () => {

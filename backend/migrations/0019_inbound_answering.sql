@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS inbound_numbers (
   business_id TEXT UNIQUE,              -- NULL while the number is free in the pool
   deployment_id TEXT,                   -- Sarvam inbound deployment routing this number to the agent
   enabled INTEGER NOT NULL DEFAULT 0,   -- 1 = the AI answers calls on this number
+  answer_mode TEXT NOT NULL DEFAULT 'missed' CHECK (answer_mode IN ('all', 'missed')),
+                                        -- 'all': every call is forwarded; 'missed': the owner answers first
   assigned_at TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );

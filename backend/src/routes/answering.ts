@@ -2,8 +2,9 @@
  * The AI answers calls the owner misses (services/answering.ts).
  *
  * Owner (signed in):
- *   GET  /agent/answering          → { available, enabled, phone }
- *   POST /agent/answering {enabled} → turn on (number + Sarvam deployment) / off (pause)
+ *   GET  /agent/answering                → { available, enabled, phone, mode }
+ *   POST /agent/answering {enabled, mode} → on (number + Sarvam deployment; every call or only missed
+ *                                          ones) / off (pause). The owner sets forwarding on their phone.
  * Sarvam (public):
  *   POST /voice/inbound/start      → on-start hook: business name, employee, context, greeting
  *   POST /webhooks/sarvam-inbound  → after the call: lead + call row, then the outbound result handling
@@ -29,8 +30,13 @@ type AuthedEnv = { Bindings: Env; Variables: { user: AuthUser } };
 
 export const answeringApp = new Hono<AuthedEnv>();
 
-function answeringView(env: Env, row: { phone: string; enabled: number } | null) {
-  return { available: answeringConfigured(env), enabled: row?.enabled === 1, phone: row?.phone ?? null };
+function answeringView(env: Env, row: { phone: string; enabled: number; answer_mode?: string } | null) {
+  return {
+    available: answeringConfigured(env),
+    enabled: row?.enabled === 1,
+    phone: row?.phone ?? null,
+    mode: row?.answer_mode === 'all' ? 'all' : 'missed',
+  };
 }
 
 answeringApp.get('/agent/answering', async (c) => {
@@ -38,14 +44,14 @@ answeringApp.get('/agent/answering', async (c) => {
   return c.json(answeringView(c.env, await answeringFor(c.env.DB, user.business_id)));
 });
 
-const setAnsweringSchema = z.object({ enabled: z.boolean() });
+const setAnsweringSchema = z.object({ enabled: z.boolean(), mode: z.enum(['all', 'missed']).optional() });
 
 answeringApp.post('/agent/answering', async (c) => {
   const user = c.get('user');
   const parsed = await parseJsonBody(c, setAnsweringSchema);
   if (!parsed.success) return parsed.response;
   const base = c.env.PUBLIC_API_BASE_URL || new URL(c.req.url).origin;
-  const r = await setAnswering(c.env, user.business_id, parsed.data.enabled, base);
+  const r = await setAnswering(c.env, user.business_id, parsed.data.enabled, base, parsed.data.mode);
   if (!r.ok) {
     const body = {
       not_configured: { message: 'Call answering is not available yet.', status: 503 },
