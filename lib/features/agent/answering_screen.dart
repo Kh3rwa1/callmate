@@ -161,10 +161,15 @@ class _BodyState extends ConsumerState<_Body> {
               children: [
                 Text(s.answeringLine, style: t.bodySmall),
                 const SizedBox(height: 2),
+                // Plain digits: the display serif is hard to read in a number.
                 SelectableText(
                   PhoneUtils.display(line),
                   key: const Key('answering-line'),
-                  style: t.headlineSmall,
+                  style: t.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(s.whichNetwork, style: t.titleSmall),
