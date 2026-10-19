@@ -5,7 +5,7 @@ import app from '../src/index';
 import { signJWT } from '../src/auth';
 import { dialSarvam } from '../src/services/campaign_queue';
 import {
-  callerIdFor, e164, inboundWebhookToken, poolEntries, poolNumbers, restoreNumberIfEntitled, runBusinessNumberCron,
+  callerIdFor, e164, inboundHookToken, inboundWebhookToken, poolEntries, poolNumbers, restoreNumberIfEntitled, runBusinessNumberCron,
   NUMBER_HOLD_DAYS,
 } from '../src/services/business_numbers';
 import { collectAlertFindings } from '../src/services/alerts';
@@ -251,12 +251,17 @@ describe('on-start hook', () => {
     expect(v.greeting).toContain('AI');
   });
 
-  it("each number's agent names its number in the hook URL", async () => {
-    const res = await app.fetch(new Request('http://localhost/voice/inbound/start?number=%2B917971440002', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${HOOK_SECRET}` },
+  it("each number's agent names its number in the hook URL, signed with that number's token", async () => {
+    const at = (query: string) => app.fetch(new Request(`http://localhost/voice/inbound/start?${query}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ caller: '+919830044401', interaction_id: 'y' }),
     }), live());
+    const token = await inboundHookToken(HOOK_SECRET, '+917971440002');
+    const res = await at(`number=%2B917971440002&token=${token}`);
     expect(await res.json()).toMatchObject({ business_name: 'Roy Coaching', caller_name: 'Mitali Sen' });
+    // Another number's token, or none, is refused.
+    expect((await at(`number=%2B917971440001&token=${token}`)).status).toBe(401);
+    expect((await at('number=%2B917971440002')).status).toBe(401);
   });
 
   it('an unknown number still gets a neutral greeting that says it is an AI', async () => {

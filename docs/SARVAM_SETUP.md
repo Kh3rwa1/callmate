@@ -175,14 +175,31 @@ the line and redeploy.
 
 ## Business numbers (every paid plan): one number for calls out and in
 
-**Your part is two steps:** buy numbers in Sarvam, paste them into one list.
-The backend does the rest.
+**Owners never touch Sarvam.** In the app a paying owner picks a free
+number, or taps **Request my number** when none is free. Numbers can only be
+bought in the Sarvam dashboard (there is no API), so the operator keeps the
+pool stocked:
 
-1. Sarvam dashboard → **Deploy → Phone Numbers** → the **Sarvam Vobiz**
-   connection (the one in `SARVAM_CONNECTION_ID`) → number catalog → **Buy**.
-   ₹59 per number per 30 days. Numbers on that connection make and receive
-   calls; there is nothing separate to set up for inbound or outbound.
-2. Add them to `SARVAM_BUSINESS_NUMBERS` in `wrangler.toml` and deploy.
+1. **Buy** — Sarvam dashboard → **Deploy → Phone Numbers** → the **Sarvam
+   Vobiz** connection (the one in `SARVAM_CONNECTION_ID`) → **Buy Number**.
+   ₹59 per number per 30 days. A number on that connection makes and receives
+   calls; nothing separate to set up for inbound or outbound.
+2. **Give it its answering agent** — Sarvam's on-start hook can't see which
+   number was dialled, so each number has its own copy of the receptionist
+   agent whose hook URL names the number (`?number=…&token=…`). Clone the
+   current receptionist (e.g. `CallPilot-R-2944da04-d549` on staging), set its
+   `load_business` hook URL to the output of
+   `INBOUND_HOOK_SECRET=… node backend/scripts/hook_url.mjs <PUBLIC_API_BASE_URL> +91…`,
+   and commit a version. Claude Code can do this step through the Sarvam MCP.
+3. **List it** — append `+91…=<agent id>:<version>` to
+   `SARVAM_BUSINESS_NUMBERS` for that environment in `wrangler.toml` and
+   deploy. The cron hands it to the longest-waiting request within 10 minutes
+   and the owner gets a notification; otherwise it shows in the picker.
+
+While anyone is waiting, the ops alert `business_numbers_requested` repeats
+every 12 hours. Never list a number in both `SARVAM_BUSINESS_NUMBERS` and
+`SARVAM_AGENT_PHONE_NUMBERS`, and never in two environments: a number belongs
+to one inbound deployment.
 
 **What the business gets** (`backend/src/services/business_numbers.ts`).
 Every business on a **paid plan** (Starter or Growth, monthly or yearly) picks
@@ -233,45 +250,32 @@ the agent still answers with the disclosure and takes a message
 owner to cancel forwarding (`##002#`); after the hold, the number can go to
 another business.
 
-**One-time setup of the AI that answers (Sarvam dashboard, then Worker config):**
+**The receptionist agent** (staging: `CallPilot-R-2944da04-d549`, cloned from
+the outbound agent so it keeps the voice, languages and result variables):
 
-1. **Create the agent** "CallPilot - Inbound Receptionist":
-   - Input variables: `business_name`, `agent_name`, `agent_role`,
-     `business_context`, `call_language`, `caller_name`, `caller_known`,
-     `can_talk`, `greeting`. Opening line: `{{greeting}}` (it says it's an AI
-     assistant and that the call may be recorded).
-   - Prompt: answer as `{{agent_name}}` for `{{business_name}}` using
-     `{{business_context}}`; find out what the caller wants, their name, and
-     a good time for a call back. If `{{can_talk}}` is `no`, take a short
-     message and end the call. If they ask not to be called, apologise, say
-     they won't be called, set `intent = "opt_out"` and end the call.
-   - Output variables: the outbound set (`lead_score`, `intent`,
-     `temperature`, `summary`, `next_action`, `whatsapp_followup_required`,
-     `whatsapp_message`, `callback_at`) plus `caller_name`.
-   - **On-start hook**: an API tool with *When should this tool run?* =
-     `on_start`, `POST {PUBLIC_API_BASE_URL}/voice/inbound/start`, auth
-     *bearer token* = the `INBOUND_HOOK_SECRET` value (stored as a Sarvam
-     secret), JSON body `{"caller": @User Identifier, "called": <the number
-     dialled>, "interaction_id": @Interaction ID}`, and *Save reply into
-     variables* for every input variable above.
-   - **Verify on the first staging call** that `called` is filled. Sarvam's
-     docs list the caller's number for hooks but not the dialled one; without
-     it the agent still answers, discloses it's an AI and takes a message, and
-     the lead, summary and notification still reach the right business (the
-     after-call webhook carries the dialled number), but it can't greet with
-     the business name or answer questions from its details.
-   - Commit a version.
-2. **Worker config** (`wrangler.toml` `[vars]` / `[env.staging.vars]`):
-   `SARVAM_INBOUND_APP_ID`, `SARVAM_INBOUND_APP_VERSION`,
-   `SARVAM_BUSINESS_NUMBERS = "+91…,+91…"`; secret
-   `npx wrangler secret put INBOUND_HOOK_SECRET` (any 32+ random characters,
-   the same value as the Sarvam secret). Deploy. Until all are set the app
-   says business numbers aren't available yet.
+- Input variables, filled by the `load_business` on-start hook from
+  `POST /voice/inbound/start`: `business_name`, `agent_name`, `agent_role`,
+  `business_context`, `call_language`, `caller_name`, `caller_known`,
+  `can_talk`, `greeting`, `answer_mode`. Opening line: `{{greeting}}`, which
+  always says it is an AI assistant and that the call may be recorded; its
+  default value says the same if the hook fails.
+- Prompt: answer as `{{agent_name}}` for `{{business_name}}` from
+  `{{business_context}}`; find out what the caller wants, their name and a
+  good time for a call back; with `{{can_talk}}` = `no` take a short message
+  only; an opt-out is confirmed and ends the call.
+- Output variables: the outbound set (`lead_score`, `intent`, `temperature`,
+  `summary`, `next_action`, `whatsapp_followup_required`, `whatsapp_message`,
+  `callback_at`) plus `caller_name`.
+- The hook authenticates with the per-number token in its URL (HMAC of the
+  number with the Worker secret `INBOUND_HOOK_SECRET`); Sarvam only attaches
+  stored secrets to allow-listed URLs. Sarvam's hook can't send the caller's
+  number, so returning customers aren't greeted by name; the after-call
+  webhook still carries it and the lead is matched then.
 
-**Adding numbers later**: rent them on the same connection, append them to
-`SARVAM_BUSINESS_NUMBERS` and redeploy; the picker shows them from the next
-request. Never remove a number that a business has rented (check
-`SELECT phone, business_id, status FROM business_numbers`).
+**Worker config:** `npx wrangler secret put INBOUND_HOOK_SECRET [--env staging]`
+(any 32+ random characters, used to sign the hook URLs), and the
+`SARVAM_BUSINESS_NUMBERS` entries above. The deployment's after-call webhook
+is signed with `SARVAM_WEBHOOK_SECRET`, which already exists.
 
 ## Checking it works
 

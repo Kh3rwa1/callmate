@@ -399,9 +399,12 @@ names each dial sends.
   npx wrangler d1 execute callpilot-db --remote --command="
     SELECT status, COUNT(*) FROM business_numbers GROUP BY status;"
   ```
-  No free numbers left: the picker says so; buy more in Sarvam (Deploy →
-  Phone Numbers → Sarvam Vobiz → Buy), add them to `SARVAM_BUSINESS_NUMBERS`,
-  redeploy.
+  No free numbers left: paying owners tap **Request my number** and the ops
+  alert `business_numbers_requested` fires (every 12 h while anyone waits).
+  Buy a number in Sarvam (Deploy → Phone Numbers → Sarvam Vobiz → Buy), give
+  it its answering agent and add `+91…=<agent id>:<version>` to
+  `SARVAM_BUSINESS_NUMBERS` (docs/SARVAM_SETUP.md), redeploy: the cron hands
+  it to the longest-waiting business and notifies the owner.
   **Changing a business's number** (support only, the app doesn't offer it):
   `UPDATE business_numbers SET business_id = NULL, status = 'held',
   held_until = datetime('now') WHERE business_id = 'biz_xxx';` — the owner can

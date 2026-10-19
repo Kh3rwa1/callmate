@@ -137,6 +137,15 @@ export async function availableNumbers(env: Env, limit = PICKER_SIZE): Promise<s
 
 // ------------------------------------------------------------------ Sarvam deployments
 
+/**
+ * On-start hook URL token for one number's agent: HMAC(INBOUND_HOOK_SECRET, "hook:<number>"). Sarvam
+ * only attaches stored secrets to allow-listed URLs, so each agent's hook URL carries this instead
+ * (scripts/hook_url.mjs prints it).
+ */
+export function inboundHookToken(secret: string, phone: string): Promise<string> {
+  return hmacHex(secret, `hook:${phone}`);
+}
+
 /** Webhook URL token for one number: HMAC(SARVAM_WEBHOOK_SECRET, "inbound:<number>"). */
 export function inboundWebhookToken(secret: string, phone: string): Promise<string> {
   // Same HMAC-SHA256 hex as the per-call token (campaign_queue.ts sarvamWebhookToken).

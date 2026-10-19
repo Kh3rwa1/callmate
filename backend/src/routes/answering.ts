@@ -20,7 +20,7 @@ import { normalizePhone } from '../utils/phone';
 import { sarvamWebhookToken } from '../services/campaign_queue';
 import { inboundCallContext, setForwardMode } from '../services/answering';
 import {
-  availableNumbers, BusinessNumberRow, businessNumberFor, e164, inboundWebhookToken, numberEntitled,
+  availableNumbers, BusinessNumberRow, businessNumberFor, e164, inboundHookToken, inboundWebhookToken, numberEntitled,
   numberRequested, numbersConfigured, rentNumber, requestNumber, NUMBER_HOLD_DAYS,
 } from '../services/business_numbers';
 import { consentEventStatement, CONSENT_TEXT_VERSIONS } from '../services/consent';
@@ -138,13 +138,17 @@ export const answeringPublicApp = new Hono<{ Bindings: Env }>();
  */
 answeringPublicApp.post('/voice/inbound/start', async (c) => {
   const secret = c.env.INBOUND_HOOK_SECRET;
+  // Each number's agent names its number in the hook URL (the hook can't see the dialled number),
+  // signed with that number's token; a bearer secret also works.
+  const urlNumber = e164(c.req.query('number'));
   const auth = (c.req.header('authorization') || '').replace(/^Bearer\s+/i, '');
-  if (!secret || !auth || !timingSafeEqual(auth, secret)) {
-    return c.json({ message: 'Unauthorized.', code: 'unauthorized' }, 401);
-  }
+  const token = c.req.query('token') || '';
+  const authorized = !!secret && (
+    (!!auth && timingSafeEqual(auth, secret))
+    || (!!urlNumber && !!token && timingSafeEqual(token, await inboundHookToken(secret, urlNumber))));
+  if (!authorized) return c.json({ message: 'Unauthorized.', code: 'unauthorized' }, 401);
   const body = await c.req.json<any>().catch(() => ({}));
-  // Each number's agent names its number in the hook URL (the hook can't see the dialled number).
-  const called = c.req.query('number') ?? body?.called ?? body?.agent_phone_number ?? body?.to;
+  const called = urlNumber ?? body?.called ?? body?.agent_phone_number ?? body?.to;
   const caller = body?.caller ?? body?.user_phone_number ?? body?.user_identifier ?? body?.from;
   return c.json(await inboundCallContext(c.env, called, caller));
 });
