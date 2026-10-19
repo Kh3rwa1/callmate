@@ -60,9 +60,14 @@ class PushService {
 
   /// Safe to call repeatedly (e.g. on every login): the work runs once per
   /// instance, so listeners are never doubled.
-  Future<void> init() => _initFlight ??= _init();
+  ///
+  /// [askPermission]: false during onboarding, which asks at its end with
+  /// context ("we'll tell you who is ready to buy"); the device still
+  /// registers, and pushes show once the owner allows them.
+  Future<void> init({bool askPermission = true}) =>
+      _initFlight ??= _init(askPermission);
 
-  Future<void> _init() async {
+  Future<void> _init(bool askPermission) async {
     if (!await FirebaseBootstrap.ensureInitialized()) {
       crash?.log('push: Firebase unavailable, push notifications disabled');
       return;
@@ -73,8 +78,10 @@ class PushService {
       await ensureLocalReady();
 
       final messaging = FirebaseMessaging.instance;
-      final settings = await messaging.requestPermission();
-      if (settings.authorizationStatus == AuthorizationStatus.denied) return;
+      if (askPermission) {
+        final settings = await messaging.requestPermission();
+        if (settings.authorizationStatus == AuthorizationStatus.denied) return;
+      }
 
       final token = await messaging.getToken();
       if (token != null) await _safeRegister(token);

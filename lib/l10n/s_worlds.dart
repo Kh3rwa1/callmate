@@ -18,5 +18,12 @@ extension SWorlds on S {
     'सब भेज दिए। बढ़िया।',
     'সব পাঠানো হয়েছে। দারুণ।',
   );
+
+  /// Messages header before the first call has drafted anything.
+  String get nothingToSendYet => pick(
+    'Nothing to send yet.',
+    'अभी भेजने को कुछ नहीं।',
+    'এখনও পাঠানোর কিছু নেই।',
+  );
   String get minutesLeftShort => pick('minutes left', 'मिनट बचे', 'মিনিট বাকি');
 }

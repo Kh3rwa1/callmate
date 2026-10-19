@@ -7,6 +7,8 @@ import '../../core/motion/motion.dart';
 import '../../core/network/api_client.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/calling_hours.dart';
+import '../../core/utils/format.dart';
 import '../../core/utils/phone.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
@@ -147,9 +149,7 @@ Future<bool> handleLeadCall(
         );
       return true;
     } catch (e) {
-      final message = e is ApiException && e.code == 'enquiry_expired'
-          ? s.enquiryExpiredCall
-          : friendlyError(e, s);
+      final message = _refusal(e, s, ref, agentName) ?? friendlyError(e, s);
       messenger
         ..clearSnackBars()
         ..showSnackBar(SnackBar(content: Text(message)));
@@ -191,4 +191,32 @@ Future<bool> _confirmAskedToBeContacted(
     ),
   );
   return ok == true;
+}
+
+/// Why the backend refused the AI call, in the owner's language (its own
+/// message is English only). Null when it isn't one of these.
+String? _refusal(Object e, S s, WidgetRef ref, String agentName) {
+  if (e is! ApiException) return null;
+  switch (e.code) {
+    case 'outside_hours':
+      final a = ref.read(agentProvider).value;
+      final w = traiCallingHours(
+        a?.callingHoursStart ?? 10,
+        a?.callingHoursEnd ?? 19,
+      );
+      return s.callOutsideHours(
+        agentName,
+        Fmt.hour(w.start.round()),
+        Fmt.hour(w.end.round()),
+      );
+    case 'enquiry_expired':
+      return s.enquiryExpiredCall;
+    case 'do_not_call':
+      return s.callRefusedDoNotCall;
+    case 'max_daily_attempts':
+      return s.callRefusedDailyLimit;
+    case 'platform_frequency_cap':
+      return s.callRefusedBusyNumber;
+  }
+  return null;
 }

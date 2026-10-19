@@ -91,6 +91,10 @@ class _OwnerTestCallPanelState extends ConsumerState<OwnerTestCallPanel> {
   void initState() {
     super.initState();
     _load();
+    // Whether calling hours apply depends on the number typed.
+    _phone.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _load() async {
@@ -143,9 +147,17 @@ class _OwnerTestCallPanelState extends ConsumerState<OwnerTestCallPanel> {
     end: _hours.end.round(),
   );
 
+  /// Ringing the owner's own number isn't a customer call, so it works at any
+  /// hour (the backend agrees). Any other number keeps the calling window.
+  bool get _blockedByHours {
+    final own = PhoneUtils.normalize(_info?.phone);
+    final typed = PhoneUtils.normalize(_phone.text);
+    return !_inHours && (own == null || typed != own);
+  }
+
   Future<void> _call() async {
     final s = context.s;
-    if (!_inHours) {
+    if (_blockedByHours) {
       setState(() => _outsideHours = true);
       return;
     }
@@ -191,7 +203,7 @@ class _OwnerTestCallPanelState extends ConsumerState<OwnerTestCallPanel> {
     ref.watch(agentProvider);
     final info = _info;
     final noneLeft = info != null && info.remainingToday == 0;
-    final outside = !_placed && (_outsideHours || !_inHours);
+    final outside = !_placed && (_outsideHours || _blockedByHours);
     final hours = _hours;
     return Column(
       mainAxisSize: MainAxisSize.min,

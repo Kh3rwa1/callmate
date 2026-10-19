@@ -142,7 +142,9 @@ resultsApp.post('/agent/test-call', async (c) => {
 
   let res: Response;
   try {
-    res = await respondWithLeadCall(c, leadId);
+    // Ringing the owner's own signed-in number is not a customer call: any hour is fine.
+    const ownNumber = user.phone ? normalizePhone(user.phone) : null;
+    res = await respondWithLeadCall(c, leadId, { ignoreCallingHours: ownNumber !== null && phone === ownNumber });
   } catch (err) {
     await releaseSlot();
     throw err;

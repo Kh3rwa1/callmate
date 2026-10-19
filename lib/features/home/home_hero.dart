@@ -170,7 +170,9 @@ class HomeHeroCard extends ConsumerWidget {
         HeroAction.seeReady => context.go('/leads?filter=hot'),
         HeroAction.sendMessages => context.go('/followups'),
         HeroAction.callNew => context.push('/campaign/new'),
-        HeroAction.addCustomers => context.push('/leads/contacts'),
+        // The add screen offers contacts first, plus typing one or a file,
+        // so saying "Not now" to contacts isn't a dead end.
+        HeroAction.addCustomers => context.push('/leads/import'),
       },
     );
   }

@@ -72,7 +72,9 @@ class FollowUpsScreen extends ConsumerWidget {
                               ),
                             ] else
                               Text(
-                                s.allSentToday,
+                                opened.isEmpty
+                                    ? s.nothingToSendYet
+                                    : s.allSentToday,
                                 style: AppTheme.serif(
                                   30,
                                   color: AppWorld.messages.fg,

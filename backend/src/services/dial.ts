@@ -49,6 +49,8 @@ export interface PlaceCallParams {
   consentAttested?: boolean;
   /** Hashed request IP for the attestation's consent event (services/consent.ts hashIp). */
   ipHash?: string | null;
+  /** The owner's test call to their own number: no calling window (compliance.ts). */
+  ignoreCallingHours?: boolean;
 }
 
 /**
@@ -73,6 +75,7 @@ export async function placeLeadCall(env: Env, p: PlaceCallParams): Promise<Place
     skipTraiClamp: allowAnyCallingHours(env),
     globalDncSecret: globalDncSecret(env),
     now: p.now,
+    ignoreCallingHours: p.ignoreCallingHours === true,
   });
   if (!compliance.allowed) {
     return {
