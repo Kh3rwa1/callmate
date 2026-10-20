@@ -40,6 +40,7 @@ import { leadCapturePublicApp } from './routes/lead_capture_public';
 import { playbooksApp } from './routes/playbooks';
 import { leadIntegrationsPublicApp } from './routes/lead_integrations_public';
 import { answeringApp, answeringPublicApp, syncInboundCalls } from './routes/answering';
+import { opsApp } from './routes/ops';
 import { runIndiaMartPulls } from './services/lead_integrations';
 import { handleInstantCallMessages, isInstantCallMessage } from './services/lead_capture';
 
@@ -190,6 +191,8 @@ app.route('/', leadCapturePublicApp);
 app.route('/', leadIntegrationsPublicApp);
 // The AI answers missed calls: Sarvam's on-start hook and post-call webhook (each verifies its own token).
 app.route('/', answeringPublicApp);
+// Ops page: the operator adds bought business numbers (its own key; 404 unless OPS_KEY_SHA256 is set).
+app.route('/ops', opsApp);
 
 // Public Sarvam completed call webhook
 app.post('/webhooks/sarvam', async (c) => {

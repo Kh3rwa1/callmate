@@ -40,7 +40,24 @@ SARVAM_DISCLOSURE_OVERRIDE = "true"
 # calls from it and answers it. Entries are "+91…=<answering agent id>:<version>" (one agent per number;
 # scripts/hook_url.mjs prints its hook URL). Empty = paying businesses tap "Request my number" and the
 # operator is alerted to buy one. Never list a number that is also in SARVAM_AGENT_PHONE_NUMBERS.
+# Older option: numbers bought now are added on the ops page instead (no deploy), see below.
 SARVAM_BUSINESS_NUMBERS = ""
+# Receptionist pool (docs/SARVAM_SETUP.md -> Receptionist pool): copies of the receptionist agent whose
+# on-start hook URL names the agent (?agent=<id>&token=<random>), not a number. A number added on the
+# ops page takes a free one when a business rents it. Entries are "<agent id>:<version>:<sha256 hex of
+# its hook token>" (scripts/hook_url.mjs --agent prints one). Add more when the ops alert
+# receptionist_agents_low fires. Only hashes here; the tokens live in the agents' hook URLs.
+SARVAM_RECEPTIONIST_AGENTS = ""
+# Ops page <PUBLIC_API_BASE_URL>/ops/numbers, where bought numbers are added: SHA-256 hex of its key
+# (printf %s "$KEY" | shasum -a 256). Empty = the page is off (404).
+OPS_KEY_SHA256 = ""
+# Numbers bought in Sarvam join the pool by themselves: every cron run reads the numbers on
+# SARVAM_CONNECTION_ID and adds new ones that no deployment uses. Production only: staging shares the
+# connection. Needs Sarvam to accept the API key on that route; until then the cron logs
+# sarvam_numbers_api_unavailable once a day and numbers are added on the ops page.
+SARVAM_AUTO_NUMBERS = "true"
+# Never added by the cron (besides SARVAM_AGENT_PHONE_NUMBERS and SARVAM_BUSINESS_NUMBERS): staging's numbers.
+SARVAM_NUMBERS_EXCLUDE = "+917971443028"
 # Sarvam's organisation-wide concurrent call limit for our plan (pay-as-you-go 4, Pro 10, Growth 30).
 # Dials wait for a free slot instead of being rejected. Raise it when the Sarvam plan changes.
 SARVAM_MAX_CONCURRENT_CALLS = "4"
@@ -123,7 +140,20 @@ SARVAM_DISCLOSURE_OVERRIDE = "true"
 # Business numbers (docs/SARVAM_SETUP.md -> Business numbers): each paying business gets one; its AI
 # calls from it and answers it. Entries are "+91…=<answering agent id>:<version>" (one agent per number;
 # scripts/hook_url.mjs prints its hook URL). Never list a number that is also in SARVAM_AGENT_PHONE_NUMBERS.
+# Older option: numbers bought now are added on the ops page instead (no deploy), see below.
 SARVAM_BUSINESS_NUMBERS = "+917971443028=CallPilot-R-2944da04-d549:1"
+# Receptionist pool (docs/SARVAM_SETUP.md -> Receptionist pool): copies of the receptionist agent whose
+# on-start hook URL names the agent (?agent=<id>&token=<random>), not a number. A number added on the
+# ops page takes a free one when a business rents it. Entries are "<agent id>:<version>:<sha256 hex of
+# its hook token>" (scripts/hook_url.mjs --agent prints one). Add more when the ops alert
+# receptionist_agents_low fires. Only hashes here; the tokens live in the agents' hook URLs.
+SARVAM_RECEPTIONIST_AGENTS = ""
+# Ops page <PUBLIC_API_BASE_URL>/ops/numbers, where bought numbers are added: SHA-256 hex of its key
+# (printf %s "$KEY" | shasum -a 256). Empty = the page is off (404).
+OPS_KEY_SHA256 = ""
+# Off on staging: it shares the Sarvam connection with production, which picks up bought numbers by
+# itself. Staging's numbers are added on its ops page (and listed in production's SARVAM_NUMBERS_EXCLUDE).
+SARVAM_AUTO_NUMBERS = ""
 # Sarvam's organisation-wide concurrent call limit for our plan (pay-as-you-go 4, Pro 10, Growth 30).
 # Dials wait for a free slot instead of being rejected. Raise it when the Sarvam plan changes.
 SARVAM_MAX_CONCURRENT_CALLS = "4"
