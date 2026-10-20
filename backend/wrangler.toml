@@ -60,6 +60,9 @@ OPS_KEY_SHA256 = ""
 SARVAM_AUTO_NUMBERS = "true"
 # Never added by the cron (besides SARVAM_AGENT_PHONE_NUMBERS and SARVAM_BUSINESS_NUMBERS): staging's numbers.
 SARVAM_NUMBERS_EXCLUDE = "+917971443028"
+# "true" = only TRAI 140/160-series numbers join the business-number pool (ops page refuses others, the cron
+# skips them). Off while our Vobiz numbers (+9179…) aren't DLT: they're added with a warning (COMPLIANCE.md).
+# REQUIRE_DLT_CALLER_IDS = "true"
 # Sarvam's organisation-wide concurrent call limit for our plan (pay-as-you-go 4, Pro 10, Growth 30).
 # Dials wait for a free slot instead of being rejected. Raise it when the Sarvam plan changes.
 SARVAM_MAX_CONCURRENT_CALLS = "4"
@@ -158,6 +161,9 @@ OPS_KEY_SHA256 = ""
 # Off on staging: it shares the Sarvam connection with production, which picks up bought numbers by
 # itself. Staging's numbers are added on its ops page (and listed in production's SARVAM_NUMBERS_EXCLUDE).
 SARVAM_AUTO_NUMBERS = ""
+# "true" = only TRAI 140/160-series numbers join the business-number pool (ops page refuses others).
+# Off while our Vobiz numbers (+9179…) aren't DLT: they're added with a warning (COMPLIANCE.md).
+# REQUIRE_DLT_CALLER_IDS = "true"
 # Sarvam's organisation-wide concurrent call limit for our plan (pay-as-you-go 4, Pro 10, Growth 30).
 # Dials wait for a free slot instead of being rejected. Raise it when the Sarvam plan changes.
 SARVAM_MAX_CONCURRENT_CALLS = "4"

@@ -104,6 +104,8 @@ function poolHtml(v: OpsPoolView): string {
   <li>Receptionist agents free: ${agents}</li>
   ${v.agentsIgnored > 0 ? `<li>SARVAM_RECEPTIONIST_AGENTS entries ignored (malformed or repeated): ${v.agentsIgnored}</li>` : ''}
   <li>Businesses waiting for a number: ${v.waiting}</li>
+  <li>Not TRAI 140/160-series: ${v.numbers.filter((n) => !n.dlt).length}${v.dltRequired
+    ? ' (REQUIRE_DLT_CALLER_IDS: no more can be added)' : ''}</li>
   <li>Picking up numbers bought in Sarvam by itself: ${v.autoNumbers
     ? 'on (if the logs show sarvam_numbers_api_unavailable, Sarvam still refuses it: add numbers here)'
     : 'off (SARVAM_AUTO_NUMBERS): add numbers here'}</li>
@@ -144,6 +146,7 @@ async function sha256Hex(value: string): Promise<string> {
 
 const ADD_ERRORS = {
   invalid: 'Enter an Indian number: +91 and 10 digits.',
+  not_dlt: 'Only TRAI 140/160-series numbers can be added (REQUIRE_DLT_CALLER_IDS is on).',
   shared_caller_id: 'That is a shared caller ID (SARVAM_AGENT_PHONE_NUMBERS); it can’t be a business number.',
   in_config: 'That number is in SARVAM_BUSINESS_NUMBERS already.',
   in_use: 'That number is already in use.',
@@ -200,7 +203,8 @@ opsApp.post('/numbers', async (c) => {
     if (r.ok) {
       const what = r.added ? `Added ${displayNumber(r.phone)}.` : `${displayNumber(r.phone)} is in the pool already.`;
       const given = r.assigned === 1 ? '1 waiting business got a number.' : `${r.assigned} waiting businesses got a number.`;
-      notice = { kind: 'ok', text: `${what} ${given}` };
+      const dlt = r.dlt ? '' : ' Note: it is not a TRAI 140/160-series number, which commercial calls need (COMPLIANCE.md).';
+      notice = { kind: 'ok', text: `${what} ${given}${dlt}` };
     } else {
       notice = { kind: 'error', text: ADD_ERRORS[r.code] };
       status = 400;

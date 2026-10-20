@@ -69,24 +69,53 @@ export function enquiryCallableUntil(lead: {
 /** Distinct businesses that may call one phone number in a rolling 24h (platform-wide). */
 export const PLATFORM_MAX_BUSINESSES_PER_PHONE = 3;
 
+/** A TRAI 140 (promotional) or 160 (service/transactional) series number, as +91140… / +91160…. */
+export function isDltSeries(phone: string): boolean {
+  return /^\+91(140|160)\d+$/.test(phone.replace(/[\s()-]/g, ''));
+}
+
+/**
+ * True when only TRAI 140/160-series numbers may join the business-number pool
+ * (REQUIRE_DLT_CALLER_IDS = 'true'): the ops page refuses others and the cron skips them.
+ */
+export function dltCallerIdsRequired(env: { REQUIRE_DLT_CALLER_IDS?: string }): boolean {
+  return env.REQUIRE_DLT_CALLER_IDS === 'true';
+}
+
 /**
  * TRAI: commercial voice calls must come from the 140 (promotional) or 160 (service/transactional)
- * number series. True only if every configured caller ID is +91140... or +91160... : the shared pool
- * and the business numbers (each Growth business calls from its own).
+ * number series. True only if every caller ID is +91140... or +91160... : the shared pool, the
+ * SARVAM_BUSINESS_NUMBERS numbers, and [poolNumbers], the business numbers stored in D1 (added on the
+ * ops page or found in Sarvam by the cron; see poolCallerIds). Each paying business calls from its own.
  */
-export function callerIdsAreDltSeries(env: { SARVAM_AGENT_PHONE_NUMBERS?: string; SARVAM_BUSINESS_NUMBERS?: string }): boolean {
+export function callerIdsAreDltSeries(
+  env: { SARVAM_AGENT_PHONE_NUMBERS?: string; SARVAM_BUSINESS_NUMBERS?: string }, poolNumbers: string[] = [],
+): boolean {
   // Business-number entries may name their agent: "+91…=<agent id>:<version>".
-  const numbers = [env.SARVAM_AGENT_PHONE_NUMBERS, env.SARVAM_BUSINESS_NUMBERS].join(',').split(',')
+  const numbers = [env.SARVAM_AGENT_PHONE_NUMBERS, env.SARVAM_BUSINESS_NUMBERS, ...poolNumbers].join(',').split(',')
     .map((n) => n.split('=')[0].replace(/[\s()-]/g, '')).filter(Boolean);
-  return numbers.length > 0 && numbers.every((n) => /^\+91(140|160)\d+$/.test(n));
+  return numbers.length > 0 && numbers.every(isDltSeries);
+}
+
+/** Business numbers stored in D1 rather than configured (source 'ops' or 'auto'); [] if unreadable. */
+export async function poolCallerIds(db: D1Database): Promise<string[]> {
+  try {
+    const { results } = await db.prepare("SELECT phone FROM business_numbers WHERE source IN ('ops', 'auto')").all<{ phone: string }>();
+    return (results ?? []).map((r) => r.phone);
+  } catch {
+    return [];
+  }
 }
 
 /** Production only: one warning per cron run while the caller IDs are not 140/160 series. */
-export function warnIfCallerIdsNotDlt(env: { ENVIRONMENT?: string; SARVAM_AGENT_PHONE_NUMBERS?: string; SARVAM_BUSINESS_NUMBERS?: string }): boolean {
-  if (env.ENVIRONMENT !== 'production' || callerIdsAreDltSeries(env)) return false;
+export function warnIfCallerIdsNotDlt(
+  env: { ENVIRONMENT?: string; SARVAM_AGENT_PHONE_NUMBERS?: string; SARVAM_BUSINESS_NUMBERS?: string }, poolNumbers: string[] = [],
+): boolean {
+  if (env.ENVIRONMENT !== 'production' || callerIdsAreDltSeries(env, poolNumbers)) return false;
   console.warn(JSON.stringify({
     msg: 'caller_ids_not_dlt_series',
-    detail: 'SARVAM_AGENT_PHONE_NUMBERS should all be TRAI 140/160-series numbers (COMPLIANCE.md)',
+    detail: 'SARVAM_AGENT_PHONE_NUMBERS and every business number should be TRAI 140/160-series numbers (COMPLIANCE.md)',
+    business_numbers_not_dlt: poolNumbers.filter((n) => !isDltSeries(n)).length,
   }));
   return true;
 }

@@ -239,6 +239,19 @@ or `ops` number (before you release it in Sarvam) and remembers it in the
 D1 table `removed_numbers`, so the cron doesn't add it back; adding it on the
 page again clears that.
 
+**TRAI 140/160 series.** Business numbers are caller IDs, so they are part of
+the DLT check (`/health/deep` → `compliance.caller_ids_dlt_series`, and the
+production warning `caller_ids_not_dlt_series`; COMPLIANCE.md). A number
+outside the series still joins the pool today, as our Vobiz `+9179…` numbers
+do: the ops page says so and the log shows `business_number_not_dlt_series`.
+With `REQUIRE_DLT_CALLER_IDS = "true"` the ops page refuses such a number and
+the cron skips it (`not_dlt` in `sarvam_numbers_discovered`).
+
+**A number rented again** never gets its previous business's calls: an
+after-call webhook or an analytics record of a call that started before the
+current business got the number (`business_numbers.assigned_at`) is
+acknowledged and not recorded (`inbound_call_before_assignment`).
+
 **Older option: one agent per number.** `SARVAM_BUSINESS_NUMBERS` entries
 `+91…=<agent id>:<version>` still work (staging's `+917971443028` uses it):
 clone the receptionist, set its `load_business` hook URL to the output of

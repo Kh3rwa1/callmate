@@ -31,6 +31,7 @@ import { Env } from '../types';
 import { isMockSarvam } from '../utils/secrets';
 import { timingSafeEqual } from '../utils/compare';
 import { hitRateLimit } from '../utils/rate_limit';
+import { dltCallerIdsRequired, isDltSeries } from './compliance';
 import { hmacHex, BUSINESS_NUMBER_PLANS } from './plans';
 import { ownerLanguage } from './owner_text';
 import { sendBusinessPushNotification } from './fcm';
@@ -600,7 +601,8 @@ const csvNumbers = (raw: string | undefined) => (raw || '').split(',').map(e164)
  * (SARVAM_CONNECTION_ID) that we don't know yet to the pool, free, as source 'auto', so a number bought
  * in the dashboard reaches businesses with no other step. Never added: SARVAM_NUMBERS_EXCLUDE,
  * SARVAM_AGENT_PHONE_NUMBERS, SARVAM_BUSINESS_NUMBERS, numbers the operator removed on the ops page
- * (removed_numbers), and numbers any Sarvam deployment uses (another agent answers them). Sarvam's
+ * (removed_numbers), numbers outside the TRAI 140/160 series when REQUIRE_DLT_CALLER_IDS is on (else
+ * they're added with a warning), and numbers any Sarvam deployment uses (another agent answers them). Sarvam's
  * numbers route isn't in its public API; while it refuses the API key, this logs
  * sarvam_numbers_api_unavailable once a day and adds nothing. Never throws. Returns how many it added.
  */
@@ -632,12 +634,14 @@ export async function discoverSarvamNumbers(env: Env): Promise<number> {
   ]);
   const knownSet = new Set((known ?? []).map((r) => r.phone));
   const removedSet = new Set((removed ?? []).map((r) => r.phone));
-  const counts = { found: found.size, added: 0, excluded: 0, known: 0, removed: 0, deployed: 0 };
+  const counts = { found: found.size, added: 0, excluded: 0, known: 0, removed: 0, not_dlt: 0, deployed: 0 };
+  const dltOnly = dltCallerIdsRequired(env);
   const candidates: string[] = [];
   for (const n of found) {
     if (knownSet.has(n)) counts.known++;
     else if (excluded.has(n)) counts.excluded++;
     else if (removedSet.has(n)) counts.removed++;
+    else if (dltOnly && !isDltSeries(n)) counts.not_dlt++; // REQUIRE_DLT_CALLER_IDS: 140/160 series only
     else candidates.push(n);
   }
 
@@ -658,6 +662,7 @@ export async function discoverSarvamNumbers(env: Env): Promise<number> {
       if ((r.meta?.changes ?? 0) > 0) {
         counts.added++;
         console.log(JSON.stringify({ msg: 'business_number_added', phone: n, source: 'auto' }));
+        if (!isDltSeries(n)) console.warn(JSON.stringify({ msg: 'business_number_not_dlt_series', phone: n, source: 'auto' }));
       }
     }
   }
@@ -669,7 +674,10 @@ export async function discoverSarvamNumbers(env: Env): Promise<number> {
 
 export interface OpsPoolView {
   /** Every number in the pool. `listed`: a config number still in SARVAM_BUSINESS_NUMBERS (others: always). */
-  numbers: { phone: string; status: NumberStatus; source: NumberSource; listed: boolean; agent: boolean }[];
+  /** dlt: a TRAI 140/160-series number. */
+  numbers: { phone: string; status: NumberStatus; source: NumberSource; listed: boolean; agent: boolean; dlt: boolean }[];
+  /** REQUIRE_DLT_CALLER_IDS: only 140/160-series numbers may be added. */
+  dltRequired: boolean;
   agentsTotal: number;
   agentsFree: number;
   /** SARVAM_RECEPTIONIST_AGENTS entries skipped as malformed or repeated. */
@@ -704,8 +712,10 @@ export async function opsPoolView(env: Env): Promise<OpsPoolView> {
         source: r.source,
         listed: r.source !== 'config' || !!entry,
         agent: r.source !== 'config' ? !!r.agent_app_id : !!entry?.agent,
+        dlt: isDltSeries(r.phone),
       };
     }),
+    dltRequired: dltCallerIdsRequired(env),
     agentsTotal,
     agentsFree: free.length,
     agentsIgnored: entries - agentsTotal,
@@ -715,18 +725,22 @@ export async function opsPoolView(env: Env): Promise<OpsPoolView> {
 }
 
 export type OpsAddResult =
-  | { ok: true; phone: string; added: boolean; assigned: number }
-  | { ok: false; code: 'invalid' | 'shared_caller_id' | 'in_config' | 'in_use' };
+  /** dlt: a TRAI 140/160-series number (others are added with a warning unless REQUIRE_DLT_CALLER_IDS). */
+  | { ok: true; phone: string; added: boolean; assigned: number; dlt: boolean }
+  | { ok: false; code: 'invalid' | 'not_dlt' | 'shared_caller_id' | 'in_config' | 'in_use' };
 
 /**
  * Ops page: a number bought in the Sarvam dashboard joins the pool, free (adding it twice, or one the
  * cron found already, changes nothing), and businesses waiting for a number get one at once. Indian
  * numbers only, never a shared caller ID (SARVAM_AGENT_PHONE_NUMBERS) or a SARVAM_BUSINESS_NUMBERS
- * number. Adding a number removed earlier lets the cron pick it up again.
+ * number. Adding a number removed earlier lets the cron pick it up again. A number outside the TRAI
+ * 140/160 series is refused with REQUIRE_DLT_CALLER_IDS, else added with a warning.
  */
 export async function addOpsNumber(env: Env, raw: unknown): Promise<OpsAddResult> {
   const phone = e164(raw);
   if (!phone || !/^\+91\d{10}$/.test(phone)) return { ok: false, code: 'invalid' };
+  const dlt = isDltSeries(phone);
+  if (!dlt && dltCallerIdsRequired(env)) return { ok: false, code: 'not_dlt' };
   if (csvNumbers(env.SARVAM_AGENT_PHONE_NUMBERS).includes(phone)) return { ok: false, code: 'shared_caller_id' };
   if (poolEntries(env).some((e) => e.phone === phone)) return { ok: false, code: 'in_config' };
   const [, inserted] = await env.DB.batch([
@@ -745,9 +759,12 @@ export async function addOpsNumber(env: Env, raw: unknown): Promise<OpsAddResult
       if (!row || row.source === 'config') return { ok: false, code: 'in_use' };
     }
   }
-  if (added) console.log(JSON.stringify({ msg: 'business_number_added', phone, source: 'ops' }));
+  if (added) {
+    console.log(JSON.stringify({ msg: 'business_number_added', phone, source: 'ops' }));
+    if (!dlt) console.warn(JSON.stringify({ msg: 'business_number_not_dlt_series', phone, source: 'ops' }));
+  }
   const assigned = await fulfilNumberRequests(env);
-  return { ok: true, phone, added, assigned };
+  return { ok: true, phone, added, assigned, dlt };
 }
 
 export type OpsRemoveResult =

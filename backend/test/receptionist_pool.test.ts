@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import { env } from 'cloudflare:test';
 import { migrateTestDb } from './setup-db';
 import app from '../src/index';
-import { syncInboundCalls } from '../src/routes/answering';
+import { startedBeforeAssignment, syncInboundCalls } from '../src/routes/answering';
 import { OPS_MAX_FAILURES } from '../src/routes/ops';
 import { signJWT } from '../src/auth';
 import {
@@ -14,6 +14,8 @@ import { collectAlertFindings, runAlertChecks } from '../src/services/alerts';
 const jwtSecret = 'test-jwt-signing-secret-key-32chars-min-length';
 const HOOK_SECRET = 'hook-secret-for-tests-0123456789';
 const OPS_KEY = 'ops-key-for-tests-correct-horse-battery';
+/** A Sarvam analytics time (UTC, no zone) [sec] seconds from now. */
+const analyticsTime = (sec: number) => new Date(Date.now() + sec * 1000).toISOString().slice(0, 19);
 
 const CONFIG_NUM = '+917971450001';
 const SHARED_NUM = '+917971442975';
@@ -348,9 +350,14 @@ describe('when the webhook never comes', () => {
       if (!url.includes('/api/analytics/v1/')) return new Response('{}', { status: 200 });
       const items = url.includes('/Pool-C/') || url.includes('/Pool-D/') ? [{
         interaction_id: '20261020/pool-sync-1', user_contact: '+919830066699', bot_contact_identifier: OPS2,
-        duration_in_seconds: 30, start_datetime: '2026-10-20T10:00:00', end_datetime: '2026-10-20T10:00:30',
+        duration_in_seconds: 30, start_datetime: analyticsTime(0), end_datetime: analyticsTime(30),
         agent_variables: { lead_score: 60, intent: 'interested', summary: 'Asked about bouquets.', caller_name: 'Rina' },
         translate_transcript: [{ role: 'user', text: 'Bouquets?' }],
+      }, {
+        // An hour old: answered for whoever had the number before this business rented it.
+        interaction_id: '20261020/pool-sync-old', user_contact: '+919830066698', bot_contact_identifier: OPS2,
+        duration_in_seconds: 20, start_datetime: analyticsTime(-3600), end_datetime: analyticsTime(-3580),
+        agent_variables: { summary: 'Asked for the previous shop.', caller_name: 'Old Caller' },
       }] : [];
       return new Response(JSON.stringify({ items }), { status: 200 });
     });
@@ -360,6 +367,44 @@ describe('when the webhook never comes', () => {
     expect(apps).toEqual(['Config-Agent', 'Pool-A', 'Pool-B', 'Pool-C', 'Pool-D']);
     const call = await env.DB.prepare("SELECT business_id, direction FROM calls WHERE interaction_id = '20261020/pool-sync-1'").first<any>();
     expect(call).toEqual({ business_id: 'biz_pool_late', direction: 'inbound' });
+    expect(await env.DB.prepare("SELECT id FROM calls WHERE interaction_id = '20261020/pool-sync-old'").first()).toBeNull();
+  });
+});
+
+describe('a number rented again never gets the calls of its previous business', () => {
+  const post = async (startedAt: string, interactionId: string) => app.fetch(new Request(
+    `http://localhost/webhooks/sarvam-inbound?number=${encodeURIComponent(OPS4)}&token=${await inboundWebhookToken(env.SARVAM_WEBHOOK_SECRET!, OPS4)}`,
+    {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        interaction_id: interactionId, user_phone_number: '+919830066677', agent_phone_number: OPS4, duration: 25,
+        start_datetime: startedAt, output_agent_variables: { summary: 'Wanted a test drive.', caller_name: 'Kabir' },
+      }),
+    },
+  ), env);
+
+  it('a late webhook for a call before the rental is acknowledged and recorded nowhere', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const old = await post(new Date(Date.now() - 3600_000).toISOString(), '20261020/late-old');
+    expect(old.status).toBe(200);
+    expect(await old.json()).toEqual({ success: true, ignored: true, reason: 'before_assignment' });
+    expect(warn.mock.calls.some((c) => String(c[0]).includes('inbound_call_before_assignment'))).toBe(true);
+    expect(await env.DB.prepare("SELECT id FROM calls WHERE interaction_id = '20261020/late-old'").first()).toBeNull();
+    expect(await env.DB.prepare("SELECT id FROM leads WHERE phone = '919830066677'").first()).toBeNull();
+
+    const fresh = await post(new Date().toISOString(), '20261020/late-new');
+    expect(fresh.status).toBe(200);
+    const call = await env.DB.prepare("SELECT business_id FROM calls WHERE interaction_id = '20261020/late-new'").first<any>();
+    expect(call?.business_id).toBe('biz_pool_race');
+  });
+
+  it('only a known start before the known rental time counts', () => {
+    expect(startedBeforeAssignment('2026-10-20T10:00:00', '2026-10-20 10:00:01')).toBe(true);
+    expect(startedBeforeAssignment('2026-10-20T10:00:01Z', '2026-10-20 10:00:01')).toBe(false);
+    expect(startedBeforeAssignment('2026-10-20T15:30:00+05:30', '2026-10-20 10:00:01')).toBe(true);
+    expect(startedBeforeAssignment(undefined, '2026-10-20 10:00:01')).toBe(false);
+    expect(startedBeforeAssignment('garbage', '2026-10-20 10:00:01')).toBe(false);
+    expect(startedBeforeAssignment('2026-10-20T10:00:00Z', null)).toBe(false);
   });
 });
 

@@ -17,6 +17,8 @@ const bizId = 'biz_answer';
 const otherBiz = 'biz_answer_other';
 const trialBiz = 'biz_answer_trial';
 const HOOK_SECRET = 'hook-secret-for-tests-0123456789';
+/** A Sarvam analytics time (UTC, no zone) [sec] seconds from now: calls must start after the number was rented. */
+const analyticsTime = (sec: number) => new Date(Date.now() + sec * 1000).toISOString().slice(0, 19);
 let token: string;
 let otherToken: string;
 let trialToken: string;
@@ -277,7 +279,7 @@ describe('after an answered call', () => {
     app_id: 'CallPilot-Receptionist', app_version: 1, deployment_id: 'dep_x',
     interaction_id: `20261019/${crypto.randomUUID()}`,
     user_phone_number: '+919830055501', agent_phone_number: '+917971440002',
-    duration: 84.2, start_datetime: '2026-10-19T08:00:00Z',
+    duration: 84.2, start_datetime: new Date().toISOString(), // after the number was rented
     output_agent_variables: {
       caller_name: 'Arjun Das', lead_score: '81', intent: 'interested', temperature: 'hot',
       summary: 'Arjun wants the JEE weekend batch and asked about fees.', next_action: 'send_whatsapp',
@@ -433,8 +435,8 @@ describe('when the webhook never comes', () => {
       return new Response(JSON.stringify({ items: [
         {
           interaction_id: '20261019/sync-1', user_contact: '+919830044499', bot_contact_identifier: '+917971440002',
-          channel_direction: 'inbound', duration_in_seconds: 41.5, start_datetime: '2026-10-19T10:04:34',
-          end_datetime: '2026-10-19T10:05:15', deployment_id: 'dep_x', app_version: 1,
+          channel_direction: 'inbound', duration_in_seconds: 41.5, start_datetime: analyticsTime(0),
+          end_datetime: analyticsTime(41), deployment_id: 'dep_x', app_version: 1,
           agent_variables: {
             lead_score: 72, intent: 'interested', temperature: 'warm', summary: 'Wants the WBJEE batch and a call at 6 pm.',
             next_action: 'human_followup', whatsapp_followup_required: false, whatsapp_message: '', callback_at: '',

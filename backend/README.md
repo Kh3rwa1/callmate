@@ -94,6 +94,7 @@ Configure with `wrangler secret put <KEY>`:
 | `SARVAM_RECEPTIONIST_AGENTS` | `[vars]`: receptionist pool agents `<agent id>:<version>:<sha256 of hook token>`, comma separated (docs/SARVAM_SETUP.md → Receptionist pool) | Required for business numbers added without a deploy |
 | `OPS_KEY_SHA256` | `[vars]`: SHA-256 hex of the ops page key; unset = `/ops/numbers` is 404 | Recommended |
 | `SARVAM_AUTO_NUMBERS` / `SARVAM_NUMBERS_EXCLUDE` | `[vars]`, production only: `"true"` = the cron adds numbers bought in Sarvam to the pool by itself; numbers it must never add | Optional |
+| `REQUIRE_DLT_CALLER_IDS` | `[vars]`: `"true"` = only TRAI 140/160-series numbers join the business-number pool (unset: added with a warning) | Optional |
 | `ALLOWED_ORIGINS` | Comma-separated CORS origins | Optional (Android app needs none) |
 
 ---

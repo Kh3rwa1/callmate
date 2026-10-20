@@ -4,6 +4,8 @@ import { migrateTestDb } from './setup-db';
 import app from '../src/index';
 import { signJWT } from '../src/auth';
 import { discoverSarvamNumbers, runBusinessNumberCron } from '../src/services/business_numbers';
+import { callerIdsAreDltSeries, poolCallerIds } from '../src/services/compliance';
+import { runComplianceCron } from '../src/services/retention';
 
 const jwtSecret = 'test-jwt-signing-secret-key-32chars-min-length';
 const OPS_KEY = 'ops-key-for-discovery-tests-0123456789';
@@ -168,7 +170,7 @@ describe('numbers bought in Sarvam join the pool by themselves', () => {
     ]);
     expect(lists.every((s) => s.key === 'live-key')).toBe(true);
     const summary = log.mock.calls.map((c) => String(c[0])).find((l) => l.includes('sarvam_numbers_discovered'))!;
-    expect(JSON.parse(summary)).toEqual({ msg: 'sarvam_numbers_discovered', found: 8, added: 2, excluded: 2, known: 2, removed: 1, deployed: 1 });
+    expect(JSON.parse(summary)).toEqual({ msg: 'sarvam_numbers_discovered', found: 8, added: 2, excluded: 2, known: 2, removed: 1, not_dlt: 0, deployed: 1 });
 
     // The longest-waiting business got the first new number, on a pool agent, and was told.
     expect(await row(NEW1)).toEqual({ business_id: 'biz_disc_wait', status: 'active', source: 'auto', agent_app_id: 'Pool-A' });
@@ -221,5 +223,60 @@ describe('numbers bought in Sarvam join the pool by themselves', () => {
     // A failed removal (a rented number) leaves no reminder behind.
     expect((await ops({ key: OPS_KEY, action: 'remove', number: NEW1 })).status).toBe(400);
     expect(await env.DB.prepare('SELECT phone FROM removed_numbers WHERE phone = ?').bind(NEW1).first()).toBeNull();
+  });
+});
+
+describe('TRAI 140/160-series caller IDs', () => {
+  const dltOnly = { SARVAM_AGENT_PHONE_NUMBERS: '+911601234567', SARVAM_BUSINESS_NUMBERS: '' };
+
+  it('numbers stored in D1 count in the DLT check, /health/deep and the production warning', async () => {
+    expect(callerIdsAreDltSeries(dltOnly)).toBe(true);
+    const pool = await poolCallerIds(env.DB);
+    expect(pool.sort()).toEqual([NEW1, NEW3, KNOWN].sort()); // ops and auto rows, not the config one
+    expect(callerIdsAreDltSeries(dltOnly, pool)).toBe(false);
+    expect(callerIdsAreDltSeries(dltOnly, ['+911401234567'])).toBe(true);
+
+    const deep = await app.fetch(new Request('http://localhost/health/deep', { headers: { 'x-health-key': 'hk' } }),
+      live({ ...dltOnly, HEALTH_CHECK_SECRET: 'hk', SARVAM_ADMISSIONS_APP_ID: 'a' }));
+    expect(((await deep.json()) as any).compliance.caller_ids_dlt_series).toBe(false);
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await runComplianceCron(live({ ...dltOnly, ENVIRONMENT: 'production' }));
+    const line = warn.mock.calls.map((c) => String(c[0])).find((l) => l.includes('caller_ids_not_dlt_series'))!;
+    expect(JSON.parse(line).business_numbers_not_dlt).toBe(3);
+  });
+
+  it('the ops page adds a number outside the series with a warning, or refuses it with REQUIRE_DLT_CALLER_IDS', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const added = await ops({ key: OPS_KEY, action: 'add', number: '+917971460040' });
+    expect(added.status).toBe(200);
+    const html = await added.text();
+    expect(html).toContain('Added +91 79714 60040.');
+    expect(html).toContain('it is not a TRAI 140/160-series number');
+    expect(html).toContain('Not TRAI 140/160-series: 5');
+    expect(warn.mock.calls.some((c) => String(c[0]).includes('business_number_not_dlt_series'))).toBe(true);
+
+    const strict = live({ REQUIRE_DLT_CALLER_IDS: 'true' });
+    const refused = await ops({ key: OPS_KEY, action: 'add', number: '+917971460041' }, strict);
+    expect(refused.status).toBe(400);
+    expect(await refused.text()).toContain('Only TRAI 140/160-series numbers can be added');
+    expect(await row('+917971460041')).toBeNull();
+    const ok = await ops({ key: OPS_KEY, action: 'add', number: '+911401234567' }, strict);
+    expect(ok.status).toBe(200);
+    const okHtml = await ok.text();
+    expect(okHtml).toContain('Added +91 14012 34567.');
+    expect(okHtml).not.toContain('it is not a TRAI');
+    expect(okHtml).toContain('(REQUIRE_DLT_CALLER_IDS: no more can be added)');
+  });
+
+  it('with REQUIRE_DLT_CALLER_IDS the cron skips numbers outside the series', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    sarvam([{ phone_number: '+917971460050' }, { phone_number: '+911601112223' }]);
+    expect(await discoverSarvamNumbers(live({ REQUIRE_DLT_CALLER_IDS: 'true' }))).toBe(1);
+    expect(await row('+917971460050')).toBeNull();
+    expect(await row('+911601112223')).toMatchObject({ source: 'auto', status: 'free' });
+    const summary = log.mock.calls.map((c) => String(c[0])).find((l) => l.includes('sarvam_numbers_discovered'))!;
+    expect(JSON.parse(summary)).toMatchObject({ found: 2, added: 1, not_dlt: 1 });
   });
 });

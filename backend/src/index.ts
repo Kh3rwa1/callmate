@@ -10,7 +10,7 @@ import { isDevEnv } from './utils/secrets';
 import { runMaintenance } from './services/maintenance';
 import { recordOpsEvent, runAlertChecks } from './services/alerts';
 import { allowedAgentVariables } from './services/call_variables';
-import { callerIdsAreDltSeries } from './services/compliance';
+import { callerIdsAreDltSeries, poolCallerIds } from './services/compliance';
 import { disclosureEnabled } from './services/disclosure';
 import { runComplianceCron } from './services/retention';
 
@@ -155,7 +155,7 @@ app.get('/health/deep', async (c) => {
       // Regulatory posture (informational; does not affect status). TRAI wants commercial calls
       // from 140/160-series numbers; see COMPLIANCE.md.
       compliance: {
-        caller_ids_dlt_series: callerIdsAreDltSeries(c.env),
+        caller_ids_dlt_series: callerIdsAreDltSeries(c.env, await poolCallerIds(c.env.DB)),
         disclosure_override: disclosureEnabled(c.env),
       },
       time: new Date().toISOString(),
