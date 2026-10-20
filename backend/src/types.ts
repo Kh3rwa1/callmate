@@ -71,6 +71,25 @@ export interface Env {
   SARVAM_INBOUND_APP_VERSION?: string;
   /** Numbers rented in Sarvam, comma separated; each paid business rents one for its calls out and in. */
   SARVAM_BUSINESS_NUMBERS?: string;
+  /**
+   * Pre-made receptionist agents for numbers added on the ops page (/ops/numbers), comma separated
+   * "<app id>:<version>:<sha256 hex of its hook token>". Renting such a number claims a free one.
+   */
+  SARVAM_RECEPTIONIST_AGENTS?: string;
+  /** SHA-256 hex of the ops page key (/ops/numbers). Unset = the page is 404. */
+  OPS_KEY_SHA256?: string;
+  /**
+   * 'true' = the cron adds numbers it finds on the Sarvam connection to the pool by itself. One
+   * environment only: staging and production share the connection.
+   */
+  SARVAM_AUTO_NUMBERS?: string;
+  /** Comma-separated numbers the cron never adds (e.g. the other environment's business numbers). */
+  SARVAM_NUMBERS_EXCLUDE?: string;
+  /**
+   * 'true' = only TRAI 140/160-series numbers join the business-number pool (the ops page refuses
+   * others, the cron skips them). Unset = they are added with a warning, as the shared caller IDs are.
+   */
+  REQUIRE_DLT_CALLER_IDS?: string;
   /** Bearer token the agent's on-start hook sends to POST /voice/inbound/start (a Sarvam secret). */
   INBOUND_HOOK_SECRET?: string;
   /** Calls still 'calling' after this many minutes are logged by the cron watchdog (default 8). */

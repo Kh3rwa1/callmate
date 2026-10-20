@@ -266,6 +266,8 @@ table `alert_state`). Nothing is sent while everything is healthy.
 | `stuck_calls` | ≥ 3 calls still `calling` after 45 min, or swept to `timed_out` | `calls` |
 | `queue_dead_letters` | ≥ 1 campaign job reached the dead-letter queue | `ops_events` (written by the DLQ consumer) |
 | `webhook_auth_failures` | ≥ 10 `/webhooks/sarvam` requests rejected with 401 | `ops_events` (written by the webhook route) |
+| `business_numbers_requested` | ≥ 1 paying business waiting for a number (repeats every 12 h) | `number_requests` |
+| `receptionist_agents_low` | ≤ 1 receptionist pool agent free, when `SARVAM_RECEPTIONIST_AGENTS` is set (repeats every 24 h) | `business_numbers.agent_app_id` |
 
 Thresholds live in `ALERT_THRESHOLDS` in `alerts.ts`.
 
@@ -322,6 +324,11 @@ names each dial sends.
 - `webhook_auth_failures` — after a secret rotation a burst is expected for
   in-flight calls. A sustained stream from unknown sources is probing; no
   action needed beyond watching, since bad tokens are rejected.
+- `business_numbers_requested` — buy numbers in Sarvam; add them on
+  `<PUBLIC_API_BASE_URL>/ops/numbers` unless the cron picks them up itself
+  (§6 → Business numbers).
+- `receptionist_agents_low` — make more receptionist pool agents and add them
+  to `SARVAM_RECEPTIONIST_AGENTS` (docs/SARVAM_SETUP.md → Receptionist pool).
 ---
 
 ## 6. Billing, Plans & Trials
@@ -386,7 +393,7 @@ names each dial sends.
   (default 4, in `wrangler.toml`) makes manual, speed-to-lead and campaign dials
   wait for a free slot instead of being rejected. Raise it when the plan changes.
 - **Business numbers (every paid plan):** each Starter or Growth business
-  rents one number from `SARVAM_BUSINESS_NUMBERS` (picked once in the app,
+  rents one number from the pool (picked once in the app,
   `POST /business-number`). It is the caller ID of all its AI calls and the
   line its AI answers (`docs/SARVAM_SETUP.md`); trial businesses call from the
   shared `SARVAM_AGENT_PHONE_NUMBERS`. The cron holds the number of a business
@@ -397,14 +404,24 @@ names each dial sends.
   the paying businesses:
   ```bash
   npx wrangler d1 execute callpilot-db --remote --command="
-    SELECT status, COUNT(*) FROM business_numbers GROUP BY status;"
+    SELECT status, source, COUNT(*) FROM business_numbers GROUP BY status, source;"
   ```
+  or open `<PUBLIC_API_BASE_URL>/ops/numbers` with the ops key (the same
+  counts, plus free receptionist agents and waiting businesses).
   No free numbers left: paying owners tap **Request my number** and the ops
   alert `business_numbers_requested` fires (every 12 h while anyone waits).
-  Buy a number in Sarvam (Deploy → Phone Numbers → Sarvam Vobiz → Buy), give
-  it its answering agent and add `+91…=<agent id>:<version>` to
-  `SARVAM_BUSINESS_NUMBERS` (docs/SARVAM_SETUP.md), redeploy: the cron hands
-  it to the longest-waiting business and notifies the owner.
+  Buy a number in Sarvam (Deploy → Phone Numbers → Sarvam Vobiz → Buy). No
+  deploy: production's cron picks it up by itself once Sarvam accepts our API
+  key on its numbers route (`SARVAM_AUTO_NUMBERS`; the logs show
+  `sarvam_numbers_discovered`, or `sarvam_numbers_api_unavailable` once a day
+  while it doesn't); otherwise add it on the ops page. Either way the
+  longest-waiting business gets it and the owner is notified
+  (docs/SARVAM_SETUP.md → Business numbers).
+  **Receptionist pool:** each number taken from the pool needs a free agent
+  from `SARVAM_RECEPTIONIST_AGENTS`. The ops alert `receptionist_agents_low`
+  (once a day while one or none is free) means: make more pool agents and
+  deploy the list (docs/SARVAM_SETUP.md → Receptionist pool). Until then
+  those numbers aren't offered in the app.
   **Changing a business's number** (support only, the app doesn't offer it):
   `UPDATE business_numbers SET business_id = NULL, status = 'held',
   held_until = datetime('now') WHERE business_id = 'biz_xxx';` — the owner can

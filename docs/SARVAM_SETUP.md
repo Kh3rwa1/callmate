@@ -177,29 +177,125 @@ the line and redeploy.
 
 **Owners never touch Sarvam.** In the app a paying owner picks a free
 number, or taps **Request my number** when none is free. Numbers can only be
-bought in the Sarvam dashboard (there is no API), so the operator keeps the
-pool stocked:
+bought in the Sarvam dashboard, so the operator keeps the pool stocked. A
+bought number needs **no code change, deploy or app update**:
 
 1. **Buy** — Sarvam dashboard → **Deploy → Phone Numbers** → the **Sarvam
    Vobiz** connection (the one in `SARVAM_CONNECTION_ID`) → **Buy Number**.
    ₹59 per number per 30 days. A number on that connection makes and receives
    calls; nothing separate to set up for inbound or outbound.
-2. **Give it its answering agent** — Sarvam's on-start hook can't see which
-   number was dialled, so each number has its own copy of the receptionist
-   agent whose hook URL names the number (`?number=…&token=…`). Clone the
-   current receptionist (e.g. `CallPilot-R-2944da04-d549` on staging), set its
-   `load_business` hook URL to the output of
-   `INBOUND_HOOK_SECRET=… node backend/scripts/hook_url.mjs <PUBLIC_API_BASE_URL> +91…`,
-   and commit a version. Claude Code can do this step through the Sarvam MCP.
-3. **List it** — append `+91…=<agent id>:<version>` to
-   `SARVAM_BUSINESS_NUMBERS` for that environment in `wrangler.toml` and
-   deploy. The cron hands it to the longest-waiting request within 10 minutes
-   and the owner gets a notification; otherwise it shows in the picker.
+2. **It joins the pool**, one of two ways:
+   - **By itself (production).** With `SARVAM_AUTO_NUMBERS = "true"`, every
+     cron run (10 min) reads the numbers on the connection and adds each new
+     Indian number as a free pool number (source `auto`). It skips
+     `SARVAM_NUMBERS_EXCLUDE`, `SARVAM_AGENT_PHONE_NUMBERS`,
+     `SARVAM_BUSINESS_NUMBERS`, numbers removed on the ops page, and any
+     number a Sarvam deployment already uses (another agent answers it, e.g.
+     "Rais Auto Spa Inbound"). **This needs Sarvam to accept our API key on
+     the numbers route** (`…/connections/<id>/endpoints`), which isn't in
+     Sarvam's public API; today it answers 401 to API keys. The cron log says
+     which state we're in: `sarvam_numbers_api_unavailable` (once a day, with
+     the status: still refused, add numbers on the ops page) or
+     `sarvam_numbers_discovered` (every run, with counts: working).
+   - **On the ops page.** Open `<PUBLIC_API_BASE_URL>/ops/numbers`, type the
+     ops key and the number, tap **Add number**. Works whatever Sarvam allows.
+3. **That's it.** A business waiting for a number gets it at once (the
+   ops page says how many did; otherwise the next cron run) with a
+   notification; otherwise it shows in the picker. No agent setup per number:
+   when a business takes it, a free agent from the **receptionist pool**
+   (below) is claimed for it and its deployment is created with that agent.
+   The ops page and the ops alert `receptionist_agents_low` say when the pool
+   needs more agents.
 
 While anyone is waiting, the ops alert `business_numbers_requested` repeats
-every 12 hours. Never list a number in both `SARVAM_BUSINESS_NUMBERS` and
-`SARVAM_AGENT_PHONE_NUMBERS`, and never in two environments: a number belongs
-to one inbound deployment.
+every 12 hours. A number belongs to one inbound deployment, so to one
+environment: never list it in both `SARVAM_BUSINESS_NUMBERS` and
+`SARVAM_AGENT_PHONE_NUMBERS`, nor in two environments.
+
+**Staging and production share the connection**, so only production picks up
+numbers by itself (`SARVAM_AUTO_NUMBERS` is empty on staging). A number meant
+for staging: add it on staging's ops page, and keep production off it by
+listing it in production's `SARVAM_NUMBERS_EXCLUDE` (today `+917971443028`),
+or, with no deploy, by removing it on production's ops page if production
+picked it up first (a removed number is never picked up again).
+
+**The ops page** (`backend/src/routes/ops.ts`) is off (404) until
+`OPS_KEY_SHA256` is set for that environment in `wrangler.toml`. Make a key
+and its hash, keep the key in a password manager, commit only the hash:
+
+```bash
+KEY=$(openssl rand -hex 24); echo "$KEY"
+printf %s "$KEY" | shasum -a 256      # → OPS_KEY_SHA256
+```
+
+Each action posts the key (10 wrong keys per IP per hour, then 429). With
+the key it lists every pool number with its status (free, active, held),
+source (`auto`, `ops`, `config`) and whether an agent answers it, never which
+business has it, plus how many receptionist agents are free and how many
+businesses are waiting. **Add number** takes an Indian number (+91 and 10
+digits) that isn't a shared caller ID or in `SARVAM_BUSINESS_NUMBERS`;
+adding it twice changes nothing. **Remove number** takes out a free `auto`
+or `ops` number (before you release it in Sarvam) and remembers it in the
+D1 table `removed_numbers`, so the cron doesn't add it back; adding it on the
+page again clears that.
+
+**TRAI 140/160 series.** Business numbers are caller IDs, so they are part of
+the DLT check (`/health/deep` → `compliance.caller_ids_dlt_series`, and the
+production warning `caller_ids_not_dlt_series`; COMPLIANCE.md). A number
+outside the series still joins the pool today, as our Vobiz `+9179…` numbers
+do: the ops page says so and the log shows `business_number_not_dlt_series`.
+With `REQUIRE_DLT_CALLER_IDS = "true"` the ops page refuses such a number and
+the cron skips it (`not_dlt` in `sarvam_numbers_discovered`).
+
+**A number rented again** never gets its previous business's calls: an
+after-call webhook or an analytics record of a call that started before the
+current business got the number (`business_numbers.assigned_at`) is
+acknowledged and not recorded (`inbound_call_before_assignment`).
+
+**Older option: one agent per number.** `SARVAM_BUSINESS_NUMBERS` entries
+`+91…=<agent id>:<version>` still work (staging's `+917971443028` uses it):
+clone the receptionist, set its `load_business` hook URL to the output of
+`INBOUND_HOOK_SECRET=… node backend/scripts/hook_url.mjs <PUBLIC_API_BASE_URL> +91…`
+(the URL names the number), commit a version, add the entry and deploy.
+
+### Receptionist pool
+
+Sarvam's on-start hook can't see which number was dialled, and Sarvam's API
+can't create or copy agents. So we keep a stock of identical receptionist
+agents whose hook URL names the **agent** (`?agent=<its id>&token=<its
+token>`). When a business takes an `auto` or `ops` number, a free pool agent
+is claimed onto that number's row (`business_numbers.agent_app_id`; a unique
+index means one agent never answers two numbers) and the deployment routes
+the number to it. The hook finds the number, and so the business, by the
+agent. The agent stays with the number while it is held and becomes free
+again when the number goes back to the pool (hold over, or account deleted
+and the deployment removed by the next cron run). If no agent is free, those
+numbers aren't offered in the picker and the ops alert
+`receptionist_agents_low` fires (once a day while one or none is free).
+
+To make pool agents (a few at a time, e.g. 5–10; Claude Code can do this
+through the Sarvam MCP):
+
+1. Clone the current receptionist (e.g. `CallPilot-R-2944da04-d549` on
+   staging), one copy per agent.
+2. Run `node backend/scripts/hook_url.mjs <PUBLIC_API_BASE_URL> --agent <its agent id> <version it will commit>`.
+   It makes a random token and prints the hook URL and the config entry.
+3. In the copy, set the `load_business` on-start webhook tool URL to
+   `<PUBLIC_API_BASE_URL>/voice/inbound/start?agent=<its agent id>&token=<the token>`
+   (no other auth), and commit that version.
+4. Add the printed `<agent id>:<version>:<sha256 of the token>` to
+   `SARVAM_RECEPTIONIST_AGENTS` for that environment (comma separated) and
+   deploy once for the whole batch. Only the hash is in the repo; the token
+   lives in the agent's hook URL.
+
+An agent belongs to one environment (its hook URL names that Worker) and is
+never also a `SARVAM_BUSINESS_NUMBERS` agent. A changed agent version in
+`SARVAM_RECEPTIONIST_AGENTS` applies to numbers rented after the deploy;
+numbers already rented keep the version their deployment was made with. Never
+take an agent off the list while a number holds it (its hook would be
+refused): check that
+`SELECT phone FROM business_numbers WHERE agent_app_id = '<agent id>'` returns
+nothing.
 
 **What the business gets** (`backend/src/services/business_numbers.ts`).
 Every business on a **paid plan** (Starter or Growth, monthly or yearly) picks
@@ -252,8 +348,8 @@ another business.
 
 **If the after-call webhook doesn't come.** Sarvam's inbound deliveries can
 stall (on staging one stayed "running" indefinitely). Every 10 minutes the cron
-also reads the last two hours of inbound conversations of each business
-number's agent from Sarvam's analytics API (`syncInboundCalls`,
+also reads the last two hours of inbound conversations of each active business
+number's agent (its pool agent or its own agent) from Sarvam's analytics API (`syncInboundCalls`,
 `routes/answering.ts`) and records any call the webhook missed through the
 same handler, so the owner still gets the lead, summary and notification.
 
@@ -273,16 +369,22 @@ the outbound agent so it keeps the voice, languages and result variables):
 - Output variables: the outbound set (`lead_score`, `intent`, `temperature`,
   `summary`, `next_action`, `whatsapp_followup_required`, `whatsapp_message`,
   `callback_at`) plus `caller_name`.
-- The hook authenticates with the per-number token in its URL (HMAC of the
-  number with the Worker secret `INBOUND_HOOK_SECRET`); Sarvam only attaches
-  stored secrets to allow-listed URLs. Sarvam's hook can't send the caller's
-  number, so returning customers aren't greeted by name; the after-call
-  webhook still carries it and the lead is matched then.
+- The hook authenticates with the token in its URL; Sarvam only attaches
+  stored secrets to allow-listed URLs. A pool agent's token is checked against
+  its SHA-256 in `SARVAM_RECEPTIONIST_AGENTS`; a pool agent that holds no
+  number gets a neutral greeting that still says it is an AI. An older
+  per-number agent's token is the HMAC of the number with the Worker secret
+  `INBOUND_HOOK_SECRET`. Sarvam's hook can't send the caller's number, so
+  returning customers aren't greeted by name; the after-call webhook still
+  carries it and the lead is matched then.
 
-**Worker config:** `npx wrangler secret put INBOUND_HOOK_SECRET [--env staging]`
-(any 32+ random characters, used to sign the hook URLs), and the
-`SARVAM_BUSINESS_NUMBERS` entries above. The deployment's after-call webhook
-is signed with `SARVAM_WEBHOOK_SECRET`, which already exists.
+**Worker config** (`wrangler.toml`, per environment): `SARVAM_RECEPTIONIST_AGENTS`
+and `OPS_KEY_SHA256` (above), `SARVAM_AUTO_NUMBERS` and `SARVAM_NUMBERS_EXCLUDE`
+(production only). For the older per-number agents:
+`npx wrangler secret put INBOUND_HOOK_SECRET [--env staging]` (any 32+ random
+characters, used to sign their hook URLs) and the `SARVAM_BUSINESS_NUMBERS`
+entries. The deployment's after-call webhook is signed with
+`SARVAM_WEBHOOK_SECRET`, which already exists.
 
 ## Checking it works
 

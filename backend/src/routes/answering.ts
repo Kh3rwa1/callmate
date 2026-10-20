@@ -21,7 +21,8 @@ import { sarvamWebhookToken } from '../services/campaign_queue';
 import { inboundCallContext, setForwardMode } from '../services/answering';
 import {
   availableNumbers, BusinessNumberRow, businessNumberFor, e164, inboundHookToken, inboundWebhookToken, numberEntitled,
-  numberRequested, numbersConfigured, poolEntries, rentNumber, requestNumber, NUMBER_HOLD_DAYS,
+  numberOfReceptionist, numberRequested, numbersConfigured, poolEntries, receptionistTokenValid, rentNumber, requestNumber,
+  NUMBER_HOLD_DAYS,
 } from '../services/business_numbers';
 import { consentEventStatement, CONSENT_TEXT_VERSIONS } from '../services/consent';
 import { ownerLanguage } from '../services/owner_text';
@@ -134,16 +135,32 @@ export const answeringPublicApp = new Hono<{ Bindings: Env }>();
 /**
  * On-start hook (an API tool with "When should this tool run?" = on_start on the receptionist agent).
  * Body: { "called": <the number dialled>, "caller": <User Identifier>, "interaction_id": <Interaction ID> }
- * (also accepts Sarvam's agent_phone_number / user_phone_number). Bearer INBOUND_HOOK_SECRET.
- * Always answers 200 with variables, so a lookup problem never leaves the caller in silence.
+ * (also accepts Sarvam's agent_phone_number / user_phone_number). Authenticated by one of:
+ * - ?agent=<app id>&token=<its token>: a receptionist pool agent (SARVAM_RECEPTIONIST_AGENTS holds the
+ *   token's SHA-256). The number that agent answers decides the business; the body's number is ignored.
+ * - ?number=<+91…>&token=HMAC(INBOUND_HOOK_SECRET, "hook:<number>"): a SARVAM_BUSINESS_NUMBERS agent.
+ * - Authorization: Bearer INBOUND_HOOK_SECRET, with the number in the body.
+ * Once authenticated it always answers 200 with variables, so a lookup problem never leaves the caller
+ * in silence: a number (or pool agent) with no business gets a neutral greeting that still says it is
+ * an AI.
  */
 answeringPublicApp.post('/voice/inbound/start', async (c) => {
+  const token = c.req.query('token') || '';
+  const agentId = c.req.query('agent');
+  if (agentId) {
+    if (!(await receptionistTokenValid(c.env, agentId, token))) {
+      return c.json({ message: 'Unauthorized.', code: 'unauthorized' }, 401);
+    }
+    const body = await c.req.json<any>().catch(() => ({}));
+    const caller = body?.caller ?? body?.user_phone_number ?? body?.user_identifier ?? body?.from;
+    return c.json(await inboundCallContext(c.env, await numberOfReceptionist(c.env.DB, agentId), caller));
+  }
+
   const secret = c.env.INBOUND_HOOK_SECRET;
   // Each number's agent names its number in the hook URL (the hook can't see the dialled number),
   // signed with that number's token; a bearer secret also works.
   const urlNumber = e164(c.req.query('number'));
   const auth = (c.req.header('authorization') || '').replace(/^Bearer\s+/i, '');
-  const token = c.req.query('token') || '';
   const authorized = !!secret && (
     (!!auth && timingSafeEqual(auth, secret))
     || (!!urlNumber && !!token && timingSafeEqual(token, await inboundHookToken(secret, urlNumber))));
@@ -158,6 +175,21 @@ answeringPublicApp.post('/voice/inbound/start', async (c) => {
 function sqlTime(iso: unknown): string {
   const t = typeof iso === 'string' ? Date.parse(iso) : NaN;
   return (Number.isNaN(t) ? new Date() : new Date(t)).toISOString().slice(0, 19).replace('T', ' ');
+}
+
+/** "2026-10-19T10:04:34" (analytics, UTC without offset) → "2026-10-19T10:04:34Z". */
+const utcIso = (t: unknown) => (typeof t === 'string' && t ? (/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? t : `${t}Z`) : null);
+
+/**
+ * True when the call is known to have started before the number was given to its current business
+ * ([assignedAt], D1 UTC). Such a call was answered for whoever had the number before (it went back to
+ * the pool and was rented again), so it must never be filed under the new business. Unknown times: false.
+ */
+export function startedBeforeAssignment(start: unknown, assignedAt: string | null | undefined): boolean {
+  const iso = utcIso(start);
+  const s = iso ? Date.parse(iso) : NaN;
+  const a = assignedAt ? Date.parse(`${assignedAt.replace(' ', 'T')}Z`) : NaN;
+  return Number.isFinite(s) && Number.isFinite(a) && s < a;
 }
 
 /**
@@ -184,10 +216,15 @@ answeringPublicApp.post('/webhooks/sarvam-inbound', async (c: Context<{ Bindings
   if (dialled && dialled !== number) {
     return c.json({ message: 'Payload is for another number.', code: 'number_mismatch' }, 400);
   }
-  const row = await c.env.DB.prepare('SELECT business_id FROM business_numbers WHERE phone = ?')
-    .bind(number).first<{ business_id: string | null }>();
+  const row = await c.env.DB.prepare('SELECT business_id, assigned_at FROM business_numbers WHERE phone = ?')
+    .bind(number).first<{ business_id: string | null; assigned_at: string | null }>();
   const businessId = row?.business_id;
   if (!businessId) return c.json({ message: 'Number is not assigned.', code: 'not_assigned' }, 404);
+  if (startedBeforeAssignment(data.start_datetime, row!.assigned_at)) {
+    // A late delivery for the number's previous business: acknowledged (no retries), recorded nowhere.
+    console.warn(JSON.stringify({ msg: 'inbound_call_before_assignment', businessId, interactionId: String(data.interaction_id || '') }));
+    return c.json({ success: true, ignored: true, reason: 'before_assignment' }, 200);
+  }
 
   const interactionId = String(data.interaction_id || '');
   const callerPhone = normalizePhone(String(data.user_phone_number || ''));
@@ -277,25 +314,26 @@ answeringPublicApp.post('/webhooks/sarvam-inbound', async (c: Context<{ Bindings
   return c.json({ ...result, call_id: call.id, direction: 'inbound' }, res.status as 200);
 });
 
-/** "2026-10-19T10:04:34" (analytics, UTC without offset) → "2026-10-19T10:04:34Z". */
-const utcIso = (t: unknown) => (typeof t === 'string' && t ? (/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? t : `${t}Z`) : null);
-
 /**
  * Backup for the deployment webhook, from the cron. Sarvam's inbound deliveries can stall (seen on
  * staging: stuck "running" for good), and an answered call must still reach the owner. Reads the
- * last two hours of inbound conversations of each business number's agent from Sarvam's analytics
- * API and feeds any the webhook hasn't delivered through the same handler (idempotent by
- * interaction id, so a late webhook changes nothing). Returns how many calls it recorded.
+ * last two hours of inbound conversations of each active business number's agent (its receptionist
+ * pool agent, or its SARVAM_BUSINESS_NUMBERS agent) from Sarvam's analytics API and feeds any the
+ * webhook hasn't delivered through the same handler (idempotent by interaction id, so a late webhook
+ * changes nothing). Calls that started before the number's current business got it are skipped.
+ * Returns how many calls it recorded.
  */
 export async function syncInboundCalls(env: Env, now = new Date()): Promise<number> {
   const key = env.SARVAM_API_KEY;
   const secret = env.SARVAM_WEBHOOK_SECRET;
   if (isMockSarvam(env) || !key || !secret || !env.SARVAM_ORG_ID || !env.SARVAM_WORKSPACE_ID) return 0;
   const { results } = await env.DB.prepare(
-    "SELECT phone FROM business_numbers WHERE business_id IS NOT NULL AND status = 'active'"
-  ).all<{ phone: string }>();
-  const active = new Set((results ?? []).map((r) => r.phone));
-  const appIds = [...new Set(poolEntries(env).filter((e) => e.agent && active.has(e.phone)).map((e) => e.agent!.appId))];
+    "SELECT phone, agent_app_id, assigned_at FROM business_numbers WHERE business_id IS NOT NULL AND status = 'active'"
+  ).all<{ phone: string; agent_app_id: string | null; assigned_at: string | null }>();
+  const rows = results ?? [];
+  const active = new Map(rows.map((r) => [r.phone, r.assigned_at]));
+  const configAgents = new Map(poolEntries(env).map((e) => [e.phone, e.agent?.appId]));
+  const appIds = [...new Set(rows.map((r) => r.agent_app_id ?? configAgents.get(r.phone)).filter((id): id is string => !!id))];
   // The webhook gets two minutes first.
   const window = {
     start_datetime: new Date(now.getTime() - 2 * 3600_000).toISOString().slice(0, 19) + 'Z',
@@ -318,6 +356,8 @@ export async function syncInboundCalls(env: Env, now = new Date()): Promise<numb
       const number = e164(it?.bot_contact_identifier);
       const interactionId = String(it?.interaction_id || '');
       if (!number || !active.has(number) || !interactionId) continue;
+      // Answered for the number's previous business (released and rented again within the window).
+      if (startedBeforeAssignment(it.start_datetime, active.get(number))) continue;
       const known = await env.DB.prepare("SELECT 1 AS x FROM calls WHERE interaction_id = ? AND direction = 'inbound'")
         .bind(interactionId).first();
       if (known) continue;

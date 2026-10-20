@@ -10,7 +10,7 @@ import { isDevEnv } from './utils/secrets';
 import { runMaintenance } from './services/maintenance';
 import { recordOpsEvent, runAlertChecks } from './services/alerts';
 import { allowedAgentVariables } from './services/call_variables';
-import { callerIdsAreDltSeries } from './services/compliance';
+import { callerIdsAreDltSeries, poolCallerIds } from './services/compliance';
 import { disclosureEnabled } from './services/disclosure';
 import { runComplianceCron } from './services/retention';
 
@@ -40,6 +40,7 @@ import { leadCapturePublicApp } from './routes/lead_capture_public';
 import { playbooksApp } from './routes/playbooks';
 import { leadIntegrationsPublicApp } from './routes/lead_integrations_public';
 import { answeringApp, answeringPublicApp, syncInboundCalls } from './routes/answering';
+import { opsApp } from './routes/ops';
 import { runIndiaMartPulls } from './services/lead_integrations';
 import { handleInstantCallMessages, isInstantCallMessage } from './services/lead_capture';
 
@@ -154,7 +155,7 @@ app.get('/health/deep', async (c) => {
       // Regulatory posture (informational; does not affect status). TRAI wants commercial calls
       // from 140/160-series numbers; see COMPLIANCE.md.
       compliance: {
-        caller_ids_dlt_series: callerIdsAreDltSeries(c.env),
+        caller_ids_dlt_series: callerIdsAreDltSeries(c.env, await poolCallerIds(c.env.DB)),
         disclosure_override: disclosureEnabled(c.env),
       },
       time: new Date().toISOString(),
@@ -190,6 +191,8 @@ app.route('/', leadCapturePublicApp);
 app.route('/', leadIntegrationsPublicApp);
 // The AI answers missed calls: Sarvam's on-start hook and post-call webhook (each verifies its own token).
 app.route('/', answeringPublicApp);
+// Ops page: the operator adds bought business numbers (its own key; 404 unless OPS_KEY_SHA256 is set).
+app.route('/ops', opsApp);
 
 // Public Sarvam completed call webhook
 app.post('/webhooks/sarvam', async (c) => {

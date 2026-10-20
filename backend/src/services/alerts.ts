@@ -7,22 +7,30 @@
  * Nothing happens when everything is healthy. Never throws.
  */
 import { Env } from '../types';
+import { freeReceptionistAgents, receptionistAgents } from './business_numbers';
 
 export type AlertType = 'sarvam_dial_failures' | 'stuck_calls' | 'queue_dead_letters' | 'webhook_auth_failures'
-  | 'business_numbers_requested';
+  | 'business_numbers_requested' | 'receptionist_agents_low';
 
-/** Count in the last hour at which each alert fires. */
+/**
+ * Count in the last hour at which each alert fires. receptionist_agents_low is the other way round:
+ * it fires when this many receptionist pool agents, or fewer, are free.
+ */
 export const ALERT_THRESHOLDS: Record<AlertType, number> = {
   sarvam_dial_failures: 3,
   stuck_calls: 3,
   queue_dead_letters: 1,
   webhook_auth_failures: 10,
   business_numbers_requested: 1,
+  receptionist_agents_low: 1,
 };
 
 export const ALERT_DEDUPE_MINUTES = 60;
-/** Alerts that need the operator to buy something repeat less often. */
-const DEDUPE_MINUTES: Partial<Record<AlertType, number>> = { business_numbers_requested: 12 * 60 };
+/** Alerts that need the operator to buy or set up something repeat less often. */
+const DEDUPE_MINUTES: Partial<Record<AlertType, number>> = {
+  business_numbers_requested: 12 * 60,
+  receptionist_agents_low: 24 * 60,
+};
 
 export type OpsEventKind = 'queue_dead_letter' | 'webhook_auth_failure';
 
@@ -52,7 +60,7 @@ async function countOpsEvents(db: D1Database, kind: OpsEventKind): Promise<{ n: 
 }
 
 /** Runs every check; returns the ones over threshold (no side effects). */
-export async function collectAlertFindings(env: Pick<Env, 'DB'>): Promise<AlertFinding[]> {
+export async function collectAlertFindings(env: Pick<Env, 'DB'> & Partial<Env>): Promise<AlertFinding[]> {
   const db = env.DB;
   const findings: AlertFinding[] = [];
 
@@ -107,9 +115,24 @@ export async function collectAlertFindings(env: Pick<Env, 'DB'>): Promise<AlertF
     findings.push({
       type: 'business_numbers_requested', count: waiting!.n,
       text: `${waiting!.n} paying business(es) asked for a business number and none is free (oldest since ${waiting!.oldest} UTC). `
-        + 'Buy numbers in Sarvam (Deploy -> Phone Numbers -> Buy), give each its answering agent and add it to '
-        + 'SARVAM_BUSINESS_NUMBERS (docs/SARVAM_SETUP.md). They are assigned automatically.',
+        + 'Buy numbers in Sarvam (Deploy -> Phone Numbers -> Buy). With SARVAM_AUTO_NUMBERS the cron picks them up by '
+        + `itself if Sarvam allows it; otherwise add each on ${env.PUBLIC_API_BASE_URL || ''}/ops/numbers `
+        + '(docs/SARVAM_SETUP.md). They are assigned at once.',
     });
+  }
+
+  // Receptionist pool running low: a number added on the ops page can only be rented with a free agent.
+  const agents = receptionistAgents(env);
+  if (agents.length) {
+    const free = (await freeReceptionistAgents(env).catch(() => null))?.length;
+    if (free !== undefined && free <= ALERT_THRESHOLDS.receptionist_agents_low) {
+      findings.push({
+        type: 'receptionist_agents_low', count: free,
+        text: `Only ${free} of ${agents.length} receptionist agents are free; each business number added on the ops page `
+          + 'needs one when it is rented. Clone the receptionist in Sarvam and add it to SARVAM_RECEPTIONIST_AGENTS '
+          + '(docs/SARVAM_SETUP.md -> Receptionist pool).',
+      });
+    }
   }
   return findings;
 }

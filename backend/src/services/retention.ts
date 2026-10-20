@@ -7,7 +7,7 @@
  * Batched: at most RETENTION_BATCH calls per run, so a backlog drains over several runs.
  */
 import { Env } from '../types';
-import { warnIfCallerIdsNotDlt } from './compliance';
+import { poolCallerIds, warnIfCallerIdsNotDlt } from './compliance';
 
 export const DEFAULT_RETENTION_DAYS = 180;
 /** Never shorter than this, whatever RETENTION_DAYS says (a typo must not wipe this week's calls). */
@@ -39,6 +39,6 @@ export async function runRetention(env: Pick<Env, 'DB' | 'RETENTION_DAYS'>): Pro
 
 /** Cron entry point for regulatory housekeeping: DLT caller-ID warning, then retention. */
 export async function runComplianceCron(env: Env): Promise<void> {
-  warnIfCallerIdsNotDlt(env);
+  warnIfCallerIdsNotDlt(env, await poolCallerIds(env.DB));
   await runRetention(env);
 }

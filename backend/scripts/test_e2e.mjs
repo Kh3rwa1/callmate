@@ -100,6 +100,11 @@ async function run() {
   assert.strictEqual(health.status, 200);
   assert.strictEqual(health.data.status, 'ok');
   console.log('   ✓ Health check passed');
+  // The ops page doesn't exist until OPS_KEY_SHA256 is configured (empty in wrangler.toml).
+  const opsPage = await req('/ops/numbers');
+  assert.strictEqual(opsPage.status, 404);
+  assert.strictEqual(opsPage.data.code, 'not_found');
+  console.log('   ✓ Ops page is off without OPS_KEY_SHA256');
 
   // 2. Auth: Register
   console.log('2. Auth Register...');
