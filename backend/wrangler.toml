@@ -40,11 +40,13 @@ SARVAM_DISCLOSURE_OVERRIDE = "true"
 # calls from it and answers it. Entries are "+91…=<answering agent id>:<version>" (one agent per number;
 # scripts/hook_url.mjs prints its hook URL). Empty = paying businesses tap "Request my number" and the
 # operator is alerted to buy one. Never list a number that is also in SARVAM_AGENT_PHONE_NUMBERS.
-# Older option: numbers bought now are added on the ops page instead (no deploy), see below.
+# Older option: numbers bought now join the pool with no deploy (picked up by the cron or added on the
+# ops page) and are answered by a receptionist pool agent, see below.
 SARVAM_BUSINESS_NUMBERS = ""
 # Receptionist pool (docs/SARVAM_SETUP.md -> Receptionist pool): copies of the receptionist agent whose
-# on-start hook URL names the agent (?agent=<id>&token=<random>), not a number. A number added on the
-# ops page takes a free one when a business rents it. Entries are "<agent id>:<version>:<sha256 hex of
+# on-start hook URL names the agent (?agent=<id>&token=<random>), not a number. A pool number (found by
+# the cron or added on the ops page) takes a free one when a business rents it. Entries are
+# "<agent id>:<version>:<sha256 hex of
 # its hook token>" (scripts/hook_url.mjs --agent prints one). Add more when the ops alert
 # receptionist_agents_low fires. Only hashes here; the tokens live in the agents' hook URLs.
 SARVAM_RECEPTIONIST_AGENTS = ""
@@ -140,11 +142,13 @@ SARVAM_DISCLOSURE_OVERRIDE = "true"
 # Business numbers (docs/SARVAM_SETUP.md -> Business numbers): each paying business gets one; its AI
 # calls from it and answers it. Entries are "+91…=<answering agent id>:<version>" (one agent per number;
 # scripts/hook_url.mjs prints its hook URL). Never list a number that is also in SARVAM_AGENT_PHONE_NUMBERS.
-# Older option: numbers bought now are added on the ops page instead (no deploy), see below.
+# Older option: numbers bought now join the pool with no deploy (picked up by the cron or added on the
+# ops page) and are answered by a receptionist pool agent, see below.
 SARVAM_BUSINESS_NUMBERS = "+917971443028=CallPilot-R-2944da04-d549:1"
 # Receptionist pool (docs/SARVAM_SETUP.md -> Receptionist pool): copies of the receptionist agent whose
-# on-start hook URL names the agent (?agent=<id>&token=<random>), not a number. A number added on the
-# ops page takes a free one when a business rents it. Entries are "<agent id>:<version>:<sha256 hex of
+# on-start hook URL names the agent (?agent=<id>&token=<random>), not a number. A pool number (found by
+# the cron or added on the ops page) takes a free one when a business rents it. Entries are
+# "<agent id>:<version>:<sha256 hex of
 # its hook token>" (scripts/hook_url.mjs --agent prints one). Add more when the ops alert
 # receptionist_agents_low fires. Only hashes here; the tokens live in the agents' hook URLs.
 SARVAM_RECEPTIONIST_AGENTS = ""
