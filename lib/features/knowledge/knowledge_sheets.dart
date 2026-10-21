@@ -71,8 +71,12 @@ class _KnowledgeSheetState extends State<_KnowledgeSheet> {
       KnowledgeType.businessInfo => (s.addBusinessInfo, s.hintBusinessInfo),
       _ => (s.pasteInformation, s.hintServices),
     };
+    // Keyboard, or else the navigation bar (edge-to-edge): the save button stays above both.
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      padding: EdgeInsets.only(
+        bottom: bottom > 0 ? bottom : MediaQuery.paddingOf(context).bottom,
+      ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 24),
         child: Form(

@@ -14,6 +14,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import 'knowledge_sheets.dart';
+import '../../core/theme/system_bars.dart';
 
 class TeachAiScreen extends ConsumerStatefulWidget {
   const TeachAiScreen({super.key});
@@ -265,7 +266,7 @@ class _TeachAiScreenState extends ConsumerState<TeachAiScreen> {
                 8,
                 AppSpace.page,
                 100,
-              ),
+              ).withNavBar(context),
               children: [
                 if (latest != null)
                   Padding(

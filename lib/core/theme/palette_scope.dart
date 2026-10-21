@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
+import 'system_bars.dart';
 
 /// Points [AppColors] at the palette of the resolved theme.
 ///
@@ -23,12 +24,18 @@ class _PaletteScopeState extends State<PaletteScope> {
     final next = AppPalette.of(Theme.of(context).brightness);
     if (!identical(AppColors.palette, next)) {
       AppColors.palette = next;
-      SystemChrome.setSystemUIOverlayStyle(_overlayFor(next));
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _rebuildSubtree();
       });
     }
-    return widget.child;
+    // System bars for the whole app, re-applied after every frame. MaterialApp
+    // sets SystemUiOverlayStyle.light/dark (black navigation bar) on each
+    // build; a one-off SystemChrome call would lose to it. Headers with their
+    // own region (AppBar, World) still decide the status bar icons.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: _overlayFor(next),
+      child: widget.child,
+    );
   }
 
   void _rebuildSubtree() {
@@ -40,13 +47,8 @@ class _PaletteScopeState extends State<PaletteScope> {
     (context as Element).visitChildren(visit);
   }
 
-  static SystemUiOverlayStyle _overlayFor(AppPalette p) => SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: p.isDark ? Brightness.light : Brightness.dark,
-    statusBarBrightness: p.isDark ? Brightness.dark : Brightness.light,
-    systemNavigationBarColor: p.surface,
-    systemNavigationBarIconBrightness: p.isDark
-        ? Brightness.light
-        : Brightness.dark,
+  static SystemUiOverlayStyle _overlayFor(AppPalette p) => systemBarsStyle(
+    darkBehindStatusBar: p.isDark,
+    darkBehindNavBar: p.isDark,
   );
 }

@@ -15,6 +15,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
+import '../../core/theme/system_bars.dart';
 
 class ImportLeadsScreen extends ConsumerStatefulWidget {
   const ImportLeadsScreen({super.key});
@@ -209,7 +210,12 @@ class _ImportLeadsScreenState extends ConsumerState<ImportLeadsScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(s.addLeadsTitle)),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 32),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpace.page,
+          4,
+          AppSpace.page,
+          32,
+        ).withNavBar(context),
         children: [
           // The easy way first: the people already in his phone.
           Reveal(

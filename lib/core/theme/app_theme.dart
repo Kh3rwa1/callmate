@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../motion/motion.dart';
 import 'app_colors.dart';
+import 'system_bars.dart';
 
 /// Corner radii: 8 (small tiles), 12 (inputs, rows), 20 (small cards),
 /// 26 (cards, sheets, worlds). Buttons and chips are full pills.
@@ -268,17 +268,10 @@ class AppTheme {
         );
 
     const buttonShape = StadiumBorder();
-    final overlay = p.isDark
-        ? SystemUiOverlayStyle.light.copyWith(
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: p.surface,
-            systemNavigationBarIconBrightness: Brightness.light,
-          )
-        : SystemUiOverlayStyle.dark.copyWith(
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: p.surface,
-            systemNavigationBarIconBrightness: Brightness.dark,
-          );
+    final overlay = systemBarsStyle(
+      darkBehindStatusBar: p.isDark,
+      darkBehindNavBar: p.isDark,
+    );
 
     return base.copyWith(
       textTheme: text,

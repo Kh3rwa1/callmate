@@ -11,6 +11,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import '../usage/billing_actions.dart' show externalUrlLauncherProvider;
+import '../../core/theme/system_bars.dart';
 
 /// mailto: link asking support to customise [playbook].
 Uri playbookCustomiseUri(S s, CallPlaybook playbook) => Uri(
@@ -74,7 +75,12 @@ class _Body extends ConsumerWidget {
         Reveal(id: 'playbook-section-${i++}', index: i, child: child);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 40),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.page,
+        4,
+        AppSpace.page,
+        40,
+      ).withNavBar(context),
       children: [
         reveal(
           AppCard(

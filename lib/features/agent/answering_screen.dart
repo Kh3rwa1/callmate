@@ -14,6 +14,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import '../usage/billing_actions.dart';
+import '../../core/theme/system_bars.dart';
 
 /// "Who answers my calls": the AI employee answers every call, only the ones
 /// the owner misses, or none. The phone does the forwarding; the app gives
@@ -121,7 +122,12 @@ class _BodyState extends ConsumerState<_Body> {
         );
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpace.page, 8, AppSpace.page, 40),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.page,
+        8,
+        AppSpace.page,
+        40,
+      ).withNavBar(context),
       children: [
         Text(s.answeringIntro(agentName), style: t.bodyLarge),
         const SizedBox(height: 8),

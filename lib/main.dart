@@ -12,6 +12,7 @@ import 'core/bootstrap/firebase_bootstrap.dart';
 import 'core/config/app_env.dart';
 import 'core/providers.dart';
 import 'core/storage/local_prefs.dart';
+import 'core/theme/system_bars.dart';
 import 'services/crash/crash_reporting_service.dart';
 import 'services/crash/firebase_crash_sink.dart';
 
@@ -51,13 +52,12 @@ Future<void> main() async {
     return;
   }
 
+  // Edge-to-edge on every Android version (MainActivity enables it too):
+  // without this the engine's default system UI flags fit the app above the
+  // navigation bar again on start and resume.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarColor: Colors.white,
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
+    systemBarsStyle(darkBehindStatusBar: false, darkBehindNavBar: false),
   );
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   final prefs = await LocalPrefs.create();

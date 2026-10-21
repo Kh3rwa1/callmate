@@ -12,6 +12,7 @@ import '../../core/widgets/mascot.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
+import '../../core/theme/system_bars.dart';
 
 class CallbacksScreen extends ConsumerWidget {
   const CallbacksScreen({super.key});
@@ -46,7 +47,7 @@ class CallbacksScreen extends ConsumerWidget {
               0,
               AppSpace.page,
               32,
-            ),
+            ).withNavBar(context),
             children: [
               SectionLabel(
                 s.upcoming,

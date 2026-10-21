@@ -12,6 +12,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import 'campaign_progress_widgets.dart';
+import '../../core/theme/system_bars.dart';
 
 // ============================================================ Progress
 class CampaignProgressScreen extends ConsumerWidget {
@@ -93,7 +94,12 @@ class CampaignProgressScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 32),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpace.page,
+          0,
+          AppSpace.page,
+          32,
+        ).withNavBar(context),
         children: [
           Reveal(
             child: AppCard(
