@@ -438,7 +438,7 @@ describe('the pool agent follows the number', () => {
     }
     const res = await ops({ key: OPS_KEY, action: 'remove', number: OPS1 });
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain('Removed +91 79714 50011;');
+    expect(await res.text()).toContain('Removed +91 79714 50011.');
     expect(await row(OPS1)).toBeNull();
   });
 

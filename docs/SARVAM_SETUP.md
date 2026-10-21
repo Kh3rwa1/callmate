@@ -184,21 +184,12 @@ bought number needs **no code change, deploy or app update**:
    Vobiz** connection (the one in `SARVAM_CONNECTION_ID`) → **Buy Number**.
    ₹59 per number per 30 days. A number on that connection makes and receives
    calls; nothing separate to set up for inbound or outbound.
-2. **It joins the pool**, one of two ways:
-   - **By itself (production).** With `SARVAM_AUTO_NUMBERS = "true"`, every
-     cron run (10 min) reads the numbers on the connection and adds each new
-     Indian number as a free pool number (source `auto`). It skips
-     `SARVAM_NUMBERS_EXCLUDE`, `SARVAM_AGENT_PHONE_NUMBERS`,
-     `SARVAM_BUSINESS_NUMBERS`, numbers removed on the ops page, and any
-     number a Sarvam deployment already uses (another agent answers it, e.g.
-     "Rais Auto Spa Inbound"). **This needs Sarvam to accept our API key on
-     the numbers route** (`…/connections/<id>/endpoints`), which isn't in
-     Sarvam's public API; today it answers 401 to API keys. The cron log says
-     which state we're in: `sarvam_numbers_api_unavailable` (once a day, with
-     the status: still refused, add numbers on the ops page) or
-     `sarvam_numbers_discovered` (every run, with counts: working).
-   - **On the ops page.** Open `<PUBLIC_API_BASE_URL>/ops/numbers`, type the
-     ops key and the number, tap **Add number**. Works whatever Sarvam allows.
+2. **Add it on the ops page.** Open `<PUBLIC_API_BASE_URL>/ops/numbers`,
+   type the ops key and the number, tap **Add number**. The backend can't
+   find bought numbers by itself: Sarvam has no API that lists a
+   connection's numbers, and the dashboard's route
+   (`…/connections/<id>/endpoints`) refuses API keys. Sarvam support
+   confirmed both on 2026-10-21 and logged a feature request.
 3. **That's it.** A business waiting for a number gets it at once (the
    ops page says how many did; otherwise the next cron run) with a
    notification; otherwise it shows in the picker. No agent setup per number:
@@ -212,12 +203,8 @@ every 12 hours. A number belongs to one inbound deployment, so to one
 environment: never list it in both `SARVAM_BUSINESS_NUMBERS` and
 `SARVAM_AGENT_PHONE_NUMBERS`, nor in two environments.
 
-**Staging and production share the connection**, so only production picks up
-numbers by itself (`SARVAM_AUTO_NUMBERS` is empty on staging). A number meant
-for staging: add it on staging's ops page, and keep production off it by
-listing it in production's `SARVAM_NUMBERS_EXCLUDE` (today `+917971443028`),
-or, with no deploy, by removing it on production's ops page if production
-picked it up first (a removed number is never picked up again).
+**Staging and production share the connection.** A number meant for staging
+goes on staging's ops page only; never add one number on both pages.
 
 **The ops page** (`backend/src/routes/ops.ts`) is off (404) until
 `OPS_KEY_SHA256` is set for that environment in `wrangler.toml`. Make a key
@@ -230,22 +217,19 @@ printf %s "$KEY" | shasum -a 256      # → OPS_KEY_SHA256
 
 Each action posts the key (10 wrong keys per IP per hour, then 429). With
 the key it lists every pool number with its status (free, active, held),
-source (`auto`, `ops`, `config`) and whether an agent answers it, never which
+source (`ops`, `config`) and whether an agent answers it, never which
 business has it, plus how many receptionist agents are free and how many
 businesses are waiting. **Add number** takes an Indian number (+91 and 10
 digits) that isn't a shared caller ID or in `SARVAM_BUSINESS_NUMBERS`;
-adding it twice changes nothing. **Remove number** takes out a free `auto`
-or `ops` number (before you release it in Sarvam) and remembers it in the
-D1 table `removed_numbers`, so the cron doesn't add it back; adding it on the
-page again clears that.
+adding it twice changes nothing. **Remove number** takes out a free `ops`
+number (do it before you release the number in Sarvam).
 
 **TRAI 140/160 series.** Business numbers are caller IDs, so they are part of
 the DLT check (`/health/deep` → `compliance.caller_ids_dlt_series`, and the
 production warning `caller_ids_not_dlt_series`; COMPLIANCE.md). A number
 outside the series still joins the pool today, as our Vobiz `+9179…` numbers
 do: the ops page says so and the log shows `business_number_not_dlt_series`.
-With `REQUIRE_DLT_CALLER_IDS = "true"` the ops page refuses such a number and
-the cron skips it (`not_dlt` in `sarvam_numbers_discovered`).
+With `REQUIRE_DLT_CALLER_IDS = "true"` the ops page refuses such a number.
 
 **A number rented again** never gets its previous business's calls: an
 after-call webhook or an analytics record of a call that started before the
@@ -263,7 +247,7 @@ clone the receptionist, set its `load_business` hook URL to the output of
 Sarvam's on-start hook can't see which number was dialled, and Sarvam's API
 can't create or copy agents. So we keep a stock of identical receptionist
 agents whose hook URL names the **agent** (`?agent=<its id>&token=<its
-token>`). When a business takes an `auto` or `ops` number, a free pool agent
+token>`). When a business takes an `ops` number, a free pool agent
 is claimed onto that number's row (`business_numbers.agent_app_id`; a unique
 index means one agent never answers two numbers) and the deployment routes
 the number to it. The hook finds the number, and so the business, by the
@@ -379,8 +363,7 @@ the outbound agent so it keeps the voice, languages and result variables):
   carries it and the lead is matched then.
 
 **Worker config** (`wrangler.toml`, per environment): `SARVAM_RECEPTIONIST_AGENTS`
-and `OPS_KEY_SHA256` (above), `SARVAM_AUTO_NUMBERS` and `SARVAM_NUMBERS_EXCLUDE`
-(production only). For the older per-number agents:
+and `OPS_KEY_SHA256` (above). For the older per-number agents:
 `npx wrangler secret put INBOUND_HOOK_SECRET [--env staging]` (any 32+ random
 characters, used to sign their hook URLs) and the `SARVAM_BUSINESS_NUMBERS`
 entries. The deployment's after-call webhook is signed with

@@ -62,15 +62,8 @@ CallPilot-R-5f2a42ea-95bd:2:2417b2079cac13d9ea1061962d3a0520a80d0326efc68004c236
 # Ops page <PUBLIC_API_BASE_URL>/ops/numbers, where bought numbers are added: SHA-256 hex of its key
 # (printf %s "$KEY" | shasum -a 256). Empty = the page is off (404).
 OPS_KEY_SHA256 = "a5899083e982911bda43c6c15b0dd943e4275f00c4c00a3a44fb36704248fb90"
-# Numbers bought in Sarvam join the pool by themselves: every cron run reads the numbers on
-# SARVAM_CONNECTION_ID and adds new ones that no deployment uses. Production only: staging shares the
-# connection. Needs Sarvam to accept the API key on that route; until then the cron logs
-# sarvam_numbers_api_unavailable once a day and numbers are added on the ops page.
-SARVAM_AUTO_NUMBERS = "true"
-# Never added by the cron (besides SARVAM_AGENT_PHONE_NUMBERS and SARVAM_BUSINESS_NUMBERS): staging's numbers.
-SARVAM_NUMBERS_EXCLUDE = "+917971443028"
-# "true" = only TRAI 140/160-series numbers join the business-number pool (ops page refuses others, the cron
-# skips them). Off while our Vobiz numbers (+9179…) aren't DLT: they're added with a warning (COMPLIANCE.md).
+# "true" = only TRAI 140/160-series numbers join the business-number pool (the ops page refuses others).
+# Off while our Vobiz numbers (+9179…) aren't DLT: they're added with a warning (COMPLIANCE.md).
 # REQUIRE_DLT_CALLER_IDS = "true"
 # Sarvam's organisation-wide concurrent call limit for our plan (pay-as-you-go 4, Pro 10, Growth 30).
 # Dials wait for a free slot instead of being rejected. Raise it when the Sarvam plan changes.
@@ -175,11 +168,6 @@ CallPilot-R-05c4c784-a424:2:6468f9d3917dece8df339762b9fe8422b584cb34723428d4c136
 # Ops page <PUBLIC_API_BASE_URL>/ops/numbers, where bought numbers are added: SHA-256 hex of its key
 # (printf %s "$KEY" | shasum -a 256). Empty = the page is off (404).
 OPS_KEY_SHA256 = "0e21bf90b88cf005399d7542a8ccc0471cf2c4b36a659c4a4217d537712f1dcd"
-# Off on staging: it shares the Sarvam connection with production, which picks up bought numbers by
-# itself. Staging's numbers are added on its ops page (and listed in production's SARVAM_NUMBERS_EXCLUDE).
-SARVAM_AUTO_NUMBERS = ""
-# Unused while SARVAM_AUTO_NUMBERS is off; declared so wrangler does not warn.
-SARVAM_NUMBERS_EXCLUDE = ""
 # "true" = only TRAI 140/160-series numbers join the business-number pool (ops page refuses others).
 # Off while our Vobiz numbers (+9179…) aren't DLT: they're added with a warning (COMPLIANCE.md).
 # REQUIRE_DLT_CALLER_IDS = "true"

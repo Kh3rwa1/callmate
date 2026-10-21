@@ -26,8 +26,6 @@ export default defineConfig({
           DEV_ALLOW_ANY_CALLING_HOURS: 'true',
           // Tests share one D1 per file and leave calls 'calling'; the Sarvam-wide slot limit has its own test.
           SARVAM_MAX_CONCURRENT_CALLS: '1000',
-          // Production [vars] turn on finding bought numbers in Sarvam; tests opt in (number_discovery.test.ts).
-          SARVAM_AUTO_NUMBERS: '',
         },
       },
     }),

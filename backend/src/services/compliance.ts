@@ -97,10 +97,10 @@ export function callerIdsAreDltSeries(
   return numbers.length > 0 && numbers.every(isDltSeries);
 }
 
-/** Business numbers stored in D1 rather than configured (source 'ops' or 'auto'); [] if unreadable. */
+/** Business numbers added on the ops page rather than configured (source 'ops'); [] if unreadable. */
 export async function poolCallerIds(db: D1Database): Promise<string[]> {
   try {
-    const { results } = await db.prepare("SELECT phone FROM business_numbers WHERE source IN ('ops', 'auto')").all<{ phone: string }>();
+    const { results } = await db.prepare("SELECT phone FROM business_numbers WHERE source = 'ops'").all<{ phone: string }>();
     return (results ?? []).map((r) => r.phone);
   } catch {
     return [];

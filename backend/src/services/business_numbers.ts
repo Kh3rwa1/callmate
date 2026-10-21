@@ -15,11 +15,10 @@
  *
  * Sarvam's on-start hook can't see which number was dialled, so the agent answering a number has to
  * say which one it is. The ways a number gets into the pool:
- * - By itself (no deploy): with SARVAM_AUTO_NUMBERS on, the cron reads the numbers on the Sarvam
- *   connection and adds new ones no deployment uses (discoverSarvamNumbers, source 'auto').
  * - Ops page (no deploy): the operator adds a number bought in Sarvam on /ops/numbers (routes/ops.ts,
- *   source 'ops').
- *   Renting an 'auto' or 'ops' number claims a free agent from the receptionist pool
+ *   source 'ops'). Sarvam has no API that lists a connection's numbers (its support confirmed it on
+ *   2026-10-21; the dashboard's route refuses API keys), so the backend can't find them by itself.
+ *   Renting an 'ops' number claims a free agent from the receptionist pool
  *   (SARVAM_RECEPTIONIST_AGENTS, "<agent id>:<version>:<sha256 of its hook token>"), whose hook URL
  *   names the agent: /voice/inbound/start?agent=<id>&token=<token>. The row holding the agent is the
  *   number called. The agent stays with the number while it is held and goes back to the pool with it.
@@ -30,7 +29,6 @@
 import { Env } from '../types';
 import { isMockSarvam } from '../utils/secrets';
 import { timingSafeEqual } from '../utils/compare';
-import { hitRateLimit } from '../utils/rate_limit';
 import { dltCallerIdsRequired, isDltSeries } from './compliance';
 import { hmacHex, BUSINESS_NUMBER_PLANS } from './plans';
 import { ownerLanguage } from './owner_text';
@@ -46,10 +44,10 @@ export const PICKER_SIZE = 12;
 export type NumberStatus = 'free' | 'active' | 'held';
 export type ForwardMode = 'off' | 'missed' | 'all';
 /**
- * 'config': listed in SARVAM_BUSINESS_NUMBERS. 'ops': added on the ops page. 'auto': found in Sarvam by
- * the cron. 'ops' and 'auto' numbers are answered by receptionist pool agents and behave the same.
+ * 'config': listed in SARVAM_BUSINESS_NUMBERS. 'ops': added on the ops page, answered by receptionist
+ * pool agents. (The column also allows 'auto', from a cron that was removed before it added any.)
  */
-export type NumberSource = 'config' | 'ops' | 'auto';
+export type NumberSource = 'config' | 'ops';
 
 export interface BusinessNumberRow {
   phone: string;
@@ -212,8 +210,8 @@ async function syncPool(env: Env): Promise<string[]> {
 }
 
 /**
- * Free numbers a business can pick from: SARVAM_BUSINESS_NUMBERS numbers, and numbers found in Sarvam
- * or added on the ops page while a receptionist agent is free to answer one.
+ * Free numbers a business can pick from: SARVAM_BUSINESS_NUMBERS numbers, and numbers added on the
+ * ops page while a receptionist agent is free to answer one.
  */
 export async function availableNumbers(env: Env, limit = PICKER_SIZE): Promise<string[]> {
   const pool = await syncPool(env);
@@ -222,7 +220,7 @@ export async function availableNumbers(env: Env, limit = PICKER_SIZE): Promise<s
   const inConfig = pool.length ? `phone IN (${pool.map(() => '?').join(',')})` : '0';
   const { results } = await env.DB.prepare(
     `SELECT phone FROM business_numbers WHERE status = 'free' AND business_id IS NULL
-       AND ((source = 'config' AND ${inConfig}) OR (source IN ('ops', 'auto') AND ?)) ORDER BY phone LIMIT ?`
+       AND ((source = 'config' AND ${inConfig}) OR (source = 'ops' AND ?)) ORDER BY phone LIMIT ?`
   ).bind(...pool, poolAgentFree ? 1 : 0, limit).all<{ phone: string }>();
   return (results ?? []).map((r) => r.phone);
 }
@@ -505,12 +503,11 @@ export async function fulfilNumberRequests(env: Env): Promise<number> {
 /**
  * Cron. Active numbers of businesses whose plan no longer includes one are held for NUMBER_HOLD_DAYS
  * (deployment paused, pool agent kept; their calls go out from the shared pool). Holds that ran out go
- * back to the pool: deployment deleted, pool agent freed. Numbers bought in Sarvam since the last run
- * join the pool (SARVAM_AUTO_NUMBERS). Then gives free numbers to businesses that asked for one.
- * Returns how many were held, released, discovered and assigned.
+ * back to the pool: deployment deleted, pool agent freed. Then gives free numbers to businesses that
+ * asked for one. Returns how many were held, released and assigned.
  */
 export async function runBusinessNumberCron(env: Env, now = new Date()):
-  Promise<{ held: number; released: number; discovered: number; assigned: number }> {
+  Promise<{ held: number; released: number; assigned: number }> {
   const { results: lapsed } = await env.DB.prepare(
     `SELECT n.phone, n.business_id, n.deployment_id FROM business_numbers n
      LEFT JOIN usage u ON u.business_id = n.business_id
@@ -540,137 +537,14 @@ export async function runBusinessNumberCron(env: Env, now = new Date()):
     released++;
     console.log(JSON.stringify({ msg: 'business_number_released', business_id: n.business_id }));
   }
-  const discovered = await discoverSarvamNumbers(env).catch((err: any) => {
-    console.error(JSON.stringify({ msg: 'sarvam_numbers_discovery_failed', error: err?.message }));
-    return 0;
-  });
-  // Numbers just released, or newly added to the pool, go to businesses that asked for one.
+  // Numbers just released go to businesses that asked for one.
   const assigned = await fulfilNumberRequests(env);
-  return { held: lapsed?.length ?? 0, released, discovered, assigned };
-}
-
-// ------------------------------------------------------------------ numbers bought in Sarvam, found by the cron
-
-const SARVAM_PAGE_SIZE = 100;
-const SARVAM_MAX_PAGES = 20;
-
-type SarvamList = { ok: true; items: any[] } | { ok: false; status: number | 'network' | 'bad_body' };
-
-/** Every page of a Sarvam list (limit/offset; the items in `items`, `endpoints`, `deployments` or `data`). */
-async function sarvamListAll(url: string, apiKey: string): Promise<SarvamList> {
-  const items: any[] = [];
-  for (let page = 0; page < SARVAM_MAX_PAGES; page++) {
-    const u = new URL(url);
-    u.searchParams.set('limit', String(SARVAM_PAGE_SIZE));
-    u.searchParams.set('offset', String(items.length));
-    const res = await fetch(u.toString(), { headers: { 'X-API-Key': apiKey } }).catch(() => null);
-    if (!res) return { ok: false, status: 'network' };
-    if (!res.ok) return { ok: false, status: res.status };
-    const body = await res.json<any>().catch(() => undefined);
-    const list: any[] | undefined = Array.isArray(body)
-      ? body
-      : [body?.items, body?.endpoints, body?.deployments, body?.data].find(Array.isArray);
-    if (!list) return { ok: false, status: 'bad_body' };
-    items.push(...list);
-    const total = Number(body?.total);
-    const more = Number.isFinite(total) && !Array.isArray(body) ? items.length < total : list.length >= SARVAM_PAGE_SIZE;
-    if (!more || list.length === 0) break;
-  }
-  return { ok: true, items };
-}
-
-/** Every phone number anywhere in a Sarvam object (any field whose name has "phone"), as E.164. */
-function phonesIn(value: unknown, out: Set<string>, depth = 0): Set<string> {
-  if (depth > 5 || !value || typeof value !== 'object') return out;
-  for (const [k, v] of Object.entries(value)) {
-    if (/phone/i.test(k)) {
-      for (const p of Array.isArray(v) ? v : [v]) {
-        const n = typeof p === 'string' ? e164(p) : null;
-        if (n) out.add(n);
-      }
-    }
-    phonesIn(v, out, depth + 1);
-  }
-  return out;
-}
-
-const csvNumbers = (raw: string | undefined) => (raw || '').split(',').map(e164).filter((n): n is string => !!n);
-
-/**
- * Cron, with SARVAM_AUTO_NUMBERS = 'true': adds every Indian number on the Sarvam connection
- * (SARVAM_CONNECTION_ID) that we don't know yet to the pool, free, as source 'auto', so a number bought
- * in the dashboard reaches businesses with no other step. Never added: SARVAM_NUMBERS_EXCLUDE,
- * SARVAM_AGENT_PHONE_NUMBERS, SARVAM_BUSINESS_NUMBERS, numbers the operator removed on the ops page
- * (removed_numbers), numbers outside the TRAI 140/160 series when REQUIRE_DLT_CALLER_IDS is on (else
- * they're added with a warning), and numbers any Sarvam deployment uses (another agent answers them). Sarvam's
- * numbers route isn't in its public API; while it refuses the API key, this logs
- * sarvam_numbers_api_unavailable once a day and adds nothing. Never throws. Returns how many it added.
- */
-export async function discoverSarvamNumbers(env: Env): Promise<number> {
-  const apiKey = env.SARVAM_API_KEY;
-  if (env.SARVAM_AUTO_NUMBERS !== 'true' || isMockSarvam(env) || !apiKey || !numbersConfigured(env)) return 0;
-  const base = `https://apps.sarvam.ai/api/app-authoring/v1/orgs/${env.SARVAM_ORG_ID}/workspaces/${env.SARVAM_WORKSPACE_ID}`;
-  const unavailable = async (list: string, status: number | string) => {
-    // Once a day, not every 10 minutes, while Sarvam keeps refusing.
-    const { allowed } = await hitRateLimit(env.DB, `log:sarvam_numbers_api_unavailable:${list}`, 1, 86400);
-    if (allowed) console.warn(JSON.stringify({ msg: 'sarvam_numbers_api_unavailable', list, status }));
-    return 0;
-  };
-
-  const endpoints = await sarvamListAll(`${base}/connections/${encodeURIComponent(env.SARVAM_CONNECTION_ID!)}/endpoints`, apiKey);
-  if (!endpoints.ok) return unavailable('endpoints', endpoints.status);
-  const found = new Set<string>();
-  for (const it of endpoints.items) {
-    const n = e164(it?.phone_number ?? it?.phone ?? it?.number);
-    if (n && /^\+91\d{10}$/.test(n)) found.add(n);
-  }
-
-  const excluded = new Set([
-    ...csvNumbers(env.SARVAM_NUMBERS_EXCLUDE), ...csvNumbers(env.SARVAM_AGENT_PHONE_NUMBERS), ...poolEntries(env).map((e) => e.phone),
-  ]);
-  const [{ results: known }, { results: removed }] = await Promise.all([
-    env.DB.prepare('SELECT phone FROM business_numbers').all<{ phone: string }>(),
-    env.DB.prepare('SELECT phone FROM removed_numbers').all<{ phone: string }>(),
-  ]);
-  const knownSet = new Set((known ?? []).map((r) => r.phone));
-  const removedSet = new Set((removed ?? []).map((r) => r.phone));
-  const counts = { found: found.size, added: 0, excluded: 0, known: 0, removed: 0, not_dlt: 0, deployed: 0 };
-  const dltOnly = dltCallerIdsRequired(env);
-  const candidates: string[] = [];
-  for (const n of found) {
-    if (knownSet.has(n)) counts.known++;
-    else if (excluded.has(n)) counts.excluded++;
-    else if (removedSet.has(n)) counts.removed++;
-    else if (dltOnly && !isDltSeries(n)) counts.not_dlt++; // REQUIRE_DLT_CALLER_IDS: 140/160 series only
-    else candidates.push(n);
-  }
-
-  if (candidates.length) {
-    // A number some deployment uses is answered by another agent (another product, or the other environment).
-    const deployments = await sarvamListAll(`${base}/deployments`, apiKey);
-    if (!deployments.ok) return unavailable('deployments', deployments.status);
-    const deployed = new Set<string>();
-    for (const d of deployments.items) phonesIn(d, deployed);
-    for (const n of candidates) {
-      if (deployed.has(n)) {
-        counts.deployed++;
-        continue;
-      }
-      const r = await env.DB.prepare(
-        "INSERT INTO business_numbers (phone, status, source) VALUES (?, 'free', 'auto') ON CONFLICT(phone) DO NOTHING"
-      ).bind(n).run();
-      if ((r.meta?.changes ?? 0) > 0) {
-        counts.added++;
-        console.log(JSON.stringify({ msg: 'business_number_added', phone: n, source: 'auto' }));
-        if (!isDltSeries(n)) console.warn(JSON.stringify({ msg: 'business_number_not_dlt_series', phone: n, source: 'auto' }));
-      }
-    }
-  }
-  console.log(JSON.stringify({ msg: 'sarvam_numbers_discovered', ...counts }));
-  return counts.added;
+  return { held: lapsed?.length ?? 0, released, assigned };
 }
 
 // ------------------------------------------------------------------ ops page (routes/ops.ts)
+
+const csvNumbers = (raw: string | undefined) => (raw || '').split(',').map(e164).filter((n): n is string => !!n);
 
 export interface OpsPoolView {
   /** Every number in the pool. `listed`: a config number still in SARVAM_BUSINESS_NUMBERS (others: always). */
@@ -684,8 +558,6 @@ export interface OpsPoolView {
   agentsIgnored: number;
   /** Businesses waiting for a number. */
   waiting: number;
-  /** SARVAM_AUTO_NUMBERS: the cron picks up numbers bought in Sarvam. */
-  autoNumbers: boolean;
 }
 
 /**
@@ -720,7 +592,6 @@ export async function opsPoolView(env: Env): Promise<OpsPoolView> {
     agentsFree: free.length,
     agentsIgnored: entries - agentsTotal,
     waiting: waiting?.n ?? 0,
-    autoNumbers: env.SARVAM_AUTO_NUMBERS === 'true',
   };
 }
 
@@ -730,11 +601,10 @@ export type OpsAddResult =
   | { ok: false; code: 'invalid' | 'not_dlt' | 'shared_caller_id' | 'in_config' | 'in_use' };
 
 /**
- * Ops page: a number bought in the Sarvam dashboard joins the pool, free (adding it twice, or one the
- * cron found already, changes nothing), and businesses waiting for a number get one at once. Indian
- * numbers only, never a shared caller ID (SARVAM_AGENT_PHONE_NUMBERS) or a SARVAM_BUSINESS_NUMBERS
- * number. Adding a number removed earlier lets the cron pick it up again. A number outside the TRAI
- * 140/160 series is refused with REQUIRE_DLT_CALLER_IDS, else added with a warning.
+ * Ops page: a number bought in the Sarvam dashboard joins the pool, free (adding it twice changes
+ * nothing), and businesses waiting for a number get one at once. Indian numbers only, never a shared
+ * caller ID (SARVAM_AGENT_PHONE_NUMBERS) or a SARVAM_BUSINESS_NUMBERS number. A number outside the
+ * TRAI 140/160 series is refused with REQUIRE_DLT_CALLER_IDS, else added with a warning.
  */
 export async function addOpsNumber(env: Env, raw: unknown): Promise<OpsAddResult> {
   const phone = e164(raw);
@@ -743,10 +613,9 @@ export async function addOpsNumber(env: Env, raw: unknown): Promise<OpsAddResult
   if (!dlt && dltCallerIdsRequired(env)) return { ok: false, code: 'not_dlt' };
   if (csvNumbers(env.SARVAM_AGENT_PHONE_NUMBERS).includes(phone)) return { ok: false, code: 'shared_caller_id' };
   if (poolEntries(env).some((e) => e.phone === phone)) return { ok: false, code: 'in_config' };
-  const [, inserted] = await env.DB.batch([
-    env.DB.prepare('DELETE FROM removed_numbers WHERE phone = ?').bind(phone),
-    env.DB.prepare("INSERT INTO business_numbers (phone, status, source) VALUES (?, 'free', 'ops') ON CONFLICT(phone) DO NOTHING").bind(phone),
-  ]);
+  const inserted = await env.DB.prepare(
+    "INSERT INTO business_numbers (phone, status, source) VALUES (?, 'free', 'ops') ON CONFLICT(phone) DO NOTHING"
+  ).bind(phone).run();
   let added = (inserted.meta?.changes ?? 0) > 0;
   if (!added) {
     // Known already. A number dropped from SARVAM_BUSINESS_NUMBERS becomes an ops number once it is free.
@@ -772,22 +641,16 @@ export type OpsRemoveResult =
   | { ok: false; code: 'invalid' | 'not_found' | 'in_config' | 'in_use' };
 
 /**
- * Ops page: takes a free, unassigned number found by the cron or added there out of the pool (before
- * releasing it in Sarvam). It is remembered in removed_numbers so the cron doesn't add it back.
+ * Ops page: takes a free, unassigned number added there out of the pool (before releasing it in
+ * Sarvam).
  */
 export async function removeOpsNumber(env: Env, raw: unknown): Promise<OpsRemoveResult> {
   const phone = e164(raw);
   if (!phone) return { ok: false, code: 'invalid' };
-  const removable = `phone = ? AND source IN ('ops', 'auto') AND status = 'free' AND business_id IS NULL
-    AND agent_app_id IS NULL AND deployment_id IS NULL`;
-  // One transaction: the reminder is written only if the number really goes.
-  const [, del] = await env.DB.batch([
-    env.DB.prepare(
-      `INSERT INTO removed_numbers (phone) SELECT ? WHERE EXISTS (SELECT 1 FROM business_numbers WHERE ${removable})
-       ON CONFLICT(phone) DO UPDATE SET removed_at = datetime('now')`
-    ).bind(phone, phone),
-    env.DB.prepare(`DELETE FROM business_numbers WHERE ${removable}`).bind(phone),
-  ]);
+  const del = await env.DB.prepare(
+    `DELETE FROM business_numbers WHERE phone = ? AND source = 'ops' AND status = 'free' AND business_id IS NULL
+       AND agent_app_id IS NULL AND deployment_id IS NULL`
+  ).bind(phone).run();
   if ((del.meta?.changes ?? 0) > 0) {
     console.log(JSON.stringify({ msg: 'business_number_removed', phone }));
     return { ok: true, phone };
