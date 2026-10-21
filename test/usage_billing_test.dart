@@ -1,3 +1,4 @@
+import 'package:callpilot/core/config/app_env.dart';
 import 'package:callpilot/core/network/api_client.dart';
 import 'package:callpilot/core/providers.dart';
 import 'package:callpilot/data/datasources/mock/mock_backend.dart';
@@ -224,22 +225,32 @@ void main() {
       },
     );
 
+    final emailed = <Uri>[];
     appTest(
-      'billing_not_configured falls back to the contact message',
+      'billing_not_configured offers an upgrade email instead of paying',
       (h) async {
+        emailed.clear();
         await _scrollTo(h, find.text('Upgrade'));
         await h.tap(find.text('Upgrade'));
         await h.tap(find.text('Pay ₹5,899'));
         // Shown inside the sheet (a snackbar would sit behind it).
-        expect(
-          find.descendant(
-            of: find.byType(BottomSheet),
-            matching: find.text(
-              'Our team will reach out on WhatsApp to upgrade your plan.',
-            ),
+        final inSheet = find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text(
+            'Online payment isn’t available yet. Email us and we’ll upgrade your plan.',
           ),
-          findsOneWidget,
         );
+        expect(inSheet, findsOneWidget);
+        expect(find.text('Pay ₹5,899'), findsNothing);
+        await h.tap(find.text('Email us'));
+        expect(emailed, hasLength(1));
+        expect(emailed.single.scheme, 'mailto');
+        expect(emailed.single.path, AppEnv.supportEmail);
+        expect(
+          emailed.single.queryParameters['subject'],
+          'Upgrade my CallPilot plan to Starter',
+        );
+        expect(emailed.single.queryParameters['body'], contains('₹5,899'));
       },
       location: '/usage',
       overrides: () => [
@@ -253,6 +264,10 @@ void main() {
             ),
           ),
         ),
+        externalUrlLauncherProvider.overrideWithValue((uri) async {
+          emailed.add(uri);
+          return true;
+        }),
       ],
     );
 
