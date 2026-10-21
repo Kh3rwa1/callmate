@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { Env, AuthUser } from '../types';
 import { billingView, getPlan, RATE_PER_MINUTE_INR } from '../services/plans';
+import { pendingUpiPayment } from '../services/upi';
 
 // Calls to the owner's own test lead (POST /agent/test-call) are not results.
 const NOT_OWNER_TEST = 'lead_id NOT IN (SELECT id FROM leads WHERE business_id = ? AND is_owner_test = 1)';
@@ -113,6 +114,8 @@ dashApp.get('/usage', async (c) => {
     calls_made: row.calls_made || 0,
     // Today's price of extra minutes; rows store the rate from signup, which may be out of date.
     rate_per_minute_inr: RATE_PER_MINUTE_INR,
+    // A UPI payment waiting for the operator, or rejected lately (services/upi.ts).
+    pending_payment: await pendingUpiPayment(c.env, user.business_id),
   });
 });
 

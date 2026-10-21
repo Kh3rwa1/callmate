@@ -484,11 +484,18 @@ class ApiUsageRepository implements UsageRepository {
   @override
   Future<Usage> get() => api.get('/usage', (d) => Usage.fromJson(_j(d)));
   @override
-  Future<String?> checkout({String planId = 'starter'}) => api.post(
+  Future<CheckoutStart> checkout({String planId = 'starter'}) => api.post(
     '/billing/checkout',
-    (d) => jStrN(_j(d), 'url'),
+    (d) => CheckoutStart.fromJson(_j(d)),
     data: {'plan_id': planId},
   );
+  @override
+  Future<void> submitUpiUtr({required String orderId, required String utr}) =>
+      api.post(
+        '/billing/upi/${Uri.encodeComponent(orderId)}/utr',
+        (_) {},
+        data: {'utr': utr},
+      );
 }
 
 class ApiReferralRepository implements ReferralRepository {

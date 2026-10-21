@@ -104,4 +104,15 @@ export const ownerText = (lang: OwnerLang) => ({
     `आज: ${parts.join(', ')} — ${cta}`,
     `আজ: ${parts.join(', ')} — ${cta}`),
   seeResults: pick(lang, 'See results', 'नतीजे देखें', 'ফলাফল দেখুন'),
+
+  upiConfirmedTitle: pick(lang, 'Payment received', 'पेमेंट मिल गया', 'পেমেন্ট পাওয়া গেছে'),
+  upiConfirmedBody: (what: string) => pick(lang,
+    `Thank you! ${what} is now active.`,
+    `धन्यवाद! ${what} अब चालू है।`,
+    `ধন্যবাদ! ${what} এখন চালু।`),
+  upiRejectedTitle: pick(lang, 'We couldn’t find your payment', 'आपका पेमेंट नहीं मिला', 'আপনার পেমেন্ট পাওয়া যায়নি'),
+  upiRejectedBody: (reference: string) => pick(lang,
+    `No UPI payment matched reference ${reference}. Check the UTR in your UPI app and enter it again, or email us.`,
+    `रेफ़रेंस ${reference} से कोई UPI पेमेंट नहीं मिला। अपने UPI ऐप में UTR देखकर फिर से डालें, या हमें ईमेल करें।`,
+    `রেফারেন্স ${reference}-এর সঙ্গে কোনো UPI পেমেন্ট মেলেনি। আপনার UPI অ্যাপে UTR দেখে আবার দিন, অথবা আমাদের ইমেল করুন।`),
 });

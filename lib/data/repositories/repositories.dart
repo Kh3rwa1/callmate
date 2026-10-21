@@ -159,11 +159,15 @@ abstract class CallbackRepository {
 abstract class UsageRepository {
   Future<Usage> get();
 
-  /// Starts a payment for [planId]. Returns the payment page URL to open, or
-  /// null when no page is needed (the mock backend "pays" instantly).
-  /// Throws `ApiException(code: 'billing_not_configured')` when online
-  /// payments are not set up.
-  Future<String?> checkout({String planId = 'starter'});
+  /// Starts a payment for [planId]: a payment page URL to open, a UPI
+  /// payment to make, or neither when no payment is needed (the mock backend
+  /// "pays" instantly). Throws `ApiException(code: 'billing_not_configured')`
+  /// when no way to pay is set up.
+  Future<CheckoutStart> checkout({String planId = 'starter'});
+
+  /// Reports the 12-digit UTR of the UPI payment for [orderId]; support then
+  /// confirms it and the plan starts.
+  Future<void> submitUpiUtr({required String orderId, required String utr});
 }
 
 /// The business's call playbook (`GET /playbooks/current`), read-only.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/config/app_env.dart';
 import '../../core/motion/motion.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
@@ -77,12 +78,18 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
     if (!mounted) return;
     setState(() => _busy = false);
     if (outcome == CheckoutOutcome.opened) _awaitingReturn = true;
-    if (outcome == CheckoutOutcome.paid) {
+    if (outcome == CheckoutOutcome.paid ||
+        outcome == CheckoutOutcome.upiSubmitted) {
       final s = context.s;
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(
-          SnackBar(content: Text(topup ? s.topupAdded : s.paymentReceived)),
+          SnackBar(
+            content: Text(switch (outcome) {
+              CheckoutOutcome.upiSubmitted => s.upiSubmitted,
+              _ => topup ? s.topupAdded : s.paymentReceived,
+            }),
+          ),
         );
     }
   }
@@ -253,6 +260,10 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
                   ),
                 ),
               ),
+              if (u.pendingPayment case final p?) ...[
+                const SizedBox(height: 14),
+                _PendingPaymentCard(payment: p),
+              ],
               const SizedBox(height: 28),
               Reveal(
                 index: 2,
@@ -297,6 +308,79 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// A UPI payment the owner reported: being confirmed, or not found (with a
+/// way to email support).
+class _PendingPaymentCard extends ConsumerWidget {
+  const _PendingPaymentCard({required this.payment});
+  final PendingPayment payment;
+
+  Future<void> _emailUs(BuildContext context, WidgetRef ref) async {
+    final s = context.s;
+    final messenger = ScaffoldMessenger.of(context);
+    final uri = Uri(
+      scheme: 'mailto',
+      path: AppEnv.supportEmail,
+      query:
+          'subject=${Uri.encodeComponent(s.paymentNotFoundSubject(payment.reference))}',
+    );
+    var ok = false;
+    try {
+      ok = await ref.read(externalUrlLauncherProvider)(uri);
+    } catch (_) {}
+    if (!ok) {
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(content: Text(s.playbookMailFailed(AppEnv.supportEmail))),
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = context.s;
+    final t = Theme.of(context).textTheme;
+    final rejected = payment.rejected;
+    final fg = rejected ? AppColors.hot : AppColors.warmInk;
+    return AppCard(
+      key: const ValueKey('pending-payment'),
+      color: rejected ? AppColors.hotSoft : AppColors.warmSoft,
+      border: Border.all(color: Colors.transparent),
+      shadow: false,
+      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      child: Row(
+        children: [
+          Icon(
+            rejected ? Icons.error_outline_rounded : Icons.hourglass_bottom,
+            color: fg,
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              rejected
+                  ? s.paymentNotFound(payment.reference)
+                  : s.paymentConfirming(
+                      Fmt.inr(payment.totalInr),
+                      payment.reference,
+                    ),
+              style: t.bodyMedium?.copyWith(
+                color: fg,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (rejected)
+            TextButton(
+              onPressed: () => _emailUs(context, ref),
+              child: Text(s.emailSupport),
+            ),
+        ],
       ),
     );
   }

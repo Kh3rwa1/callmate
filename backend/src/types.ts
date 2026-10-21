@@ -59,6 +59,13 @@ export interface Env {
   RAZORPAY_WEBHOOK_SECRET?: string;
   /** Optional URL Razorpay redirects to after payment. */
   BILLING_RETURN_URL?: string;
+  /**
+   * Our UPI ID for built-in UPI payments (services/upi.ts), used while Razorpay keys are not set.
+   * Empty = off (checkout returns billing_not_configured).
+   */
+  UPI_PAYEE_VPA?: string;
+  /** Name shown in the payer's UPI app for UPI_PAYEE_VPA (default "CallPilot"). */
+  UPI_PAYEE_NAME?: string;
   /** GST charged on top of every catalogue price (fraction, default "0.18"). */
   GST_RATE?: string;
   /** Our cost per call minute in INR, for the margin report (defaults "3.5" and "0.4", services/economics.ts). */

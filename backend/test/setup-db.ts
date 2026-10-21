@@ -20,6 +20,7 @@ import sql0019 from '../migrations/0019_inbound_answering.sql?raw';
 import sql0020 from '../migrations/0020_business_numbers.sql?raw';
 import sql0021 from '../migrations/0021_number_requests.sql?raw';
 import sql0022 from '../migrations/0022_receptionist_pool.sql?raw';
+import sql0023 from '../migrations/0023_upi_payments.sql?raw';
 
 function cleanSql(sql: string): string[] {
   const noComments = sql
@@ -32,7 +33,7 @@ function cleanSql(sql: string): string[] {
 }
 
 export async function migrateTestDb() {
-  const scripts = [sql0001, sql0003, sql0004, sql0005, sql0006, sql0007, sql0008, sql0009, sql0010, sql0011, sql0012, sql0013, sql0014, sql0015, sql0016, sql0017, sql0018, sql0019, sql0020, sql0021, sql0022];
+  const scripts = [sql0001, sql0003, sql0004, sql0005, sql0006, sql0007, sql0008, sql0009, sql0010, sql0011, sql0012, sql0013, sql0014, sql0015, sql0016, sql0017, sql0018, sql0019, sql0020, sql0021, sql0022, sql0023];
 
   for (const script of scripts) {
     const statements = cleanSql(script);

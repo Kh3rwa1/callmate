@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/config/app_env.dart';
 import '../../core/motion/motion.dart';
+import '../../core/network/api_client.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import 'billing_actions.dart';
 
 /// Plan picker: Starter / Growth, monthly or yearly ("1 month free"), with
 /// the GST breakdown. Returns the checkout outcome when the payment page
-/// opened or the (mock) payment went through; errors stay inside the sheet.
+/// opened, the (mock) payment went through or a UPI payment's UTR was sent;
+/// errors stay inside the sheet.
 Future<CheckoutOutcome?> showPlanPickerSheet(BuildContext context, Usage u) =>
     showModalBottomSheet<CheckoutOutcome>(
       useRootNavigator: true,
@@ -64,6 +69,9 @@ class _CheckoutSheetState extends ConsumerState<_CheckoutSheet> {
 
   /// Checkout said online payments aren't set up: offer "Email us" instead of paying.
   bool _byEmail = false;
+
+  /// Checkout asked for a UPI payment: the sheet shows how to pay it.
+  UpiCheckout? _upi;
 
   List<CheckoutPlan> get _options {
     final u = widget.usage;
@@ -118,10 +126,20 @@ class _CheckoutSheetState extends ConsumerState<_CheckoutSheet> {
       _busy = true;
       _error = null;
     });
-    final (outcome, message) = await startCheckout(ref, planId: item.planId);
+    final (outcome, message, upi) = await startCheckout(
+      ref,
+      planId: item.planId,
+    );
     if (!mounted) return;
     if (outcome == CheckoutOutcome.opened || outcome == CheckoutOutcome.paid) {
       Navigator.pop(context, outcome);
+      return;
+    }
+    if (upi != null) {
+      setState(() {
+        _busy = false;
+        _upi = upi;
+      });
       return;
     }
     // A snackbar would sit behind this sheet; show the problem in it.
@@ -157,6 +175,8 @@ class _CheckoutSheetState extends ConsumerState<_CheckoutSheet> {
     final s = context.s;
     final t = Theme.of(context).textTheme;
     final item = _item;
+    final upi = _upi;
+    if (upi != null) return _UpiStep(upi: upi);
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 16),
@@ -243,6 +263,208 @@ class _CheckoutSheetState extends ConsumerState<_CheckoutSheet> {
                 loading: _busy,
                 onPressed: item == null || _busy ? null : _pay,
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Pay [upi] from any UPI app (QR or the app chooser), then report the UTR so
+/// support can confirm the payment and start the plan.
+class _UpiStep extends ConsumerStatefulWidget {
+  const _UpiStep({required this.upi});
+  final UpiCheckout upi;
+  @override
+  ConsumerState<_UpiStep> createState() => _UpiStepState();
+}
+
+class _UpiStepState extends ConsumerState<_UpiStep> {
+  final _utr = TextEditingController();
+  bool _busy = false;
+  bool _copied = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _utr.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openUpiApp() async {
+    final s = context.s;
+    final uri = Uri.tryParse(widget.upi.uri);
+    var ok = false;
+    try {
+      if (uri != null) ok = await ref.read(externalUrlLauncherProvider)(uri);
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() => _error = ok ? null : s.upiAppFailed(widget.upi.vpa));
+  }
+
+  Future<void> _copyVpa() async {
+    Haptics.tap();
+    await Clipboard.setData(ClipboardData(text: widget.upi.vpa));
+    if (mounted) setState(() => _copied = true);
+  }
+
+  Future<void> _submit() async {
+    final s = context.s;
+    final utr = normalizeUtr(_utr.text);
+    if (utr == null) {
+      setState(() => _error = s.utrInvalid);
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(usageRepoProvider)
+          .submitUpiUtr(orderId: widget.upi.orderId, utr: utr);
+      ref.read(dataVersionProvider.notifier).bump();
+      Haptics.success();
+      if (mounted) Navigator.pop(context, CheckoutOutcome.upiSubmitted);
+    } catch (e) {
+      if (!mounted) return;
+      final code = e is ApiException ? e.code : null;
+      setState(() {
+        _busy = false;
+        _error = switch (code) {
+          'invalid_utr' => s.utrInvalid,
+          'utr_used' => s.utrUsed,
+          'order_closed' || 'not_found' => s.upiOrderClosed,
+          _ => friendlyError(e, s),
+        };
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    final t = Theme.of(context).textTheme;
+    final upi = widget.upi;
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          AppSpace.page,
+          0,
+          AppSpace.page,
+          16 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              s.payByUpiTitle(Fmt.inr(upi.amountInr)),
+              style: t.headlineSmall,
+            ),
+            if (upi.payeeName.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(s.upiPayTo(upi.payeeName), style: t.bodyMedium),
+            ],
+            const SizedBox(height: 16),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  // QR codes need dark-on-light to scan, in both themes.
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: QrImageView(
+                  key: const Key('upi-qr'),
+                  data: upi.uri,
+                  size: 180,
+                  backgroundColor: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            AppCard(
+              padding: const EdgeInsets.fromLTRB(16, 6, 6, 6),
+              shadow: false,
+              child: Row(
+                children: [
+                  Text(s.upiIdLabel, style: t.bodyMedium),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SelectableText(
+                      upi.vpa,
+                      style: t.titleSmall,
+                      textAlign: TextAlign.right,
+                      maxLines: 1,
+                    ),
+                  ),
+                  IconButton(
+                    key: const Key('upi-copy-vpa'),
+                    tooltip: _copied ? s.copied : s.upiIdLabel,
+                    icon: Icon(
+                      _copied ? Icons.check_rounded : Icons.copy_rounded,
+                      size: 20,
+                    ),
+                    onPressed: _copyVpa,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              s.upiNoteHelp(upi.reference),
+              style: t.bodySmall?.copyWith(color: AppColors.inkSoft),
+            ),
+            const SizedBox(height: 14),
+            SecondaryButton(
+              label: s.payWithUpiApp,
+              icon: Icons.account_balance_wallet_outlined,
+              onPressed: _busy ? null : _openUpiApp,
+            ),
+            const SizedBox(height: 20),
+            Text(s.utrHelp, style: t.bodyMedium),
+            const SizedBox(height: 10),
+            TextField(
+              key: const Key('upi-utr'),
+              controller: _utr,
+              enabled: !_busy,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[\d\s-]')),
+                LengthLimitingTextInputFormatter(16),
+              ],
+              decoration: InputDecoration(
+                labelText: s.utrLabel,
+                hintText: '123456789012',
+              ),
+              onChanged: (_) {
+                if (_error != null) setState(() => _error = null);
+              },
+              onSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 14),
+            AnimatedSize(
+              duration: AppMotion.of(context, AppMotion.base),
+              alignment: Alignment.topCenter,
+              child: _error == null
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      key: const ValueKey('upi-error'),
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        _error!,
+                        style: t.bodyMedium?.copyWith(color: AppColors.hot),
+                      ),
+                    ),
+            ),
+            PrimaryButton(
+              label: s.submitUtr,
+              icon: Icons.check_circle_outline_rounded,
+              color: AppColors.brandFill,
+              loading: _busy,
+              onPressed: _busy ? null : _submit,
+            ),
           ],
         ),
       ),

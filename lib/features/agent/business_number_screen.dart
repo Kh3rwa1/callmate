@@ -14,6 +14,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
+import '../usage/billing_actions.dart' show CheckoutOutcome;
 import '../usage/billing_sheets.dart';
 
 /// "Your business number": one fixed number for the business, chosen once.
@@ -54,6 +55,11 @@ class _BodyState extends ConsumerState<_Body> {
     Haptics.tap();
     final outcome = await showPlanPickerSheet(context, usage);
     if (outcome != null) ref.invalidate(businessNumberProvider);
+    if (outcome == CheckoutOutcome.upiSubmitted && mounted) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(context.s.upiSubmitted)));
+    }
   }
 
   Future<void> _request() async {
