@@ -49,7 +49,16 @@ SARVAM_BUSINESS_NUMBERS = ""
 # "<agent id>:<version>:<sha256 hex of
 # its hook token>" (scripts/hook_url.mjs --agent prints one). Add more when the ops alert
 # receptionist_agents_low fires. Only hashes here; the tokens live in the agents' hook URLs.
-SARVAM_RECEPTIONIST_AGENTS = ""
+SARVAM_RECEPTIONIST_AGENTS = """
+CallPilot-R-2be151f5-6c80:2:2846436c94445d7ec735885da3a962eb4e8e6f9caa5ce141bc55974eeb046679,
+CallPilot-R-2094f9fe-ce4c:2:17decbe1c1b8b65a8fc37b3c6b1b7a7cfc77356e1935876ba0a7e2e02dbec614,
+CallPilot-R-75c12126-1809:2:851f610e841d6c0b01a32b8fd994230953d591f5a61880023cc639674bdc8d47,
+CallPilot-R-58c9b600-bac5:2:5feba3e891dd87dab0f2fda85cc547d32dece40d729f3bd4544b043fc61fd5fd,
+CallPilot-R-21949d71-564a:2:b3926eb04cccd62f2a44a3bac96aeaf313b3596a7bd6305408b3caeca535f762,
+CallPilot-R-1398e4c7-b297:1:8034bd14a41860287f4817fd2799f746fd7421e125387ede4cf26d56703e264e,
+CallPilot-R-925c9486-743d:2:50217039d471b1e1d1e14986002c8dd3bd41680956882b125e20421f490814ea,
+CallPilot-R-5f2a42ea-95bd:2:2417b2079cac13d9ea1061962d3a0520a80d0326efc68004c236608541861b73
+"""
 # Ops page <PUBLIC_API_BASE_URL>/ops/numbers, where bought numbers are added: SHA-256 hex of its key
 # (printf %s "$KEY" | shasum -a 256). Empty = the page is off (404).
 OPS_KEY_SHA256 = "a5899083e982911bda43c6c15b0dd943e4275f00c4c00a3a44fb36704248fb90"
@@ -154,7 +163,10 @@ SARVAM_BUSINESS_NUMBERS = "+917971443028=CallPilot-R-2944da04-d549:1"
 # "<agent id>:<version>:<sha256 hex of
 # its hook token>" (scripts/hook_url.mjs --agent prints one). Add more when the ops alert
 # receptionist_agents_low fires. Only hashes here; the tokens live in the agents' hook URLs.
-SARVAM_RECEPTIONIST_AGENTS = ""
+SARVAM_RECEPTIONIST_AGENTS = """
+CallPilot-R-58821b56-d62c:2:29d94eb06069c6cbd71f236f0b145eaed0fec7c2f16d64c72e0f00a6af3502fe,
+CallPilot-R-05c4c784-a424:2:6468f9d3917dece8df339762b9fe8422b584cb34723428d4c1364b5238216425
+"""
 # Ops page <PUBLIC_API_BASE_URL>/ops/numbers, where bought numbers are added: SHA-256 hex of its key
 # (printf %s "$KEY" | shasum -a 256). Empty = the page is off (404).
 OPS_KEY_SHA256 = "0e21bf90b88cf005399d7542a8ccc0471cf2c4b36a659c4a4217d537712f1dcd"
