@@ -100,11 +100,17 @@ async function run() {
   assert.strictEqual(health.status, 200);
   assert.strictEqual(health.data.status, 'ok');
   console.log('   ✓ Health check passed');
-  // The ops page doesn't exist until OPS_KEY_SHA256 is configured (empty in wrangler.toml).
+  // The ops page is on (OPS_KEY_SHA256 is set in wrangler.toml): the form loads, a wrong key is refused.
   const opsPage = await req('/ops/numbers');
-  assert.strictEqual(opsPage.status, 404);
-  assert.strictEqual(opsPage.data.code, 'not_found');
-  console.log('   ✓ Ops page is off without OPS_KEY_SHA256');
+  assert.strictEqual(opsPage.status, 200);
+  assert.strictEqual(opsPage.headers.get('cache-control'), 'no-store');
+  const opsWrongKey = await req('/ops/numbers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ key: 'not-the-ops-key', action: 'list' }).toString(),
+  });
+  assert.strictEqual(opsWrongKey.status, 401);
+  console.log('   ✓ Ops page loads and refuses a wrong key');
 
   // 2. Auth: Register
   console.log('2. Auth Register...');
