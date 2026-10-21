@@ -86,13 +86,6 @@ export interface Env {
   /** SHA-256 hex of the ops page key (/ops/numbers). Unset = the page is 404. */
   OPS_KEY_SHA256?: string;
   /**
-   * 'true' = the cron adds numbers it finds on the Sarvam connection to the pool by itself. One
-   * environment only: staging and production share the connection.
-   */
-  SARVAM_AUTO_NUMBERS?: string;
-  /** Comma-separated numbers the cron never adds (e.g. the other environment's business numbers). */
-  SARVAM_NUMBERS_EXCLUDE?: string;
-  /**
    * 'true' = only TRAI 140/160-series numbers join the business-number pool (the ops page refuses
    * others, the cron skips them). Unset = they are added with a warning, as the shared caller IDs are.
    */

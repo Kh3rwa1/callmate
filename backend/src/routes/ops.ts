@@ -1,9 +1,9 @@
 /**
  * Ops page: GET/POST /ops/numbers. The operator adds a phone number bought in the Sarvam dashboard
- * here, with no code change or deploy (docs/SARVAM_SETUP.md -> Business numbers), whenever the cron
- * can't pick it up by itself (SARVAM_AUTO_NUMBERS): businesses waiting for a number get it at once,
- * otherwise it shows in the app's picker while a receptionist pool agent is free to answer it. Free
- * numbers added here or found by the cron can be removed again.
+ * here, with no code change or deploy (docs/SARVAM_SETUP.md -> Business numbers); Sarvam has no API
+ * that lists a connection's numbers, so this is the only way one joins the pool. Businesses waiting for
+ * a number get it at once, otherwise it shows in the app's picker while a receptionist pool agent is
+ * free to answer it. Free numbers added here can be removed again.
  *
  * Off (404) unless OPS_KEY_SHA256 is set. Every POST carries the key, checked against that hash in
  * constant time; a wrong key gets a generic 401 and a log line, and after OPS_MAX_FAILURES wrong keys
@@ -109,9 +109,6 @@ function poolHtml(v: OpsPoolView): string {
   <li>Businesses waiting for a number: ${v.waiting}</li>
   <li>Not TRAI 140/160-series: ${v.numbers.filter((n) => !n.dlt).length}${v.dltRequired
     ? ' (REQUIRE_DLT_CALLER_IDS: no more can be added)' : ''}</li>
-  <li>Picking up numbers bought in Sarvam by itself: ${v.autoNumbers
-    ? 'on (if the logs show sarvam_numbers_api_unavailable, Sarvam still refuses it: add numbers here)'
-    : 'off (SARVAM_AUTO_NUMBERS): add numbers here'}</li>
 </ul>
 ${v.numbers.length ? `<div class="table"><table>
 <thead><tr><th>Number</th><th>Status</th><th>Source</th><th>Agent</th></tr></thead>
@@ -120,8 +117,8 @@ ${rows}
 </tbody>
 </table></div>` : '<p>No numbers yet.</p>'}
 <p class="hint">Free: waiting for a business. Active: a business’s number. Held: its plan lapsed, kept for it for 30 days.
-Source: ops = added here, auto = found in Sarvam, config = SARVAM_BUSINESS_NUMBERS. Ops and auto numbers get
-a receptionist agent when a business takes it.</p>`;
+Source: ops = added here, config = SARVAM_BUSINESS_NUMBERS. An ops number gets a receptionist agent when a
+business takes it.</p>`;
 }
 
 /** UPI payments the owners say they made, oldest first; each row's buttons submit the key form above. */
@@ -241,8 +238,7 @@ opsApp.post('/numbers', async (c) => {
     if (r.ok) {
       notice = {
         kind: 'ok',
-        text: `Removed ${displayNumber(r.phone)}; it won’t be picked up again unless you add it here. `
-          + 'Release it in Sarvam if you no longer want to pay for it.',
+        text: `Removed ${displayNumber(r.phone)}. Release it in Sarvam if you no longer want to pay for it.`,
       };
     } else {
       notice = { kind: 'error', text: REMOVE_ERRORS[r.code] };

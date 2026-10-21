@@ -115,9 +115,8 @@ export async function collectAlertFindings(env: Pick<Env, 'DB'> & Partial<Env>):
     findings.push({
       type: 'business_numbers_requested', count: waiting!.n,
       text: `${waiting!.n} paying business(es) asked for a business number and none is free (oldest since ${waiting!.oldest} UTC). `
-        + 'Buy numbers in Sarvam (Deploy -> Phone Numbers -> Buy). With SARVAM_AUTO_NUMBERS the cron picks them up by '
-        + `itself if Sarvam allows it; otherwise add each on ${env.PUBLIC_API_BASE_URL || ''}/ops/numbers `
-        + '(docs/SARVAM_SETUP.md). They are assigned at once.',
+        + 'Buy numbers in Sarvam (Deploy -> Phone Numbers -> Buy), then add each on '
+        + `${env.PUBLIC_API_BASE_URL || ''}/ops/numbers (docs/SARVAM_SETUP.md). They are assigned at once.`,
     });
   }
 

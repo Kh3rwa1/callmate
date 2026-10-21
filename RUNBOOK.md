@@ -324,9 +324,8 @@ names each dial sends.
 - `webhook_auth_failures` — after a secret rotation a burst is expected for
   in-flight calls. A sustained stream from unknown sources is probing; no
   action needed beyond watching, since bad tokens are rejected.
-- `business_numbers_requested` — buy numbers in Sarvam; add them on
-  `<PUBLIC_API_BASE_URL>/ops/numbers` unless the cron picks them up itself
-  (§6 → Business numbers).
+- `business_numbers_requested` — buy numbers in Sarvam and add them on
+  `<PUBLIC_API_BASE_URL>/ops/numbers` (§6 → Business numbers).
 - `receptionist_agents_low` — make more receptionist pool agents and add them
   to `SARVAM_RECEPTIONIST_AGENTS` (docs/SARVAM_SETUP.md → Receptionist pool).
 ---
@@ -410,13 +409,10 @@ names each dial sends.
   counts, plus free receptionist agents and waiting businesses).
   No free numbers left: paying owners tap **Request my number** and the ops
   alert `business_numbers_requested` fires (every 12 h while anyone waits).
-  Buy a number in Sarvam (Deploy → Phone Numbers → Sarvam Vobiz → Buy). No
-  deploy: production's cron picks it up by itself once Sarvam accepts our API
-  key on its numbers route (`SARVAM_AUTO_NUMBERS`; the logs show
-  `sarvam_numbers_discovered`, or `sarvam_numbers_api_unavailable` once a day
-  while it doesn't); otherwise add it on the ops page. Either way the
-  longest-waiting business gets it and the owner is notified
-  (docs/SARVAM_SETUP.md → Business numbers).
+  Buy a number in Sarvam (Deploy → Phone Numbers → Sarvam Vobiz → Buy) and
+  add it on the ops page; no deploy. Sarvam has no API that lists bought
+  numbers, so this step stays manual. The longest-waiting business gets it
+  and the owner is notified (docs/SARVAM_SETUP.md → Business numbers).
   **Receptionist pool:** each number taken from the pool needs a free agent
   from `SARVAM_RECEPTIONIST_AGENTS`. The ops alert `receptionist_agents_low`
   (once a day while one or none is free) means: make more pool agents and
