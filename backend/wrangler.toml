@@ -52,7 +52,7 @@ SARVAM_BUSINESS_NUMBERS = ""
 SARVAM_RECEPTIONIST_AGENTS = ""
 # Ops page <PUBLIC_API_BASE_URL>/ops/numbers, where bought numbers are added: SHA-256 hex of its key
 # (printf %s "$KEY" | shasum -a 256). Empty = the page is off (404).
-OPS_KEY_SHA256 = ""
+OPS_KEY_SHA256 = "a5899083e982911bda43c6c15b0dd943e4275f00c4c00a3a44fb36704248fb90"
 # Numbers bought in Sarvam join the pool by themselves: every cron run reads the numbers on
 # SARVAM_CONNECTION_ID and adds new ones that no deployment uses. Production only: staging shares the
 # connection. Needs Sarvam to accept the API key on that route; until then the cron logs
@@ -157,10 +157,12 @@ SARVAM_BUSINESS_NUMBERS = "+917971443028=CallPilot-R-2944da04-d549:1"
 SARVAM_RECEPTIONIST_AGENTS = ""
 # Ops page <PUBLIC_API_BASE_URL>/ops/numbers, where bought numbers are added: SHA-256 hex of its key
 # (printf %s "$KEY" | shasum -a 256). Empty = the page is off (404).
-OPS_KEY_SHA256 = ""
+OPS_KEY_SHA256 = "0e21bf90b88cf005399d7542a8ccc0471cf2c4b36a659c4a4217d537712f1dcd"
 # Off on staging: it shares the Sarvam connection with production, which picks up bought numbers by
 # itself. Staging's numbers are added on its ops page (and listed in production's SARVAM_NUMBERS_EXCLUDE).
 SARVAM_AUTO_NUMBERS = ""
+# Unused while SARVAM_AUTO_NUMBERS is off; declared so wrangler does not warn.
+SARVAM_NUMBERS_EXCLUDE = ""
 # "true" = only TRAI 140/160-series numbers join the business-number pool (ops page refuses others).
 # Off while our Vobiz numbers (+9179…) aren't DLT: they're added with a warning (COMPLIANCE.md).
 # REQUIRE_DLT_CALLER_IDS = "true"
