@@ -146,10 +146,20 @@ extension SAgent on S {
   String perMin(String price) =>
       pick('$price / min', '$price / मिनट', '$price / মিনিট');
   String get upgrade => pick('Upgrade', 'अपग्रेड करें', 'আপগ্রেড করুন');
-  String get upgradeContact => pick(
-    'Our team will reach out on WhatsApp to upgrade your plan.',
-    'प्लान अपग्रेड करने के लिए हमारी टीम WhatsApp पर संपर्क करेगी।',
-    'প্ল্যান আপগ্রেড করতে আমাদের টিম WhatsApp-এ যোগাযোগ করবে।',
+  String get upgradeByEmail => pick(
+    'Online payment isn’t available yet. Email us and we’ll upgrade your plan.',
+    'ऑनलाइन पेमेंट अभी उपलब्ध नहीं है। हमें ईमेल करें, हम आपका प्लान अपग्रेड कर देंगे।',
+    'অনলাইন পেমেন্ট এখনও চালু হয়নি। আমাদের ইমেল করুন, আমরা আপনার প্ল্যান আপগ্রেড করে দেব।',
+  );
+  String upgradeEmailSubject(String plan) => pick(
+    'Upgrade my CallPilot plan to $plan',
+    'मेरा CallPilot प्लान $plan में अपग्रेड करें',
+    'আমার CallPilot প্ল্যান $plan-এ আপগ্রেড করুন',
+  );
+  String upgradeEmailBody(String plan, String amount, String business) => pick(
+    'Plan: $plan ($amount)\nBusiness: $business',
+    'प्लान: $plan ($amount)\nकारोबार: $business',
+    'প্ল্যান: $plan ($amount)\nব্যবসা: $business',
   );
   String get onlyConnectedCount => pick(
     'Only connected calls of 10 seconds or more count. Unanswered calls and voicemail are free.',

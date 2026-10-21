@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/config/app_env.dart';
 import '../../core/motion/motion.dart';
+import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
@@ -32,6 +34,16 @@ Future<CheckoutOutcome?> showTopupSheet(BuildContext context, Usage u) =>
       builder: (_) => _CheckoutSheet(usage: u, topup: true),
     );
 
+/// mailto: link asking support to upgrade [business] to [plan], used while
+/// online payments are not set up.
+Uri upgradeEmailUri(S s, CheckoutPlan plan, Business? business) => Uri(
+  scheme: 'mailto',
+  path: AppEnv.supportEmail,
+  query:
+      'subject=${Uri.encodeComponent(s.upgradeEmailSubject(plan.name))}'
+      '&body=${Uri.encodeComponent(s.upgradeEmailBody(plan.name, Fmt.inr(plan.totalInr), business == null ? '-' : '${business.name} (${business.id})'))}',
+);
+
 /// GST percentage for labels, e.g. 18.
 String gstPercent(CheckoutPlan p) =>
     p.priceInr == 0 ? '18' : ((p.gstInr / p.priceInr) * 100).round().toString();
@@ -49,6 +61,9 @@ class _CheckoutSheetState extends ConsumerState<_CheckoutSheet> {
   late String _selected;
   bool _busy = false;
   String? _error;
+
+  /// Checkout said online payments aren't set up: offer "Email us" instead of paying.
+  bool _byEmail = false;
 
   List<CheckoutPlan> get _options {
     final u = widget.usage;
@@ -112,12 +127,29 @@ class _CheckoutSheetState extends ConsumerState<_CheckoutSheet> {
     // A snackbar would sit behind this sheet; show the problem in it.
     setState(() {
       _busy = false;
+      _byEmail = outcome == CheckoutOutcome.notConfigured;
       _error = switch (outcome) {
-        CheckoutOutcome.notConfigured => s.upgradeContact,
+        CheckoutOutcome.notConfigured => null,
         CheckoutOutcome.notActive => s.topupNeedsActivePlan,
         _ => message ?? s.paymentPageFailed,
       };
     });
+  }
+
+  /// Online payments aren't set up: the owner emails support, who upgrade the plan by hand.
+  Future<void> _emailUs() async {
+    final item = _item;
+    if (item == null) return;
+    final s = context.s;
+    final business = ref.read(businessProvider).value;
+    var ok = false;
+    try {
+      ok = await ref.read(externalUrlLauncherProvider)(
+        upgradeEmailUri(s, item, business),
+      );
+    } catch (_) {}
+    if (!mounted || ok) return;
+    setState(() => _error = s.playbookMailFailed(AppEnv.supportEmail));
   }
 
   @override
@@ -179,24 +211,38 @@ class _CheckoutSheetState extends ConsumerState<_CheckoutSheet> {
             AnimatedSize(
               duration: AppMotion.of(context, AppMotion.base),
               alignment: Alignment.topCenter,
-              child: _error == null
-                  ? const SizedBox(width: double.infinity)
-                  : Padding(
+              child: _error != null
+                  ? Padding(
                       key: const ValueKey('checkout-error'),
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Text(
                         _error!,
                         style: t.bodyMedium?.copyWith(color: AppColors.hot),
                       ),
-                    ),
+                    )
+                  : _byEmail
+                  ? Padding(
+                      key: const ValueKey('checkout-by-email'),
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(s.upgradeByEmail, style: t.bodyMedium),
+                    )
+                  : const SizedBox(width: double.infinity),
             ),
-            PrimaryButton(
-              label: s.payAmount(Fmt.inr(item?.totalInr ?? 0)),
-              icon: Icons.lock_outline_rounded,
-              color: AppColors.brandFill,
-              loading: _busy,
-              onPressed: item == null || _busy ? null : _pay,
-            ),
+            if (_byEmail)
+              PrimaryButton(
+                label: s.emailSupport,
+                icon: Icons.mail_outline_rounded,
+                color: AppColors.brandFill,
+                onPressed: item == null ? null : _emailUs,
+              )
+            else
+              PrimaryButton(
+                label: s.payAmount(Fmt.inr(item?.totalInr ?? 0)),
+                icon: Icons.lock_outline_rounded,
+                color: AppColors.brandFill,
+                loading: _busy,
+                onPressed: item == null || _busy ? null : _pay,
+              ),
           ],
         ),
       ),
