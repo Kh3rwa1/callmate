@@ -19,6 +19,7 @@ import '../callbacks/callback_sheet.dart';
 import '../followups/whatsapp_handoff.dart';
 import 'lead_call_action.dart';
 import 'lead_detail_widgets.dart';
+import '../../core/theme/system_bars.dart';
 
 class LeadDetailScreen extends ConsumerWidget {
   const LeadDetailScreen({super.key, required this.leadId});
@@ -68,7 +69,12 @@ class _Body extends ConsumerWidget {
     );
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 36),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.page,
+        0,
+        AppSpace.page,
+        36,
+      ).withNavBar(context),
       children: [
         Row(
           children: [

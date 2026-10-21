@@ -17,6 +17,7 @@ import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import '../callbacks/callback_sheet.dart';
 import 'transcript_view.dart';
+import '../../core/theme/system_bars.dart';
 
 /// Post-call result – the "AI understood" moment.
 ///
@@ -440,7 +441,12 @@ class _Detail extends StatelessWidget {
       (s.nextLabel, s.nextAction(c.nextAction)),
     ];
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpace.page, 8, AppSpace.page, 32),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.page,
+        8,
+        AppSpace.page,
+        32,
+      ).withNavBar(context),
       children: [
         Center(
           child: PopIn(

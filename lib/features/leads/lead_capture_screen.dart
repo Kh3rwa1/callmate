@@ -12,6 +12,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import 'lead_integrations.dart';
+import '../../core/theme/system_bars.dart';
 
 /// Customers → "Get leads automatically": the hosted enquiry form (link,
 /// share, QR code), auto-call toggle, website/Google Forms webhooks whose
@@ -123,7 +124,12 @@ class _LeadCaptureScreenState extends ConsumerState<LeadCaptureScreen> {
     final form = list.where((x) => x.isForm).firstOrNull;
     final hooks = list.where((x) => x.kind == LeadSourceKind.webhook).toList();
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 36),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.page,
+        4,
+        AppSpace.page,
+        36,
+      ).withNavBar(context),
       children: [
         Text(
           s.leadCaptureIntro,

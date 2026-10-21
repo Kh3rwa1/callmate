@@ -10,6 +10,7 @@ import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import '../agent/owner_test_call_sheet.dart' show heardAiProvider;
 import '../home/getting_started.dart' show checklistDismissedProvider;
+import '../../core/theme/system_bars.dart';
 
 /// Development / demo controls – lets the full loop be demoed without
 /// live telephony. Hidden in prod flavor.
@@ -71,7 +72,12 @@ class DemoScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(s.demoControls)),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(AppSpace.page, 4, AppSpace.page, 32),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpace.page,
+          4,
+          AppSpace.page,
+          32,
+        ).withNavBar(context),
         children: [
           Align(
             alignment: Alignment.centerLeft,

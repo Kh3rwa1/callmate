@@ -16,6 +16,7 @@ import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import '../usage/billing_actions.dart' show CheckoutOutcome;
 import '../usage/billing_sheets.dart';
+import '../../core/theme/system_bars.dart';
 
 /// "Your business number": one fixed number for the business, chosen once.
 /// It is the caller ID of every AI call, and customers who call it back reach
@@ -236,7 +237,12 @@ class _BodyState extends ConsumerState<_Body> {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpace.page, 8, AppSpace.page, 40),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.page,
+        8,
+        AppSpace.page,
+        40,
+      ).withNavBar(context),
       children: children,
     );
   }

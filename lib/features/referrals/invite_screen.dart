@@ -12,6 +12,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
+import '../../core/theme/system_bars.dart';
 
 /// WhatsApp share link with no recipient: WhatsApp opens its contact picker
 /// with [message] prefilled. The owner picks who gets it and taps send;
@@ -72,7 +73,12 @@ class _Body extends ConsumerWidget {
     final t = Theme.of(context).textTheme;
     final message = s.inviteMessage(r.link, r.code, r.bonusMinutes);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpace.page, 0, AppSpace.page, 32),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.page,
+        0,
+        AppSpace.page,
+        32,
+      ).withNavBar(context),
       children: [
         Reveal(
           child: AppCard(

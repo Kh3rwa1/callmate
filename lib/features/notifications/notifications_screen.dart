@@ -13,6 +13,7 @@ import '../../core/widgets/state_views.dart';
 import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import '../../services/notifications/notification_service.dart';
+import '../../core/theme/system_bars.dart';
 
 export '../../services/notifications/notification_service.dart'
     show splitNotificationTitle, plainNotificationTitle, notificationTitleFor;
@@ -41,7 +42,7 @@ class NotificationsScreen extends ConsumerWidget {
                   8,
                   AppSpace.page,
                   32,
-                ),
+                ).withNavBar(context),
                 children: [
                   Reveal(
                     child: AppCard(

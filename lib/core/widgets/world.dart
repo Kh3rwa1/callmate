@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../motion/motion.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
+import '../theme/system_bars.dart';
 import '../utils/format.dart';
 
 /// The top of a tab, painted edge to edge in the tab's [AppWorld] colour
@@ -37,11 +38,10 @@ class WorldHeader extends StatelessWidget {
     final top = MediaQuery.paddingOf(context).top;
     final t = Theme.of(context).textTheme;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value:
-          (world.isDarkBg
-                  ? SystemUiOverlayStyle.light
-                  : SystemUiOverlayStyle.dark)
-              .copyWith(statusBarColor: Colors.transparent),
+      value: systemBarsStyle(
+        darkBehindStatusBar: world.isDarkBg,
+        darkBehindNavBar: AppColors.palette.isDark,
+      ),
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
@@ -380,11 +380,10 @@ class WorldStatusBar extends StatelessWidget {
           height: top,
           child: IgnorePointer(
             child: AnnotatedRegion<SystemUiOverlayStyle>(
-              value:
-                  (world.isDarkBg
-                          ? SystemUiOverlayStyle.light
-                          : SystemUiOverlayStyle.dark)
-                      .copyWith(statusBarColor: Colors.transparent),
+              value: systemBarsStyle(
+                darkBehindStatusBar: world.isDarkBg,
+                darkBehindNavBar: AppColors.palette.isDark,
+              ),
               child: ColoredBox(color: world.paint),
             ),
           ),

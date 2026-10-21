@@ -13,6 +13,7 @@ import '../../data/models/models.dart';
 import '../../l10n/l10n.dart';
 import 'billing_actions.dart';
 import 'billing_sheets.dart';
+import '../../core/theme/system_bars.dart';
 
 /// Label for a plan's billing status.
 String planStatusLabel(S s, PlanStatus status) => switch (status) {
@@ -124,7 +125,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen>
               0,
               AppSpace.page,
               32,
-            ),
+            ).withNavBar(context),
             children: [
               Reveal(
                 child: AppCard(
