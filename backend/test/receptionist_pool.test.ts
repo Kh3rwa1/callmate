@@ -158,6 +158,12 @@ describe('ops page', () => {
     expect(html).toContain('name="number"');
     expect(html).not.toContain('<script');
     expect(html).not.toContain('<table');
+    // The how-to is open here and folded once the pool is shown.
+    expect(html).toContain('<details class="guide" open>');
+    expect(html).toContain('Deploy → Phone Numbers → Sarvam Vobiz → Buy Number');
+    const signedIn = await (await ops({ key: OPS_KEY, action: 'list' })).text();
+    expect(signedIn).toContain('<details class="guide">');
+    expect(signedIn).toContain('<h2>Pool</h2>');
   });
 
   it('a wrong key gets a generic 401 and a log line; too many from one IP get 429', async () => {

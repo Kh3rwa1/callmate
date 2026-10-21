@@ -32,7 +32,24 @@ const MAX_INPUT = 200;
 
 type Notice = { kind: 'ok' | 'error'; text: string };
 
-function layout(body: string): string {
+/** The steps for adding a number. Open on the bare form; folded once the pool is shown. */
+function guide(open: boolean): string {
+  return `<details class="guide"${open ? ' open' : ''}>
+<summary>How to add a number</summary>
+<ol>
+  <li><strong>Buy it in Sarvam:</strong> Deploy → Phone Numbers → Sarvam Vobiz → Buy Number (₹59 per number per 30 days).</li>
+  <li><strong>Add it here:</strong> enter the ops key and the number with +91, then tap Add number.
+    In Claude Code, /callpilot-add-number does this step for you.</li>
+  <li><strong>Done.</strong> No deploy or app update. A business waiting for a number gets it at once and is told;
+    otherwise it shows in the app’s number picker.</li>
+</ol>
+<p class="hint">Each number a business takes needs a free receptionist agent (see the pool below); when one or none is
+left, add more (docs/SARVAM_SETUP.md → Receptionist pool). Staging and production share the Sarvam connection, so add
+a number on one ops page only. To stop paying for a free number, remove it here first, then release it in Sarvam.</p>
+</details>`;
+}
+
+function layout(body: string, guideOpen = false): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -58,6 +75,11 @@ function layout(body: string): string {
   .notice.ok { border-color: var(--ok); }
   .notice.error { border-color: var(--bad); }
   .stats { padding-left: 1.25rem; }
+  .guide { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin: 16px 0; }
+  .guide summary { font-weight: 600; cursor: pointer; }
+  .guide ol { padding-left: 1.25rem; margin: 10px 0; }
+  .guide li { margin: 6px 0; }
+  .guide .hint { margin: 0; font-size: 0.95rem; }
   .table { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
   th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -67,7 +89,8 @@ function layout(body: string): string {
 <body>
 <main>
 <h1>Business numbers</h1>
-<p class="lede">Add a number bought in Sarvam (Deploy → Phone Numbers → Buy). No deploy needed.</p>
+<p class="lede">Add numbers bought in Sarvam to the pool. No deploy needed.</p>
+${guide(guideOpen)}
 ${body}
 </main>
 </body>
@@ -187,7 +210,7 @@ export const opsApp = new Hono<{ Bindings: Env }>();
 
 opsApp.get('/numbers', (c) => {
   if (!keyHash(c.env)) return notFound(c);
-  return send(c, layout(form()));
+  return send(c, layout(form(), true));
 });
 
 opsApp.post('/numbers', async (c) => {
