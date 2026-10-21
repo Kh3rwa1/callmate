@@ -438,6 +438,16 @@ names each dial sends.
   `payment_link.paid` webhook → plan `active`, `minutes_used = 0`,
   `current_period_end` +1 month (annual / top-up: see above). Each Razorpay
   payment id is applied once.
+- **Built-in UPI (until Razorpay is set up):** with `UPI_PAYEE_VPA` set and no
+  Razorpay keys, checkout shows a UPI QR / "Pay with a UPI app" for that UPI ID
+  with the exact amount and a reference (`CP…`) in the note. The owner enters
+  the 12-digit UTR. Open `<PUBLIC_API_BASE_URL>/ops/numbers` with the ops key,
+  click **Show pool & payments**, find each UTR and amount in the bank statement,
+  then **Confirm** (plan or minutes applied, owner notified) or **Reject** (owner
+  asked to check the UTR). A top-up confirmed for a plan that lapsed meanwhile
+  is recorded as `needs_review` for a manual credit. Setting Razorpay keys
+  switches checkout back to Razorpay; orders already entered can still be
+  confirmed.
 - **Renewal:** the 10-minute cron marks `active` plans whose
   `current_period_end` has passed as `past_due`; calls and campaigns then return
   `402 plan_inactive` until the owner pays again (the same checkout renews).

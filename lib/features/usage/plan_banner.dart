@@ -11,6 +11,12 @@ import '../../l10n/l10n.dart';
 
 /// The home-screen message for [u], or null when the plan needs no attention.
 String? planBannerMessage(S s, Usage u) {
+  // A reported UPI payment is the news, not "upgrade" or "payment due".
+  if (u.pendingPayment case final p?) {
+    return p.rejected
+        ? s.paymentNotFound(p.reference)
+        : s.paymentConfirming(Fmt.inr(p.totalInr), p.reference);
+  }
   if (u.subscription.status.blocksCalling) return s.bannerPastDue;
   if (u.subscription.isTrial) {
     if (u.exhausted) return s.bannerTrialUsedUp;
@@ -27,7 +33,7 @@ String? planBannerMessage(S s, Usage u) {
 /// The banner offers a top-up (instead of "View plan") when minutes are low
 /// or used up on an active plan.
 bool planBannerOffersTopup(Usage u) =>
-    u.canBuyTopup && (u.exhausted || u.paidLow);
+    u.pendingPayment == null && u.canBuyTopup && (u.exhausted || u.paidLow);
 
 /// Payment due / trial running low banner. Taps through to Plan & usage.
 class PlanBanner extends ConsumerWidget {
@@ -44,7 +50,10 @@ class PlanBanner extends ConsumerWidget {
     if (u == null || message == null) {
       return const SizedBox(width: double.infinity);
     }
-    final urgent = u.subscription.status.blocksCalling || u.exhausted;
+    final pending = u.pendingPayment;
+    final urgent = pending == null
+        ? u.subscription.status.blocksCalling || u.exhausted
+        : pending.rejected;
     final topup = planBannerOffersTopup(u);
     final fg = urgent ? AppColors.hot : AppColors.warmInk;
     final t = Theme.of(context).textTheme;
@@ -79,7 +88,9 @@ class PlanBanner extends ConsumerWidget {
             Text(
               topup
                   ? s.buyMinutes
-                  : (u.subscription.isTrial ? s.upgrade : s.viewPlan),
+                  : (u.subscription.isTrial && pending == null
+                        ? s.upgrade
+                        : s.viewPlan),
               style: t.labelLarge?.copyWith(
                 color: fg,
                 fontWeight: FontWeight.w700,

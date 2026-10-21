@@ -8,7 +8,9 @@
  * Off (404) unless OPS_KEY_SHA256 is set. Every POST carries the key, checked against that hash in
  * constant time; a wrong key gets a generic 401 and a log line, and after OPS_MAX_FAILURES wrong keys
  * in an hour an IP gets 429. Shows numbers with their status and source, never which business has one.
- * Server-rendered HTML, no scripts, strict CSP, not cached or indexed.
+ * Also lists built-in UPI payments waiting to be checked against the bank statement (services/upi.ts),
+ * with Confirm (applies the plan) and Reject. Server-rendered HTML, no scripts, strict CSP, not cached
+ * or indexed.
  */
 import { Hono } from 'hono';
 import type { Context } from 'hono';
@@ -18,6 +20,7 @@ import { timingSafeEqual } from '../utils/compare';
 import { hitRateLimit } from '../utils/rate_limit';
 import { clientIp, hashIp } from '../services/consent';
 import { addOpsNumber, opsPoolView, OpsPoolView, removeOpsNumber } from '../services/business_numbers';
+import { confirmUpiOrder, rejectUpiOrder, SubmittedUpiOrder, submittedUpiOrders, UpiPayee, upiPayee } from '../services/upi';
 
 /** No scripts, nothing from elsewhere; the form may only post back here. */
 export const OPS_CSP = "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
@@ -36,7 +39,7 @@ function layout(body: string): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Business numbers · CallPilot ops</title>
+<title>CallPilot ops</title>
 <style>
   :root { color-scheme: light dark; --ink: #1d1d1f; --soft: #5c5c66; --bg: #ffffff; --line: #e4e4ea; --accent: #3a5bd9; --ok: #1f7a3d; --bad: #b3261e; }
   @media (prefers-color-scheme: dark) { :root { --ink: #f2f2f5; --soft: #a8a8b3; --bg: #121214; --line: #2c2c31; --accent: #8fa6ff; --ok: #6fd08c; --bad: #ff8a80; } }
@@ -72,14 +75,14 @@ ${body}
 }
 
 function form(key = ''): string {
-  return `<form method="post" action="/ops/numbers">
+  return `<form id="ops" method="post" action="/ops/numbers">
   <label for="key">Ops key</label>
   <input id="key" name="key" type="password" autocomplete="current-password" maxlength="${MAX_INPUT}" required value="${escapeHtml(key)}">
   <label for="number">Number</label>
   <input id="number" name="number" type="tel" inputmode="tel" autocomplete="off" maxlength="32" placeholder="+91 79714 43028">
   <div class="actions">
     <button type="submit" name="action" value="add">Add number</button>
-    <button type="submit" name="action" value="list" class="secondary">Show pool</button>
+    <button type="submit" name="action" value="list" class="secondary">Show pool &amp; payments</button>
     <button type="submit" name="action" value="remove" class="secondary">Remove number</button>
   </div>
 </form>`;
@@ -121,6 +124,25 @@ Source: ops = added here, auto = found in Sarvam, config = SARVAM_BUSINESS_NUMBE
 a receptionist agent when a business takes it.</p>`;
 }
 
+/** UPI payments the owners say they made, oldest first; each row's buttons submit the key form above. */
+function upiHtml(payee: UpiPayee | null, orders: SubmittedUpiOrder[]): string {
+  const rows = orders.map((o) => `<tr><td>${escapeHtml(o.reference)}</td><td>₹${o.total_inr.toLocaleString('en-IN')}</td>`
+    + `<td>${escapeHtml(o.utr)}</td><td>${escapeHtml(o.plan_name)}</td><td>${escapeHtml(o.submitted_at)} UTC</td>`
+    + `<td><button type="submit" form="ops" name="action" value="upi_confirm:${escapeHtml(o.id)}">Confirm</button> `
+    + `<button type="submit" form="ops" name="action" value="upi_reject:${escapeHtml(o.id)}" class="secondary">Reject</button></td></tr>`)
+    .join('\n');
+  return `<h2>UPI payments to confirm</h2>
+<p class="hint">Payments go to: ${payee ? escapeHtml(payee.vpa) : 'off (UPI_PAYEE_VPA is not set)'}</p>
+${orders.length ? `<div class="table"><table>
+<thead><tr><th>Reference</th><th>Amount</th><th>UTR</th><th>Plan</th><th>Entered</th><th></th></tr></thead>
+<tbody>
+${rows}
+</tbody>
+</table></div>` : '<p>None waiting.</p>'}
+<p class="hint">Find the UTR and amount in your bank statement or UPI app; the payer's note says CallPilot and the
+reference. Confirm starts the plan and tells the owner. Reject asks the owner to check the UTR and enter it again.</p>`;
+}
+
 function send(c: Context<{ Bindings: Env }>, html: string, status: 200 | 400 | 401 | 429 = 200) {
   c.header('Content-Security-Policy', OPS_CSP);
   c.header('Cache-Control', 'no-store');
@@ -157,6 +179,11 @@ const REMOVE_ERRORS = {
   not_found: 'That number is not in the pool.',
   in_config: 'That number comes from SARVAM_BUSINESS_NUMBERS; remove it there.',
   in_use: 'That number is active or held; only a free number can be removed.',
+} as const;
+
+const UPI_ERRORS = {
+  not_found: 'That payment is not in the list.',
+  already_decided: 'That payment was already confirmed or rejected.',
 } as const;
 
 export const opsApp = new Hono<{ Bindings: Env }>();
@@ -221,15 +248,29 @@ opsApp.post('/numbers', async (c) => {
       notice = { kind: 'error', text: REMOVE_ERRORS[r.code] };
       status = 400;
     }
+  } else if (action.startsWith('upi_confirm:') || action.startsWith('upi_reject:')) {
+    const [verb, orderId] = action.split(':');
+    const r = verb === 'upi_confirm' ? await confirmUpiOrder(c.env, orderId) : await rejectUpiOrder(c.env, orderId);
+    if (!r.ok) {
+      notice = { kind: 'error', text: UPI_ERRORS[r.code] };
+      status = 400;
+    } else if (verb === 'upi_reject') {
+      notice = { kind: 'ok', text: `Rejected ${r.reference}; the owner was asked to check the UTR.` };
+    } else {
+      notice = r.applied
+        ? { kind: 'ok', text: `Confirmed ${r.reference}. The plan is active and the owner was told.` }
+        : { kind: 'error', text: `Confirmed ${r.reference}, but it is extra minutes for a plan that is no longer active: credit them by hand.` };
+    }
   } else if (action !== 'list') {
     notice = { kind: 'error', text: 'Unknown action.' };
     status = 400;
   }
 
   const view = await opsPoolView(c.env);
+  const upi = upiHtml(upiPayee(c.env), await submittedUpiOrders(c.env));
   const noticeHtml = notice
     ? `<p class="notice ${notice.kind}" role="${notice.kind === 'error' ? 'alert' : 'status'}">${escapeHtml(notice.text)}</p>\n`
     : '';
   // The key is put back in its (masked) field so the operator can add the next number.
-  return send(c, layout(`${noticeHtml}${form(key)}\n${poolHtml(view)}`), status);
+  return send(c, layout(`${noticeHtml}${form(key)}\n${upi}\n${poolHtml(view)}`), status);
 });

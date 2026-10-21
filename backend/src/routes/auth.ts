@@ -443,6 +443,8 @@ authApp.delete('/account', authMiddleware, async (c) => {
       `UPDATE payments SET business_id = ?, contact_email = NULL, contact_phone = NULL, anonymized_at = datetime('now')
        WHERE business_id = ?`
     ).bind(anonId, businessId),
+    // Confirmed UPI payments are kept (anonymised) in payments; their orders go with the account.
+    c.env.DB.prepare('DELETE FROM upi_orders WHERE business_id = ?').bind(businessId),
     c.env.DB.prepare('DELETE FROM refresh_tokens_v2 WHERE user_id = ?').bind(user.id),
     c.env.DB.prepare('DELETE FROM campaign_leads WHERE campaign_id IN (SELECT id FROM campaigns WHERE business_id = ?)').bind(businessId),
     c.env.DB.prepare('DELETE FROM campaigns WHERE business_id = ?').bind(businessId),

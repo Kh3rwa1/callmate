@@ -75,6 +75,11 @@ SARVAM_NUMBERS_EXCLUDE = "+917971443028"
 # Sarvam's organisation-wide concurrent call limit for our plan (pay-as-you-go 4, Pro 10, Growth 30).
 # Dials wait for a free slot instead of being rejected. Raise it when the Sarvam plan changes.
 SARVAM_MAX_CONCURRENT_CALLS = "4"
+# Built-in UPI payments while Razorpay is not set up (services/upi.ts): owners pay this UPI ID from any
+# UPI app and enter the UTR; confirm them on the ops page. Empty = off (checkout offers "Email us").
+# Razorpay keys, when set as secrets, take over checkout.
+UPI_PAYEE_VPA = ""
+UPI_PAYEE_NAME = "Tumdah"
 # Ops alerts: set the chat webhook as a secret, not here: `wrangler secret put ALERT_WEBHOOK_URL`.
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
 # Shown on the public /legal pages. TODO(owner): set a monitored inbox and the registered company name.
@@ -181,6 +186,11 @@ SARVAM_NUMBERS_EXCLUDE = ""
 # Sarvam's organisation-wide concurrent call limit for our plan (pay-as-you-go 4, Pro 10, Growth 30).
 # Dials wait for a free slot instead of being rejected. Raise it when the Sarvam plan changes.
 SARVAM_MAX_CONCURRENT_CALLS = "4"
+# Built-in UPI payments while Razorpay is not set up (services/upi.ts): owners pay this UPI ID from any
+# UPI app and enter the UTR; confirm them on the ops page. Empty = off (checkout offers "Email us").
+# Razorpay keys, when set as secrets, take over checkout.
+UPI_PAYEE_VPA = ""
+UPI_PAYEE_NAME = "Tumdah"
 # Ops alerts: set the chat webhook as a secret, not here: `wrangler secret put ALERT_WEBHOOK_URL`.
 FIREBASE_PROJECT_ID = "callpilot-app-c9b053"
 # Shown on the public /legal pages. TODO(owner): set a monitored inbox and the registered company name.

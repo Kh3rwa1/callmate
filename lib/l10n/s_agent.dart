@@ -161,6 +161,74 @@ extension SAgent on S {
     'प्लान: $plan ($amount)\nकारोबार: $business',
     'প্ল্যান: $plan ($amount)\nব্যবসা: $business',
   );
+
+  // ------------------------------------------------------------ UPI payment
+  String payByUpiTitle(String amount) =>
+      pick('Pay $amount by UPI', '$amount UPI से भरें', 'UPI-তে $amount দিন');
+  String upiPayTo(String name) => pick('To $name', '$name को', '$name-কে');
+  String get upiIdLabel => pick('UPI ID', 'UPI ID', 'UPI ID');
+  String upiNoteHelp(String reference) => pick(
+    'The payment note “CallPilot $reference” is filled in for you. Keep it so we can match your payment.',
+    'पेमेंट नोट “CallPilot $reference” पहले से भरा है। इसे न बदलें, ताकि हम आपका पेमेंट पहचान सकें।',
+    'পেমেন্ট নোট “CallPilot $reference” আগে থেকেই লেখা আছে। এটা রাখুন, যাতে আমরা আপনার পেমেন্ট মেলাতে পারি।',
+  );
+  String get payWithUpiApp =>
+      pick('Pay with a UPI app', 'UPI ऐप से भरें', 'UPI অ্যাপে দিন');
+  String upiAppFailed(String vpa) => pick(
+    'Couldn’t open a UPI app. Scan the QR code or pay to $vpa.',
+    'UPI ऐप नहीं खुला। QR कोड स्कैन करें या $vpa पर भरें।',
+    'UPI অ্যাপ খোলা গেল না। QR কোড স্ক্যান করুন বা $vpa-তে টাকা পাঠান।',
+  );
+  String get utrHelp => pick(
+    'After paying, enter the 12-digit UTR (UPI reference number). You’ll find it in the payment details in your UPI app.',
+    'पेमेंट के बाद 12 अंकों का UTR (UPI रेफ़रेंस नंबर) डालें। यह आपके UPI ऐप में पेमेंट की जानकारी में मिलेगा।',
+    'পেমেন্টের পর 12 সংখ্যার UTR (UPI রেফারেন্স নম্বর) দিন। এটা আপনার UPI অ্যাপে পেমেন্টের বিবরণে পাবেন।',
+  );
+  String get utrLabel => pick(
+    'UTR / UPI reference number',
+    'UTR / UPI रेफ़रेंस नंबर',
+    'UTR / UPI রেফারেন্স নম্বর',
+  );
+  String get submitUtr => pick(
+    'I’ve paid, send UTR',
+    'पेमेंट कर दिया, UTR भेजें',
+    'পেমেন্ট করেছি, UTR পাঠান',
+  );
+  String get utrInvalid => pick(
+    'Enter the 12-digit UTR from your UPI app.',
+    'अपने UPI ऐप से 12 अंकों का UTR डालें।',
+    'আপনার UPI অ্যাপ থেকে 12 সংখ্যার UTR দিন।',
+  );
+  String get utrUsed => pick(
+    'This UTR was already sent for another payment. Check the number in your UPI app.',
+    'यह UTR किसी दूसरे पेमेंट के लिए भेजा जा चुका है। अपने UPI ऐप में नंबर देखें।',
+    'এই UTR অন্য একটা পেমেন্টের জন্য আগেই পাঠানো হয়েছে। আপনার UPI অ্যাপে নম্বরটা দেখুন।',
+  );
+  String get upiOrderClosed => pick(
+    'This payment is already closed. Close this and start again.',
+    'यह पेमेंट बंद हो चुका है। इसे बंद करके फिर से शुरू करें।',
+    'এই পেমেন্ট বন্ধ হয়ে গেছে। এটা বন্ধ করে আবার শুরু করুন।',
+  );
+  String get upiSubmitted => pick(
+    'Thanks! We’ll confirm your payment and start your plan, usually within a few hours.',
+    'धन्यवाद! हम आपका पेमेंट जाँचकर प्लान शुरू कर देंगे, आमतौर पर कुछ घंटों में।',
+    'ধন্যবাদ! আমরা আপনার পেমেন্ট মিলিয়ে প্ল্যান চালু করে দেব, সাধারণত কয়েক ঘণ্টার মধ্যে।',
+  );
+  String paymentConfirming(String amount, String reference) => pick(
+    'We’re confirming your payment of $amount (ref $reference).',
+    'हम $amount के आपके पेमेंट (रेफ़ $reference) की जाँच कर रहे हैं।',
+    'আমরা আপনার $amount-এর পেমেন্ট (রেফ $reference) মিলিয়ে দেখছি।',
+  );
+  String paymentNotFound(String reference) => pick(
+    'We couldn’t find your payment (ref $reference). Email us.',
+    'हमें आपका पेमेंट (रेफ़ $reference) नहीं मिला। हमें ईमेल करें।',
+    'আপনার পেমেন্ট (রেফ $reference) খুঁজে পাইনি। আমাদের ইমেল করুন।',
+  );
+  String paymentNotFoundSubject(String reference) => pick(
+    'CallPilot payment not found ($reference)',
+    'CallPilot पेमेंट नहीं मिला ($reference)',
+    'CallPilot পেমেন্ট পাওয়া যায়নি ($reference)',
+  );
   String get onlyConnectedCount => pick(
     'Only connected calls of 10 seconds or more count. Unanswered calls and voicemail are free.',
     'सिर्फ़ 10 सेकंड या उससे लंबी जुड़ी हुई कॉल गिनी जाती हैं। बिना उठाई कॉल और वॉइसमेल मुफ़्त हैं।',

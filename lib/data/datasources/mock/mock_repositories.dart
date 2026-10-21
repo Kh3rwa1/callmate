@@ -655,7 +655,7 @@ class MockUsageRepository implements UsageRepository {
   @override
   Future<Usage> get() => _lag(() => b.usage);
   @override
-  Future<String?> checkout({String planId = 'starter'}) => _lag(() {
+  Future<CheckoutStart> checkout({String planId = 'starter'}) => _lag(() {
     if (!b.simulatePlanPayment(planId: planId)) {
       throw const ApiException(
         'Extra minutes can be added to an active plan. Buy or renew a plan first.',
@@ -663,8 +663,11 @@ class MockUsageRepository implements UsageRepository {
         code: 'plan_not_active',
       );
     }
-    return null;
+    return const CheckoutStart();
   });
+  @override
+  Future<void> submitUpiUtr({required String orderId, required String utr}) =>
+      _lag(() {});
 }
 
 class MockReferralRepository implements ReferralRepository {

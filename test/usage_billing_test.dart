@@ -12,15 +12,19 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers/app_harness.dart';
 
-/// Usage repo backed by a fixed [usage]; checkout returns [url] or throws.
+/// Usage repo backed by a fixed [usage]; checkout returns [url] or [upi], or
+/// throws [error]. UTR submissions are recorded and fail with [utrError].
 class _FakeUsageRepo implements UsageRepository {
-  _FakeUsageRepo(this.usage, {this.url, this.error});
+  _FakeUsageRepo(this.usage, {this.url, this.upi, this.error, this.utrError});
   Usage usage;
   final String? url;
+  final UpiCheckout? upi;
   final Object? error;
+  final Object? utrError;
   int gets = 0;
   int checkouts = 0;
   String? lastPlanId;
+  final utrs = <(String, String)>[];
 
   @override
   Future<Usage> get() async {
@@ -29,11 +33,20 @@ class _FakeUsageRepo implements UsageRepository {
   }
 
   @override
-  Future<String?> checkout({String planId = 'starter'}) async {
+  Future<CheckoutStart> checkout({String planId = 'starter'}) async {
     checkouts++;
     lastPlanId = planId;
     if (error != null) throw error!;
-    return url;
+    return CheckoutStart(url: url, upi: upi);
+  }
+
+  @override
+  Future<void> submitUpiUtr({
+    required String orderId,
+    required String utr,
+  }) async {
+    utrs.add((orderId, utr));
+    if (utrError != null) throw utrError!;
   }
 }
 
@@ -293,6 +306,245 @@ void main() {
           _FakeUsageRepo(_usage(PlanStatus.trial), url: 'https://rzp.io/i/x'),
         ),
         externalUrlLauncherProvider.overrideWithValue((_) async => false),
+      ],
+    );
+  });
+
+  group('UPI payments', () {
+    const upi = UpiCheckout(
+      orderId: 'upi_ab12cd34ef56',
+      uri:
+          'upi://pay?pa=tumdah%40okhdfcbank&pn=Tumdah&am=5899.00&cu=INR&tn=CallPilot%20CPK7Q2M9X',
+      vpa: 'tumdah@okhdfcbank',
+      payeeName: 'Tumdah',
+      reference: 'CPK7Q2M9X',
+      amountInr: 5899,
+    );
+
+    test('checkout and usage payloads parse the UPI fields', () {
+      final start = CheckoutStart.fromJson({
+        'id': 'upi_ab12cd34ef56',
+        'total_inr': 5899,
+        'upi': {
+          'order_id': 'upi_ab12cd34ef56',
+          'uri': upi.uri,
+          'vpa': 'tumdah@okhdfcbank',
+          'payee_name': 'Tumdah',
+          'reference': 'CPK7Q2M9X',
+          'amount_inr': 5899,
+        },
+      });
+      expect(start.url, isNull);
+      expect(start.upi?.orderId, 'upi_ab12cd34ef56');
+      expect(start.upi?.vpa, 'tumdah@okhdfcbank');
+      expect(start.upi?.amountInr, 5899);
+      expect(CheckoutStart.fromJson({'url': 'https://rzp.io/i/x'}).upi, isNull);
+
+      final u = Usage.fromJson({
+        'subscription': {'plan_status': 'trial'},
+        'pending_payment': {
+          'order_id': 'upi_ab12cd34ef56',
+          'reference': 'CPK7Q2M9X',
+          'plan_id': 'starter',
+          'plan_name': 'Starter',
+          'total_inr': 5899,
+          'status': 'rejected',
+          'submitted_at': '2026-10-21 02:00:00',
+        },
+      });
+      expect(u.pendingPayment?.reference, 'CPK7Q2M9X');
+      expect(u.pendingPayment?.rejected, isTrue);
+      expect(Usage.fromJson({'pending_payment': null}).pendingPayment, isNull);
+    });
+
+    test('UTRs are 12 digits, spaces and dashes ignored', () {
+      expect(normalizeUtr('123456789012'), '123456789012');
+      expect(normalizeUtr(' 1234 5678-9012 '), '123456789012');
+      expect(normalizeUtr('12345678901'), isNull);
+      expect(normalizeUtr('1234567890123'), isNull);
+      expect(normalizeUtr('12345678901a'), isNull);
+    });
+
+    test('a reported payment replaces the upgrade banner', () {
+      const s = S.en;
+      final waiting = Usage(
+        subscription: _usage(PlanStatus.trial, used: 30).subscription,
+        minutesUsed: 30,
+        callsMade: 0,
+        pendingPayment: const PendingPayment(
+          orderId: 'upi_1',
+          reference: 'CPK7Q2M9X',
+          planName: 'Starter',
+          totalInr: 5899,
+        ),
+      );
+      expect(
+        planBannerMessage(s, waiting),
+        'We’re confirming your payment of ₹5,899 (ref CPK7Q2M9X).',
+      );
+    });
+
+    late _FakeUsageRepo repo;
+    final launched = <Uri>[];
+    appTest(
+      'pay by UPI, then send the UTR',
+      (h) async {
+        await _scrollTo(h, find.text('Upgrade'));
+        await h.tap(find.text('Upgrade'));
+        await h.tap(find.text('Pay ₹5,899'));
+        expect(find.text('Pay ₹5,899 by UPI'), findsOneWidget);
+        expect(find.byKey(const Key('upi-qr')), findsOneWidget);
+        expect(find.text('tumdah@okhdfcbank'), findsOneWidget);
+        expect(find.textContaining('CallPilot CPK7Q2M9X'), findsOneWidget);
+
+        await h.tap(find.text('Pay with a UPI app'));
+        expect(launched.single.toString(), upi.uri);
+
+        await h.tester.enterText(find.byKey(const Key('upi-utr')), '12345');
+        await h.tap(find.text('I’ve paid, send UTR'));
+        expect(
+          find.text('Enter the 12-digit UTR from your UPI app.'),
+          findsOneWidget,
+        );
+        expect(repo.utrs, isEmpty);
+
+        await h.tester.enterText(
+          find.byKey(const Key('upi-utr')),
+          '1234 5678 9012',
+        );
+        await h.tap(find.text('I’ve paid, send UTR'));
+        expect(repo.utrs.single, ('upi_ab12cd34ef56', '123456789012'));
+        expect(find.byType(BottomSheet), findsNothing);
+        expect(find.text(S.en.upiSubmitted), findsOneWidget);
+      },
+      location: '/usage',
+      overrides: () {
+        repo = _FakeUsageRepo(_usage(PlanStatus.trial, used: 30), upi: upi);
+        launched.clear();
+        return [
+          usageRepoProvider.overrideWithValue(repo),
+          externalUrlLauncherProvider.overrideWithValue((uri) async {
+            launched.add(uri);
+            return true;
+          }),
+        ];
+      },
+    );
+
+    appTest(
+      'a UTR already used shows inside the sheet',
+      (h) async {
+        await _scrollTo(h, find.text('Upgrade'));
+        await h.tap(find.text('Upgrade'));
+        await h.tap(find.text('Pay ₹5,899'));
+        await h.tester.enterText(
+          find.byKey(const Key('upi-utr')),
+          '123456789012',
+        );
+        await h.tap(find.text('I’ve paid, send UTR'));
+        expect(
+          find.descendant(
+            of: find.byType(BottomSheet),
+            matching: find.text(S.en.utrUsed),
+          ),
+          findsOneWidget,
+        );
+      },
+      location: '/usage',
+      overrides: () => [
+        usageRepoProvider.overrideWithValue(
+          _FakeUsageRepo(
+            _usage(PlanStatus.trial, used: 30),
+            upi: upi,
+            utrError: const ApiException(
+              'That UTR was already used.',
+              statusCode: 409,
+              code: 'utr_used',
+            ),
+          ),
+        ),
+      ],
+    );
+
+    appTest(
+      'a UPI app that fails to open points to the QR and UPI ID',
+      (h) async {
+        await _scrollTo(h, find.text('Upgrade'));
+        await h.tap(find.text('Upgrade'));
+        await h.tap(find.text('Pay ₹5,899'));
+        await h.tap(find.text('Pay with a UPI app'));
+        expect(find.text(S.en.upiAppFailed(upi.vpa)), findsOneWidget);
+      },
+      location: '/usage',
+      overrides: () => [
+        usageRepoProvider.overrideWithValue(
+          _FakeUsageRepo(_usage(PlanStatus.trial, used: 30), upi: upi),
+        ),
+        externalUrlLauncherProvider.overrideWithValue((_) async => false),
+      ],
+    );
+
+    Usage withPending({required bool rejected}) => Usage(
+      subscription: _usage(PlanStatus.trial, used: 30).subscription,
+      minutesUsed: 30,
+      callsMade: 3,
+      pendingPayment: PendingPayment(
+        orderId: 'upi_1',
+        reference: 'CPK7Q2M9X',
+        planName: 'Starter',
+        totalInr: 5899,
+        rejected: rejected,
+      ),
+    );
+
+    appTest(
+      'Plan & usage says a reported payment is being confirmed',
+      (h) async {
+        expect(find.byKey(const ValueKey('pending-payment')), findsOneWidget);
+        expect(
+          find.text('We’re confirming your payment of ₹5,899 (ref CPK7Q2M9X).'),
+          findsOneWidget,
+        );
+      },
+      location: '/usage',
+      overrides: () => [
+        usageRepoProvider.overrideWithValue(
+          _FakeUsageRepo(withPending(rejected: false)),
+        ),
+      ],
+    );
+
+    final mailed = <Uri>[];
+    appTest(
+      'a payment support couldn’t find offers an email',
+      (h) async {
+        mailed.clear();
+        expect(
+          find.text('We couldn’t find your payment (ref CPK7Q2M9X). Email us.'),
+          findsOneWidget,
+        );
+        await h.tap(
+          find.descendant(
+            of: find.byKey(const ValueKey('pending-payment')),
+            matching: find.text('Email us'),
+          ),
+        );
+        expect(mailed.single.scheme, 'mailto');
+        expect(mailed.single.path, AppEnv.supportEmail);
+        expect(
+          mailed.single.queryParameters['subject'],
+          'CallPilot payment not found (CPK7Q2M9X)',
+        );
+      },
+      location: '/usage',
+      overrides: () => [
+        usageRepoProvider.overrideWithValue(
+          _FakeUsageRepo(withPending(rejected: true)),
+        ),
+        externalUrlLauncherProvider.overrideWithValue((uri) async {
+          mailed.add(uri);
+          return true;
+        }),
       ],
     );
   });

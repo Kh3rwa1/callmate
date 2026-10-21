@@ -18,7 +18,11 @@ class _FailingRepo implements UsageRepository {
   @override
   Future<Usage> get() async => usage;
   @override
-  Future<String?> checkout({String planId = 'starter'}) async => throw error;
+  Future<CheckoutStart> checkout({String planId = 'starter'}) async =>
+      throw error;
+  @override
+  Future<void> submitUpiUtr({required String orderId, required String utr}) =>
+      throw error;
 }
 
 Usage _active({

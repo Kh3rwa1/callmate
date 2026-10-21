@@ -276,6 +276,7 @@ class Usage {
     this.plans = CheckoutPlan.defaultPlans,
     this.topups = CheckoutPlan.defaultTopups,
     bool? canBuyTopup,
+    this.pendingPayment,
   }) : _canBuyTopup = canBuyTopup;
   final Subscription subscription;
   final int minutesUsed;
@@ -289,6 +290,10 @@ class Usage {
   /// Extra-minute packs (only buyable on an active plan).
   final List<CheckoutPlan> topups;
   final bool? _canBuyTopup;
+
+  /// A UPI payment the owner reported that support hasn't confirmed yet (or
+  /// couldn't find); null when there is none.
+  final PendingPayment? pendingPayment;
 
   /// Top-ups extend an active paid plan only.
   bool get canBuyTopup =>
@@ -337,12 +342,14 @@ class Usage {
     plans: plans,
     topups: topups,
     canBuyTopup: _canBuyTopup,
+    pendingPayment: pendingPayment,
   );
 
   factory Usage.fromJson(Json j) {
     final plans = jList(j, 'plans', CheckoutPlan.fromJson);
     final topups = jList(j, 'topups', CheckoutPlan.fromJson);
     final legacy = !j.containsKey('plans');
+    final pending = jObj(j, 'pending_payment');
     return Usage(
       subscription: Subscription.fromJson(jObj(j, 'subscription') ?? const {}),
       minutesUsed: jInt(j, 'minutes_used'),
@@ -355,6 +362,84 @@ class Usage {
       canBuyTopup: j['can_buy_topup'] is bool
           ? j['can_buy_topup'] as bool
           : null,
+      pendingPayment: pending == null ? null : PendingPayment.fromJson(pending),
+    );
+  }
+}
+
+/// A UPI payment the owner reported (`pending_payment` in `GET /usage`):
+/// waiting for support to confirm it, or rejected because it wasn't found.
+class PendingPayment {
+  const PendingPayment({
+    required this.orderId,
+    required this.reference,
+    required this.planName,
+    required this.totalInr,
+    this.rejected = false,
+  });
+  final String orderId;
+
+  /// The code in the UPI note, e.g. CPK7Q2M9X.
+  final String reference;
+  final String planName;
+  final int totalInr;
+
+  /// Support couldn't find the money for this payment.
+  final bool rejected;
+
+  factory PendingPayment.fromJson(Json j) => PendingPayment(
+    orderId: jStr(j, 'order_id'),
+    reference: jStr(j, 'reference'),
+    planName: jStr(j, 'plan_name'),
+    totalInr: jInt(j, 'total_inr'),
+    rejected: jStr(j, 'status') == 'rejected',
+  );
+}
+
+/// A UPI payment to make: the `upi` object of `POST /billing/checkout` when
+/// payments go straight to the business's UPI ID.
+class UpiCheckout {
+  const UpiCheckout({
+    required this.orderId,
+    required this.uri,
+    required this.vpa,
+    required this.payeeName,
+    required this.reference,
+    required this.amountInr,
+  });
+  final String orderId;
+
+  /// `upi://pay?...` with the payee, amount and note filled in.
+  final String uri;
+  final String vpa;
+  final String payeeName;
+
+  /// Code in the payment note that ties the payment to this order.
+  final String reference;
+  final int amountInr;
+
+  factory UpiCheckout.fromJson(Json j) => UpiCheckout(
+    orderId: jStr(j, 'order_id'),
+    uri: jStr(j, 'uri'),
+    vpa: jStr(j, 'vpa'),
+    payeeName: jStr(j, 'payee_name'),
+    reference: jStr(j, 'reference'),
+    amountInr: jInt(j, 'amount_inr'),
+  );
+}
+
+/// What `POST /billing/checkout` started: a payment page to open ([url]), a
+/// UPI payment to make ([upi]), or neither when it is already paid (mock).
+class CheckoutStart {
+  const CheckoutStart({this.url, this.upi});
+  final String? url;
+  final UpiCheckout? upi;
+
+  factory CheckoutStart.fromJson(Json j) {
+    final upi = jObj(j, 'upi');
+    return CheckoutStart(
+      url: jStrN(j, 'url'),
+      upi: upi == null ? null : UpiCheckout.fromJson(upi),
     );
   }
 }
