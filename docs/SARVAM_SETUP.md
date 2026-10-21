@@ -215,7 +215,9 @@ KEY=$(openssl rand -hex 24); echo "$KEY"
 printf %s "$KEY" | shasum -a 256      # → OPS_KEY_SHA256
 ```
 
-Each action posts the key (10 wrong keys per IP per hour, then 429). With
+The page starts with these steps under **How to add a number** (open on the
+sign-in form, folded once the pool is shown). Each action posts the key (10
+wrong keys per IP per hour, then 429). With
 the key it lists every pool number with its status (free, active, held),
 source (`ops`, `config`) and whether an agent answers it, never which
 business has it, plus how many receptionist agents are free and how many
