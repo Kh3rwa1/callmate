@@ -12,7 +12,13 @@ import { Env } from '../types';
 import { maskPhone } from '../utils/crypto_data';
 import { isMockSarvam } from '../utils/secrets';
 import { checkCallCompliance, allowAnyCallingHours, ComplianceCheckResult } from './compliance';
-import { dialSarvam, MAX_CONCURRENT_CALLS_PER_BUSINESS, hasMinutesHeadroom, sarvamSlotsFull } from './campaign_queue';
+import { dialSarvam } from './campaign_queue';
+import {
+  hasMinutesHeadroom,
+  MAX_CONCURRENT_CALLS_PER_BUSINESS,
+  reserveOutboundCallStatement,
+  sarvamSlotsFull,
+} from './call_slots';
 import { isPlanBlocked, MinuteBalances, MINUTE_BALANCE_COLUMNS } from './plans';
 import { buildCallAgentVariables } from './call_variables';
 import { buildDisclosureOverrides } from './disclosure';
@@ -34,6 +40,7 @@ export type PlaceCallOutcome =
       delaySeconds?: number;
     }
   | { ok: false; code: 'consent_required' }
+  | { ok: false; code: 'call_in_progress' }
   | { ok: false; code: 'concurrency_limit' }
   | { ok: false; code: 'plan_blocked' }
   | { ok: false; code: 'exhausted_minutes' }
@@ -113,10 +120,37 @@ export async function placeLeadCall(env: Env, p: PlaceCallParams): Promise<Place
   const business = await env.DB.prepare('SELECT name FROM businesses WHERE id = ?').bind(businessId).first<any>();
   const callId = `call_${crypto.randomUUID().slice(0, 12)}`;
 
-  await env.DB.prepare(`
-    INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, status, started_at, created_at)
-    VALUES (?, ?, ?, ?, ?, 'calling', datetime('now'), datetime('now'))
-  `).bind(callId, businessId, lead.id, lead.name, lead.phone).run();
+  const reservation = await reserveOutboundCallStatement(env, {
+    callId,
+    businessId,
+    leadId: lead.id,
+    leadName: lead.name,
+    leadPhone: lead.phone,
+  }).run();
+  if ((reservation.meta?.changes ?? 0) === 0) {
+    // Re-read after losing the atomic reservation race so the client gets the closest useful reason.
+    const leadCall = await env.DB.prepare(
+      `SELECT 1 AS active FROM calls
+       WHERE business_id = ? AND lead_id = ? AND status = 'calling'
+         AND started_at > datetime('now', '-20 minutes') LIMIT 1`
+    ).bind(businessId, leadId).first();
+    if (leadCall) return { ok: false, code: 'call_in_progress' };
+
+    const currentActive = await env.DB.prepare(
+      `SELECT COUNT(*) AS cnt FROM calls
+       WHERE business_id = ? AND status = 'calling' AND started_at > datetime('now', '-20 minutes')`
+    ).bind(businessId).first<{ cnt: number }>();
+    if ((currentActive?.cnt ?? 0) >= MAX_CONCURRENT_CALLS_PER_BUSINESS || await sarvamSlotsFull(env)) {
+      return { ok: false, code: 'concurrency_limit' };
+    }
+    const currentUsage = await env.DB.prepare(`SELECT ${MINUTE_BALANCE_COLUMNS} FROM usage WHERE business_id = ?`)
+      .bind(businessId).first<MinuteBalances>();
+    if (currentUsage && !hasMinutesHeadroom(currentUsage, currentActive?.cnt ?? 0)) {
+      return { ok: false, code: 'exhausted_minutes' };
+    }
+    // A different request may already be calling this same lead; never send a second ring.
+    return { ok: false, code: 'concurrency_limit' };
+  }
 
   if (needsAttestation) {
     await recordConsentEventsForLeads(env.DB, businessId, [leadId], {

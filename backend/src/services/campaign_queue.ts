@@ -18,10 +18,26 @@ import { callerIdFor } from './business_numbers';
 import { checkCallCompliance, allowAnyCallingHours } from './compliance';
 import { maskPhone } from '../utils/crypto_data';
 import { isMockSarvam } from '../utils/secrets';
-import { isPlanBlocked, pauseCampaignForBilling, MinuteBalances, minutesRemaining, MINUTE_BALANCE_COLUMNS } from './plans';
+import { isPlanBlocked, pauseCampaignForBilling, MinuteBalances, MINUTE_BALANCE_COLUMNS } from './plans';
 import { buildCallAgentVariables } from './call_variables';
 import { buildDisclosureOverrides, SarvamAppOverrides } from './disclosure';
 import { globalDncSecret } from './global_dnc';
+import {
+  hasMinutesHeadroom,
+  MAX_CONCURRENT_CALLS_PER_BUSINESS,
+  reserveOutboundCallStatement,
+  sarvamSlotsFull,
+} from './call_slots';
+
+// Preserve the existing service exports used by other modules and tests.
+export {
+  DEFAULT_SARVAM_MAX_CONCURRENT_CALLS,
+  hasMinutesHeadroom,
+  MAX_CONCURRENT_CALLS_PER_BUSINESS,
+  RESERVED_MINUTES_PER_CALL,
+  sarvamMaxConcurrentCalls,
+  sarvamSlotsFull,
+} from './call_slots';
 
 export interface CampaignJobMessage {
   campaign_id: string;
@@ -46,36 +62,6 @@ export interface ProcessResult {
 }
 
 export const MAX_DIAL_ATTEMPTS = 3;
-export const MAX_CONCURRENT_CALLS_PER_BUSINESS = 5;
-/**
- * Sarvam limits concurrent calls across the whole organisation by plan: 4 on pay-as-you-go, 10 Pro,
- * 30 Growth, 120 Business. A dial past the limit is rejected, so every dial path waits for a free
- * slot instead. Set SARVAM_MAX_CONCURRENT_CALLS to the plan's limit.
- */
-export const DEFAULT_SARVAM_MAX_CONCURRENT_CALLS = 4;
-
-export function sarvamMaxConcurrentCalls(env: Pick<Env, 'SARVAM_MAX_CONCURRENT_CALLS'>): number {
-  const n = Number.parseInt(String(env.SARVAM_MAX_CONCURRENT_CALLS ?? ''), 10);
-  return Number.isFinite(n) && n > 0 ? n : DEFAULT_SARVAM_MAX_CONCURRENT_CALLS;
-}
-
-/** True when every Sarvam call slot (all businesses together) is taken by a call in progress. */
-export async function sarvamSlotsFull(env: Pick<Env, 'DB' | 'SARVAM_MAX_CONCURRENT_CALLS'>): Promise<boolean> {
-  const row = await env.DB.prepare(
-    `SELECT COUNT(*) AS cnt FROM calls WHERE status = 'calling' AND started_at > datetime('now', '-20 minutes')`
-  ).first<{ cnt: number }>();
-  return (row?.cnt ?? 0) >= sarvamMaxConcurrentCalls(env);
-}
-/**
- * Minutes held back for every call that is (or is about to be) in progress. Usage is only billed when
- * a call ends, so a new dial needs room for itself plus every call still running.
- */
-export const RESERVED_MINUTES_PER_CALL = 5;
-
-/** True when the remaining minutes (plan + top-up + bonus) cover the calls in progress plus one more. */
-export function hasMinutesHeadroom(usage: MinuteBalances, activeCalls: number): boolean {
-  return minutesRemaining(usage) >= (activeCalls + 1) * RESERVED_MINUTES_PER_CALL;
-}
 /** Cloudflare Queues caps retry/send delay (12h at time of writing; verify in CF docs). */
 export const MAX_QUEUE_DELAY_SECONDS = 12 * 60 * 60;
 export const CLAIMABLE_STATUSES = ['pending', 'queued', 'rescheduled', 'retry_pending'] as const;
@@ -303,23 +289,53 @@ export async function processCampaignJob(env: Env, job: CampaignJobMessage): Pro
     return { success: true, reason: 'exhausted_minutes' };
   }
 
-  // 6. ATOMIC CLAIM: only one worker can move this lead into 'calling'
+  // 6. Claim and reserve together. The campaign status check closes the stop race; the call insert
+  // checks both capacity limits and minutes headroom in the same write that creates the reservation.
   const callId = `call_${crypto.randomUUID().slice(0, 12)}`;
-  const claim = await env.DB.prepare(
+  const claim = env.DB.prepare(
     `UPDATE campaign_leads
-       SET status = 'calling', attempts = attempts + 1, last_attempt_at = datetime('now'), call_id = ?
+       SET status = 'calling', call_id = ?
      WHERE campaign_id = ? AND lead_id = ?
        AND status IN ('pending','queued','rescheduled','retry_pending')
-       AND attempts < ?`
-  ).bind(callId, campaign_id, lead_id, MAX_DIAL_ATTEMPTS).run();
-  if ((claim.meta?.changes ?? 0) === 0) return { success: true, reason: 'claimed_elsewhere_or_exhausted' };
+       AND attempts < ?
+       AND EXISTS (SELECT 1 FROM campaigns WHERE id = ? AND business_id = ? AND status = 'running')`
+  ).bind(callId, campaign_id, lead_id, MAX_DIAL_ATTEMPTS, campaign_id, business_id);
+  const callReservation = reserveOutboundCallStatement(env, {
+    callId,
+    businessId: business_id,
+    leadId: lead.id,
+    leadName: lead.name,
+    leadPhone: lead.phone,
+    campaignId: campaign_id,
+  });
+  const incrementAttempt = env.DB.prepare(
+    `UPDATE campaign_leads SET attempts = attempts + 1, last_attempt_at = datetime('now')
+     WHERE campaign_id = ? AND lead_id = ? AND status = 'calling' AND call_id = ?
+       AND EXISTS (SELECT 1 FROM calls WHERE id = ? AND business_id = ?)`
+  ).bind(campaign_id, lead_id, callId, callId, business_id);
+  const releaseUnreservedClaim = env.DB.prepare(
+    `UPDATE campaign_leads SET status = 'queued', call_id = NULL
+     WHERE campaign_id = ? AND lead_id = ? AND status = 'calling' AND call_id = ?
+       AND NOT EXISTS (SELECT 1 FROM calls WHERE id = ? AND business_id = ?)`
+  ).bind(campaign_id, lead_id, callId, callId, business_id);
+  const reserved = await env.DB.batch([claim, callReservation, incrementAttempt, releaseUnreservedClaim]);
+  if ((reserved[0]?.meta?.changes ?? 0) === 0) {
+    return { success: true, reason: 'campaign_stopped_or_claimed_elsewhere' };
+  }
+  if ((reserved[1]?.meta?.changes ?? 0) === 0) {
+    // A concurrent call filled the last slot (or used the last reserved minutes). Try again with
+    // a fresh queue message; this wait does not spend a provider retry or a dial attempt.
+    const stillRunning = await env.DB.prepare(
+      'SELECT 1 AS running FROM campaigns WHERE id = ? AND business_id = ? AND status = \'running\''
+    ).bind(campaign_id, business_id).first();
+    if (!stillRunning) return { success: true, reason: 'campaign_stopped' };
+    return { success: false, retry: true, requeue: true, delaySeconds: 20, reason: 'call_slot_race' };
+  }
 
-  const attemptsNow = (campLead.attempts ?? 0) + 1;
-
-  await env.DB.prepare(
-    `INSERT INTO calls (id, business_id, lead_id, lead_name, lead_phone, campaign_id, status, started_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'calling', datetime('now'), datetime('now'))`
-  ).bind(callId, business_id, lead.id, lead.name, lead.phone, campaign_id).run();
+  const attemptRow = await env.DB.prepare(
+    'SELECT attempts FROM campaign_leads WHERE campaign_id = ? AND lead_id = ? AND call_id = ?'
+  ).bind(campaign_id, lead_id, callId).first<{ attempts: number }>();
+  const attemptsNow = attemptRow?.attempts ?? (campLead.attempts ?? 0) + 1;
 
   // Mock mode (dev / CI): leave the call in 'calling'; the mock webhook or maintenance sweeper finishes it.
   if (isMockSarvam(env)) {
@@ -382,9 +398,10 @@ export async function enqueueCampaignJobs(
     const placeholders = slice.map(() => '?').join(',');
     const { results } = await env.DB.prepare(
       `UPDATE campaign_leads SET status = 'queued'
-       WHERE campaign_id = ? AND lead_id IN (${placeholders}) AND status IN ('pending','rescheduled','retry_pending')
+       WHERE campaign_id = ? AND lead_id IN (${placeholders}) AND status IN ('pending','queued','rescheduled','retry_pending')
+         AND EXISTS (SELECT 1 FROM campaigns WHERE id = ? AND business_id = ? AND status = 'running')
        RETURNING lead_id`
-    ).bind(campaignId, ...slice).all<{ lead_id: string }>();
+    ).bind(campaignId, ...slice, campaignId, businessId).all<{ lead_id: string }>();
     for (const r of results ?? []) toQueue.push(r.lead_id);
   }
 

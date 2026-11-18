@@ -413,6 +413,8 @@ export async function processInstantCallJob(
     case 'consent_required':
       // Enquiry leads are explicit_opt_in, so this shouldn't happen; never dial without a basis.
       return { action: 'ack', reason: 'consent_required' };
+    case 'call_in_progress':
+      return { action: 'ack', reason: 'already_called' };
     case 'concurrency_limit':
       return {
         action: 'requeue',

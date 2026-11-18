@@ -55,7 +55,7 @@ flutter build appbundle --release \
 - **Guaranteed No-Auto-Send:** WhatsApp interaction is strictly click-to-chat deep linking (`whatsapp://send`). Nothing is ever sent automatically without human review and tapping Send.
 - **Fail-Closed Secrets:** Zero fallback defaults for secrets in code. Missing or short `JWT_SIGNING_KEY` (<32 chars) fails closed with HTTP 500.
 - **Tenant Isolation:** Every backend query and Cloudflare R2 object key is strictly scoped by `business_id`.
-- **Encrypted at Rest:** Call metadata and transcripts are encrypted at rest using AES-256-GCM via the Web Crypto API.
+- **Application-level Encryption:** Call transcripts, raw webhook payloads and recording URLs are encrypted at rest using AES-256-GCM via the Web Crypto API. Lead names and phone numbers, call summaries and scores remain ordinary D1 fields; this encryption layer does not cover them.
 - **Hardened Webhooks:** Sarvam call webhooks require mandatory HMAC-SHA256 signature verification with constant-time equality and timestamp freshness checks.
 - **Real OTP Verification:** OTPs are 6-digit random values with SHA-256 hash storage, 5-minute expiry, max 5 failed attempts lock, and per-phone/IP rate limits.
 - **Single-Flight Refresh:** Flutter client coalesces concurrent 401 token refresh requests into a single in-flight refresh operation, and only ends the session when the server rejects the refresh token (never on a flaky network).

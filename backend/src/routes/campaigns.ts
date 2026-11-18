@@ -165,6 +165,7 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
     `UPDATE campaigns
      SET status = 'running',
          started_at = COALESCE(started_at, datetime('now')),
+         completed_at = NULL,
          attested_by = CASE WHEN ? = 1 THEN ? ELSE attested_by END,
          attested_at = CASE WHEN ? = 1 THEN datetime('now') ELSE attested_at END
      WHERE id = ? AND business_id = ? AND status IN ('draft','paused')`
@@ -189,7 +190,7 @@ campaignsApp.post('/campaigns/:id/start', async (c) => {
       skipStmts.push(c.env.DB.prepare(`UPDATE campaign_leads SET status = 'skipped_invalid' WHERE campaign_id = ? AND lead_id = ?`).bind(id, l.id));
     } else if (l.consent === 'unknown' && !consentAttestation) {
       skipStmts.push(c.env.DB.prepare(`UPDATE campaign_leads SET status = 'skipped_no_consent' WHERE campaign_id = ? AND lead_id = ?`).bind(id, l.id));
-    } else if (['pending', 'rescheduled', 'retry_pending'].includes(l.cl_status)) {
+    } else if (['pending', 'queued', 'rescheduled', 'retry_pending'].includes(l.cl_status)) {
       toQueue.push(l.id); // completed / failed / calling leads are never re-dialled
     }
   }
@@ -228,8 +229,15 @@ campaignsApp.post('/campaigns/:id/stop', async (c) => {
 
   // Stop queued leads
   await c.env.DB.prepare(
-    `UPDATE campaign_leads SET status = 'pending' WHERE campaign_id = ? AND status = 'queued'`
-  ).bind(id).run();
+    `UPDATE campaign_leads SET status = 'pending', call_id = NULL
+     WHERE campaign_id = ? AND (
+       status = 'queued' OR (
+         status = 'calling' AND NOT EXISTS (
+           SELECT 1 FROM calls WHERE calls.id = campaign_leads.call_id AND calls.business_id = ?
+         )
+       )
+     )`
+  ).bind(id, user.business_id).run();
 
   const updated = await c.env.DB.prepare('SELECT * FROM campaigns WHERE id = ? AND business_id = ?').bind(id, user.business_id).first();
   return c.json(formatCampaign(updated));

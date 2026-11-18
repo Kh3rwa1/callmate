@@ -30,8 +30,7 @@ import 'storage/local_prefs.dart';
 import 'storage/secure_store.dart';
 
 /// ---------------------------------------------------------------------------
-/// Composition root. Flip between mock & production with ONE switch:
-/// `AppEnv.useMock` (true when API_BASE_URL is empty or USE_MOCK=true).
+/// Composition root. Flip between mock and API repositories with `USE_MOCK=true`.
 /// ---------------------------------------------------------------------------
 
 final useMockProvider = Provider<bool>((_) => AppEnv.useMock);

@@ -210,6 +210,8 @@ export async function respondWithLeadCall(
           message: 'Confirm this customer asked to be contacted before your AI calls them.',
           code: 'consent_required',
         }, 409);
+      case 'call_in_progress':
+        return c.json({ message: 'A call to this lead is already in progress.', code: 'call_in_progress' }, 409);
       case 'concurrency_limit':
         return c.json({ message: 'Too many calls in progress. Try again in a minute.', code: 'concurrency_limit' }, 429);
       case 'plan_blocked':
