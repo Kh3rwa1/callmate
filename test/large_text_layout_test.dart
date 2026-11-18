@@ -36,21 +36,32 @@ void main() {
       expect(find.byKey(const Key('home-hero')), findsOneWidget);
       expect(h.tester.takeException(), isNull);
 
-      // Tab bar: icons only (each screen has its name up top), but every
-      // tab still has its name for screen readers and on long-press.
+      // Keep destination captions visible at the largest supported text
+      // size, while retaining the full names in tooltips and semantics.
       final bar = find.byType(AppNavBar);
-      final words = find.descendant(
+      final captions = find.descendant(
         of: bar,
         matching: find.byWidgetPredicate(
           (w) => w is Text && !RegExp(r'^\d+\+?$').hasMatch(w.data ?? ''),
         ),
       );
-      expect(words, findsNothing, reason: 'no tab captions');
+      expect(captions, findsNWidgets(5), reason: 'one visible caption per tab');
+      for (final caption in captions.evaluate()) {
+        final paragraph = h.tester.renderObject<RenderParagraph>(
+          find
+              .descendant(
+                of: find.byWidget(caption.widget),
+                matching: find.byType(RichText),
+              )
+              .first,
+        );
+        expect(paragraph.didExceedMaxLines, isFalse);
+      }
       expect(
         find.descendant(of: bar, matching: find.byType(Tooltip)),
         findsNWidgets(5),
       );
-      expect(h.tester.getSize(bar).height, greaterThanOrEqualTo(64));
+      expect(h.tester.getSize(bar).height, greaterThanOrEqualTo(72));
     });
   }
 

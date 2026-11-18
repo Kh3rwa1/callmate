@@ -8,6 +8,11 @@ extension SHome on S {
   String get navCalls => pick('Calls', 'कॉल्स', 'কল');
   String get navFollowUps => pick('Messages', 'मैसेज', 'মেসেজ');
   String get navAgent => pick('My employee', 'मेरा कर्मचारी', 'আমার কর্মী');
+  String get navHomeShort => pick('Home', 'होम', 'হোম');
+  String get navLeadsShort => pick('Leads', 'लीड', 'লিড');
+  String get navCallsShort => pick('Call', 'कॉल', 'কল');
+  String get navFollowUpsShort => pick('Chat', 'चैट', 'চ্যাট');
+  String get navAgentShort => pick('AI', 'एआई', 'এআই');
   String navPending(String tab, int n) =>
       pick('$tab, $n pending', '$tab, $n बाकी', '$tab, $n বাকি');
 
