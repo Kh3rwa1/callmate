@@ -11,7 +11,8 @@ import '../../core/widgets/celebration.dart';
 import '../../l10n/l10n.dart';
 
 /// Bottom navigation: exactly Home · Customers · Calls · Messages ·
-/// My employee.
+/// My employee. Short captions stay visible so tab destinations are obvious
+/// without relying on a long-press or a screen reader.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
   final StatefulNavigationShell shell;
@@ -35,6 +36,13 @@ class AppShell extends ConsumerWidget {
       s.navFollowUps,
       s.navAgent,
     ];
+    final shortLabels = [
+      s.navHomeShort,
+      s.navLeadsShort,
+      s.navCallsShort,
+      s.navFollowUpsShort,
+      s.navAgentShort,
+    ];
     // Back on another tab goes Home first instead of closing the app.
     return PopScope(
       canPop: shell.currentIndex == 0,
@@ -47,7 +55,7 @@ class AppShell extends ConsumerWidget {
           index: shell.currentIndex,
           items: [
             for (var i = 0; i < _icons.length; i++)
-              NavItemData(_icons[i], labels[i]),
+              NavItemData(_icons[i], labels[i], shortLabels[i]),
           ],
           badges: {3: pending},
           onSelect: (i) {
@@ -61,16 +69,20 @@ class AppShell extends ConsumerWidget {
 }
 
 class NavItemData {
-  const NavItemData(this.glyph, this.label);
+  const NavItemData(this.glyph, this.label, this.shortLabel);
   final AppGlyphs glyph;
+
+  /// Full name used by TalkBack and the long-press tooltip.
   final String label;
+
+  /// Compact visible caption sized for a five-destination phone nav bar.
+  final String shortLabel;
 }
 
 /// The tab bar: a floating paper capsule with CallPilot's own rounded
-/// icons. The selected tab sits in a pill painted in that tab's colour
-/// world (cobalt, ink, tomato, chartreuse, marigold) that glides between
-/// tabs. Labels stay at 12.5+ and never truncate; badges pop when their
-/// count changes.
+/// icons and short, visible destination names. The selected tab sits in a
+/// pill painted in that tab's colour world (cobalt, ink, tomato, chartreuse,
+/// marigold) that glides between tabs; badges pop when their count changes.
 class AppNavBar extends StatelessWidget {
   const AppNavBar({
     super.key,
@@ -84,9 +96,8 @@ class AppNavBar extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final Map<int, int> badges;
 
-  /// Height of the capsule. Icons only: every screen already shows its
-  /// name in big letters at the top, so words here would just repeat it.
-  static const barHeight = 64.0;
+  /// Height of the capsule, with room for the icon and its visible caption.
+  static const barHeight = 72.0;
 
   @override
   Widget build(BuildContext context) {
@@ -181,12 +192,13 @@ class _NavItem extends StatelessWidget {
       child: AppGlyph(
         data.glyph,
         key: ValueKey('$selected-$fg'),
-        size: 27,
+        size: 21,
         color: fg,
       ),
     );
     return Tooltip(
-      // Long-press says the name, for anyone unsure what an icon means.
+      // Long-press keeps the full destination name available for compact
+      // captions such as "AI".
       message: data.label,
       excludeFromSemantics: true,
       child: Semantics(
@@ -199,15 +211,20 @@ class _NavItem extends StatelessWidget {
           haptic: false,
           scale: 0.9,
           child: Center(
-            child: badge == null
-                ? icon
-                : Stack(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (badge == null)
+                  icon
+                else
+                  Stack(
                     clipBehavior: Clip.none,
                     children: [
                       icon,
                       Positioned(
-                        right: -11,
-                        top: -6,
+                        right: -10,
+                        top: -5,
                         child: PopSwitcher(
                           child: count == 0
                               ? const SizedBox.shrink(key: ValueKey(0))
@@ -219,6 +236,29 @@ class _NavItem extends StatelessWidget {
                       ),
                     ],
                   ),
+                const SizedBox(height: 2),
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 180),
+                  curve: AppMotion.standard,
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontFamily,
+                    fontFamilyFallback: AppTheme.fontFallback,
+                    fontSize: AppTypeScale.caption,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    height: 1.05,
+                    letterSpacing: -0.15,
+                    color: fg,
+                  ),
+                  child: Text(
+                    data.shortLabel,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
