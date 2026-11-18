@@ -242,7 +242,7 @@ describe('Phase 9 Integration Matrix (Q1-Q6, W1-W4, S1-S4, K1-K2, M1)', () => {
       ]);
 
       const successfulClaims = results.filter((r) => r.reason === 'mock_dial');
-      const skippedClaims = results.filter((r) => r.reason === 'claimed_elsewhere_or_exhausted');
+      const skippedClaims = results.filter((r) => r.reason === 'campaign_stopped_or_claimed_elsewhere');
 
       expect(successfulClaims.length).toBe(1);
       expect(skippedClaims.length).toBe(1);
